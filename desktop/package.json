@@ -1,0 +1,37 @@
+{
+  "name": "effectstore-desktop",
+  "version": "1.0.0",
+  "description": "EffectStore - Premium TikTok Live Effects",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "author": "EffectStore",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.16.0",
+    "auto-launch": "^5.0.5"
+  },
+  "build": {
+    "appId": "com.effectstore.app",
+    "productName": "EffectStore",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "EffectStore-Setup-${version}.${ext}"
+    }
+  }
+}

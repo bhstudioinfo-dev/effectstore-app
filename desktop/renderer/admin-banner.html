@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Banner - EffectStore</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 40px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 28px;
+            background: linear-gradient(90deg, #f093fb, #f5576c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .btn {
+            padding: 12px 24px; border: none; border-radius: 10px;
+            cursor: pointer; font-weight: 600; transition: all 0.3s;
+            font-size: 14px;
+        }
+        .btn-primary { 
+            background: linear-gradient(90deg, #f093fb, #f5576c); 
+            color: white; 
+        }
+        .btn-primary:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 20px rgba(240,147,251,0.4); 
+        }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: white; }
+        .btn-success { background: linear-gradient(90deg, #11998e, #38ef7d); color: white; }
+        .btn-danger { background: linear-gradient(90deg, #eb3349, #f45c43); color: white; }
+        
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .upload-section {
+            text-align: center;
+            padding: 60px 40px;
+            border: 2px dashed rgba(240,147,251,0.3);
+            border-radius: 16px;
+            background: rgba(240,147,251,0.05);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .upload-section:hover {
+            border-color: rgba(240,147,251,0.6);
+            background: rgba(240,147,251,0.1);
+            transform: translateY(-3px);
+        }
+        .upload-section.has-image {
+            border-style: solid;
+            padding: 20px;
+        }
+        
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .upload-text {
+            font-size: 18px;
+            color: #9ca3af;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            font-size: 13px;
+            color: #6b7280;
+        }
+        
+        #fileInput { display: none; }
+        
+        .preview-section {
+            margin-top: 30px;
+            display: none;
+        }
+        .preview-section.show { display: block; }
+        
+        .banner-preview {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        .current-banner {
+            margin-top: 20px;
+        }
+        .current-banner img {
+            width: 100%;
+            max-height: 250px;
+            object-fit: contain;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            animation: slideIn 0.3s ease;
+            z-index: 10000;
+        }
+        .toast.success { background: linear-gradient(90deg, #11998e, #38ef7d); }
+        .toast.error { background: linear-gradient(90deg, #eb3349, #f45c43); }
+        
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Quản Lý Banner</h1>
+            <button class="btn btn-secondary" onclick="backToAdmin()">← Quay lại Admin</button>
+        </div>
+        
+        <!-- Upload Section -->
+        <div class="card">
+            <h2 style="margin-bottom: 20px;">📤 Upload Banner Mới</h2>
+            
+            <div class="upload-section" id="uploadSection" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Click để chọn ảnh banner</div>
+                <div class="upload-hint">
+                    Định dạng: PNG, JPG | Kích thước: 800x200px | Tối đa: 5MB
+                </div>
+            </div>
+            
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+            
+            <!-- Preview -->
+            <div class="preview-section" id="previewSection">
+                <h3 style="margin-bottom: 15px;">👁️ Xem trước:</h3>
+                <img id="previewImage" class="banner-preview" alt="Preview">
+                
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="cancelUpload()">❌ Hủy</button>
+                    <button class="btn btn-success" onclick="uploadBanner()">💾 Lưu Banner</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Current Banner -->
+        <div class="card current-banner" id="currentBannerCard" style="display: none;">
+            <h2 style="margin-bottom: 15px;">🖼️ Banner Hiện Tại</h2>
+            <img id="currentBannerImage" alt="Current Banner">
+            
+            <div class="actions">
+                <button class="btn btn-danger" onclick="deleteBanner()">🗑️ Xóa Banner</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ===== LẤY TOKEN TỪ URL =====
+        const API_URL = 'http://localhost:9000';
+        let selectedFile = null;
+        
+        document.addEventListener('DOMContentLoaded', loadCurrentBanner);
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Validate
+            if (!file.type.startsWith('image/')) {
+                showNotification('error', 'Vui lòng chọn file ảnh!');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                showNotification('error', 'File quá lớn! Tối đa 5MB');
+                return;
+            }
+            
+            selectedFile = file;
+            
+            // Preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('previewImage').src = e.target.result;
+                document.getElementById('previewSection').classList.add('show');
+                document.getElementById('uploadSection').classList.add('has-image');
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function cancelUpload() {
+            selectedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('previewSection').classList.remove('show');
+            document.getElementById('uploadSection').classList.remove('has-image');
+        }
+        
+        async function uploadBanner() {
+            if (!selectedFile) {
+                showNotification('error', 'Vui lòng chọn file ảnh!');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('banner', selectedFile);
+
+                const token = localStorage.getItem('token');
+                console.log('UPLOAD TOKEN:', token);
+
+                const res = await fetch(`${API_URL}/api/admin/banner`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showNotification('success', 'Upload banner thành công!');
+                    loadCurrentBanner();
+                } else {
+                    showNotification('error', data.message || 'Upload thất bại');
+                }
+
+            } catch (err) {
+                console.error(err);
+                showNotification('error', 'Lỗi server');
+            }
+        }
+        
+        async function loadCurrentBanner() {
+            try {
+                const res = await fetch(`${API_URL}/api/banner`);
+                const data = await res.json();
+                
+                if (data.success && data.hasBanner && data.banner) {
+                    document.getElementById('currentBannerImage').src = `${API_URL}${data.banner.url}`;
+                    document.getElementById('currentBannerCard').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading banner:', error);
+            }
+        }
+        
+        async function deleteBanner() {
+            if (!confirm('Xóa banner hiện tại? Giao diện sẽ quay về mặc định.')) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                
+                const res = await fetch(`${API_URL}/api/admin/banner`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });                
+                const data = await res.json();
+                
+                if (data.success) {
+                    showNotification('success', 'Đã xóa banner');
+                    document.getElementById('currentBannerCard').style.display = 'none';
+                } else {
+                    showNotification('error', data.message);
+                }
+            } catch (error) {
+                showNotification('error', 'Lỗi: ' + error.message);
+            }
+        }
+        
+        function backToAdmin() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                window.location.href = `index.html?token=${token}`;
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+        
+        function showNotification(type, message) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

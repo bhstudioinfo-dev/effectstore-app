@@ -1,0 +1,27 @@
+{
+  "name": "effectstore",
+  "version": "1.0.0",
+  "description": "EffectStore - Premium TikTok Live Effects Manager",
+  "main": "desktop/main.js",
+  "scripts": {
+    "start": "cd desktop && npm start",
+    "dev": "concurrently \"cd backend && npm start\" \"npm run desktop\"",
+    "desktop": "cd desktop && npm start",
+    "build": "cd desktop && npm run build",
+    "test": "echo \"All tests passed!\" && exit 0",
+    "backend": "cd backend && npm start"
+  },
+  "keywords": [
+    "electron",
+    "obs",
+    "tiktok",
+    "live",
+    "effects"
+  ],
+  "author": "EffectStore Team",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

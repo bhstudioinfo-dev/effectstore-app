@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EffectStore Admin Panel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #030305;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 32px;
+        }
+        .logo {
+            font-size: 1.8em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #d4af37, #f4e4ba);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: rgba(20, 20, 30, 0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 24px;
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #d4af37, #f4e4ba);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label { color: #6b6b7b; font-size: 0.9em; margin-top: 8px; }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 12px; margin-bottom: 24px; }
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: #6b6b7b;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #d4af37, #f4e4ba);
+            color: #030305;
+            border-color: transparent;
+        }
+        
+        /* Content */
+        .content {
+            background: rgba(20, 20, 30, 0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 32px;
+        }
+        
+        /* Form */
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            color: #b8b8c8;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 1em;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #d4af37;
+        }
+        
+        /* Button */
+        .btn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #d4af37, #f4e4ba);
+            color: #030305;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        
+        /* Table */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        th { color: #6b6b7b; font-weight: 600; font-size: 0.85em; text-transform: uppercase; }
+        
+        /* Badge */
+        .badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 700;
+        }
+        .badge-success { background: rgba(0,255,136,0.1); color: #00ff88; }
+        .badge-warning { background: rgba(255,170,0,0.1); color: #ffaa00; }
+        .badge-danger { background: rgba(255,71,87,0.1); color: #ff4757; }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">🎬 EffectStore Admin</div>
+            <button class="btn" onclick="logout()">🚪 Đăng xuất</button>
+        </header>
+        
+        <!-- Login Form -->
+        <div id="login-section" class="content">
+            <h2 style="margin-bottom: 24px;">🔐 Đăng nhập Admin</h2>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="admin-email" placeholder="admin@effectstore.vn">
+            </div>
+            <div class="form-group">
+                <label>Mật khẩu</label>
+                <input type="password" id="admin-password" placeholder="••••••••">
+            </div>
+            <button class="btn" onclick="login()">Đăng nhập</button>
+        </div>
+        
+        <!-- Dashboard -->
+        <div id="dashboard-section" class="hidden">
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-effects">0</div>
+                    <div class="stat-label">Tổng hiệu ứng</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-users">0</div>
+                    <div class="stat-label">Tổng khách hàng</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-orders">0</div>
+                    <div class="stat-label">Tổng đơn hàng</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-revenue">0₫</div>
+                    <div class="stat-label">Doanh thu</div>
+                </div>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('effects')">📦 Hiệu ứng</div>
+                <div class="tab" onclick="switchTab('orders')">📜 Đơn hàng</div>
+                <div class="tab" onclick="switchTab('add')">➕ Thêm mới</div>
+            </div>
+            
+            <!-- Effects Tab -->
+            <div id="effects-tab" class="content tab-content">
+                <h2 style="margin-bottom: 20px;">Quản lý hiệu ứng</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tên</th>
+                            <th>Danh mục</th>
+                            <th>Giá</th>
+                            <th>Đã bán</th>
+                            <th>Trạng thái</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="effects-table"></tbody>
+                </table>
+            </div>
+            
+            <!-- Orders Tab -->
+            <div id="orders-tab" class="content tab-content hidden">
+                <h2 style="margin-bottom: 20px;">Đơn hàng gần đây</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Khách hàng</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                            <th>Ngày</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table"></tbody>
+                </table>
+            </div>
+            
+            <!-- Add Effect Tab -->
+            <div id="add-tab" class="content tab-content hidden">
+                <h2 style="margin-bottom: 20px">Thêm hiệu ứng mới</h2>
+                <form onsubmit="addEffect(event)">
+                    <div class="form-group">
+                        <label>Tên hiệu ứng</label>
+                        <input type="text" name="name" required placeholder="VD: Thiên Thần Biến Hình">
+                    </div>
+                    <div class="form-group">
+                        <label>Danh mục</label>
+                        <select name="category" required>
+                            <option value="transformation">Biến hình</option>
+                            <option value="gift">Quà tặng</option>
+                            <option value="background">Background</option>
+                            <option value="animation">Animation</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Giá (₫)</label>
+                        <input type="number" name="price" required placeholder="99000">
+                    </div>
+                    <div class="form-group">
+                        <label>Giá gốc (₫)</label>
+                        <input type="number" name="originalPrice" placeholder="149000">
+                    </div>
+                    <div class="form-group">
+                        <label>Icon (emoji)</label>
+                        <input type="text" name="icon" placeholder="👼" value="🎬">
+                    </div>
+                    <div class="form-group">
+                        <label>Mô tả</label>
+                        <textarea name="description" rows="4" placeholder="Mô tả hiệu ứng..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>File hiệu ứng</label>
+                        <input type="file" name="effectFile" accept=".json,.gif,.mp4,.mov,.png,.webp, .webm">
+                    </div>
+                    <button type="submit" class="btn">💾 Lưu hiệu ứng</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:9000/api';
+        let token = localStorage.getItem('admin_token');
+        
+        // Check login on load
+        if (token) {
+            showDashboard();
+        }
+        
+        async function login() {
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.user.isAdmin) {
+                    token = data.token;
+                    localStorage.setItem('admin_token', token);
+                    showDashboard();
+                } else {
+                    alert('❌ Email hoặc mật khẩu không đúng, hoặc không phải admin!');
+                }
+            } catch (error) {
+                alert('❌ Lỗi kết nối server');
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('admin_token');
+            token = null;
+            location.reload();
+        }
+        
+        async function showDashboard() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            loadStats();
+            loadEffects();
+        }
+        
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/admin/stats`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('stat-effects').textContent = data.stats.totalEffects;
+                    document.getElementById('stat-users').textContent = data.stats.totalUsers;
+                    document.getElementById('stat-orders').textContent = data.stats.totalOrders;
+                    document.getElementById('stat-revenue').textContent = 
+                        new Intl.NumberFormat('vi-VN').format(data.stats.totalRevenue) + '₫';
+                    
+                    // Load recent orders
+                    const ordersTable = document.getElementById('orders-table');
+                    ordersTable.innerHTML = data.recentOrders.map(order => `
+                        <tr>
+                            <td>${order.userId?.email || 'N/A'}</td>
+                            <td>${new Intl.NumberFormat('vi-VN').format(order.total)}₫</td>
+                            <td><span class="badge badge-success">${order.paymentStatus}</span></td>
+                            <td>${new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Load stats error:', error);
+            }
+        }
+        
+        async function loadEffects() {
+            try {
+                const response = await fetch(`${API_URL}/admin/effects`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const effectsTable = document.getElementById('effects-table');
+                    effectsTable.innerHTML = data.effects.map(effect => `
+                        <tr>
+                            <td>${effect.icon} ${effect.name}</td>
+                            <td>${effect.category}</td>
+                            <td>${new Intl.NumberFormat('vi-VN').format(effect.price)}₫</td>
+                            <td>${effect.uses}</td>
+                            <td><span class="badge ${effect.isActive ? 'badge-success' : 'badge-danger'}">${effect.isActive ? 'Active' : 'Inactive'}</span></td>
+                            <td>
+                                <button class="btn" style="padding: 8px 16px; font-size: 0.85em;" onclick="deleteEffect('${effect._id}')">🗑️ Xóa</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Load effects error:', error);
+            }
+        }
+        
+        async function addEffect(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            try {
+                const response = await fetch(`${API_URL}/effects`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Thêm hiệu ứng thành công!');
+                    form.reset();
+                    loadEffects();
+                    loadStats();
+                    switchTab('effects');
+                } else {
+                    alert('❌ Lỗi: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Lỗi kết nối server');
+            }
+        }
+        
+        async function deleteEffect(id) {
+            if (!confirm('Bạn có chắc muốn xóa hiệu ứng này?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/effects/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Xóa thành công!');
+                    loadEffects();
+                    loadStats();
+                } else {
+                    alert('❌ Lỗi: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Lỗi kết nối server');
+            }
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab + '-tab').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

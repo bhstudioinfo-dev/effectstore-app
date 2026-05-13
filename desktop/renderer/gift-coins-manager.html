@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Coins - EffectStore</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f1123 0%, #151833 50%, #1e2246 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+            top: -50px;
+            right: -50px;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, transparent 70%);
+            bottom: -100px;
+            left: -100px;
+            z-index: 0;
+        }
+
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            padding: 30px 20px; 
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 35px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            margin-bottom: 35px;
+        }
+
+        .header h1 {
+            font-size: 26px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #0f1123;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+            opacity: 0.95;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        }
+        
+        /* ===== UPLOAD SECTION ===== */
+        .upload-section {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 30px;
+            margin-bottom: 35px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .upload-section h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 25px;
+            color: #fbbf24;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 20px;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            color: #94a3b8;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input {
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #fbbf24;
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+        }
+
+        .form-group input[type="file"] {
+            padding: 8px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        
+        /* ===== GRID LAYOUT ===== */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 25px;
+            padding: 10px 0;
+        }
+        
+        /* Card */
+        .coin-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            min-height: 280px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .coin-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.15);
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+        
+        /* Icon với action buttons */
+        .icon-container {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            margin-bottom: 5px;
+            border-radius: 20px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .coin-card img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            transition: transform 0.4s ease;
+        }
+
+        .coin-card:hover img {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .icon-actions {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 17, 35, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .coin-card:hover .icon-actions {
+            opacity: 1;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            transform: scale(1.15);
+        }
+
+        .icon-btn.upload {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .icon-btn.delete {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+        }
+        
+        /* Title */
+        .coin-card h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            min-height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 0.2px;
+        }
+        
+        /* Input Group */
+        .coin-input-group {
+            display: grid;
+            grid-template-columns: 1fr 42px;
+            gap: 10px;
+            align-items: center;
+            width: 100%;
+            margin-top: auto;
+        }
+
+        .coin-input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fbbf24;
+            font-size: 15px;
+            text-align: center;
+            font-weight: 700;
+            transition: all 0.3s;
+        }
+
+        .coin-input:focus {
+            outline: none;
+            border-color: #fbbf24;
+            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-save {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
+        }
+
+        .btn-save:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+        }
+        
+        /* Bulk Actions */
+        .bulk-actions {
+            margin-top: 40px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 24px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Notification */
+        .notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 18px 30px;
+            border-radius: 16px;
+            color: white;
+            font-weight: 600;
+            animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+            max-width: 400px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .notification.success { background: rgba(16, 185, 129, 0.9); }
+        .notification.error { background: rgba(239, 68, 68, 0.9); }
+        .notification.warning { background: rgba(245, 158, 11, 0.9); color: #0f1123; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Loading */
+        .loading-spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 60px;
+            color: #94a3b8;
+        }
+
+        .spinner {
+            width: 35px;
+            height: 35px;
+            border: 3px solid rgba(251, 191, 36, 0.1);
+            border-top-color: #fbbf24;
+            border-radius: 50%;
+            animation: spin 1s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Hidden file input */
+        .hidden-input {
+            display: none;
+        }
+        
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1400px) {
+            .upload-form { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 768px) {
+            .upload-form { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 20px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>💰 Quản Lý Coins & Icons</h1>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-secondary" onclick="backToAdmin()">← Quay lại Admin</button>
+                <button class="btn btn-success" onclick="saveAll()">💾 Lưu Tất Cả</button>
+            </div>
+        </div>
+        
+        <!-- Upload Section -->
+        <div class="upload-section">
+            <h2>📤 Thêm Icon Gift Mới</h2>
+            <div class="upload-form">
+                <div class="form-group">
+                    <label>Tên Gift ID *</label>
+                    <input type="text" id="new-gift-id" placeholder="vd: rose, tiktok..." required>
+                </div>
+                <div class="form-group">
+                    <label>Tên hiển thị *</label>
+                    <input type="text" id="new-gift-name" placeholder="vd: Rose, TikTok..." required>
+                </div>
+                <div class="form-group">
+                    <label>File Icon (PNG, JPG) *</label>
+                    <input type="file" id="new-gift-icon" accept="image/*" required>
+                </div>
+                <button class="btn btn-primary" onclick="uploadNewIcon()">➕ Thêm Icon</button>
+            </div>
+        </div>
+        
+        <!-- Cards Grid -->
+        <div class="cards-grid" id="coinsGrid">
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <span>Đang tải...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bulk Actions -->
+        <div class="bulk-actions">
+            <button class="btn btn-primary" onclick="resetToDefault()">🔄 Reset Coins Mặc Định</button>
+        </div>
+    </div>
+    
+    <!-- Hidden file input cho upload icon -->
+    <input type="file" id="icon-upload-input" class="hidden-input" accept="image/*">
+    
+    <script>
+        const API_URL = 'http://localhost:9000';
+        let coinsData = {};
+        let giftsList = [];
+        let currentUploadGiftId = null;
+        
+        document.addEventListener('DOMContentLoaded', loadCoins);
+        
+        // Load coins và danh sách gifts
+        async function loadCoins() {
+            try {
+                const token = localStorage.getItem('token');
+                console.log('UPLOAD TOKEN:', token);
+                const res = await fetch(`${API_URL}/api/admin/gift-coins`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    coinsData = {};
+                    data.configs.forEach(config => {
+                        coinsData[config.giftId] = config.coins;
+                    });
+                    
+                    // Load danh sách icons
+                    await loadGiftIcons();
+                } else {
+                    showNotification('error', 'Không thể tải coins');
+                }
+            } catch (error) {
+                showNotification('error', 'Lỗi: ' + error.message);
+            }
+        }
+        
+        // Load danh sách gift icons từ server
+        async function loadGiftIcons() {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/gift-icons`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    giftsList = data.icons;
+                    renderCoins();
+                } else {
+                    // Fallback nếu API chưa có
+                    renderCoinsWithDefaultGifts();
+                }
+            } catch (error) {
+                console.error('Load icons error:', error);
+                renderCoinsWithDefaultGifts();
+            }
+        }
+        
+        // Render với default gifts (backup)
+        function renderCoinsWithDefaultGifts() {
+            const defaultGifts = [
+                { id: 'rose', name: 'Rose', icon: '/assets/gift-icons/Rose.png' },
+                { id: 'tiktok', name: 'TikTok', icon: '/assets/gift-icons/TikTok.png' },
+                { id: 'ice_cream', name: 'Ice Cream', icon: '/assets/gift-icons/Ice_Cream_Cone.png' },
+                { id: 'heart', name: 'Heart', icon: '/assets/gift-icons/Finger_Heart.png' },
+                { id: 'corgi', name: 'Corgi', icon: '/assets/gift-icons/Corgi.png' },
+                { id: 'doughnut', name: 'Doughnut', icon: '/assets/gift-icons/Doughnut.png' },
+                { id: 'perfume', name: 'Perfume', icon: '/assets/gift-icons/Perfume.png' },
+                { id: 'sunglasses', name: 'Sunglasses', icon: '/assets/gift-icons/Sunglasses.png' },
+                { id: 'money_gun', name: 'Money Gun', icon: '/assets/gift-icons/Money_Gun.png' },
+                { id: 'pk_crown', name: 'PK Crown', icon: '/assets/gift-icons/PK_crown_ring.png' },
+                { id: 'friendship_necklace', name: 'Friendship Necklace', icon: '/assets/gift-icons/Friendship_Necklace.png' },
+                { id: 'wooly_hat', name: 'Wooly Hat', icon: '/assets/gift-icons/Wooly_Hat.png' },
+                { id: 'boxing_gloves', name: 'Boxing Gloves', icon: '/assets/gift-icons/Boxing_Gloves.png' },
+                { id: 'love_you', name: 'Love You', icon: '/assets/gift-icons/Love_you_so_much.png' },
+                { id: 'youre_awesome', name: "You're Awesome", icon: '/assets/gift-icons/You\'re_awesome.png' }
+            ];
+            
+            giftsList = defaultGifts;
+            renderCoins();
+        }
+        
+        // Render danh sách gifts
+        function renderCoins() {
+            const grid = document.getElementById('coinsGrid');
+            
+            if (giftsList.length === 0) {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#9ca3af;">Chưa có gift nào</div>';
+                return;
+            }
+            
+            grid.innerHTML = giftsList.map(gift => {
+                const coins = coinsData[gift.id] !== undefined ? coinsData[gift.id] : 1;
+                const iconUrl = gift.icon.startsWith('/') ? `${API_URL}${gift.icon}` : gift.icon;
+                
+                return `
+                    <div class="coin-card" data-gift-id="${gift.id}">
+                        <div class="icon-container">
+                            <img src="${iconUrl}" alt="${gift.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22><rect fill=%22%23333%22 width=%2280%22 height=%2280%22/><text fill=%22%23fff%22 x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22>🎁</text></svg>'">
+                            <div class="icon-actions">
+                                <button class="icon-btn upload" onclick="triggerIconUpload('${gift.id}')" title="Thay icon">📤</button>
+                                <button class="icon-btn delete" onclick="deleteIcon('${gift.id}')" title="Xóa icon">🗑️</button>
+                            </div>
+                        </div>
+                        <h3>${gift.name}</h3>
+                        <div class="coin-input-group">
+                            <input type="number" 
+                                   id="coins-${gift.id}" 
+                                   class="coin-input" 
+                                   value="${coins}" 
+                                   min="0"
+                                   data-gift-id="${gift.id}">
+                            <button class="btn btn-primary btn-save" onclick="saveCoin('${gift.id}')" title="Lưu">💾</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Trigger upload icon mới
+        function triggerIconUpload(giftId) {
+            currentUploadGiftId = giftId;
+            const input = document.getElementById('icon-upload-input');
+            input.onchange = () => handleIconUpload(giftId);
+            input.click();
+        }
+        
+        // Xử lý upload icon
+        async function handleIconUpload(giftId) {
+            const input = document.getElementById('icon-upload-input');
+            const file = input.files[0];
+            if (!file) return;
+            
+            // Validate
+            if (!file.type.startsWith('image/')) {
+                showNotification('error', '❌ Chỉ chấp nhận file ảnh!');
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                showNotification('error', '❌ File quá lớn! Tối đa 2MB');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('icon', file);
+            formData.append('giftId', giftId);
+            
+            try {
+                const token = localStorage.getItem('token');
+                showNotification('info', '⏳ Đang upload...');
+                
+                const res = await fetch(`${API_URL}/api/admin/gift-icons/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('success', `✅ Đã cập nhật icon cho ${giftId}`);
+                    loadCoins(); // Reload
+                } else {
+                    showNotification('error', data.message || 'Upload thất bại');
+                }
+            } catch (error) {
+                showNotification('error', 'Lỗi: ' + error.message);
+            }
+            
+            // Reset input
+            input.value = '';
+            currentUploadGiftId = null;
+        }
+        
+        // Upload icon mới hoàn toàn
+        async function uploadNewIcon() {
+            const giftIdInput = document.getElementById('new-gift-id');
+            const nameInput = document.getElementById('new-gift-name');
+            const iconInput = document.getElementById('new-gift-icon');
+            
+            const giftId = giftIdInput.value.trim().toLowerCase();
+            const name = nameInput.value.trim();
+            const file = iconInput.files[0];
+            
+            if (!giftId || !name || !file) {
+                showNotification('warning', '⚠️ Vui lòng điền đầy đủ thông tin!');
+                return;
+            }
+            
+            if (!/^[a-z0-9_]+$/.test(giftId)) {
+                showNotification('error', '❌ Gift ID chỉ chứa chữ thường, số và dấu gạch dưới');
+                return;
+            }
+            
+            if (!file.type.startsWith('image/')) {
+                showNotification('error', '❌ Chỉ chấp nhận file ảnh!');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('icon', file);
+            formData.append('giftId', giftId);
+            formData.append('name', name);
+            
+            try {
+                const token = localStorage.getItem('token');
+                showNotification('info', '⏳ Đang thêm icon mới...');
+                
+                const res = await fetch(`${API_URL}/api/admin/gift-icons/add`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('success', `✅ Đã thêm gift "${name}"`);
+                    // Clear form
+                    giftIdInput.value = '';
+                    nameInput.value = '';
+                    iconInput.value = '';
+                    // Reload
+                    loadCoins();
+                } else {
+                    showNotification('error', data.message || 'Thêm thất bại');
+                }
+            } catch (error) {
+                showNotification('error', 'Lỗi: ' + error.message);
+            }
+        }
+        
+        // Xóa icon
+        async function deleteIcon(giftId) {
+            if (!confirm(`⚠️ Xóa icon của gift "${giftId}"?\n\nGift sẽ dùng icon mặc định 🎁`)) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/api/admin/gift-icons/${giftId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('success', `✅ Đã xóa icon ${giftId}`);
+                    loadCoins();
+                } else {
+                    showNotification('error', data.message || 'Xóa thất bại');
+                }
+            } catch (error) {
+                showNotification('error', 'Lỗi: ' + error.message);
+            }
+        }
+        
+        // Lưu coin cho 1 gift
+        async function saveCoin(giftId) {
+            try {
+                const input = document.getElementById(`coins-${giftId}`);
+                const coins = parseInt(input.value);
+                
+                if (isNaN(coins) || coins < 0) {
+                    showNotification('error', 'Coins phải là số >= 0');
+                    input.value = coinsData[giftId] || 1;
+                    return;
+                }
+                
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/api/admin/gift-coins/${giftId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ coins })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    coinsData[giftId] = coins;
+                    showNotification('success', `✅ ${giftId}: ${coins} coins`);
+                } else {
+                    showNotification('error', data.message || 'Lỗi khi lưu');
+                    input.value = coinsData[giftId] || 1;
+                }
+            } catch (error) {
+                showNotification('error', 'Lỗi: ' + error.message);
+            }
+        }
+        
+        // Lưu tất cả
+        async function saveAll() {
+            try {
+                const inputs = document.querySelectorAll('.coin-input');
+                const updates = [];
+                
+                inputs.forEach(input => {
+                    const coins = parseInt(input.value);
+                    if (!isNaN(coins) && coins >= 0) {
+                        updates.push({
+                            giftId: input.dataset.giftId,
+                            coins: coins
+                        });
+                    }
+                });
+                
+                if (updates.length === 0) {
+                    showNotification('warning', '⚠️ Không có giá trị hợp lệ');
+                    return;
+                }
+                
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/api/admin/gift-coins/bulk-update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ updates })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    updates.forEach(u => { coinsData[u.giftId] = u.coins; });
+                    showNotification('success', `✅ Đã cập nhật ${data.results?.length || updates.length} gifts`);
+                } else {
+                    showNotification('error', data.message || 'Lỗi khi lưu');
+                }
+            } catch (error) {
+                showNotification('error', 'Lỗi: ' + error.message);
+            }
+        }
+        
+        // Reset về mặc định
+        async function resetToDefault() {
+            if (!confirm('⚠️ Reset tất cả coins về 1?\n\nHành động không thể hoàn tác!')) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/api/admin/gift-coins/reset`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showNotification('success', '🔄 Đã reset về mặc định');
+                    loadCoins();
+                } else {
+                    showNotification('error', data.message || 'Lỗi khi reset');
+                }
+            } catch (error) {
+                showNotification('error', 'Lỗi: ' + error.message);
+            }
+        }
+        
+        // Quay lại Admin
+        function backToAdmin() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                window.location.href = `index.html?token=${token}`;
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+        
+        // Show notification
+        function showNotification(type, message) {
+            const old = document.querySelector('.notification');
+            if (old) old.remove();
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        // Enter key để save
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.classList.contains('coin-input')) {
+                const giftId = e.target.dataset.giftId;
+                if (giftId) saveCoin(giftId);
+            }
+        });
+    </script>
+</body>
+</html>

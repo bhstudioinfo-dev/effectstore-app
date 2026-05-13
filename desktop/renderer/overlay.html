@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EffectStore OBS Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            overflow: hidden;
+            width: 1920px;
+            height: 1080px;
+        }
+
+        #overlay-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .effect-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .effect-layer.active {
+            opacity: 1;
+            animation: effect-play 3s ease-out;
+        }
+
+        @keyframes effect-play {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            10% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            90% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.1);
+                opacity: 0;
+            }
+        }
+
+        .effect-content {
+            font-size: 200px;
+            filter: drop-shadow(0 0 30px rgba(212, 175, 55, 0.8));
+        }
+
+        #connection-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        #connection-status.connected {
+            color: #00ff88;
+        }
+
+        #preview-notice {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        #preview-notice.visible {
+            display: block;
+        }
+
+        #preview-notice h2 {
+            color: #d4af37;
+            margin-bottom: 16px;
+        }
+
+        #preview-notice code {
+            background: rgba(212, 175, 55, 0.2);
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: #d4af37;
+            font-family: monospace;
+            display: block;
+            margin: 16px 0;
+        }
+
+        #preview-notice p {
+            color: #888;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="overlay-container">
+        <div id="effect-layer" class="effect-layer">
+            <div class="effect-content" id="effect-content">🎬</div>
+        </div>
+    </div>
+    <div id="connection-status">🔌 Đang kết nối...</div>
+    <div id="preview-notice" class="visible">
+        <h2>🎬 EffectStore OBS Overlay</h2>
+        <p>Thêm URL này vào OBS làm Browser Source:</p>
+        <code>http://localhost:8080/overlay</code>
+        <p style="margin-top: 16px; font-size: 14px;">Khi kết nối thành công, thông báo này sẽ ẩn đi</p>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8081');
+        const effectLayer = document.getElementById('effect-layer');
+        const effectContent = document.getElementById('effect-content');
+        const connectionStatus = document.getElementById('connection-status');
+        const previewNotice = document.getElementById('preview-notice');
+
+        const effectIcons = {
+            'eff-001': '👼', 'eff-002': '👑', 'eff-003': '🐉',
+            'eff-004': '💐', 'eff-005': '🎁', 'eff-006': '🌌',
+            'eff-007': '💖', 'eff-008': '🦅'
+        };
+
+        ws.onopen = () => {
+            connectionStatus.textContent = '🟢 Đã kết nối';
+            connectionStatus.classList.add('connected');
+            previewNotice.classList.remove('visible');
+        };
+
+        ws.onclose = () => {
+            connectionStatus.textContent = '🔴 Mất kết nối';
+            connectionStatus.classList.remove('connected');
+            previewNotice.classList.add('visible');
+        };
+
+        ws.onerror = () => {
+            connectionStatus.textContent = '❌ Lỗi kết nối';
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'effect-trigger') {
+                playEffect(data.effect);
+            }
+        };
+
+        function playEffect(effect) {
+            const icon = effectIcons[effect.id] || '🎬';
+            effectContent.textContent = icon;
+            effectLayer.classList.remove('active');
+            void effectLayer.offsetWidth;
+            effectLayer.classList.add('active');
+            setTimeout(() => effectLayer.classList.remove('active'), 3000);
+        }
+
+        setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'ping' }));
+            }
+        }, 30000);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1707 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EffectStore - Premium TikTok Live Effects</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- Thêm Font Awesome để có icon đẹp -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- Link đến file CSS chính -->
+    <link rel="stylesheet" href="styles/main.css">
+
+
+    <style>
+        @keyframes pulse-red {
+            0% {
+                box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 10px 45px rgba(239, 68, 68, 0.5);
+            }
+
+            100% {
+                box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+            }
+        }
+
+        @keyframes shake {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            20% {
+                transform: rotate(-8deg);
+            }
+
+            40% {
+                transform: rotate(8deg);
+            }
+
+            60% {
+                transform: rotate(-4deg);
+            }
+
+            80% {
+                transform: rotate(4deg);
+            }
+
+            100% {
+                transform: rotate(0deg);
+            }
+        }
+
+        @keyframes borderNeon {
+            0% {
+                border-color: #ff007f;
+                box-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+            }
+
+            50% {
+                border-color: #ffaa00;
+                box-shadow: 0 0 25px rgba(255, 170, 0, 0.7);
+            }
+
+            100% {
+                border-color: #ff007f;
+                box-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+            }
+        }
+
+        .flash-sale-card {
+            background: #0d021a !important;
+            border: 2px solid #ff007f !important;
+            border-radius: 16px !important;
+            animation: borderNeon 3s infinite ease-in-out !important;
+            position: relative !important;
+            overflow: visible !important;
+        }
+
+        .flash-sale-card::before {
+            display: none !important;
+            content: none !important;
+        }
+
+        .flash-sale-card .effect-thumbnail {
+            border-radius: 14px !important;
+            overflow: hidden !important;
+        }
+
+        .flash-sale-card .effect-info {
+            bottom: 2px !important;
+            left: 2px !important;
+            right: 2px !important;
+            border-bottom-left-radius: 14px;
+            border-bottom-right-radius: 14px;
+            overflow: hidden;
+        }
+
+        .fs-header-pill {
+            position: absolute;
+            top: -12px;
+            left: 12px;
+            background: linear-gradient(135deg, #30004a 0%, #12002b 100%);
+            border: 1px solid #ffaa00;
+            border-radius: 8px 8px 8px 0px;
+            padding: 4px 12px;
+            color: #fff;
+            font-weight: 900;
+            font-size: 12px;
+            font-style: italic;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .fs-header-pill i {
+            color: #ffaa00;
+            font-size: 14px;
+            filter: drop-shadow(0 0 5px #ffaa00);
+        }
+
+        .fs-percent-badge {
+            position: absolute;
+            top: -12px;
+            right: 12px;
+            background: linear-gradient(135deg, #ff0055 0%, #ff2a54 100%);
+            border-radius: 8px 8px 0px 8px;
+            padding: 4px 12px;
+            color: #fff;
+            font-weight: 900;
+            font-size: 14px;
+            z-index: 10;
+            box-shadow: 0 4px 10px rgba(255, 0, 85, 0.3);
+        }
+
+        @keyframes fomoPulse {
+            0% {
+                background: rgba(255, 0, 85, 0.15);
+                border-color: rgba(255, 0, 85, 0.4);
+                box-shadow: inset 0 0 8px rgba(255, 0, 85, 0.2);
+            }
+
+            100% {
+                background: rgba(255, 107, 0, 0.3);
+                border-color: rgba(255, 107, 0, 0.8);
+                box-shadow: inset 0 0 15px rgba(255, 107, 0, 0.4), 0 0 10px rgba(255, 107, 0, 0.3);
+            }
+        }
+
+        .fs-card-timer {
+            background: linear-gradient(90deg, #d31027, #ea384d);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            margin: 6px 0;
+            box-shadow: 0 4px 10px rgba(211, 16, 39, 0.4);
+        }
+
+        .fs-timer-label {
+            font-weight: 800;
+            font-size: 11px;
+            color: #ffffff;
+            letter-spacing: 0px;
+        }
+
+        .fs-time-block {
+            background: #6e131b;
+            border-radius: 6px;
+            padding: 4px 6px;
+            font-size: 13px;
+            font-weight: 800;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            min-width: 26px;
+            text-align: center;
+            display: inline-block;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+
+        .fs-time-sep {
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 14px;
+            animation: flashSep 1s infinite;
+        }
+
+        @keyframes flashSep {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .btn-fs-buy {
+            background: linear-gradient(to right, #ff6b00, #ff0055) !important;
+            border: none !important;
+            border-radius: 12px !important;
+            padding: 12px !important;
+            color: #fff !important;
+            font-weight: 900 !important;
+            font-size: 15px !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 0, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.2) !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-fs-buy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 0, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.3) !important;
+        }
+
+        /* CUSTOM SWITCH STYLES */
+        .switch input:checked+.slider {
+            background-color: var(--primary) !important;
+        }
+
+        .switch input:focus+.slider {
+            box-shadow: 0 0 1px var(--primary);
+        }
+
+        .switch input:checked+.slider:before {
+            transform: translateX(18px);
+            background-color: #fff;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 4px;
+            bottom: 4px;
+            background-color: #94a3b8;
+            transition: .4s;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Auth Modal (Bắt buộc Đăng Nhập) -->
+    <div id="auth-modal" class="auth-modal-overlay show">
+        <div class="auth-modal-content">
+            <div class="auth-header">
+                <span class="auth-logo-icon">🎬</span>
+                <h2>EffectStore Premium</h2>
+                <p>Đăng nhập để truy cập kho hiệu ứng TikTok Live</p>
+            </div>
+
+            <div id="auth-tabs" class="auth-tabs">
+                <button class="auth-tab active" onclick="app.switchAuthTab('login')">🔓 Đăng Nhập</button>
+                <button class="auth-tab" onclick="app.switchAuthTab('register')">📝 Đăng Ký</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" onsubmit="event.preventDefault(); app.login();">
+                <div class="auth-form-group">
+                    <label>✉️ Email</label>
+                    <input type="email" id="login-email" required placeholder="your@email.com">
+                </div>
+                <div class="auth-form-group">
+                    <label>🔑 Mật khẩu</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <div class="auth-options">
+                    <label class="remember-me">
+                        <input type="checkbox" id="remember-me">
+                        <span>Ghi nhớ tài khoản</span>
+                    </label>
+                </div>
+                <button type="submit" class="auth-submit-btn">🔓 Đăng nhập</button>
+                <div class="auth-divider"><span>hoặc</span></div>
+                <button type="button" class="auth-btn-secondary" onclick="app.switchAuthTab('register')">📝 Tạo tài
+                    khoản mới</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" style="display: none;" onsubmit="event.preventDefault(); app.register();">
+                <div class="auth-form-group">
+                    <label>👤 Tên hiển thị</label>
+                    <input type="text" id="register-name" required placeholder="Tên của bạn">
+                </div>
+                <div class="auth-form-group">
+                    <label>✉️ Email</label>
+                    <input type="email" id="register-email" required placeholder="your@email.com">
+                </div>
+                <div class="auth-form-group">
+                    <label>🔑 Mật khẩu</label>
+                    <input type="password" id="register-password" required placeholder="Ít nhất 6 ký tự">
+                </div>
+                <button type="submit" class="auth-submit-btn">🚀 Đăng ký ngay</button>
+                <div class="auth-divider"><span>hoặc</span></div>
+                <button type="button" class="auth-btn-secondary" onclick="app.switchAuthTab('login')">← Quay lại đăng
+                    nhập</button>
+            </form>
+
+            <p class="auth-terms">Bằng việc tiếp tục, bạn đồng ý với <a href="#">Điều khoản dịch vụ</a> và <a
+                    href="#">Chính sách bảo mật</a></p>
+        </div>
+    </div>
+
+    <!-- ===== 1. TOP NAVIGATION ===== -->
+    <nav class="top-nav">
+        <div class="logo">
+            <i class="fas fa-film" style="margin-right: 8px; color: #a78bfa;"></i> EffectStore
+        </div>
+
+        <div class="search-bar">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Tìm hiệu ứng..." id="search-input" oninput="filterEffects()">
+        </div>
+
+        <div class="nav-right">
+            <div class="icon-btn" onclick="toggleCart()">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="badge" id="cart-count">0</span>
+            </div>
+
+            <div class="icon-btn">
+                <i class="fas fa-bell"></i>
+                <span class="badge">0</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== 2. MAIN LAYOUT (3 Cột) ===== -->
+    <div class="main-layout-new">
+
+        <!-- LEFT SIDEBAR (Menu điều hướng) -->
+        <aside class="sidebar-left-new">
+            <div class="sidebar-menu-new">
+                <div class="menu-item-new active" onclick="switchView('store')">
+                    <i class="fas fa-store"></i> Cửa hàng
+                </div>
+                <div class="menu-item-new" onclick="switchView('library')">
+                    <i class="fas fa-folder-open"></i> Hiệu ứng của tôi
+                </div>
+                <div class="menu-item-new" onclick="switchView('gift-mapping')">
+                    <i class="fas fa-link"></i> Gán hiệu ứng
+                </div>
+                <div class="menu-item-new" id="admin-nav-item" style="display:none;" onclick="switchView('admin')">
+                    <i class="fas fa-user-shield"></i> Admin Dashboard
+                </div>
+                <div class="menu-item-new" onclick="switchView('settings')">
+                    <i class="fas fa-cog"></i> Cài đặt
+                </div>
+            </div>
+
+            <div class="pro-card premium-shine">
+                <div class="pro-badge">HOT DEAL</div>
+                <h4>💎 Nâng Cấp PRO</h4>
+                <div class="pro-price"><span>99K</span></div>
+                <button class="pro-btn" onclick="app.showPricing()">NÂNG CẤP NGAY</button>
+            </div>
+
+            <!-- User Profile Card -->
+            <div class="user-card" onclick="showAccount()" style="cursor:pointer;">
+                <div class="user-card-top">
+                    <div class="user-avatar-wrap">
+                        <div class="avatar" style="width:44px;height:44px;font-size:18px;">
+                            <span id="user-avatar-small">A</span>
+                        </div>
+                        <div class="user-online-dot"></div>
+                    </div>
+                    <div class="info">
+                        <div class="name" id="user-name-display">Đang tải...</div>
+                        <div style="display:flex; align-items:center; gap:5px; margin-top:2px;">
+                            <span id="user-rank-badge"
+                                style="font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase;">FREE</span>
+                            <div id="user-email-display"
+                                style="font-size: 11px; color: var(--text-muted); display: none;"></div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right"
+                        style="color:var(--text-muted);font-size:11px;margin-left:auto;"></i>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content-new">
+            <!-- Element này để JS cập nhật tiêu đề, đang ẩn đi -->
+            <div id="page-title" style="display:none;"></div>
+
+            <!-- ===== SYSTEM STATUS CARDS ===== -->
+            <div class="system-status-container">
+                <!-- TIKTOK -->
+                <div class="status-card-horizontal status-disconnected" id="status-card-tiktok">
+                    <div class="status-icon"><i class="fas fa-exclamation-circle"
+                            style="font-style: normal; font-family: sans-serif;">!</i></div>
+                    <div class="status-info">
+                        <div class="status-title">ID TIKTOK</div>
+                        <div class="status-subtext" id="status-sub-tiktok">Vui lòng kết nối tài khoản</div>
+                    </div>
+                    <div class="status-badge" id="status-badge-tiktok">NGẮT KẾT NỐI</div>
+                </div>
+
+                <!-- OBS -->
+                <div class="status-card-horizontal status-disconnected" id="status-card-obs">
+                    <div class="status-icon"><i class="fas fa-times"
+                            style="font-style: normal; font-family: sans-serif;">×</i></div>
+                    <div class="status-info">
+                        <div class="status-title">PHẦN MỀM OBS</div>
+                        <div class="status-subtext" id="status-sub-obs">Chưa tìm thấy OBS</div>
+                    </div>
+                    <div class="status-badge" id="status-badge-obs">OFFLINE</div>
+                </div>
+
+                <!-- LAUNCHER -->
+                <div class="status-card-horizontal status-connected" id="status-card-launcher">
+                    <div class="status-icon"><i class="fas fa-check"
+                            style="font-style: normal; font-family: sans-serif;">✓</i></div>
+                    <div class="status-info">
+                        <div class="status-title">LAUNCHER</div>
+                        <div class="status-subtext" id="status-sub-launcher">Hệ thống đang hoạt động</div>
+                    </div>
+                    <div class="status-badge" id="status-badge-launcher">ĐANG CHẠY</div>
+                </div>
+            </div>
+
+            <!-- VIEW: STORE (Trang chủ) -->
+            <div id="store-view">
+                <!-- Hero Banner -->
+                <div class="hero-banner-new">
+                    <div class="content">
+                        <h1>Hiệu Ứng TikTok Live Cao Cấp</h1>
+                        <p>Tạo nên những khoảnh khắc bùng nổ khi nhận donate!</p>
+
+                        <div class="features">
+                            <div class="feature"><i class="fas fa-plug"></i> Tích hợp OBS 1 click</div>
+                            <div class="feature"><i class="fas fa-bolt"></i> Auto trigger khi donate</div>
+                            <div class="feature"><i class="fas fa-layer-group"></i> 1000+ hiệu ứng</div>
+                            <div class="feature"><i class="fas fa-chart-line"></i> Cập nhật mỗi ngày</div>
+                        </div>
+
+                        <button class="cta-btn"><i class="fas fa-play-circle"></i> Xem hướng dẫn</button>
+                    </div>
+
+                    <div class="visual">
+                        <div class="visual-icon">🎬</div>
+                        <div class="donate-bubble">
+                            <div class="avatar">M</div>
+                            <div class="text">
+                                <div style="font-weight: 600;">Minh Anh</div>
+                                <div>đã donate <span class="amount">100.000đ</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="banner-feature-cards">
+                        <div class="banner-card-item">
+                            <div class="banner-card-icon"><i class="fas fa-infinity"></i></div>
+                            <div class="banner-card-text">
+                                <span class="card-title">Mua 1 Lần</span>
+                                <span class="card-desc">Sở hữu vĩnh viễn</span>
+                            </div>
+                        </div>
+                        <div class="banner-card-item">
+                            <div class="banner-card-icon"><i class="fas fa-video"></i></div>
+                            <div class="banner-card-text">
+                                <span class="card-title">Tích hợp OBS</span>
+                                <span class="card-desc">Kết nối chỉ 1-Click</span>
+                            </div>
+                        </div>
+                        <div class="banner-card-item">
+                            <div class="banner-card-icon"><i class="fas fa-gift"></i></div>
+                            <div class="banner-card-text">
+                                <span class="card-title">Auto Trigger</span>
+                                <span class="card-desc">Hiệu ứng theo Gift</span>
+                            </div>
+                        </div>
+                        <div class="banner-card-item">
+                            <div class="banner-card-icon"><i class="fas fa-sync-alt"></i></div>
+                            <div class="banner-card-text">
+                                <span class="card-title">Cập Nhật Daily</span>
+                                <span class="card-desc">Bắt trend mỗi ngày</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-grid-new">
+                    <div class="stat-card-new">
+                        <div class="icon purple"><i class="fas fa-shopping-bag"></i></div>
+                        <div>
+                            <div class="value" id="owned-count">0</div>
+                            <div class="label">Hiệu ứng đã mua</div>
+                        </div>
+                    </div>
+                    <div class="stat-card-new">
+                        <div class="icon pink"><i class="fas fa-wallet"></i></div>
+                        <div>
+                            <div class="value" id="total-spent">0₫</div>
+                            <div class="label">Tổng đã chi</div>
+                        </div>
+                    </div>
+                    <div class="stat-card-new">
+                        <div class="icon blue"><i class="fas fa-play-circle"></i></div>
+                        <div>
+                            <div class="value" id="total-uses">0</div>
+                            <div class="label">Lần sử dụng</div>
+                        </div>
+                    </div>
+                    <div class="stat-card-new">
+                        <div class="icon gold"><i class="fas fa-piggy-bank"></i></div>
+                        <div>
+                            <div class="value" id="savings">0₫</div>
+                            <div class="label">Đã tiết kiệm</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-categories-new">
+                    <button class="filter-btn-new active" onclick="filterCategory('all')">Tất cả</button>
+                    <button class="filter-btn-new" onclick="filterCategory('transformation')">🔥 Biến hình</button>
+                    <button class="filter-btn-new" onclick="filterCategory('gift')">🎁 Quà tặng</button>
+                    <button class="filter-btn-new" onclick="filterCategory('background')">🎨 Background</button>
+                    <button class="filter-btn-new" onclick="filterCategory('animation')">🎬 Animation</button>
+                    <button class="filter-btn-new" onclick="filterCategory('pk')">🥊 PK</button>
+                    <button class="filter-btn-new" onclick="filterCategory('meme')">😂 Meme</button>
+                    <button class="filter-btn-new" onclick="filterCategory('team_heart')">❤️ Tym đội</button>
+                </div>
+                <!-- Effects Grid -->
+                <div class="effects-grid-new" id="effects-grid">
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
+                        Đang tải hiệu ứng...
+                    </div>
+                </div>
+
+                <!-- 3 Steps Section -->
+                <div class="steps-section" style="margin-top: 20px;">
+                    <h3>3 bước sử dụng cực đơn giản</h3>
+                    <p class="subtitle">Kích hoạt hiệu ứng chỉ trong vài giây</p>
+                    <div class="steps-grid">
+                        <div class="step-item">
+                            <div class="step-icon purple"><i class="fas fa-lock-open"></i></div>
+                            <div class="step-text">
+                                <h4>1. Chọn hiệu ứng</h4>
+                                <p>Chọn effect bạn yêu thích</p>
+                            </div>
+                        </div>
+                        <div class="step-arrow"><i class="fas fa-chevron-right"></i></div>
+                        <div class="step-item">
+                            <div class="step-icon pink"><i class="fas fa-gift"></i></div>
+                            <div class="step-text">
+                                <h4>2. Gán vào sự kiện</h4>
+                                <p>Gán vào gift hoặc donate</p>
+                            </div>
+                        </div>
+                        <div class="step-arrow"><i class="fas fa-chevron-right"></i></div>
+                        <div class="step-item">
+                            <div class="step-icon green"><i class="fas fa-check-circle"></i></div>
+                            <div class="step-text">
+                                <h4>3. Tự động chạy</h4>
+                                <p>Hiệu ứng chạy khi có donate!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: LIBRARY -->
+            <div id="library-view" class="hidden">
+                <div class="section-header">
+                    <h2>📁 Hiệu ứng của tôi</h2>
+                </div>
+                <div class="effects-grid-new" id="library-grid"> </div>
+            </div>
+
+            <!-- VIEW: ADMIN (RESTORED TRADITIONAL LAYOUT) -->
+            <div id="admin-view" class="hidden">
+                <!-- 1. TOP QUICK ACTIONS -->
+                <div class="admin-top-actions"
+                    style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px;">
+                    <div class="admin-action-card" onclick="navigateTo('gift-coins-manager.html')"
+                        style="cursor:pointer; background:var(--bg-card); border:1px solid var(--card-border); border-radius:14px; padding:15px; display:flex; align-items:center; gap:12px;">
+                        <div class="icon-box gold"
+                            style="width:40px; height:40px; background:rgba(251,191,36,0.1); color:#fbbf24; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="text">
+                            <h3 style="margin:0; font-size:15px;">Quản Lý Coins</h3>
+                            <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);">Giá trị quà tặng</p>
+                        </div>
+                    </div>
+                    <div class="admin-action-card" onclick="openBannerManager()"
+                        style="cursor:pointer; background:var(--bg-card); border:1px solid var(--card-border); border-radius:14px; padding:15px; display:flex; align-items:center; gap:12px;">
+                        <div class="icon-box pink"
+                            style="width:40px; height:40px; background:rgba(236,72,153,0.1); color:#ec4899; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                            <i class="fas fa-image"></i>
+                        </div>
+                        <div class="text">
+                            <h3 style="margin:0; font-size:15px;">Quản Lý Banner</h3>
+                            <p style="margin:2px 0 0 0; font-size:11px; color:var(--text-muted);">Banner trang chủ</p>
+                        </div>
+                    </div>
+                    <div class="admin-action-card"
+                        style="background: linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1)); border: 1px solid rgba(239,68,68,0.2); border-radius:14px; padding:15px; display:flex; align-items:center; gap:12px;">
+                        <div class="icon-box red"
+                            style="width:40px; height:40px; background:rgba(239,68,68,0.1); color:#ef4444; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="text" style="flex: 1;">
+                            <h3 style="margin:0; font-size:15px; color: #ef4444;">Flash Sale Toàn Cục</h3>
+                            <input type="datetime-local" id="global-flash-sale-ends"
+                                style="margin-top: 5px; padding: 4px 8px; background: rgba(0,0,0,0.2); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-size: 11px; width: 100%; outline: none;"
+                                onchange="app.saveGlobalFlashSaleTime()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. MAIN ADMIN GRID (2 COLUMNS) -->
+                <div style="display: grid; grid-template-columns: 1fr 340px; gap: 24px; margin-bottom: 24px;">
+
+                    <!-- LEFT: UPLOAD FORM -->
+                    <div class="admin-card-full"
+                        style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px;">
+                        <div class="card-header" style="margin-bottom:20px;">
+                            <h2 style="font-size:18px; margin:0;"><i class="fas fa-cloud-upload-alt"></i> Upload Effect
+                                Mới</h2>
+                        </div>
+                        <div class="admin-form">
+                            <div class="form-grid"
+                                style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group">
+                                    <label
+                                        style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Tên
+                                        Effect *</label>
+                                    <input type="text" id="upload-name" placeholder="Ví dụ: Hoa Hồng"
+                                        class="upload-form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Danh
+                                        mục *</label>
+                                    <select id="upload-category" class="upload-form-input">
+                                        <option value="gift">🎁 Quà tặng</option>
+                                        <option value="transformation">✨ Biến hình</option>
+                                        <option value="background">🎨 Background</option>
+                                        <option value="animation">🎬 Animation</option>
+                                        <option value="pk">🥊 PK</option>
+                                        <option value="meme">😂 Meme</option>
+                                        <option value="team_heart">❤️ Tym đội</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Giá
+                                        bán (₫) *</label>
+                                    <input type="number" id="upload-price" placeholder="49000"
+                                        class="upload-form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Giá
+                                        gốc (₫)</label>
+                                    <input type="number" id="upload-original-price" placeholder="99000"
+                                        class="upload-form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Giá
+                                        Flash Sale (₫)</label>
+                                    <input type="number" id="upload-flash-sale-price" placeholder="29000"
+                                        class="upload-form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Hết
+                                        hạn Flash Sale</label>
+                                    <input type="datetime-local" id="upload-flash-sale-ends" class="upload-form-input">
+                                </div>
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <label
+                                        style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Mô
+                                        tả chi tiết</label>
+                                    <textarea id="upload-description" rows="2" placeholder="Nhập mô tả hiệu ứng..."
+                                        class="upload-form-input" style="height: auto; resize: none;"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Icon
+                                        (Emoji)</label>
+                                    <input type="text" id="upload-icon" placeholder="🌹" maxlength="2"
+                                        class="upload-form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Video
+                                        File (.webm, .mp4) *</label>
+                                    <input type="file" id="upload-file" accept=".webm,.mp4" style="font-size: 11px;">
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Thumbnail
+                                        *</label>
+                                    <input type="file" id="upload-thumb" accept=".jpg,.png" style="font-size: 11px;">
+                                </div>
+                            </div>
+
+                            <!-- Composite & Flash Sale Effect Toggle -->
+                            <div
+                                style="display: flex; gap: 20px; margin-bottom: 20px; background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                                    <label class="switch">
+                                        <input type="checkbox" id="upload-composite">
+                                        <span class="slider round"></span>
+                                    </label>
+                                    <div>
+                                        <div style="font-size: 13px; font-weight: 700; color: #fff;">🎥 Composite</div>
+                                        <div style="font-size: 10px; color: var(--text-muted);">Nhiều source + Timeline
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                                    <label class="switch">
+                                        <input type="checkbox" id="upload-flash-sale">
+                                        <span class="slider round"></span>
+                                    </label>
+                                    <div>
+                                        <div style="font-size: 13px; font-weight: 700; color: #ef4444;">⚡ Flash Sale
+                                        </div>
+                                        <div style="font-size: 10px; color: var(--text-muted);">Kích hoạt giá sốc</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onclick="app.uploadEffect()" class="pro-btn"
+                                style="width:100%; padding:15px; background:linear-gradient(135deg, #7c3aed, #ec4899); font-size: 16px;">
+                                <i class="fas fa-rocket"></i> Upload Effect Ngay
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: LISTS SIDEBAR -->
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <!-- Hot Trends Management -->
+                        <div class="admin-card-full"
+                            style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:20px;">
+                            <div class="card-header" style="margin-bottom:12px;">
+                                <h2 style="font-size:15px; margin:0;"><i class="fas fa-fire" style="color:#ef4444;"></i>
+                                    Quản Lý Hot Trends</h2>
+                            </div>
+                            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                                <select id="admin-trending-select"
+                                    style="flex:1; padding:6px 10px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:white; font-size:12px;"></select>
+                                <button onclick="app.addToTrending()"
+                                    style="background:#ef4444; border:none; border-radius:6px; color:white; padding:0 12px; cursor:pointer;"><i
+                                        class="fas fa-plus"></i></button>
+                            </div>
+                            <div id="admin-trending-list"
+                                style="max-height: 200px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+                                <div class="empty-state">Chưa có trend</div>
+                            </div>
+                        </div>
+
+                        <!-- Effects List -->
+                        <div class="admin-card-full"
+                            style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:20px;">
+                            <div class="card-header" style="margin-bottom:12px;">
+                                <h2 style="font-size:15px; margin:0;"><i class="fas fa-layer-group"></i> Danh Sách
+                                    Effects</h2>
+                            </div>
+                            <div id="admin-effects-list"
+                                style="max-height: 250px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+                                <div class="empty-state">📦 Đang tải...</div>
+                            </div>
+                        </div>
+
+                        <!-- Pending Payments -->
+                        <div class="admin-card-full"
+                            style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:20px;">
+                            <div class="card-header" style="margin-bottom:12px;">
+                                <h2 style="font-size:15px; margin:0;"><i class="fas fa-wallet"></i> Payment Chờ Duyệt
+                                </h2>
+                            </div>
+                            <div id="admin-payments-list"
+                                style="max-height: 250px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+                                <div class="empty-state">💳 Trống</div>
+                            </div>
+                        </div>
+
+                        <!-- Effect Requests -->
+                        <div class="admin-card-full"
+                            style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:20px;">
+                            <div class="card-header" style="margin-bottom:12px;">
+                                <h2 style="font-size:15px; margin:0;"><i class="fas fa-palette"></i> Yêu Cầu Effect</h2>
+                            </div>
+                            <div id="admin-requests-list"
+                                style="max-height: 200px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+                                <div class="empty-state">🎨 Trống</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. USER MANAGEMENT (FULL WIDTH) -->
+                <div class="admin-card-full"
+                    style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px;">
+                    <div class="card-header"
+                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h2 style="font-size:18px; margin:0;"><i class="fas fa-users"></i> Quản Lý Người Dùng</h2>
+                        <button onclick="app.loadAdminUsers()"
+                            style="padding:8px 16px; background:rgba(212,175,55,0.1); border:1px solid rgba(212,175,55,0.3); border-radius:8px; color:#d4af37; cursor:pointer;">
+                            <i class="fas fa-sync-alt"></i> Làm mới
+                        </button>
+                    </div>
+                    <div id="admin-users-list">
+                        <!-- User Table -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: SETTINGS (RESTORED ORIGINAL LAYOUT) -->
+            <div id="settings-view" class="hidden">
+                <div class="section-header" style="margin-bottom: 24px;">
+                    <h2
+                        style="font-size:24px; font-weight:800; color:#fff; margin:0; display:flex; align-items:center; gap:12px;">
+                        <i class="fas fa-cog" style="color:var(--primary);"></i> Cài Đặt Hệ Thống
+                    </h2>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <!-- 1. Thông tin tài khoản -->
+                    <div
+                        style="background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px;">
+                        <h3
+                            style="color:#fff; font-size:16px; margin-top:0; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-user-circle" style="color:var(--primary);"></i> Thông tin tài khoản
+                        </h3>
+                        <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
+                            <div id="settings-avatar"
+                                style="width:64px; height:64px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:24px; color:#fff; font-weight:800; border: 4px solid rgba(255,255,255,0.05);">
+                                A
+                            </div>
+                            <div>
+                                <div id="settings-name" style="font-size:18px; font-weight:800; color:#fff;">
+                                    Administrator</div>
+                                <div id="settings-email" style="font-size:13px; color:var(--text-muted);">
+                                    admin@effectstore.vn</div>
+                                <div id="settings-plan-badge" style="margin-top:6px;">
+                                    <span
+                                        style="padding: 2px 8px; background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.3); color: #d4af37; border-radius: 6px; font-size: 11px; font-weight: 700;">⭐
+                                        Admin</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div
+                            style="font-size:12px; color:var(--text-muted); padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px; display: flex; align-items: center; gap: 8px;">
+                            <i class="far fa-calendar-alt"></i> Thời hạn gói: <span id="settings-plan-expiry"
+                                style="color:#fff; font-weight:600;">Vĩnh viễn</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Cài đặt OBS WebSocket -->
+                    <div
+                        style="background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px;">
+                        <h3
+                            style="color:#fff; font-size:16px; margin-top:0; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-desktop" style="color:#60a5fa;"></i> Kết nối OBS WebSocket
+                        </h3>
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <div>
+                                <label
+                                    style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Địa
+                                    chỉ Host</label>
+                                <input type="text" id="settings-obs-host" value="localhost" class="upload-form-input"
+                                    style="width:100%;">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div>
+                                    <label
+                                        style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Cổng
+                                        (Port)</label>
+                                    <input type="number" id="settings-obs-port" value="4455" class="upload-form-input"
+                                        style="width:100%;">
+                                </div>
+                                <div>
+                                    <label
+                                        style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Mật
+                                        khẩu (Password)</label>
+                                    <input type="password" id="settings-obs-password" value="obs123"
+                                        class="upload-form-input" style="width:100%;">
+                                </div>
+                            </div>
+                            <button onclick="app.saveOBSSettings()" class="pro-btn"
+                                style="width:100%; padding:12px; background:linear-gradient(135deg, #3b82f6, #2563eb); font-size: 14px;">
+                                <i class="fas fa-link"></i> Lưu & Kết nối lại OBS
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Cài đặt TikTok Live -->
+                    <div
+                        style="background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px;">
+                        <h3
+                            style="color:#fff; font-size:16px; margin-top:0; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                            <i class="fab fa-tiktok" style="color:#ff0050;"></i> Cài đặt TikTok Live
+                        </h3>
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <div>
+                                <label
+                                    style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">TikTok
+                                    Username mặc định</label>
+                                <input type="text" id="settings-tiktok-username" placeholder="@username"
+                                    class="upload-form-input" style="width:100%;">
+                            </div>
+                            <div
+                                style="display:flex; align-items:center; gap:10px; padding:12px; background:rgba(255,255,255,0.03); border-radius:10px; cursor: pointer;">
+                                <input type="checkbox" id="settings-tiktok-auto"
+                                    style="width:18px; height:18px; cursor:pointer;">
+                                <label for="settings-tiktok-auto"
+                                    style="font-size:13px; color:#fff; cursor:pointer; font-weight: 600;">Tự động kết
+                                    nối lại khi mất mạng</label>
+                            </div>
+                            <button onclick="app.saveTikTokSettings()" class="pro-btn"
+                                style="width:100%; padding:12px; background:linear-gradient(135deg, #ff0050, #00f2fe); font-size: 14px;">
+                                <i class="fas fa-save"></i> Lưu cài đặt TikTok
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 4. Tùy chọn ứng dụng -->
+                    <div
+                        style="background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px;">
+                        <h3
+                            style="color:#fff; font-size:16px; margin-top:0; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-sliders-h" style="color:#10b981;"></i> Tùy chọn ứng dụng
+                        </h3>
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <div
+                                style="display:flex; align-items:center; gap:10px; padding:12px; background:rgba(255,255,255,0.03); border-radius:10px; cursor: pointer;">
+                                <input type="checkbox" id="settings-sound-alert" checked
+                                    style="width:18px; height:18px; cursor:pointer;">
+                                <label for="settings-sound-alert"
+                                    style="font-size:13px; color:#fff; cursor:pointer; font-weight: 600;">Bật âm thanh
+                                    thông báo (Sound Alert)</label>
+                            </div>
+                            <div
+                                style="display:flex; align-items:center; gap:10px; padding:12px; background:rgba(255,255,255,0.03); border-radius:10px; cursor: pointer;">
+                                <input type="checkbox" id="settings-run-startup"
+                                    style="width:18px; height:18px; cursor:pointer;">
+                                <label for="settings-run-startup"
+                                    style="font-size:13px; color:#fff; cursor:pointer; font-weight: 600;">Khởi động cùng
+                                    Windows</label>
+                            </div>
+                            <button onclick="app.savePreferences()" class="pro-btn"
+                                style="width:100%; padding:12px; background:linear-gradient(135deg, #10b981, #059669); font-size: 14px;">
+                                <i class="fas fa-check-circle"></i> Lưu tùy chọn
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Danger Zone -->
+                <div
+                    style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 16px; padding: 24px; margin-top: 24px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h3 style="color:#ef4444; font-size:16px; margin:0 0 4px 0; font-weight: 800;">🚨 Vùng Nguy Hiểm
+                        </h3>
+                        <p style="color:var(--text-muted); font-size:12px; margin:0;">Xóa dữ liệu tạm hoặc đăng xuất
+                            khỏi thiết bị</p>
+                    </div>
+                    <div style="display:flex; gap:12px;">
+                        <button onclick="app.clearAppData()"
+                            style="padding: 10px 20px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 10px; color: #ef4444; cursor: pointer; font-weight: 700; font-size: 13px; transition: 0.3s;">
+                            <i class="fas fa-trash-alt"></i> Xóa Dữ Liệu
+                        </button>
+                        <button class="pro-btn"
+                            style="padding: 10px 24px; background: linear-gradient(135deg, #ef4444, #dc2626); width: auto;"
+                            onclick="app.logout()">
+                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: GIFT MAPPING -->
+            <div id="gift-mapping-view" class="hidden">
+                <!-- Header -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                    <div>
+                        <h2 style="font-size:22px;font-weight:800;color:#f093fb;margin:0;">🎁 Gift Mapping</h2>
+                        <p style="color:var(--text-muted);font-size:13px;margin-top:4px;">Gán hiệu ứng cho từng loại quà
+                            TikTok</p>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <button onclick="app.loadMappings();app.loadEffectsForMapping();"
+                            style="background:linear-gradient(135deg,#f093fb,#f5576c);border:none;border-radius:10px;color:#fff;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">🔄
+                            Refresh</button>
+                    </div>
+                </div>
+                <!-- TikTok Connect Bar (NEW 3-BUTTON LAYOUT) -->
+                <div
+                    style="background:var(--bg-card);border:1px solid var(--card-border);border-radius:14px;padding:16px 20px;margin-bottom:18px;">
+                    <h3 style="color:#fbbf24;font-size:16px;margin:0 0 12px 0;display:flex;align-items:center;gap:8px;">
+                        🔌 Kết Nối TikTok Live</h3>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <input type="text" id="room-id" placeholder="Nhập Room ID hoặc Username" class="es-input"
+                            style="flex:1;">
+
+                        <button id="btn-prepare" onclick="app.prepareTikTok()"
+                            style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:120px;justify-content:center;">🎬
+                            Chuẩn Bị</button>
+
+                        <button id="btn-connect" onclick="app.connectTikTok()"
+                            style="background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:120px;justify-content:center;">🟢
+                            Kết Nối</button>
+
+                        <button id="btn-disconnect" onclick="app.disconnectTikTok()"
+                            style="background:linear-gradient(135deg,#ef4444,#dc2626);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:100px;justify-content:center;opacity:0.6;">🔴
+                            Ngắt</button>
+                    </div>
+                </div>
+
+                <!-- TTS & Quick Settings Bar (GRANULAR CONTROLS) -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 18px;">
+                    <!-- Gift TTS -->
+                    <div
+                        style="background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.1); border-radius:14px; padding: 12px; display:flex; flex-direction:column; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="settings-tts-gift" checked
+                                style="width:16px; height:16px; cursor:pointer;">
+                            <label for="settings-tts-gift"
+                                style="font-size:12px; color:#fff; font-weight:700; cursor:pointer;">🗣️ Cảm ơn Quà
+                                tặng</label>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px; margin-left: 24px;">
+                            <label style="font-size:10px; color:var(--text-muted); white-space:nowrap;">Đọc lời nhắn
+                                từ:</label>
+                            <input type="number" id="settings-tts-threshold" value="10"
+                                style="width:45px; padding:2px 4px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; font-size:10px; outline:none;">
+                            <span style="font-size:10px; color:var(--text-muted);">xu</span>
+                        </div>
+                        <button onclick="app.speakText('Cảm ơn bạn đã tặng quà cho livestream!')"
+                            style="background:rgba(16,185,129,0.2); border:none; color:#10b981; padding:4px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700;">🔊
+                            Nghe thử</button>
+                    </div>
+
+                    <!-- Follow TTS -->
+                    <div
+                        style="background:rgba(245,158,11,0.05); border:1px solid rgba(245,158,11,0.1); border-radius:14px; padding: 12px; display:flex; flex-direction:column; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="settings-tts-follow" checked
+                                style="width:16px; height:16px; cursor:pointer;">
+                            <label for="settings-tts-follow"
+                                style="font-size:12px; color:#fff; font-weight:700; cursor:pointer;">👤 Chào mừng
+                                Follow</label>
+                        </div>
+                        <button onclick="app.speakText('Chào mừng bạn đã follow kênh nhé!')"
+                            style="background:rgba(245,158,11,0.2); border:none; color:#f59e0b; padding:4px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700;">🔊
+                            Nghe thử</button>
+                    </div>
+
+                    <!-- Sound Alert -->
+                    <div
+                        style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.1); border-radius:14px; padding: 12px; display:flex; flex-direction:column; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="settings-sound-alert-quick" checked
+                                style="width:16px; height:16px; cursor:pointer;">
+                            <label for="settings-sound-alert-quick"
+                                style="font-size:12px; color:#fff; font-weight:700; cursor:pointer;">🔔 Âm thanh báo
+                                quà</label>
+                        </div>
+                        <button onclick="app.savePreferences()"
+                            style="background:var(--primary); border:none; color:#fff; padding:4px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; margin-top: auto;">💾
+                            Lưu nhanh</button>
+                    </div>
+                </div>
+
+                <!-- Stats Bar (Compact) -->
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;">
+                    <div
+                        style="background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.1);border-radius:12px;padding:10px;text-align:center;">
+                        <div style="font-size:18px;font-weight:800;color:#fbbf24;" id="stat-gifts">0</div>
+                        <div
+                            style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">
+                            Gifts</div>
+                    </div>
+                    <div
+                        style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.1);border-radius:12px;padding:10px;text-align:center;">
+                        <div style="font-size:18px;font-weight:800;color:#ef4444;" id="stat-likes">0</div>
+                        <div
+                            style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">
+                            Likes</div>
+                    </div>
+                    <div
+                        style="background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.1);border-radius:12px;padding:10px;text-align:center;">
+                        <div style="font-size:18px;font-weight:800;color:#3b82f6;" id="stat-chats">0</div>
+                        <div
+                            style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">
+                            Chats</div>
+                    </div>
+                    <div
+                        style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.1);border-radius:12px;padding:10px;text-align:center;">
+                        <div style="font-size:18px;font-weight:800;color:#10b981;" id="stat-viewers">0</div>
+                        <div
+                            style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">
+                            Viewers</div>
+                    </div>
+                </div>
+
+                <!-- Libraries Row -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                    <!-- Gift Library -->
+                    <div
+                        style="background:var(--bg-card);border:1px solid var(--card-border);border-radius:16px;padding:18px;">
+                        <div style="margin-bottom:14px;">
+                            <h3 style="font-size:15px;font-weight:700;margin:0;">🎁 Thư Viện Gifts</h3>
+                            <p style="color:var(--text-muted);font-size:12px;margin-top:3px;">Chọn gift để mapping với
+                                effect</p>
+                        </div>
+                        <div id="gifts-grid"
+                            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px;max-height:360px;overflow-y:auto;padding-right:2px;">
+                        </div>
+                    </div>
+
+                    <!-- Effect Library -->
+                    <div
+                        style="background:var(--bg-card);border:1px solid var(--card-border);border-radius:16px;padding:18px;">
+                        <div style="margin-bottom:14px;">
+                            <h3 style="font-size:15px;font-weight:700;margin:0;">🎬 Thư Viện Effects</h3>
+                            <p style="color:var(--text-muted);font-size:12px;margin-top:3px;">Chọn effect để mapping với
+                                gift</p>
+                        </div>
+                        <div id="effects-mapping-grid"
+                            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-height:360px;overflow-y:auto;padding-right:2px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mappings List -->
+                <div
+                    style="background:var(--bg-card);border:1px solid var(--card-border);border-radius:16px;padding:18px;">
+                    <h3 style="font-size:15px;font-weight:700;margin:0 0 14px 0;">📋 Mappings Hiện Tại</h3>
+                    <div id="mappings-list"></div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- RIGHT SIDEBAR -->
+        <aside class="sidebar-right">
+            <div class="ranking-card">
+                <h3><i class="fas fa-fire" style="color: #ef4444;"></i> Hiệu ứng đang hot</h3>
+                <div class="ranking-list" id="trending-effects-list">
+                    <div style="padding:20px;text-align:center;color:#6b7280;font-size:12px;">Đang tải...</div>
+                </div>
+                <div style="text-align: center; margin-top: 12px;"><a href="#"
+                        style="color: #a78bfa; font-size: 13px;">Xem bảng xếp hạng →</a></div>
+            </div>
+
+            <div class="why-card">
+                <h3>Tại sao chọn EffectStore?</h3>
+                <div class="why-item"><i class="fas fa-check-circle"></i>
+                    <div>
+                        <h4>Dễ cài đặt</h4>
+                        <p>dưới 60s cam kết dễ dùng</p>
+                    </div>
+                </div>
+                <div class="why-item"><i class="fas fa-shield-alt"></i>
+                    <div>
+                        <h4>An toàn & bảo mật</h4>
+                        <p>Hiệu ứng độc quyền, an toàn 100%</p>
+                    </div>
+                </div>
+                <div class="why-item"><i class="fas fa-headset"></i>
+                    <div>
+                        <h4>Hỗ trợ 24/7</h4>
+                        <p>Đội ngũ hỗ trợ nhiệt tình</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="contact-card">
+                <h3>Bạn muốn tạo effect riêng?</h3>
+                <p>Liên hệ chúng tôi để thiết kế hiệu ứng theo yêu cầu của bạn!</p>
+                <button class="contact-btn" onclick="app.openCustomEffectModal()">Liên hệ ngay <i
+                        class="fas fa-arrow-right"></i></button>
+            </div>
+        </aside>
+
+    </div> <!-- End Main Layout -->
+
+    <!-- ===== 3. MODALS ===== -->
+
+    <div class="notification" id="notification"><span id="notification-icon">✅</span><span
+            id="notification-message"></span></div>
+
+    <!-- Custom Effect Modal -->
+    <div id="custom-effect-modal" class="modal-overlay hidden" style="z-index: 999999 !important;">
+        <div class="modal-content"
+            style="max-width: 550px; padding: 35px; border-radius: 24px; background: rgba(11, 15, 26, 0.95); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.08); color: white; position: relative; margin: 50px auto;">
+            <span class="close" onclick="app.closeCustomEffectModal()"
+                style="font-size: 32px; position: absolute; top: 20px; right: 25px; color: #6b7280; cursor: pointer; transition: color 0.2s;">&times;</span>
+
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="font-size: 40px; margin-bottom: 15px; filter: drop-shadow(0 0 10px #a78bfa);">🎨</div>
+                <h2
+                    style="font-size: 26px; font-weight: 800; margin-bottom: 10px; background: linear-gradient(to right, #fff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    Tạo Hiệu Ứng Riêng</h2>
+                <p style="color: #9ca3af; font-size: 14px;">Hãy gửi yêu cầu thiết kế của bạn, chúng tôi sẽ liên hệ lại
+                    sớm nhất!</p>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="form-group">
+                    <label
+                        style="color: #9ca3af; font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block;">Họ
+                        và tên *</label>
+                    <input type="text" id="custom-req-name" placeholder="Nhập tên của bạn"
+                        style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 16px; border-radius: 12px; width: 100%; outline: none; transition: all 0.3s;">
+                </div>
+
+                <div class="form-group">
+                    <label
+                        style="color: #9ca3af; font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block;">Số
+                        điện thoại / Zalo *</label>
+                    <input type="text" id="custom-req-phone" placeholder="Số điện thoại liên hệ"
+                        style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 16px; border-radius: 12px; width: 100%; outline: none; transition: all 0.3s;">
+                </div>
+
+                <div class="form-group">
+                    <label
+                        style="color: #9ca3af; font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block;">Mô
+                        tả ý tưởng hiệu ứng *</label>
+                    <textarea id="custom-req-desc" rows="4" placeholder="Mô tả ngắn gọn kịch bản, quà tặng tương ứng..."
+                        style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 16px; border-radius: 12px; width: 100%; outline: none; transition: all 0.3s; font-family: inherit; resize: none;"></textarea>
+                </div>
+
+                <button onclick="app.submitCustomEffectReq()"
+                    style="width: 100%; padding: 14px; background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%); border: none; border-radius: 12px; color: white; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);">Gửi
+                    Yêu Cầu Ngay</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing Modal -->
+    <div id="pricing-modal" class="modal-overlay hidden" style="z-index: 999999 !important;">
+        <div class="modal-content pricing-content"
+            style="max-width: 1000px; padding: 40px; border-radius: 24px; background: rgba(11, 15, 26, 0.95); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.05);">
+            <span class="close" onclick="app.closePricing()"
+                style="font-size: 32px; top: 20px; right: 25px;">&times;</span>
+
+            <div style="text-align: center; margin-bottom: 40px;">
+                <div style="font-size: 40px; margin-bottom: 15px; filter: drop-shadow(0 0 10px var(--primary));">💎
+                </div>
+                <h2
+                    style="font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 10px; background: linear-gradient(to right, #fff, var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    Chọn gói phù hợp</h2>
+                <p style="color: var(--text-secondary); font-size: 15px;">Effect đã mua = Sở hữu vĩnh viễn •
+                    Auto-connect OBS tự động</p>
+            </div>
+
+            <div class="pricing-grid">
+                <!-- Free Plan -->
+                <div class="pricing-card" id="plan-free-card">
+                    <div class="plan-header">
+                        <span class="plan-icon">🆓</span>
+                        <h3>Free</h3>
+                        <div class="plan-price">0₫ <span>/tháng</span></div>
+                    </div>
+                    <div class="plan-features">
+                        <div class="feature"><i class="fas fa-check-circle"></i> 1 thiết bị</div>
+                        <div class="feature"><i class="fas fa-check-circle"></i> 5 effect mappings</div>
+                        <div class="feature"><i class="fas fa-check-circle"></i> Kết nối OBS cơ bản</div>
+                        <div class="feature"><i class="fas fa-check-circle"></i> Auto-reconnect</div>
+                        <div class="feature muted"><i class="fas fa-times-circle"></i> Support chậm</div>
+                    </div>
+                    <button class="plan-btn" id="plan-btn-free">Gói hiện tại</button>
+                </div>
+
+                <!-- Pro Plan -->
+                <div class="pricing-card featured" id="plan-pro-card">
+                    <div class="featured-badge">PHỔ BIẾN NHẤT</div>
+                    <div class="plan-header">
+                        <span class="plan-icon">🔥</span>
+                        <h3>Pro</h3>
+                        <div class="plan-price">
+                            <del style="font-size: 14px; opacity: 0.5; font-weight: 400;">119.000₫</del>
+                            <div style="color: var(--secondary);">99.000₫ <span>/tháng</span></div>
+                        </div>
+                    </div>
+                    <div class="plan-features">
+                        <div class="feature highlight"><i class="fas fa-check-circle"></i> 2 thiết bị</div>
+                        <div class="feature highlight"><i class="fas fa-check-circle"></i> 20 effect mappings</div>
+                        <div class="feature"><i class="fas fa-check-circle"></i> Auto-connect OBS</div>
+                        <div class="feature"><i class="fas fa-check-circle"></i> Auto-reconnect</div>
+                        <div class="feature highlight"><i class="fas fa-check-circle"></i> Priority support (2h)</div>
+                        <div class="feature"><i class="fas fa-check-circle"></i> Thống kê chi tiết</div>
+                    </div>
+                    <button class="plan-btn active" id="plan-btn-pro" onclick="app.buySubscription('pro')">🚀 NÂNG CẤP
+                        PRO</button>
+                </div>
+
+                <!-- Business Plan -->
+                <div class="pricing-card" id="plan-business-card">
+                    <div class="featured-badge business">CAO CẤP</div>
+                    <div class="plan-header">
+                        <span class="plan-icon">💎</span>
+                        <h3>Business</h3>
+                        <div class="plan-price">249.000₫ <span>/tháng</span></div>
+                    </div>
+                    <div class="plan-features">
+                        <div class="feature"><i class="fas fa-check-circle"></i> 5 thiết bị</div>
+                        <div class="feature"><i class="fas fa-check-circle"></i> 100 effect mappings</div>
+                        <div class="feature highlight"><i class="fas fa-check-circle"></i> Mọi tính năng Pro</div>
+                        <div class="feature"><i class="fas fa-check-circle"></i> API Access</div>
+                        <div class="feature"><i class="fas fa-check-circle"></i> White-label</div>
+                        <div class="feature highlight"><i class="fas fa-check-circle"></i> Revenue Share 70%</div>
+                        <div class="feature highlight"><i class="fas fa-check-circle"></i> Support 15 phút</div>
+                    </div>
+                    <button class="plan-btn" id="plan-btn-business" onclick="app.buySubscription('business')">💎 ĐỐI
+                        TÁC</button>
+                </div>
+            </div>
+
+            <div
+                style="margin-top: 40px; padding: 30px; background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(236, 72, 153, 0.05)); border-radius: 24px; border: 1px solid rgba(124, 58, 237, 0.2);">
+                <div
+                    style="color: #fff; font-weight: 800; font-size: 18px; margin-bottom: 20px; text-align: center; letter-spacing: 1px;">
+                    💡 TẠI SAO 90% STREAMER CHỌN NÂNG CẤP?</div>
+
+                <div class="benefits-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">💰</div>
+                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Tăng Doanh Thu
+                        </div>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Kích thích donate
+                            nhờ hệ thống quà tặng thông minh.</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">⚡</div>
+                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Tiết Kiệm
+                            2h/Live</div>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Tự động hóa hoàn
+                            toàn, kết nối OBS chỉ với 1-click.</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">🌟</div>
+                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Độc Quyền Trend
+                        </div>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Cập nhật hiệu ứng
+                            mới nhất trước mọi đối thủ.</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">🛡️</div>
+                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Hỗ Trợ VIP
+                        </div>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Đội ngũ kỹ thuật hỗ
+                            trợ riêng qua Zalo 24/7.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline Modal -->
+    <div id="timeline-modal" class="modal-overlay hidden" style="z-index: 10000;">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 class="modal-title">🎬 Timeline Editor: <span id="tl-effect-name">Effect Name</span></h2>
+                <button class="modal-close" onclick="closeTimelineEditor()">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Timeline Track -->
+                <div id="timeline-track"
+                    style="height: 60px; background: rgba(255,255,255,0.05); border-radius: 12px; position: relative; margin-bottom: 20px;">
+                    <div id="keyframes-container"
+                        style="position: absolute; top: 10px; left: 0; right: 0; height: 40px;"></div>
+                </div>
+
+                <!-- Add Keyframe Form -->
+                <!-- ===== FORM THÊM KEYFRAME MỚI ===== -->
+                <div
+                    style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: 16px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.06);">
+                    <h4 style="margin-bottom: 16px; font-size: 15px; font-weight: 700; color: #e2e8f0;">🎬 Thêm Keyframe
+                    </h4>
+
+                    <!-- Hàng 1: Thời gian, Hành động, Source -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">⏱️ Thời gian
+                                (s)</label>
+                            <input type="number" id="kf-time" value="0" step="0.1" class="upload-form-input">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">🎯 Hành
+                                động</label>
+                            <select id="kf-action" class="upload-form-input">
+                                <option value="move">📍 Di chuyển</option>
+                                <option value="scale">📏 Thu/Phóng</option>
+                                <option value="layer">🔲 Đổi lớp</option>
+                                <option value="show">👁️ Hiện</option>
+                                <option value="hide">🕶️ Ẩn</option>
+                                <option value="play">▶️ Chạy lại Effect</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">📦 Source
+                                OBS</label>
+                            <select id="kf-source" class="upload-form-input">
+                                <option value="auto_webcam" style="color: #10b981; font-weight: bold;">📷 Webcam (Tự
+                                    động)</option>
+                                <option value="auto_effect" style="color: #3b82f6; font-weight: bold;">🎬 Effect (Tự
+                                    động)</option>
+                                <option value="">-- Chọn Source --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Hàng 2: X, Y, Scale, Layer -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                        <div>
+                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">📍 X
+                                (px)</label>
+                            <input type="number" id="kf-x" value="0" class="upload-form-input">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">📍 Y
+                                (px)</label>
+                            <input type="number" id="kf-y" value="0" class="upload-form-input">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">📏 Scale
+                                (%)</label>
+                            <input type="number" id="kf-scale" value="100" class="upload-form-input">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">🔲 Lớp</label>
+                            <select id="kf-layer" class="upload-form-input">
+                                <option value="above">🔝 Trên</option>
+                                <option value="below">🔽 Dưới</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="addKeyframe()"
+                        style="width:100%; padding:12px; background: linear-gradient(135deg, #7c3aed, #ec4899); border:none; border-radius:10px; color:white; font-weight:700; cursor:pointer;">
+                        + Thêm Keyframe
+                    </button>
+                </div>
+
+                <div id="keyframes-list" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeTimelineEditor()">✕ Đóng</button>
+                <button class="pro-btn" onclick="saveTimeline()">💾 Lưu Timeline</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Modal -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-content-generic">
+            <button class="modal-close" style="z-index: 10; top: 16px; right: 16px;"
+                onclick="app.closeModal()">×</button>
+            <h3 id="modal-title" style="margin-top: 0; margin-bottom: 16px; font-size: 20px;"></h3>
+            <div id="modal-body" style="color: var(--text-secondary); line-height: 1.5;"></div>
+            <div id="modal-actions" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Effect Detail Modal -->
+    <div id="effect-detail-modal" class="modal-overlay hidden" style="z-index: 10000;">
+        <div class="modal effect-detail-modal"
+            style="max-width: 800px; padding: 0; overflow: hidden; background: rgba(15, 23, 42, 0.95);">
+            <button class="modal-close" style="z-index: 10; top: 16px; right: 16px;"
+                onclick="app.closeEffectDetailModal()">×</button>
+            <div class="detail-content-layout">
+                <!-- Cột trái: Video Preview -->
+                <div class="detail-video-box">
+                    <video id="detail-video-player" src="" loop muted playsinline></video>
+                    <div class="glow-border"></div>
+                </div>
+                <!-- Cột phải: Thông tin -->
+                <div class="detail-info-box">
+                    <div id="detail-category" class="category-badge"
+                        style="position: static; display: inline-block; margin-bottom: 12px;">Category</div>
+                    <h2 id="detail-name"
+                        style="font-size: 24px; font-weight: 800; margin-bottom: 8px; line-height: 1.3;">Effect Name
+                    </h2>
+                    <div class="price-row"
+                        style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px;">
+                        <span id="detail-price" class="price-current" style="font-size: 28px;">0đ</span>
+                        <span id="detail-original-price"
+                            style="text-decoration: line-through; color: var(--text-muted); font-size: 14px;"></span>
+                    </div>
+
+                    <div class="detail-description">
+                        <h4 style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">Chi tiết hiệu
+                            ứng:</h4>
+                        <p id="detail-desc-text"
+                            style="font-size: 14px; color: #cbd5e1; line-height: 1.6; margin-bottom: 24px;">Mô tả...</p>
+                    </div>
+
+                    <div class="detail-features"
+                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px;">
+                        <div class="feature-item"><i style="color:var(--success);">✓</i> Chuẩn HD 60fps</div>
+                        <div class="feature-item"><i style="color:var(--success);">✓</i> Kích hoạt ngay</div>
+                        <div class="feature-item"><i style="color:var(--success);">✓</i> Tương thích OBS</div>
+                        <div class="feature-item"><i style="color:var(--success);">✓</i> Trong suốt</div>
+                    </div>
+
+                    <div class="detail-actions"
+                        style="display: flex; flex-direction: column; gap: 12px; margin-top: auto;">
+                        <button id="btn-test-try" class="btn-test-try" onclick="">
+                            <span class="icon">▶</span> Dùng Thử Trên OBS (8s)
+                        </button>
+                        <button id="btn-detail-add-cart" class="btn-add-cart" style="padding: 14px; font-size: 14px;"
+                            onclick="">
+                            🛒 Thêm Vào Giỏ Hàng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div id="cart-sidebar" style="
+        position: fixed; top: 0; right: -420px; width: 400px; height: 100vh;
+        background: #0d0d14; border-left: 1px solid rgba(212,175,55,0.15);
+        z-index: 99999; transition: right 0.35s cubic-bezier(0.4,0,0.2,1);
+        display: flex; flex-direction: column;
+        box-shadow: -8px 0 40px rgba(0,0,0,0.5);
+    ">
+        <!-- Header -->
+        <div
+            style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;">
+            <div>
+                <div style="font-size:18px;font-weight:800;color:#fff;">🛒 Giỏ hàng</div>
+                <div id="cart-count-text" style="font-size:12px;color:#6b7280;margin-top:2px;">0 sản phẩm</div>
+            </div>
+            <button onclick="toggleCart()"
+                style="background:rgba(255,255,255,0.06);border:none;border-radius:8px;width:36px;height:36px;color:#9ca3af;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <!-- Items -->
+        <div id="cart-items-list"
+            style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:12px;">
+            <div id="cart-empty" style="text-align:center;padding:60px 20px;color:#3d3d4d;">
+                <div style="font-size:48px;margin-bottom:12px;">🛒</div>
+                <div style="font-size:14px;">Giỏ hàng trống</div>
+            </div>
+        </div>
+        <!-- Footer -->
+        <div id="cart-footer" style="padding:20px 24px;border-top:1px solid rgba(255,255,255,0.06);display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <span style="color:#9ca3af;font-size:14px;">Tổng cộng</span>
+                <span id="cart-total-price" style="font-size:22px;font-weight:800;color:#d4af37;">0đ</span>
+            </div>
+            <button onclick="app.checkout()"
+                style="width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#ec4899);border:none;border-radius:12px;color:#fff;font-weight:800;font-size:15px;cursor:pointer;transition:all 0.3s;letter-spacing:0.3px;"
+                onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(124,58,237,0.5)'"
+                onmouseout="this.style.transform='';this.style.boxShadow=''">💳 Thanh toán ngay</button>
+        </div>
+    </div>
+    <!-- Cart Overlay -->
+    <div id="cart-overlay" onclick="toggleCart()"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99998;display:none;backdrop-filter:blur(2px);">
+    </div>
+
+    <div id="edit-effect-modal" class="modal-overlay">
+        <div class="modal" style="max-width: 550px;">
+            <div class="modal-header"
+                style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0; font-size: 18px;">⚙️ Chỉnh Sửa Effect</h3>
+                <button onclick="app.closeEditModal()" class="modal-close" style="position: static;">&times;</button>
+            </div>
+            <div class="admin-form" style="padding: 24px; max-height: 80vh; overflow-y: auto;">
+                <input type="hidden" id="edit-effect-id">
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div class="form-group">
+                        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Tên
+                            Effect</label>
+                        <input type="text" id="edit-name" class="upload-form-input">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Danh
+                            mục</label>
+                        <select id="edit-category" class="upload-form-input">
+                            <option value="gift">🎁 Quà tặng</option>
+                            <option value="transformation">✨ Biến hình</option>
+                            <option value="background">🎨 Background</option>
+                            <option value="animation">🎬 Animation</option>
+                            <option value="pk">🥊 PK</option>
+                            <option value="meme">😂 Meme</option>
+                            <option value="team_heart">❤️ Tym đội</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div class="form-group">
+                        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Giá
+                            bán (₫)</label>
+                        <input type="number" id="edit-price" class="upload-form-input">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Giá
+                            gốc (₫)</label>
+                        <input type="number" id="edit-original-price" class="upload-form-input">
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div class="form-group">
+                        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Giá
+                            Flash Sale (₫)</label>
+                        <input type="number" id="edit-flash-sale-price" class="upload-form-input">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Hết
+                            hạn Flash Sale</label>
+                        <input type="datetime-local" id="edit-flash-sale-ends" class="upload-form-input">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Mô tả chi
+                        tiết</label>
+                    <textarea id="edit-description" rows="2" class="upload-form-input"
+                        style="height: auto; resize: none;"></textarea>
+                </div>
+
+                <!-- Toggles Grid -->
+                <div
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label class="switch"
+                            style="position: relative; display: inline-block; width: 40px; height: 22px;">
+                            <input type="checkbox" id="edit-composite" style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider round"></span>
+                        </label>
+                        <span style="font-size: 13px; font-weight: 600; color: #fff;">🎥 Composite</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label class="switch"
+                            style="position: relative; display: inline-block; width: 40px; height: 22px;">
+                            <input type="checkbox" id="edit-is-flash-sale" style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider round"></span>
+                        </label>
+                        <span style="font-size: 13px; font-weight: 600; color: #ef4444;">⚡ Flash Sale</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label class="switch"
+                            style="position: relative; display: inline-block; width: 40px; height: 22px;">
+                            <input type="checkbox" id="edit-is-trending" style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider round"></span>
+                        </label>
+                        <span style="font-size: 13px; font-weight: 600; color: #fbbf24;">🔥 Hot Trend</span>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <input type="text" id="edit-icon" placeholder="Emoji (🎬)" class="upload-form-input"
+                            style="padding: 6px 10px;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <input type="number" id="edit-fake-uses" placeholder="Mắt xem (👁️)" class="upload-form-input"
+                            style="padding: 6px 10px;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Thay Thumb
+                        mới (Không chọn = giữ cũ)</label>
+                    <input type="file" id="edit-thumb" accept="image/*" style="font-size: 11px;">
+                </div>
+
+                <button onclick="app.updateEffect()" class="pro-btn" style="width:100%; padding:14px; font-size: 15px;">
+                    <i class="fas fa-save"></i> Lưu Thay Đổi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load JavaScript -->
+
+
+    <script src="js/home.js?v=4"></script>
+</body>
+
+</html>

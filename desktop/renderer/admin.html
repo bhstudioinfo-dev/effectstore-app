@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - EffectStore</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #ec4899;
+            --gold: #fbbf24; --gold-dark: #f59e0b; --success: #10b981;
+            --warning: #f59e0b; --danger: #ef4444; --dark: #0f172a;
+            --dark-light: #1e293b; --gray: #64748b; --light: #f1f5f9;
+            --gradient-primary: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+            --gradient-gold: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+            color: var(--light);
+            min-height: 100vh;
+        }
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-box {
+            background: var(--dark-light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 48px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: var(--shadow-xl);
+        }
+        .login-title {
+            font-size: 2.2em;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 12px;
+            background: var(--gradient-gold);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .login-subtitle {
+            text-align: center;
+            color: var(--gray);
+            margin-bottom: 32px;
+        }
+        .form-group { margin-bottom: 24px; }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--light);
+        }
+        .form-input {
+            width: 100%;
+            padding: 14px 18px;
+            background: var(--dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: var(--white);
+            font-size: 1em;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .btn-login {
+            width: 100%;
+            padding: 16px;
+            background: var(--gradient-primary);
+            border: none;
+            border-radius: 12px;
+            color: var(--white);
+            font-weight: 700;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+        .hidden { display: none !important; }
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            padding: 20px 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.8em;
+            font-weight: 800;
+            background: var(--gradient-gold);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: var(--white);
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 40px 20px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        .stat-card {
+            background: var(--dark-light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 28px;
+        }
+        .stat-label { color: var(--gray); font-size: 0.95em; margin-bottom: 8px; }
+        .stat-value {
+            font-size: 2.2em;
+            font-weight: 800;
+            background: var(--gradient-gold);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .section {
+            background: var(--dark-light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+        .section-title {
+            font-size: 1.6em;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 16px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        th { color: var(--gray); font-weight: 600; font-size: 0.85em; text-transform: uppercase; }
+        tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+        .badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .badge-pending { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .badge-approved { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .btn-sm { padding: 6px 12px; font-size: 0.85em; }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .btn-info { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .actions { display: flex; gap: 8px; }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="login-page" class="login-container">
+        <div class="login-box" style="background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+            <div style="text-align:center; margin-bottom:30px;">
+                <div style="font-size:50px; margin-bottom:15px;">👑</div>
+                <h1 class="login-title" style="font-size:28px; margin-bottom:5px;">Admin Dashboard</h1>
+                <p class="login-subtitle" style="font-size:14px;">Hệ thống quản lý EffectStore Premium</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">✉️ Email Quản trị</label>
+                <input type="email" id="admin-email" class="form-input" placeholder="admin@effectstore.vn" value="admin@effectstore.vn" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1);">
+            </div>
+            <div class="form-group">
+                <label class="form-label">🔑 Mật khẩu</label>
+                <input type="password" id="admin-password" class="form-input" placeholder="••••••••" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1);">
+            </div>
+            <button class="btn-login" id="login-btn" onclick="adminLogin()" style="background: linear-gradient(135deg, #6366f1, #a855f7); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);">
+                🚀 ĐĂNG NHẬP HỆ THỐNG
+            </button>
+            
+            <div style="margin-top:25px; text-align:center;">
+                <a href="index.html" style="color: var(--gray); text-decoration:none; font-size:13px; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--gray)'">← Quay lại trang chủ</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard-page" class="hidden">
+        <div class="header">
+            <div class="logo">👑 EffectStore Admin</div>
+            <button class="btn btn-danger" onclick="logout()">Đăng xuất</button>
+        </div>
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">📦 Tổng Effects</div>
+                    <div class="stat-value" id="stat-effects">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">👥 Tổng Users</div>
+                    <div class="stat-value" id="stat-users">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">⏳ Pending Payments</div>
+                    <div class="stat-value" id="stat-pending">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">💰 Doanh thu</div>
+                    <div class="stat-value" id="stat-revenue">0₫</div>
+                </div>
+            </div>
+            <div class="section">
+                <h2 class="section-title">💳 Payments</h2>
+                <table>
+                    <thead><tr><th>ID</th><th>User</th><th>Số tiền</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+                    <tbody id="payments-table"></tbody>
+                </table>
+            </div>
+            <div class="section">
+                <h2 class="section-title">🎨 Yêu cầu thiết kế Effect riêng</h2>
+                <table>
+                    <thead><tr><th>Ngày</th><th>Khách hàng</th><th>Số điện thoại/Zalo</th><th>Mô tả</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+                    <tbody id="effect-requests-table"></tbody>
+                </table>
+            </div>
+            <div class="section">
+                <h2 class="section-title">👥 Users</h2>
+                <table>
+                    <thead><tr><th>Email</th><th>Name</th><th>Effects đã mua</th><th>Tổng chi</th></tr></thead>
+                    <tbody id="users-table"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let token = localStorage.getItem('token');
+        let currentPaymentId = null;
+
+        // Check if already logged in and is admin
+        async function checkAuth() {
+            if (token) {
+                try {
+                    const response = await fetch('http://127.0.0.1:9000/api/auth/me', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await response.json();
+                    if (data.success && data.user.isAdmin) {
+                        showDashboard();
+                    } else if (data.success) {
+                        alert('⚠️ Bạn không có quyền truy cập trang này!');
+                        window.location.href = 'index.html';
+                    }
+                } catch (e) {
+                    console.error('Auth check error:', e);
+                }
+            }
+        }
+        
+        checkAuth();
+
+        // Login function
+        async function adminLogin() {
+            const btn = document.getElementById('login-btn');
+            btn.textContent = '⏳ Đang xác thực...';
+            btn.disabled = true;
+            
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+            
+            try {
+                const response = await fetch('http://127.0.0.1:9000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.user.isAdmin) {
+                    token = data.token;
+                    localStorage.setItem('token', data.token);
+                    showDashboard();
+                } else {
+                    alert('❌ Email hoặc mật khẩu không đúng, hoặc bạn không có quyền Admin!');
+                }
+            } catch (error) {
+                console.error('❌ Error:', error);
+                alert('❌ Lỗi kết nối server! Vui lòng kiểm tra lại.');
+            } finally {
+                btn.textContent = '🚀 ĐĂNG NHẬP HỆ THỐNG';
+                btn.disabled = false;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            token = null;
+            window.location.href = 'index.html';
+        }
+
+        async function showDashboard() {
+            document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('dashboard-page').classList.remove('hidden');
+            await loadDashboard();
+        }
+
+        async function loadDashboard() {
+            try {
+                const response = await fetch('http://127.0.0.1:9000/api/admin/dashboard', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('stat-effects').textContent = data.stats.totalEffects;
+                    document.getElementById('stat-users').textContent = data.stats.totalUsers;
+                    document.getElementById('stat-pending').textContent = data.stats.pendingPayments;
+                    document.getElementById('stat-revenue').textContent = formatPrice(data.stats.totalRevenue);
+                    renderPayments(data.recentPayments);
+                    await loadUsers();
+                    await loadEffectRequests();
+                }
+            } catch (error) {
+                console.error('Load dashboard error:', error);
+            }
+        }
+
+        async function loadEffectRequests() {
+            try {
+                const response = await fetch('http://127.0.0.1:9000/api/admin/effect-requests', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const tbody = document.getElementById('effect-requests-table');
+                    if (!tbody) return;
+                    
+                    tbody.innerHTML = data.requests.map(req => `
+                        <tr>
+                            <td>${new Date(req.createdAt).toLocaleDateString('vi-VN')}</td>
+                            <td>${req.name}</td>
+                            <td><strong>${req.phone}</strong></td>
+                            <td>${req.description}</td>
+                            <td><span class="badge badge-${req.status}">${req.status}</span></td>
+                            <td class="actions">
+                                <select onchange="updateRequestStatus('${req._id}', this.value)" style="padding: 6px; background: #1e293b; color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                                    <option value="pending" ${req.status === 'pending' ? 'selected' : ''}>Đang chờ</option>
+                                    <option value="contacted" ${req.status === 'contacted' ? 'selected' : ''}>Đã liên hệ</option>
+                                    <option value="done" ${req.status === 'done' ? 'selected' : ''}>Hoàn thành</option>
+                                </select>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Load effect requests error:', error);
+            }
+        }
+
+        async function updateRequestStatus(id, status) {
+            try {
+                const response = await fetch(`http://127.0.0.1:9000/api/admin/effect-requests/${id}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('✅ Cập nhật trạng thái thành công');
+                    await loadEffectRequests();
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            } catch (error) {
+                console.error('Update status error:', error);
+            }
+        }
+
+        function renderPayments(payments) {
+            const tbody = document.getElementById('payments-table');
+            tbody.innerHTML = payments.map(p => `
+                <tr>
+                    <td><code>${p._id?.substring(0, 8) || 'N/A'}...</code></td>
+                    <td>${p.userId || 'N/A'}</td>
+                    <td><strong>${formatPrice(p.amount)}</strong></td>
+                    <td><span class="badge badge-${p.status}">${p.status}</span></td>
+                    <td class="actions">
+                        <button class="btn btn-info btn-sm" onclick="viewPayment('${p._id}')">👁️ Xem</button>
+                        ${p.status === 'pending' ? `
+                            <button class="btn btn-success btn-sm" onclick="approvePaymentDirect('${p._id}')">✅</button>
+                            <button class="btn btn-danger btn-sm" onclick="rejectPaymentDirect('${p._id}')">❌</button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch('http://127.0.0.1:9000/api/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const tbody = document.getElementById('users-table');
+                    tbody.innerHTML = data.users.map(u => `
+                        <tr>
+                            <td>${u.email}</td>
+                            <td>${u.name}</td>
+                            <td>${u.purchasedEffects?.length || 0}</td>
+                            <td>${formatPrice(u.totalSpent)}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Load users error:', error);
+            }
+        }
+
+// View payment with modal
+async function viewPayment(id) {
+    console.log('👁️ Viewing payment:', id);
+    
+    try {
+        const response = await fetch(`http://127.0.0.1:9000/api/admin/payments/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const data = await response.json();
+        console.log('Payment data:', data);
+        
+        if (data.success) {
+            currentPaymentId = id;
+            const p = data.payment;
+            
+            const modalHTML = `
+                <div id="payment-modal" class="modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:1000;">
+                    <div style="background:var(--dark-light);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.1);">
+                            <h2 style="font-size:1.5em;font-weight:700;">📋 Chi tiết Payment</h2>
+                            <button onclick="closePaymentModal()" style="background:none;border:none;color:var(--gray);font-size:1.5em;cursor:pointer;width:36px;height:36px;border-radius:8px;">×</button>
+                        </div>
+                        <div style="display:grid;gap:16px;">
+                            <div><strong>🆔 Payment ID:</strong> <code style="background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:4px;">${p._id}</code></div>
+                            <div><strong>👤 User ID:</strong> <code style="background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:4px;">${p.userId}</code></div>
+                            <div><strong>💰 Số tiền:</strong> <span style="color:var(--gold);font-size:1.3em;font-weight:700;">${formatPrice(p.amount)}</span></div>
+                            <div><strong>📊 Trạng thái:</strong> <span class="badge badge-${p.status}" style="padding:6px 14px;border-radius:20px;font-size:0.85em;font-weight:600;">${p.status}</span></div>
+                            <div><strong>🖼️ Có ảnh:</strong> ${p.hasProof ? '<span style="color:var(--success)">✅ Có</span>' : '<span style="color:var(--gray)">❌ Không</span>'}</div>
+                            <div><strong>⏰ Ngày tạo:</strong> ${new Date(p.createdAt).toLocaleString('vi-VN')}</div>
+                            ${p.proofImage ? `<div><strong>📸 Ảnh chuyển khoản:</strong><br><img src="http://127.0.0.1:9000${p.proofImage}" style="max-width:100%;border-radius:12px;margin-top:12px;" alt="Proof"></div>` : ''}
+                        </div>
+                        <div style="display:flex;gap:12px;margin-top:24px;">
+                            ${p.status === 'pending' ? `
+                                <button onclick="approvePayment('${p._id}')" class="btn btn-success" style="flex:1;padding:12px;background:linear-gradient(135deg, #10b981, #059669);color:white;border:none;border-radius:12px;font-weight:600;cursor:pointer;">✅ Duyệt</button>
+                                <button onclick="rejectPayment('${p._id}')" class="btn btn-danger" style="flex:1;padding:12px;background:linear-gradient(135deg, #ef4444, #dc2626);color:white;border:none;border-radius:12px;font-weight:600;cursor:pointer;">❌ Từ chối</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove old modal if exists
+            const oldModal = document.getElementById('payment-modal');
+            if (oldModal) oldModal.remove();
+            
+            // Add new modal
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+    } catch (error) {
+        console.error('Error viewing payment:', error);
+        alert('❌ Lỗi: ' + error.message);
+    }
+}
+
+// Close payment modal
+function closePaymentModal() {
+    const modal = document.getElementById('payment-modal');
+    if (modal) modal.remove();
+}
+
+// Approve payment
+async function approvePayment(id) {
+    if (!confirm('✅ Bạn chắc chắn muốn duyệt payment này?')) return;
+    
+    try {
+        const response = await fetch('http://127.0.0.1:9000/api/payment/admin/approve', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ paymentId: id })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Đã duyệt payment thành công!');
+            closePaymentModal();
+            await loadDashboard();
+        } else {
+            alert('❌ Lỗi: ' + data.message);
+        }
+    } catch (error) {
+        alert('❌ Lỗi kết nối: ' + error.message);
+    }
+}
+
+// Reject payment
+async function rejectPayment(id) {
+    const reason = prompt('Lý do từ chối:');
+    if (!reason) return;
+    
+    try {
+        const response = await fetch('http://127.0.0.1:9000/api/payment/admin/reject', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ paymentId: id, reason })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('❌ Đã từ chối payment!');
+            closePaymentModal();
+            await loadDashboard();
+        } else {
+            alert('❌ Lỗi: ' + data.message);
+        }
+    } catch (error) {
+        alert('❌ Lỗi kết nối: ' + error.message);
+    }
+}
+
+// Update approvePaymentDirect and rejectPaymentDirect
+async function approvePaymentDirect(id) {
+    await approvePayment(id);
+}
+
+async function rejectPaymentDirect(id) {
+    const reason = prompt('Lý do từ chối:') || 'Không xác định';
+    if (!reason) return;
+    
+    try {
+        const response = await fetch('http://127.0.0.1:9000/api/payment/admin/reject', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ paymentId: id, reason })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('❌ Đã từ chối payment!');
+            await loadDashboard();
+        }
+    } catch (error) {
+        alert('❌ Lỗi: ' + error.message);
+    }
+}
+
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN').format(price) + '₫';
+        }
+
+        console.log('✅ Admin script loaded successfully!');
+    </script>
+</body>
+</html>

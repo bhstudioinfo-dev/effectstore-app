@@ -1,0 +1,200 @@
+const express = require('express');
+const router = express.Router();
+const tiktokService = require('../services/tiktokService');
+const GiftMapping = require('../models/GiftMapping');
+const GiftLog = require('../models/GiftLog');
+const GiftConfig = require('../models/GiftConfig');
+const Effect = require('../models/Effect');
+const User = require('../models/User');
+const { authMiddleware } = require('../middleware/auth');
+
+// Connect
+router.post('/connect', authMiddleware, async (req, res) => {
+    const { roomId } = req.body;
+    const success = await tiktokService.connect(roomId, req.userId);
+    if (success) res.json({ success: true });
+    else res.status(500).json({ success: false });
+});
+
+// Disconnect
+router.post('/disconnect', async (req, res) => {
+    await tiktokService.disconnect();
+    res.json({ success: true });
+});
+
+// Stats
+router.get('/stats', (req, res) => {
+    res.json({ success: true, stats: tiktokService.liveStats });
+});
+
+// Mappings
+router.get('/mappings', authMiddleware, async (req, res) => {
+    try {
+        const mappings = await GiftMapping.find({ userId: req.userId });
+        res.json({ success: true, mappings });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.post('/map-gift', authMiddleware, async (req, res) => {
+    try {
+        const { giftId, effectId, giftName, effectName, giftIcon } = req.body;
+        const userId = req.userId;
+
+        // Check plan limits
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+        const plan = user.subscription || 'free';
+        const isAdmin = !!(user.isAdmin || user.email === 'admin@effectstore.vn');
+        const limits = { 'free': 5, 'pro': 20, 'business': 100 };
+        const maxMappings = limits[plan] || 5;
+
+        const currentCount = await GiftMapping.countDocuments({ userId });
+        const existing = await GiftMapping.findOne({ userId, giftId });
+
+        if (!existing && !isAdmin && currentCount >= maxMappings) {
+            return res.status(403).json({ 
+                success: false, 
+                error: `Gói ${plan.toUpperCase()} chỉ hỗ trợ tối đa ${maxMappings} mapping. Vui lòng nâng cấp!` 
+            });
+        }
+
+        if (existing) {
+            existing.effectId = effectId;
+            existing.effectName = effectName;
+            existing.giftName = giftName;
+            existing.giftIcon = giftIcon;
+            existing.updatedAt = Date.now();
+            await existing.save();
+            res.json({ success: true, mapping: existing });
+        } else {
+            const mapping = await GiftMapping.create({
+                userId, giftId, effectId, giftName, effectName, giftIcon, isActive: true
+            });
+            res.json({ success: true, mapping });
+        }
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.delete('/mappings/:id', authMiddleware, async (req, res) => {
+    try {
+        await GiftMapping.findOneAndDelete({ _id: req.params.id, userId: req.userId });
+        res.json({ success: true });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// Toggle mapping
+router.put('/mappings/:id/toggle', authMiddleware, async (req, res) => {
+    try {
+        const mapping = await GiftMapping.findOne({ _id: req.params.id, userId: req.userId });
+        if (!mapping) return res.status(404).json({ success: false, message: 'Mapping not found' });
+        mapping.isActive = !mapping.isActive;
+        await mapping.save();
+        res.json({ success: true, mapping });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// Test trigger
+router.post('/test-trigger', authMiddleware, async (req, res) => {
+    try {
+        const { mappingId } = req.body;
+        const mapping = await GiftMapping.findOne({ _id: mappingId, userId: req.userId }).populate('effectId');
+        if (!mapping) return res.status(404).json({ success: false, message: 'Mapping not found' });
+        
+        const effectId = mapping.effectId._id || mapping.effectId;
+        const duration = mapping.effectId.duration || 15;
+        
+        const PORT = process.env.PORT || 9000;
+        await fetch(`http://localhost:${PORT}/api/obs/trigger`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ effectId, duration })
+        });
+        
+        await GiftLog.create({
+            giftId: mapping.giftId, giftName: mapping.giftName, effectId: mapping.effectId,
+            triggeredAt: new Date(), sessionId: req.userId, userId: 'test', userName: 'Test User'
+        });
+        res.json({ success: true, message: 'Effect triggered!', duration });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// Logs
+router.get('/logs', authMiddleware, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const logs = await GiftLog.find({ userId: req.userId })
+            .sort({ triggeredAt: -1 })
+            .limit(limit)
+            .populate('effectId');
+        res.json({ success: true, logs });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.delete('/logs', authMiddleware, async (req, res) => {
+    try {
+        await GiftLog.deleteMany({ userId: req.userId });
+        res.json({ success: true, message: 'Logs cleared' });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// Simulate gift
+router.post('/simulate-gift', authMiddleware, async (req, res) => {
+    try {
+        const { giftId, userName } = req.body;
+        const mapping = await GiftMapping.findOne({ giftId, userId: req.userId, isActive: true });
+        if (!mapping) return res.json({ success: false, message: 'No mapping found', triggered: false });
+        
+        const effect = await Effect.findById(mapping.effectId);
+        const duration = effect?.duration || 15;
+        const PORT = process.env.PORT || 9000;
+        
+        await fetch(`http://localhost:${PORT}/api/obs/trigger`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ effectId: mapping.effectId, duration })
+        });
+        
+        await GiftLog.create({
+            giftId, giftName: mapping.giftName, effectId: mapping.effectId,
+            triggeredAt: new Date(), sessionId: req.userId, userId: req.userId, userName: userName || 'Anonymous'
+        });
+        res.json({ success: true, triggered: true });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// Gifts library
+router.get('/gifts-library', async (req, res) => {
+    try {
+        const defaultGifts = [
+            { id: 'rose', name: 'Rose', icon: '/assets/gift-icons/Rose.png', coins: 1 },
+            { id: 'tiktok', name: 'TikTok', icon: '/assets/gift-icons/TikTok.png', coins: 1 },
+            { id: 'ice_cream', name: 'Ice Cream', icon: '/assets/gift-icons/Ice_Cream_Cone.png', coins: 5 },
+            { id: 'heart', name: 'Heart', icon: '/assets/gift-icons/Finger_Heart.png', coins: 10 },
+            { id: 'corgi', name: 'Corgi', icon: '/assets/gift-icons/Corgi.png', coins: 50 },
+            { id: 'doughnut', name: 'Doughnut', icon: '/assets/gift-icons/Doughnut.png', coins: 20 },
+            { id: 'perfume', name: 'Perfume', icon: '/assets/gift-icons/Perfume.png', coins: 100 },
+            { id: 'sunglasses', name: 'Sunglasses', icon: '/assets/gift-icons/Sunglasses.png', coins: 50 },
+            { id: 'money_gun', name: 'Money Gun', icon: '/assets/gift-icons/Money_Gun.png', coins: 500 },
+            { id: 'pk_crown', name: 'PK Crown', icon: '/assets/gift-icons/PK_crown_ring.png', coins: 1000 },
+            { id: 'friendship_necklace', name: 'Friendship Necklace', icon: '/assets/gift-icons/Friendship_Necklace.png', coins: 299 },
+            { id: 'wooly_hat', name: 'Wooly Hat', icon: '/assets/gift-icons/Wooly_Hat.png', coins: 99 },
+            { id: 'boxing_gloves', name: 'Boxing Gloves', icon: '/assets/gift-icons/Boxing_Gloves.png', coins: 199 },
+            { id: 'love_you', name: 'Love You', icon: '/assets/gift-icons/Love_you_so_much.png', coins: 520 },
+            { id: 'youre_awesome', name: "You're Awesome", icon: '/assets/gift-icons/You\'re_awesome.png', coins: 88 }
+        ];
+
+        const configs = await GiftConfig.find();
+        const coinsMap = {};
+        configs.forEach(c => coinsMap[c.giftId] = c.coins);
+
+        const gifts = defaultGifts.map(g => ({
+            ...g,
+            coins: coinsMap[g.id] || g.coins
+        }));
+
+        res.json({ success: true, gifts });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+module.exports = router;
