@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 
 <head>
@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <!-- Link đến file CSS chính -->
     <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/gift-menu-designer.css">
 
 
     <style>
@@ -358,6 +359,9 @@
                 </div>
                 <div class="menu-item-new" onclick="switchView('gift-mapping')">
                     <i class="fas fa-link"></i> Gán hiệu ứng
+                </div>
+                <div class="menu-item-new" onclick="switchView('gift-menu-designer')">
+                    <i class="fas fa-palette"></i> Thiết kế Menu
                 </div>
                 <div class="menu-item-new" id="admin-nav-item" style="display:none;" onclick="switchView('admin')">
                     <i class="fas fa-user-shield"></i> Admin Dashboard
@@ -1159,7 +1163,9 @@
                     <div id="mappings-list"></div>
                 </div>
             </div>
-
+            
+            <!-- VIEW: GIFT MENU DESIGNER (Phase 1) -->
+            <div id="gift-menu-designer-view" class="hidden"></div>
         </main>
 
         <!-- RIGHT SIDEBAR -->
@@ -1701,6 +1707,7 @@
     <!-- Load JavaScript -->
 
 
+    <script src="js/gift-menu-designer.js"></script>
     <script src="js/home.js?v=4"></script>
 </body>
 

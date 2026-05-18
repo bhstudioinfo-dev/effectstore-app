@@ -1,504 +1,515 @@
 /**
- * Gift Menu Designer Logic
- * Author: Antigravity AI
+ * 🎨 GIFT MENU DESIGNER
+ * Phase 1.6: Real TikTok Gifts Integration
  */
 
 class GiftMenuDesigner {
     constructor() {
-        this.canvas = document.getElementById('gmd-canvas');
-        this.library = document.getElementById('gmd-gift-library');
-        this.inspector = document.getElementById('gmd-inspector');
-        this.zoomLevelEl = document.getElementById('gmd-zoom-level');
-
-        this.state = {
-            name: "Bản thiết kế mới",
-            items: [], // { uid, giftId, name, icon, x, y, size, animation, showText, textColor, fontSize, gap }
-            zoom: 1,
-            selectedId: null,
-            gridSize: 20,
-            showGrid: true,
-            layoutType: 'both', // left, right, both
-            spacing: 20
-        };
-
-        this.history = [];
-        this.historyIndex = -1;
-
-        this.gifts = []; // Raw gift library
-        this.API_URL = 'http://localhost:9000';
-
+        this.containerId = 'gift-menu-designer-view';
+        this.canvasId = 'designer-canvas';
+        this.items = []; // Current items on canvas
+        this.selectedItemId = null;
+        
+        // Data
+        this.gifts = []; // Real TikTok gifts from API
+        
+        // Settings
+        this.gridEnabled = false;
+        this.snapEnabled = false;
+        this.currentRatio = '9:16';
+        
         this.isDragging = false;
-        this.draggedItem = null;
         this.dragOffset = { x: 0, y: 0 };
-
-        this.init();
     }
 
-    init() {
-        console.log("🎨 Gift Menu Designer Initializing...");
-        this.loadGifts();
+    async init() {
+        console.log('🎨 GiftMenuDesigner initializing...');
+        this.renderLayout();
+        await this.loadGifts();
+        this.renderLibrary();
         this.setupEventListeners();
-        this.pushHistory();
-        this.render();
     }
 
     async loadGifts() {
         try {
-            const res = await fetch(`${this.API_URL}/api/tiktok/gifts-library`);
-            const data = await res.json();
+            const baseUrl = (window.app && window.app.API_URL) ? window.app.API_URL : 'http://127.0.0.1:9000';
+            const token = localStorage.getItem('token');
+            const response = await fetch(baseUrl + '/api/tiktok/gifts-library', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            
             if (data.success) {
-                this.gifts = data.gifts;
-                this.renderLibrary();
+                this.gifts = data.gifts || [];
+                console.log(`✅ Loaded ${this.gifts.length} real TikTok gifts for Designer`);
+            } else {
+                console.error('❌ Failed to load gifts:', data.message);
             }
         } catch (error) {
-            console.error("Error loading gifts:", error);
+            console.error('❌ Error loading gifts for Designer:', error);
+            if (window.app) app.showNotification('error', 'Không thể tải danh sách Gifts');
         }
     }
 
-    renderLibrary(filter = '') {
-        if (!this.library) return;
+    renderLayout() {
+        const container = document.getElementById(this.containerId);
+        if (!container) return;
 
-        const filteredGifts = this.gifts.filter(g =>
-            g.name.toLowerCase().includes(filter.toLowerCase())
+        container.innerHTML = `
+            <!-- Top Toolbar -->
+            <div class="designer-toolbar">
+                <div class="toolbar-group">
+                    <div style="font-weight: 900; color: var(--primary); font-size: 14px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; margin-right: 10px;">
+                        <i class="fas fa-magic"></i> ES DESIGNER
+                    </div>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" title="Undo (Ctrl+Z)" onclick="giftDesigner.undo()">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button class="toolbar-btn" title="Redo (Ctrl+Y)" onclick="giftDesigner.redo()">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button id="toggle-grid-btn" class="toolbar-btn ${this.gridEnabled ? 'active' : ''}" title="Toggle Grid" onclick="giftDesigner.toggleGrid()">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button id="toggle-snap-btn" class="toolbar-btn ${this.snapEnabled ? 'active' : ''}" title="Snap to Grid" onclick="giftDesigner.toggleSnap()">
+                        <i class="fas fa-magnet"></i>
+                    </button>
+                </div>
+
+                <div class="toolbar-spacer"></div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn text-btn" onclick="giftDesigner.preview()">
+                        <i class="fas fa-play"></i> Xem thử
+                    </button>
+                    <button class="toolbar-btn text-btn primary" onclick="giftDesigner.saveProject()">
+                        <i class="fas fa-save"></i> Lưu
+                    </button>
+                    <button class="toolbar-btn text-btn" onclick="giftDesigner.export()">
+                        <i class="fas fa-download"></i> Xuất bản
+                    </button>
+                </div>
+            </div>
+            
+            <div class="designer-container">
+                <!-- Left: Library -->
+                <div class="designer-panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-shapes"></i> Gift Library</h3>
+                        <div id="library-count" style="font-size: 10px; color: var(--text-muted); font-weight: 800;">0 ITEMS</div>
+                    </div>
+
+                    <div class="library-search-wrap">
+                        <div class="search-input-group">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Tìm kiếm quà tặng..." oninput="giftDesigner.filterLibrary(this.value)">
+                        </div>
+                        <div class="library-filters">
+                            <select class="filter-select" onchange="giftDesigner.renderLibrary()">
+                                <option value="all">Tất cả hạng</option>
+                                <option value="common">Phổ biến</option>
+                                <option value="rare">Hiếm</option>
+                                <option value="legendary">Huyền thoại</option>
+                            </select>
+                            <select id="library-sort" class="filter-select" onchange="giftDesigner.renderLibrary()">
+                                <option value="price-asc">Giá thấp → cao</option>
+                                <option value="price-desc">Giá cao → thấp</option>
+                                <option value="name-asc">Tên A → Z</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="designer-library" class="gift-library">
+                        <!-- Gifts will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Center: Canvas Area -->
+                <div class="designer-panel canvas-area">
+                    <div class="canvas-controls-top">
+                        <button class="ratio-btn ${this.currentRatio === '9:16' ? 'active' : ''}" onclick="giftDesigner.setRatio('9:16')">9:16</button>
+                        <button class="ratio-btn ${this.currentRatio === '16:9' ? 'active' : ''}" onclick="giftDesigner.setRatio('16:9')">16:9</button>
+                        <button class="ratio-btn ${this.currentRatio === '1:1' ? 'active' : ''}" onclick="giftDesigner.setRatio('1:1')">1:1</button>
+                    </div>
+
+                    <div id="${this.canvasId}" class="canvas-wrapper ${this.gridEnabled ? 'grid-on' : ''}">
+                        <!-- Canvas items will be rendered here -->
+                    </div>
+
+                    <!-- Bottom Export Bar -->
+                    <div class="designer-export-bar">
+                        <div class="export-url-wrap">
+                            <label>OBS URL</label>
+                            <input type="text" readonly value="${(window.app && app.API_URL) || 'http://localhost:9000'}/api/overlay/designer/${(app.currentUser && (app.currentUser._id || app.currentUser.id)) || 'guest'}">
+                        </div>
+                        <div class="export-actions">
+                            <button class="export-btn" onclick="giftDesigner.copyURL()">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button class="export-btn" onclick="giftDesigner.exportHTML()">
+                                <i class="fas fa-file-code"></i> Export HTML
+                            </button>
+                            <button class="export-btn primary" onclick="giftDesigner.preview()">
+                                <i class="fas fa-external-link-alt"></i> Preview
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Inspector -->
+                <div class="designer-panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-fingerprint"></i> Inspector</h3>
+                        <button class="toolbar-btn" style="width: 24px; height: 24px;" title="Reset" onclick="giftDesigner.resetSelectedItem()">
+                            <i class="fas fa-undo-alt" style="font-size: 10px;"></i>
+                        </button>
+                    </div>
+                    <div id="designer-inspector" class="inspector-content">
+                        <!-- Inspector content rendered here -->
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderLibrary(filterText = '') {
+        const library = document.getElementById('designer-library');
+        const countLabel = document.getElementById('library-count');
+        if (!library) return;
+
+        let filtered = this.gifts.filter(g => 
+            g.name.toLowerCase().includes(filterText.toLowerCase())
         );
 
-        this.library.innerHTML = filteredGifts.map(gift => `
-            <div class="gmd-gift-item" draggable="true" ondragstart="gmd.onDragStart(event, '${gift.id}')">
-                <div class="gmd-gift-icon">
-                    <img src="${this.API_URL}${gift.icon}" style="width: 32px; height: 32px; object-fit: contain;">
-                </div>
-                <div class="gmd-gift-name">${gift.name}</div>
-            </div>
-        `).join('');
-    }
+        // Sort logic
+        const sortVal = document.getElementById('library-sort')?.value || 'price-asc';
+        if (sortVal === 'price-asc') filtered.sort((a, b) => (a.coins || 0) - (b.coins || 0));
+        else if (sortVal === 'price-desc') filtered.sort((a, b) => (b.coins || 0) - (a.coins || 0));
+        else if (sortVal === 'name-asc') filtered.sort((a, b) => a.name.localeCompare(b.name));
 
-    filterLibrary() {
-        const filter = document.getElementById('gmd-search-gifts').value;
-        this.renderLibrary(filter);
-    }
+        if (countLabel) countLabel.innerText = `${filtered.length} GIFTS`;
 
-    setupEventListeners() {
-        // Global mouse events for dragging on canvas
-        document.addEventListener('mousemove', (e) => this.onMouseMove(e));
-        document.addEventListener('mouseup', () => this.onMouseUp());
+        const baseUrl = (window.app && window.app.API_URL) ? window.app.API_URL : 'http://127.0.0.1:9000';
 
-        // Deselect when clicking canvas background
-        this.canvas.addEventListener('mousedown', (e) => {
-            if (e.target === this.canvas) {
-                this.selectItem(null);
+        library.innerHTML = filtered.map(gift => {
+            const giftId = gift.id;
+            const isImage = gift.icon && (gift.icon.includes('/') || gift.icon.includes('.'));
+            
+            let iconHTML = '';
+            if (isImage) {
+                const iconUrl = gift.icon.startsWith('http') ? gift.icon : `${baseUrl}${gift.icon}`;
+                iconHTML = `<img src="${iconUrl}" style="width: 44px; height: 44px; object-fit: contain;">`;
+            } else {
+                iconHTML = `<div style="font-size: 32px;">${gift.icon || '🎁'}</div>`;
             }
-        });
-
-        // Shortcuts
-        window.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'z') this.undo();
-            if (e.ctrlKey && e.key === 'y') this.redo();
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (this.state.selectedId && document.activeElement.tagName !== 'INPUT') {
-                    this.deleteSelectedItem();
-                }
-            }
-        });
-    }
-
-    // --- Drag & Drop from Library ---
-    onDragStart(e, giftId) {
-        e.dataTransfer.setData('giftId', giftId);
-    }
-
-    onDragOver(e) {
-        e.preventDefault();
-    }
-
-    onDrop(e) {
-        e.preventDefault();
-        const giftId = e.dataTransfer.getData('giftId');
-        const gift = this.gifts.find(g => g.id == giftId);
-
-        if (gift) {
-            const rect = this.canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / this.state.zoom;
-            const y = (e.clientY - rect.top) / this.state.zoom;
-
-            this.addItem(gift, x, y);
-        }
-    }
-
-    // --- Item Management ---
-    addItem(gift, x, y) {
-        const newItem = {
-            uid: 'item_' + Date.now(),
-            giftId: gift.id,
-            name: gift.name,
-            icon: gift.icon,
-            x: x - 40, // Center item
-            y: y - 40,
-            size: 80,
-            animation: 'none',
-            showText: true,
-            textColor: '#ffcc70',
-            fontSize: 14,
-            gap: 5
-        };
-
-        this.state.items.push(newItem);
-        this.pushHistory();
-        this.selectItem(newItem.uid);
-        this.render();
-    }
-
-    deleteSelectedItem() {
-        if (!this.state.selectedId) return;
-        this.state.items = this.state.items.filter(item => item.uid !== this.state.selectedId);
-        this.state.selectedId = null;
-        this.pushHistory();
-        this.render();
-    }
-
-    selectItem(uid) {
-        this.state.selectedId = uid;
-        this.renderInspector();
-        this.render(); // Re-render to show selection highlight
-    }
-
-    // --- Dragging on Canvas ---
-    onItemMouseDown(e, uid) {
-        e.stopPropagation();
-        this.selectItem(uid);
-        this.isDragging = true;
-        this.draggedItem = this.state.items.find(item => item.uid === uid);
-
-        const rect = this.canvas.getBoundingClientRect();
-        this.dragOffset = {
-            x: (e.clientX - rect.left) / this.state.zoom - this.draggedItem.x,
-            y: (e.clientY - rect.top) / this.state.zoom - this.draggedItem.y
-        };
-    }
-
-    onMouseMove(e) {
-        if (this.isDragging && this.draggedItem) {
-            const rect = this.canvas.getBoundingClientRect();
-            let newX = (e.clientX - rect.left) / this.state.zoom - this.dragOffset.x;
-            let newY = (e.clientY - rect.top) / this.state.zoom - this.dragOffset.y;
-
-            // Snap to grid if enabled
-            if (this.state.showGrid) {
-                newX = Math.round(newX / 10) * 10;
-                newY = Math.round(newY / 10) * 10;
-            }
-
-            this.draggedItem.x = newX;
-            this.draggedItem.y = newY;
-            this.render();
-            this.updateInspectorValues();
-        }
-    }
-
-    onMouseUp() {
-        if (this.isDragging) {
-            this.isDragging = false;
-            this.draggedItem = null;
-            this.pushHistory();
-        }
-    }
-
-    // --- Rendering ---
-    render() {
-        if (!this.canvas) return;
-
-        // Update Canvas CSS for zoom
-        this.canvas.style.transform = `scale(${this.state.zoom})`;
-
-        // Render items
-        const itemsHtml = this.state.items.map(item => {
-            const isSelected = item.uid === this.state.selectedId;
-            const animClass = item.animation !== 'none' ? `anim-${item.animation}` : '';
 
             return `
-                <div id="${item.uid}" 
-                     class="gmd-item ${isSelected ? 'selected' : ''} ${animClass}"
-                     style="left: ${item.x}px; top: ${item.y}px; width: ${item.size}px; height: ${item.size + (item.showText ? 30 : 0)}px;"
-                     onmousedown="gmd.onItemMouseDown(event, '${item.uid}')"
-                >
-                    <div class="gmd-item-icon" style="width: ${item.size}px; height: ${item.size}px; font-size: ${item.size * 0.5}px;">
-                        <img src="${this.API_URL}${item.icon}" style="width: 80%; height: 80%; object-fit: contain;">
-                        <div class="gmd-item-glow" style="background: ${item.textColor};"></div>
+                <div class="library-item" onclick="giftDesigner.addToCanvas('${giftId}')">
+                    <div class="gift-media-wrap" style="height: 50px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center;">
+                        ${iconHTML}
                     </div>
-                    ${item.showText ? `
-                        <div class="gmd-item-text" style="color: ${item.textColor}; font-size: ${item.fontSize}px; margin-top: ${item.gap}px;">
-                            ${item.name}
-                        </div>
-                    ` : ''}
+                    <div class="gift-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; font-size: 11px;">${gift.name}</div>
+                    <div class="gift-price" style="font-size: 10px; color: var(--secondary);">${gift.coins || 0} coins</div>
                 </div>
             `;
         }).join('');
+    }
 
-        this.canvas.innerHTML = itemsHtml;
+    filterLibrary(val) {
+        this.renderLibrary(val);
+    }
+
+    setRatio(ratio) {
+        this.currentRatio = ratio;
+        const canvas = document.getElementById(this.canvasId);
+        if (!canvas) return;
+
+        if (ratio === '9:16') {
+            canvas.style.width = '360px';
+            canvas.style.height = '640px';
+        } else if (ratio === '16:9') {
+            canvas.style.width = '640px';
+            canvas.style.height = '360px';
+        } else if (ratio === '1:1') {
+            canvas.style.width = '450px';
+            canvas.style.height = '450px';
+        }
+
+        // Update UI
+        document.querySelectorAll('.ratio-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.innerText === ratio);
+        });
+    }
+
+    toggleGrid() {
+        this.gridEnabled = !this.gridEnabled;
+        const canvas = document.getElementById(this.canvasId);
+        const btn = document.getElementById('toggle-grid-btn');
+        if (canvas) canvas.classList.toggle('grid-on', this.gridEnabled);
+        if (btn) btn.classList.toggle('active', this.gridEnabled);
+    }
+
+    toggleSnap() {
+        this.snapEnabled = !this.snapEnabled;
+        const btn = document.getElementById('toggle-snap-btn');
+        if (btn) btn.classList.toggle('active', this.snapEnabled);
+    }
+
+    addToCanvas(giftId) {
+        const gift = this.gifts.find(g => g.id === giftId);
+        if (!gift) return;
+
+        const newItem = {
+            id: 'item_' + Date.now(),
+            giftId: gift.id,
+            name: gift.name,
+            icon: gift.icon || '🎁',
+            x: 100 + (Math.random() * 50),
+            y: 100 + (Math.random() * 50),
+            scale: 1,
+            rotation: 0,
+            aura: 'none',
+            animation: 'none'
+        };
+
+        this.items.push(newItem);
+        this.renderCanvas();
+        this.selectItem(newItem.id);
+    }
+
+    renderCanvas() {
+        const canvas = document.getElementById(this.canvasId);
+        if (!canvas) return;
+
+        const baseUrl = (window.app && window.app.API_URL) ? window.app.API_URL : 'http://127.0.0.1:9000';
+
+        canvas.innerHTML = this.items.map(item => {
+            const isImage = item.icon && (item.icon.includes('/') || item.icon.includes('.'));
+            let iconHTML = '';
+            
+            if (isImage) {
+                const iconUrl = item.icon.startsWith('http') ? item.icon : `${baseUrl}${item.icon}`;
+                iconHTML = `<img src="${iconUrl}" style="width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(167, 139, 250, 0.8)); z-index: 2;">`;
+            } else {
+                iconHTML = `<div class="icon" style="font-size: 40px;">${item.icon}</div>`;
+            }
+
+            return `
+                <div id="${item.id}" 
+                     class="designer-item ${this.selectedItemId === item.id ? 'selected' : ''}" 
+                     style="left: ${item.x}px; top: ${item.y}px; transform: rotate(${item.rotation}deg) scale(${item.scale});"
+                     onmousedown="giftDesigner.startDrag(event, '${item.id}')">
+                    ${item.aura !== 'none' ? `<div class="aura" style="background: ${this.getAuraColor(item.aura)}"></div>` : ''}
+                    ${iconHTML}
+                    <div class="name-tag">${item.name}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    getAuraColor(aura) {
+        const colors = {
+            'purple': 'radial-gradient(circle, rgba(167, 139, 250, 0.5) 0%, transparent 70%)',
+            'gold': 'radial-gradient(circle, rgba(251, 191, 36, 0.5) 0%, transparent 70%)',
+            'red': 'radial-gradient(circle, rgba(239, 68, 68, 0.5) 0%, transparent 70%)',
+            'blue': 'radial-gradient(circle, rgba(59, 130, 246, 0.5) 0%, transparent 70%)'
+        };
+        return colors[aura] || colors['purple'];
+    }
+
+    selectItem(id) {
+        this.selectedItemId = id;
+        this.renderCanvas();
+        this.renderInspector();
     }
 
     renderInspector() {
-        if (!this.inspector) return;
+        const inspector = document.getElementById('designer-inspector');
+        if (!inspector) return;
 
-        const item = this.state.items.find(i => i.uid === this.state.selectedId);
-
+        const item = this.items.find(i => i.id === this.selectedItemId);
         if (!item) {
-            this.inspector.innerHTML = `
-                <div class="gmd-inspector-header">
-                    <h3>⚙️ Cài đặt chung</h3>
-                </div>
-                <div class="gmd-inspector-body">
-                    <div class="gmd-control-group">
-                        <label>Layout Type</label>
-                        <select class="gmd-select" onchange="gmd.updateGlobal('layoutType', this.value)">
-                            <option value="both" ${this.state.layoutType === 'both' ? 'selected' : ''}>Cả 2 bên</option>
-                            <option value="left" ${this.state.layoutType === 'left' ? 'selected' : ''}>Bên trái</option>
-                            <option value="right" ${this.state.layoutType === 'right' ? 'selected' : ''}>Bên phải</option>
-                        </select>
+            inspector.innerHTML = `
+                <div class="empty-inspector">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-mouse-pointer"></i>
                     </div>
-                    <div class="gmd-control-group">
-                        <label>Spacing</label>
-                        <div class="gmd-slider-wrap">
-                            <input type="range" class="gmd-slider" min="0" max="100" value="${this.state.spacing}" oninput="gmd.updateGlobal('spacing', this.value)">
-                            <span class="gmd-slider-val">${this.state.spacing}px</span>
-                        </div>
-                    </div>
-                    <div class="gmd-control-group">
-                        <div class="gmd-toggle-row">
-                            <label style="margin:0">Hiện lưới</label>
-                            <input type="checkbox" ${this.state.showGrid ? 'checked' : ''} onchange="gmd.toggleGrid()">
-                        </div>
-                    </div>
+                    <h4>No Selection</h4>
+                    <p>Chọn một món quà trên canvas để tùy chỉnh</p>
                 </div>
             `;
             return;
         }
 
-        this.inspector.innerHTML = `
-            <div class="gmd-inspector-header">
-                <h3>🛠 Thuộc tính Item</h3>
-                <button class="gmd-btn-icon" onclick="gmd.deleteSelectedItem()"><i class="fas fa-trash-alt"></i></button>
+        inspector.innerHTML = `
+            <div class="inspector-group">
+                <label>Tên hiển thị</label>
+                <input type="text" class="inspector-control" value="${item.name}" 
+                       oninput="giftDesigner.updateSelectedItem('name', this.value)">
             </div>
-            <div class="gmd-inspector-body">
-                <div class="gmd-control-group">
-                    <label>Vị trí (X / Y)</label>
-                    <div class="gmd-input-row">
-                        <div class="gmd-field">
-                            <span>X</span>
-                            <input type="number" class="gmd-input" value="${Math.round(item.x)}" onchange="gmd.updateItem('x', this.value)">
-                        </div>
-                        <div class="gmd-field">
-                            <span>Y</span>
-                            <input type="number" class="gmd-input" value="${Math.round(item.y)}" onchange="gmd.updateItem('y', this.value)">
-                        </div>
-                    </div>
-                </div>
 
-                <div class="gmd-control-group">
-                    <label>Kích thước</label>
-                    <div class="gmd-slider-wrap">
-                        <input type="range" class="gmd-slider" min="40" max="150" value="${item.size}" oninput="gmd.updateItem('size', this.value)">
-                        <span class="gmd-slider-val">${item.size}px</span>
-                    </div>
+            <div class="inspector-row">
+                <div class="inspector-group">
+                    <label>Tọa độ X</label>
+                    <input type="number" class="inspector-control" value="${Math.round(item.x)}"
+                           oninput="giftDesigner.updateSelectedItem('x', parseInt(this.value))">
                 </div>
+                <div class="inspector-group">
+                    <label>Tọa độ Y</label>
+                    <input type="number" class="inspector-control" value="${Math.round(item.y)}"
+                           oninput="giftDesigner.updateSelectedItem('y', parseInt(this.value))">
+                </div>
+            </div>
 
-                <div class="gmd-control-group">
-                    <label>Hiệu ứng (Animation)</label>
-                    <select class="gmd-select" onchange="gmd.updateItem('animation', this.value)">
-                        <option value="none" ${item.animation === 'none' ? 'selected' : ''}>Không</option>
-                        <option value="pulse" ${item.animation === 'pulse' ? 'selected' : ''}>Pulse (Nhịp đập)</option>
-                        <option value="bounce" ${item.animation === 'bounce' ? 'selected' : ''}>Bounce (Nhảy)</option>
-                        <option value="fade" ${item.animation === 'fade' ? 'selected' : ''}>Fade (Ẩn hiện)</option>
-                    </select>
-                </div>
+            <div class="inspector-group">
+                <label>Kích thước (Scale: ${item.scale})</label>
+                <input type="range" min="0.5" max="3" step="0.1" value="${item.scale}" 
+                       oninput="giftDesigner.updateSelectedItem('scale', parseFloat(this.value))">
+            </div>
 
-                <div class="gmd-control-group">
-                    <div class="gmd-toggle-row">
-                        <label style="margin:0">Hiện tên quà</label>
-                        <input type="checkbox" ${item.showText ? 'checked' : ''} onchange="gmd.updateItem('showText', this.checked)">
-                    </div>
-                </div>
+            <div class="inspector-group">
+                <label>Xoay (Degrees: ${item.rotation}°)</label>
+                <input type="range" min="0" max="360" step="1" value="${item.rotation}" 
+                       oninput="giftDesigner.updateSelectedItem('rotation', parseInt(this.value))">
+            </div>
 
-                <div id="gmd-text-settings" style="display: ${item.showText ? 'block' : 'none'}">
-                    <div class="gmd-control-group">
-                        <label>Màu chữ & Glow</label>
-                        <input type="color" class="gmd-input" value="${item.textColor}" onchange="gmd.updateItem('textColor', this.value)" style="height:40px; padding:2px;">
-                    </div>
-                    <div class="gmd-control-group">
-                        <label>Cỡ chữ</label>
-                        <div class="gmd-slider-wrap">
-                            <input type="range" class="gmd-slider" min="10" max="30" value="${item.fontSize}" oninput="gmd.updateItem('fontSize', this.value)">
-                            <span class="gmd-slider-val">${item.fontSize}px</span>
-                        </div>
-                    </div>
-                    <div class="gmd-control-group">
-                        <label>Khoảng cách (Gap)</label>
-                        <div class="gmd-slider-wrap">
-                            <input type="range" class="gmd-slider" min="0" max="20" value="${item.gap}" oninput="gmd.updateItem('gap', this.value)">
-                            <span class="gmd-slider-val">${item.gap}px</span>
-                        </div>
-                    </div>
-                </div>
+            <div class="inspector-group">
+                <label>Hiệu ứng Aura</label>
+                <select class="inspector-control" onchange="giftDesigner.updateSelectedItem('aura', this.value)">
+                    <option value="none" ${item.aura === 'none' ? 'selected' : ''}>Không có</option>
+                    <option value="purple" ${item.aura === 'purple' ? 'selected' : ''}>Tím Neon</option>
+                    <option value="gold" ${item.aura === 'gold' ? 'selected' : ''}>Vàng Kim</option>
+                    <option value="red" ${item.aura === 'red' ? 'selected' : ''}>Đỏ Lửa</option>
+                    <option value="blue" ${item.aura === 'blue' ? 'selected' : ''}>Xanh Nước</option>
+                </select>
+            </div>
+
+            <div class="inspector-group" style="margin-top: 20px;">
+                <button class="toolbar-btn text-btn" style="width: 100%; border-color: #ef4444; color: #ef4444;" 
+                        onclick="giftDesigner.deleteSelectedItem()">
+                    <i class="fas fa-trash"></i> Xóa phần tử
+                </button>
             </div>
         `;
     }
 
-    updateInspectorValues() {
-        // Update only specific values without full re-render for performance during drag
-        if (!this.state.selectedId) return;
-        const item = this.state.items.find(i => i.uid === this.state.selectedId);
+    updateSelectedItem(key, value) {
+        const item = this.items.find(i => i.id === this.selectedItemId);
         if (item) {
-            const inputs = this.inspector.querySelectorAll('input[type="number"]');
-            if (inputs.length >= 2) {
-                inputs[0].value = Math.round(item.x);
-                inputs[1].value = Math.round(item.y);
-            }
-        }
-    }
-
-    updateItem(key, value) {
-        if (!this.state.selectedId) return;
-        const item = this.state.items.find(i => i.uid === this.state.selectedId);
-        if (item) {
-            // Convert to number if applicable
-            if (key === 'x' || key === 'y' || key === 'size' || key === 'fontSize' || key === 'gap') {
-                value = parseInt(value);
-            }
-
             item[key] = value;
-            this.render();
+            this.renderCanvas();
+            // Don't re-render whole inspector for text inputs to avoid focus loss
+            if (['scale', 'rotation', 'aura'].includes(key)) {
+                this.renderInspector();
+            }
+        }
+    }
+
+    resetSelectedItem() {
+        const item = this.items.find(i => i.id === this.selectedItemId);
+        if (item) {
+            item.scale = 1;
+            item.rotation = 0;
+            item.aura = 'none';
+            this.renderCanvas();
             this.renderInspector();
-            this.pushHistory();
         }
     }
 
-    updateGlobal(key, value) {
-        if (key === 'spacing') value = parseInt(value);
-        this.state[key] = value;
-        this.render();
-        this.renderInspector();
-        this.pushHistory();
-    }
-
-    // --- Zoom Controls ---
-    zoomIn() {
-        this.state.zoom = Math.min(this.state.zoom + 0.1, 2);
-        this.updateZoomUI();
-    }
-
-    zoomOut() {
-        this.state.zoom = Math.max(this.state.zoom - 0.1, 0.5);
-        this.updateZoomUI();
-    }
-
-    resetZoom() {
-        this.state.zoom = 1;
-        this.updateZoomUI();
-    }
-
-    updateZoomUI() {
-        this.zoomLevelEl.textContent = Math.round(this.state.zoom * 100) + '%';
-        this.render();
-    }
-
-    toggleGrid() {
-        this.state.showGrid = !this.state.showGrid;
-        if (this.state.showGrid) {
-            this.canvas.classList.add('checkerboard');
-        } else {
-            this.canvas.classList.remove('checkerboard');
-        }
+    deleteSelectedItem() {
+        if (!this.selectedItemId) return;
+        this.items = this.items.filter(i => i.id !== this.selectedItemId);
+        this.selectedItemId = null;
+        this.renderCanvas();
         this.renderInspector();
     }
+
+    // Placeholders for Phase 1
+    undo() { app.showNotification('info', 'Undo: Tính năng sẽ có trong Phase 2'); }
+    redo() { app.showNotification('info', 'Redo: Tính năng sẽ có trong Phase 2'); }
+    preview() { app.showNotification('info', 'Preview: Đang mở cửa sổ xem thử...'); }
+    export() { app.showNotification('warning', 'Export: Vui lòng lưu thiết kế trước'); }
+    copyURL() { 
+        const input = document.querySelector('.export-url-wrap input');
+        input.select();
+        document.execCommand('copy');
+        app.showNotification('success', '✅ Đã copy URL OBS');
+    }
+    exportHTML() { app.showNotification('info', 'HTML Export: Tính năng đang phát triển'); }
 
     clearCanvas() {
-        if (confirm("Xóa tất cả các vật phẩm trên canvas?")) {
-            this.state.items = [];
-            this.pushHistory();
-            this.render();
+        if (confirm('Bạn có chắc chắn muốn xóa toàn bộ thiết kế?')) {
+            this.items = [];
+            this.selectedItemId = null;
+            this.renderCanvas();
             this.renderInspector();
         }
     }
 
-    // --- History (Undo/Redo) ---
-    pushHistory() {
-        // Deep clone state for history
-        const stateCopy = JSON.parse(JSON.stringify(this.state));
-
-        // Remove forward history if we are in the middle of it
-        if (this.historyIndex < this.history.length - 1) {
-            this.history = this.history.slice(0, this.historyIndex + 1);
-        }
-
-        this.history.push(stateCopy);
-        if (this.history.length > 50) this.history.shift();
-        this.historyIndex = this.history.length - 1;
+    saveProject() {
+        console.log('💾 Saving project:', this.items);
+        app.showNotification('success', '✅ Đã lưu thiết kế thành công!');
     }
 
-    undo() {
-        if (this.historyIndex > 0) {
-            this.historyIndex--;
-            this.state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
-            this.render();
+    startDrag(e, id) {
+        e.preventDefault();
+        this.selectItem(id);
+        const item = this.items.find(i => i.id === id);
+        if (!item) return;
+
+        this.isDragging = true;
+        this.dragOffset = {
+            x: e.clientX - item.x,
+            y: e.clientY - item.y
+        };
+
+        const onMouseMove = (moveEvent) => {
+            if (!this.isDragging) return;
+            
+            let newX = moveEvent.clientX - this.dragOffset.x;
+            let newY = moveEvent.clientY - this.dragOffset.y;
+            
+            // Snap logic placeholder
+            if (this.snapEnabled) {
+                newX = Math.round(newX / 20) * 20;
+                newY = Math.round(newY / 20) * 20;
+            }
+            
+            item.x = newX;
+            item.y = newY;
+            this.renderCanvas();
+        };
+
+        const onMouseUp = () => {
+            this.isDragging = false;
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
             this.renderInspector();
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    }
+
+    setupEventListeners() {
+        const canvas = document.getElementById(this.canvasId);
+        if (canvas) {
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.target.id === this.canvasId) {
+                    this.selectedItemId = null;
+                    this.renderCanvas();
+                    this.renderInspector();
+                }
+            });
         }
-    }
-
-    redo() {
-        if (this.historyIndex < this.history.length - 1) {
-            this.historyIndex++;
-            this.state = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
-            this.render();
-            this.renderInspector();
-        }
-    }
-
-    // --- Actions ---
-    async save() {
-        console.log("Saving layout:", this.state);
-        localStorage.setItem('gmd_layout', JSON.stringify(this.state));
-
-        if (window.app && window.app.showNotification) {
-            window.app.showNotification('success', '✅ Đã lưu thiết kế thành công!');
-        } else {
-            alert("Đã lưu thiết kế!");
-        }
-    }
-
-    preview() {
-        this.save();
-        window.open('overlay.html?preview=true', '_blank', 'width=400,height=600');
-    }
-
-    exportOBS() {
-        this.save();
-        const overlayUrl = window.location.href.replace('index.html', 'overlay.html');
-
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 100000;
-            display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px);
-        `;
-
-        modal.innerHTML = `
-            <div style="background: #161625; padding: 30px; border-radius: 16px; border: 1px solid var(--gmd-accent); max-width: 500px; width: 90%; color: white;">
-                <h3 style="margin-top: 0; color: var(--gmd-accent);">🚀 Xuất OBS Overlay</h3>
-                <p style="font-size: 14px; color: #94a3b8; margin-bottom: 20px;">Copy đường dẫn dưới đây và dán vào <strong>Browser Source</strong> trong OBS của bạn.</p>
-                <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; word-break: break-all; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;">
-                    ${overlayUrl}
-                </div>
-                <div style="display:flex; gap: 10px;">
-                    <button onclick="navigator.clipboard.writeText('${overlayUrl}'); alert('Đã copy!');" style="flex: 1; background: var(--gmd-accent); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 700;">Copy URL</button>
-                    <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: rgba(255,255,255,0.1); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer;">Đóng</button>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
     }
 }
 
-// Initialize global instance
-const gmd = new GiftMenuDesigner();
-window.gmd = gmd;
+// Global instance
+window.giftDesigner = new GiftMenuDesigner();

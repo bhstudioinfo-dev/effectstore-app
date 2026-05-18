@@ -1469,7 +1469,7 @@ class EffectStoreApp {
         );
         if (activeNav) activeNav.classList.add('active');
 
-        const viewsToHide = ['store', 'library', 'admin', 'settings', 'gift-mapping'];
+        const viewsToHide = ['store', 'library', 'admin', 'settings', 'gift-mapping', 'gift-menu-designer'];
         viewsToHide.forEach(v => {
             const el = document.getElementById(`${v}-view`);
             if (el) {
@@ -1514,6 +1514,9 @@ class EffectStoreApp {
             } else if (view === 'settings') {
                 document.getElementById('page-title').textContent = '⚙️ Cài Đặt';
                 this.loadSettings();
+            } else if (view === 'gift-menu-designer') {
+                document.getElementById('page-title').textContent = '🎨 Gift Menu Designer';
+                if (window.giftDesigner) window.giftDesigner.init();
             } else {
                 document.getElementById('page-title').textContent = 'EffectStore';
             }
