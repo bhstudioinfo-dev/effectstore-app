@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const tiktokService = require('../services/tiktokService');
 const GiftMapping = require('../models/GiftMapping');
 const GiftLog = require('../models/GiftLog');
@@ -7,6 +9,7 @@ const GiftConfig = require('../models/GiftConfig');
 const Effect = require('../models/Effect');
 const User = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
+const giftMenuLayoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
 
 // Connect
 router.post('/connect', authMiddleware, async (req, res) => {
@@ -14,6 +17,17 @@ router.post('/connect', authMiddleware, async (req, res) => {
     const success = await tiktokService.connect(roomId, req.userId);
     if (success) res.json({ success: true });
     else res.status(500).json({ success: false });
+});
+
+// Prepare (compat endpoint for older frontends)
+router.post('/prepare', async (req, res) => {
+    try {
+        const { roomId } = req.body || {};
+        if (!roomId) return res.status(400).json({ success: false, message: 'Missing roomId' });
+        res.json({ success: true, roomId: String(roomId).trim() });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // Disconnect
@@ -33,6 +47,16 @@ router.get('/mappings', authMiddleware, async (req, res) => {
         const mappings = await GiftMapping.find({ userId: req.userId });
         res.json({ success: true, mappings });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// Available effects (compat endpoint for standalone mapping page)
+router.get('/available-effects', async (req, res) => {
+    try {
+        const effects = await Effect.find({ isActive: true }).sort({ uses: -1 });
+        res.json({ success: true, effects });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 router.post('/map-gift', authMiddleware, async (req, res) => {
@@ -125,8 +149,7 @@ router.get('/logs', authMiddleware, async (req, res) => {
         const limit = parseInt(req.query.limit) || 100;
         const logs = await GiftLog.find({ userId: req.userId })
             .sort({ triggeredAt: -1 })
-            .limit(limit)
-            .populate('effectId');
+            .limit(limit);
         res.json({ success: true, logs });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -195,6 +218,37 @@ router.get('/gifts-library', async (req, res) => {
 
         res.json({ success: true, gifts });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// Gift Menu Designer layout (local JSON storage, DB-independent)
+router.get('/gift-menu-layout', async (_req, res) => {
+    try {
+        if (!fs.existsSync(giftMenuLayoutPath)) {
+            return res.json({ success: true, layout: { version: 2, aspectRatio: '9:16', canvasSize: { width: 720, height: 960 }, items: [] } });
+        }
+        const raw = fs.readFileSync(giftMenuLayoutPath, 'utf8');
+        const layout = JSON.parse(raw || '{}');
+        res.json({ success: true, layout });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/gift-menu-layout', async (req, res) => {
+    try {
+        const payload = req.body || {};
+        const safeLayout = {
+            version: 2,
+            savedAt: new Date().toISOString(),
+            aspectRatio: payload.aspectRatio || '9:16',
+            canvasSize: payload.canvasSize || { width: 720, height: 960 },
+            items: Array.isArray(payload.items) ? payload.items : []
+        };
+        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(safeLayout, null, 2), 'utf8');
+        res.json({ success: true, layout: safeLayout });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 module.exports = router;

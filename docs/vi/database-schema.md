@@ -1,20 +1,18 @@
-# 🗄️ CẤU TRÚC DỮ LIỆU (DATABASE_SCHEMA)
+﻿# ðŸ—„ï¸ Cáº¤U TRÃšC Dá»® LIá»†U (DATABASE_SCHEMA)
 
-## 👤 Người dùng (User)
-Lưu trữ thông tin cá nhân, mật khẩu, gói thành viên (Free/Pro/Business), danh sách hiệu ứng đã mua và số tiền đã chi tiêu. Mỗi tài khoản được gắn với một mã máy (Machine ID) để bảo mật.
+## ðŸ‘¤ NgÆ°á»i dÃ¹ng (User)
+LÆ°u trá»¯ thÃ´ng tin cÃ¡ nhÃ¢n, máº­t kháº©u, gÃ³i thÃ nh viÃªn (Free/Pro/Business), danh sÃ¡ch hiá»‡u á»©ng Ä‘Ã£ mua vÃ  sá»‘ tiá»n Ä‘Ã£ chi tiÃªu. Má»—i tÃ i khoáº£n Ä‘Æ°á»£c gáº¯n vá»›i má»™t mÃ£ mÃ¡y (Machine ID) Ä‘á»ƒ báº£o máº­t.
 
-## 🎬 Hiệu ứng (Effect)
-Chứa thông tin về tên hiệu ứng, giá bán, thời lượng, tệp tin video đã mã hóa, và các chỉ số thống kê (lượt dùng, đánh giá).
+## ðŸŽ¬ Hiá»‡u á»©ng (Effect)
+Chá»©a thÃ´ng tin vá» tÃªn hiá»‡u á»©ng, giÃ¡ bÃ¡n, thá»i lÆ°á»£ng, tá»‡p tin video Ä‘Ã£ mÃ£ hÃ³a, vÃ  cÃ¡c chá»‰ sá»‘ thá»‘ng kÃª (lÆ°á»£t dÃ¹ng, Ä‘Ã¡nh giÃ¡).
 
-## 🔗 Liên kết quà tặng (GiftMapping)
-Bản ghi kết nối giữa một món quà TikTok cụ thể và một hiệu ứng video. Đây là trái tim của hệ thống tự động hóa.
+## ðŸ”— LiÃªn káº¿t quÃ  táº·ng (GiftMapping)
+Báº£n ghi káº¿t ná»‘i giá»¯a má»™t mÃ³n quÃ  TikTok cá»¥ thá»ƒ vÃ  má»™t hiá»‡u á»©ng video. ÄÃ¢y lÃ  trÃ¡i tim cá»§a há»‡ thá»‘ng tá»± Ä‘á»™ng hÃ³a.
 
-## 🎁 Menu quà tặng (GiftMenu)
-Lưu trữ các thiết kế bảng quà tặng mà người dùng đã tạo trong công cụ thiết kế.
+## ðŸ’° Thanh toÃ¡n (Payment)
+Theo dÃµi lá»‹ch sá»­ náº¡p tiá»n, tráº¡ng thÃ¡i giao dá»‹ch (Äang chá»/ThÃ nh cÃ´ng/ÄÃ£ há»§y) vÃ  áº£nh báº±ng chá»©ng chuyá»ƒn khoáº£n.
 
-## 💰 Thanh toán (Payment)
-Theo dõi lịch sử nạp tiền, trạng thái giao dịch (Đang chờ/Thành công/Đã hủy) và ảnh bằng chứng chuyển khoản.
+## ðŸ“‹ Quy táº¯c vÃ  Giá»›i háº¡n
+- **GÃ³i thÃ nh viÃªn**: Quyáº¿t Ä‘á»‹nh sá»‘ lÆ°á»£ng mÃ¡y Ä‘Æ°á»£c Ä‘Äƒng nháº­p vÃ  sá»‘ lÆ°á»£ng mÃ³n quÃ  cÃ³ thá»ƒ cÃ i Ä‘áº·t hiá»‡u á»©ng.
+- **Quyá»n Admin**: TÃ i khoáº£n `admin@effectstore.vn` cÃ³ toÃ n quyá»n quáº£n lÃ½ há»‡ thá»‘ng, duyá»‡t náº¡p tiá»n vÃ  thÃªm hiá»‡u á»©ng má»›i.
 
-## 📋 Quy tắc và Giới hạn
-- **Gói thành viên**: Quyết định số lượng máy được đăng nhập và số lượng món quà có thể cài đặt hiệu ứng.
-- **Quyền Admin**: Tài khoản `admin@effectstore.vn` có toàn quyền quản lý hệ thống, duyệt nạp tiền và thêm hiệu ứng mới.

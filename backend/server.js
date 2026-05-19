@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
+const EffectRequest = require('./models/EffectRequest');
 
 // Services
 const obsService = require('./services/obsService');
@@ -19,7 +20,6 @@ const paymentRoutes = require('./routes/payment');
 const tiktokRoutes = require('./routes/tiktok');
 const obsRoutes = require('./routes/obs');
 const settingsRoutes = require('./routes/settings');
-const menuRoutes = require('./routes/menu');
 
 const app = express();
 const PORT = process.env.PORT || 9000;
@@ -56,15 +56,25 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/effectsto
 // ========================================
 // REAL-TIME COMMUNICATION (WebSocket)
 // ========================================
-const wss = new WebSocket.Server({ port: 9001 });
+const WS_PORT = parseInt(process.env.WS_PORT || '9001', 10);
+let wss = null;
 const clients = new Set();
 
-wss.on('connection', (ws) => {
-    clients.add(ws);
-    ws.on('close', () => clients.delete(ws));
-});
+try {
+    wss = new WebSocket.Server({ port: WS_PORT });
+    wss.on('error', (err) => {
+        console.error(`❌ WebSocket runtime error on port ${WS_PORT}:`, err.message);
+    });
+    wss.on('connection', (ws) => {
+        clients.add(ws);
+        ws.on('close', () => clients.delete(ws));
+    });
+} catch (err) {
+    console.error(`❌ WebSocket startup error on port ${WS_PORT}:`, err.message);
+}
 
 function broadcastToClients(event, data) {
+    if (!wss) return;
     const message = JSON.stringify({ event, data });
     clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
@@ -94,7 +104,17 @@ app.use('/api/obs', require('./routes/obs'));
 app.use('/api/tiktok', require('./routes/tiktok'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/settings', require('./routes/settings'));
-app.use('/api/menu', require('./routes/menu'));
+
+// Compatibility endpoint used by older renderer builds
+app.post('/api/effect-requests', async (req, res) => {
+    try {
+        const { name, phone, description } = req.body || {};
+        const request = await EffectRequest.create({ name, phone, description });
+        res.json({ success: true, request });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 // Banner routes (mounted at /api/banner and /api/admin/banner)
 const bannerRoutes = require('./routes/banner');
@@ -120,12 +140,18 @@ app.get('/api/system/status', async (req, res) => {
 // Legacy/Asset Routes
 app.use('/assets/gift-icons', express.static(path.join(__dirname, 'assets', 'gift-icons')));
 
+// OBS Browser Source overlay renderer for Gift Menu Designer
+app.get('/overlay/gift-menu/', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'gift-menu-overlay.html'));
+});
+
 // ========================================
 // START SERVER
 // ========================================
 app.listen(PORT, () => {
     console.log(`🚀 Backend started - EffectStore Server v1.0`);
     console.log(`🚀 Server chạy tại: http://localhost:${PORT}`);
-    console.log(`📡 WebSocket running at: ws://localhost:9001`);
+    if (wss) console.log(`📡 WebSocket init at: ws://localhost:${WS_PORT}`);
+    else console.log(`⚠️ WebSocket disabled (port ${WS_PORT} unavailable)`);
     console.log(`🔐 DRM Protection: Enabled (Encrypted Streaming)`);
 });

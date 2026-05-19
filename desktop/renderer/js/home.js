@@ -23,7 +23,6 @@ class EffectStoreApp {
         this.pendingEffects = null;
         this.pendingPaymentEffects = JSON.parse(localStorage.getItem('es_pending_payments') || '[]');
         this.logsInterval = null;
-        this.currentMenuId = null; // Track current designer menu
 
         // TikTok Live variables
         this.ws = null;
@@ -1516,7 +1515,7 @@ class EffectStoreApp {
                 this.loadSettings();
             } else if (view === 'gift-menu-designer') {
                 document.getElementById('page-title').textContent = '🎨 Gift Menu Designer';
-                if (window.giftDesigner) window.giftDesigner.init();
+                if (rightSidebar) rightSidebar.style.display = 'none';
             } else {
                 document.getElementById('page-title').textContent = 'EffectStore';
             }
@@ -3016,167 +3015,19 @@ class EffectStoreApp {
         }, 1000);
     }
 
-    // ===== GIFT MENU DESIGNER LOGIC =====
-    async initGiftMenuDesigner() {
-        try {
-            // Khởi tạo Designer Canvas
-            if (window.giftMenuDesigner) {
-                window.giftMenuDesigner.init();
-            }
-
-            const giftList = document.getElementById('designer-library-grid');
-            if (!giftList) return;
-
-            giftList.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Đang tải quà tặng...</div>';
-
-            const res = await fetch(`${this.API_URL}/api/tiktok/gifts-library`, {
-                headers: { 'Authorization': `Bearer ${this.authToken}` }
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                giftList.innerHTML = '';
-                data.gifts.forEach(g => {
-                    const isImage = g.icon && (g.icon.includes('/') || g.icon.includes('.'));
-                    const iconHtml = isImage
-                        ? `<img src="${this.API_URL}${g.icon}" alt="${g.name}">`
-                        : `<div style="font-size:24px;">${g.icon || '🎁'}</div>`;
-
-                    const item = document.createElement('div');
-                    item.className = 'mini-gift-item';
-                    item.draggable = true;
-                    item.innerHTML = `
-                                ${iconHtml}
-                                <div class="name">${g.name}</div>
-                            `;
-
-                    // Support both Click and Drag
-                    item.onclick = () => {
-                        if (window.designer) window.designer.addGiftToCanvas(g);
-                    };
-
-                    item.ondragstart = (e) => {
-                        e.dataTransfer.setData('gift', JSON.stringify(g));
-                    };
-
-                    giftList.appendChild(item);
-                });
-            }
-        } catch (e) {
-            console.error('Error init designer:', e);
-        }
-
-        // Tải danh sách menu đã lưu
-        this.loadSavedMenus();
-    }
-
-    async loadSavedMenus() {
-        try {
-            const listEl = document.getElementById('designer-saved-menus');
-            if (!listEl) return;
-
-            const res = await fetch(`${this.API_URL}/api/menu/list`, {
-                headers: { 'Authorization': `Bearer ${this.authToken}` }
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                if (data.menus.length === 0) {
-                    listEl.innerHTML = '<div class="loading-state" style="padding:10px; font-size:11px;">Chưa có mẫu thiết kế nào</div>';
-                    return;
-                }
-
-                listEl.innerHTML = '';
-                data.menus.forEach(m => {
-                    const item = document.createElement('div');
-                    item.className = `saved-menu-item ${this.currentMenuId === m._id ? 'active' : ''}`;
-                    item.innerHTML = `
-                                <div class="menu-info">
-                                    <div class="name">${m.name}</div>
-                                    <div class="meta">${m.elements.length} phần quà</div>
-                                </div>
-                                ${this.currentMenuId === m._id ? '<i class="fas fa-check-circle"></i>' : ''}
-                            `;
-                    item.onclick = () => this.selectMenu(m);
-                    listEl.appendChild(item);
-                });
-            }
-        } catch (e) {
-            console.error('Error load menus:', e);
-        }
-    }
-
-    async saveMenu(isExport = false) {
-        if (!window.designer) return;
-        const canvasData = window.designer.getData();
-        if (!canvasData) return;
-
-        try {
-            const res = await fetch(`${this.API_URL}/api/menu/save`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.authToken}`
-                },
-                body: JSON.stringify({
-                    id: this.currentMenuId,
-                    name: this.currentMenuId ? undefined : 'Menu mới ' + new Date().toLocaleTimeString(),
-                    elements: canvasData.elements,
-                    config: canvasData.config
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                this.currentMenuId = data.menu._id;
-                this.showNotification('success', isExport ? '🚀 Lưu & Xuất thành công!' : '✅ Đã lưu thiết kế!');
-                this.loadSavedMenus();
-
-                // Update Export UI
-                const exportId = document.getElementById('export-menu-id');
-                if (exportId) exportId.textContent = data.menu._id;
-            }
-        } catch (e) {
-            this.showNotification('error', '❌ Lỗi khi lưu thiết kế');
-        }
-    }
-
-    async selectMenu(menu) {
-        this.currentMenuId = menu._id;
-        if (window.designer) {
-            window.designer.loadData({
-                elements: menu.elements,
-                config: menu.config
-            });
-        }
-        this.loadSavedMenus();
-
-        const exportId = document.getElementById('export-menu-id');
-        if (exportId) exportId.textContent = menu._id;
-    }
-
-    createNewMenu() {
-        this.currentMenuId = null;
-        if (window.designer && window.designer.canvas) {
-            window.designer.canvas.clear();
-            window.designer.drawGrid();
-        }
-        this.loadSavedMenus();
-        const exportId = document.getElementById('export-menu-id');
-        if (exportId) exportId.textContent = '...';
-    }
 }
 
-// ===== EXPOSE GLOBAL FUNCTIONS =====
-window.saveMenu = (isExport) => window.app.saveMenu(isExport);
-window.createNewMenu = () => window.app.createNewMenu();
-window.copyExportUrl = () => {
-    const url = document.querySelector('.export-url-box').textContent.trim();
-    navigator.clipboard.writeText(url);
-    window.app.showNotification('success', '📋 Đã sao chép link OBS!');
-};
-
 // ===== INITIALIZE APP =====
-if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => { window.app = new EffectStoreApp(); }); } else { window.app = new EffectStoreApp(); }
+function bootstrapApp() {
+    window.app = new EffectStoreApp();
+    globalThis.app = window.app;
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrapApp);
+} else {
+    bootstrapApp();
+}
 
 // ===== HELPER FUNCTIONS =====
 function toggleCart() {

@@ -1,6 +1,6 @@
-# 🗄️ DATABASE_SCHEMA.md
+﻿# ðŸ—„ï¸ DATABASE_SCHEMA.md
 
-## 👤 User Collection
+## ðŸ‘¤ User Collection
 - **_id**: ObjectId
 - **email**: String (Unique, Required)
 - **password**: String (Hashed)
@@ -14,7 +14,7 @@
 - **isAdmin**: Boolean
 - **isActive**: Boolean
 
-## 🎬 Effect Collection
+## ðŸŽ¬ Effect Collection
 - **name**: String
 - **category**: String
 - **price**: Number
@@ -26,33 +26,27 @@
 - **isTrending**: Boolean
 - **isFlashSale**: Boolean
 
-## 🔗 GiftMapping Collection
+## ðŸ”— GiftMapping Collection
 - **userId**: String (Reference to User)
 - **giftId**: String (TikTok Gift ID)
 - **giftName**: String
 - **effectId**: ObjectId (Ref: Effect)
 - **isActive**: Boolean
 
-## 🎁 GiftMenu Collection
-- **userId**: ObjectId (Ref: User)
-- **name**: String
-- **elements**: Array (Serialized Fabric.js objects)
-- **config**: { width, height, backgroundColor }
-
-## 💰 Payment Collection
+## ðŸ’° Payment Collection
 - **userId**: String
 - **amount**: Number
 - **orderId**: String (Unique)
 - **status**: Enum ['pending', 'completed', 'cancelled']
 - **proofUrl**: String (Image of receipt)
 
-## 📋 Relationships
+## ðŸ“‹ Relationships
 - **User -> GiftMapping**: 1:N (A user has many gift mappings).
 - **GiftMapping -> Effect**: N:1 (Multiple mappings can trigger the same effect).
-- **User -> GiftMenu**: 1:N (A user can have multiple saved menu designs).
 - **User -> PurchasedEffects**: Many-to-Many via the embedded array in User.
 
-## ⚖️ Business Constraints
+## âš–ï¸ Business Constraints
 - **Device Limit**: Free users = 1, Pro = 2, Business = 5.
 - **Mapping Limit**: Free users = 5, Pro = 20, Business = 100.
 - **Admin**: The email `admin@effectstore.vn` is hardcoded as the root administrator.
+

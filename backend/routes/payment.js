@@ -62,6 +62,15 @@ router.get('/status/:orderId', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// Compatibility webhook endpoint (no-op acknowledge)
+router.post('/sepay-webhook', async (req, res) => {
+    try {
+        res.json({ success: true, received: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Admin: List Payments
 router.get('/admin/payments', authMiddleware, adminMiddleware, async (req, res) => {
     try {

@@ -8,7 +8,7 @@
   - `/utils`: Helper functions (Encryption, QR generation).
 - `/desktop`: Electron application.
   - `/renderer`: UI assets (HTML, CSS, JS).
-    - `/js`: Frontend logic (home.js, gift-menu-designer.js).
+    - `/js`: Frontend logic (home.js).
     - `/styles`: CSS design system.
 - `/effects`: Assets directory.
   - `/encrypted`: DRM protected WebM files.
@@ -41,7 +41,6 @@
 - **Effects**: Metadata, pricing, file paths, usage stats.
 - **GiftMappings**: User-specific links between TikTok Gift IDs and Effect IDs.
 - **Payments**: Transaction history and pending QR orders.
-- **GiftMenus**: Serialized Fabric.js objects for the designer.
 
 ## 📦 Important Dependencies
 - `express`: Web framework.

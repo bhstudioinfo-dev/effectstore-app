@@ -5,7 +5,7 @@ const GiftLogSchema = new mongoose.Schema({
     giftName: String,
     userId: String,
     userName: String,
-    effectId: String,
+    effectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Effect' },
     triggeredAt: { type: Date, default: Date.now },
     sessionId: String,
     repeatCount: { type: Number, default: 1 }

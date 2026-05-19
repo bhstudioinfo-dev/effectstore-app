@@ -21,7 +21,6 @@
     *   Xử lý tất cả click chuột, cập nhật số dư, hiển thị thông báo.
     *   Điều khiển việc chuyển đổi giữa các Tab.
     *   Chứa logic Nút Test (giả lập quà tặng).
-*   **`js/gift-menu-designer.js`**: Module riêng cho công cụ thiết kế Menu quà tặng (kéo thả, tùy chỉnh Aura/Hiệu ứng).
 *   **`styles/main.css`**: Định nghĩa phong cách "Premium Pro" (Glassmorphism, Neon, Blur).
 
 ### B. BACKEND (Xử lý hệ thống) - `backend/`

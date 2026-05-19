@@ -1,22 +1,28 @@
-# 📈 CURRENT_PROGRESS.md
+# CURRENT_PROGRESS
 
-## ✅ Completed Tasks
-- [x] **Core Stability**: Restored project to April 1st baseline and purged corrupted files.
-- [x] **Authentication**: Fixed 401/403 errors and implemented device limits based on plans.
-- [x] **DRM**: Implemented encrypted WebM streaming for visual assets.
-- [x] **Gift Menu Designer**: 3-column layout (Library, Canvas, Inspector) implementation.
-- [x] **API Standardization**: Unified all API calls to use `${this.API_URL}`.
-- [x] **Sequential Queue**: Reliable multi-gift handling for OBS triggers.
+## Completed
+- [x] Core stability baseline restored.
+- [x] Authentication and device-limit flow stabilized.
+- [x] DRM streaming for effect assets enabled.
+- [x] API base URL standardized for frontend calls.
+- [x] OBS sequential queue handling in place.
+- [x] Gift Menu Designer V2 - Phase 1 implemented as isolated module:
+  - 3-column workspace (Gift Library / Smart Canvas / Inspector)
+  - Aspect ratio buttons (9:16, 16:9, 1:1)
+  - Real gift icon loading from `/api/tiktok/gifts-library`
+  - Canvas add/select/basic drag
+  - Inspector controls and export placeholders
 
-## 🚧 In-Progress Tasks
-- [ ] **Aura Customization**: Fine-tuning the circular vs oval rendering logic in the Designer.
-- [ ] **Admin Banner Management**: Improving the UI for uploading and previewing banners.
-- [ ] **System Status Polling**: Enhancing the real-time detection of OBS/TikTok connection state.
+## In Progress
+- [ ] Gift Menu Designer V2 - Phase 2:
+  - advanced resize/rotate
+  - richer animation behavior
+  - real export pipeline for overlay package
 
-## 🎯 Next Priorities
-1. **TTS Enhancement**: Integrating more natural AI voices.
-2. **Template Library**: Pre-built gift menu templates for new users.
-3. **Log Analytics**: Visual charts for streamers to see their most popular gifts/effects.
-4. **Mobile Control**: A simple web-based dashboard for remote control.
+## Next Priorities
+1. Improve designer save/load preset flow.
+2. Add preview rendering parity with overlay runtime.
+3. Add validation and error feedback for export actions.
 
-## 📅 Last Updated: 2026-05-14
+## Last Updated
+2026-05-18

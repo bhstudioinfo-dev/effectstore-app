@@ -12,6 +12,7 @@ const path = require('path');
 const fs = require('fs');
 
 const upload = multer({ dest: 'uploads/temp/' });
+const iconUpload = multer({ dest: 'uploads/temp/' });
 
 // Dashboard Data (Stats + Recent Payments)
 router.get('/dashboard', authMiddleware, adminMiddleware, async (req, res) => {
@@ -104,6 +105,21 @@ router.get('/effect-requests', authMiddleware, adminMiddleware, async (req, res)
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+router.put('/effect-requests/:id', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const { status } = req.body;
+        const request = await EffectRequest.findByIdAndUpdate(
+            req.params.id,
+            { status: status || 'pending' },
+            { new: true }
+        );
+        if (!request) return res.status(404).json({ success: false, error: 'Request not found' });
+        res.json({ success: true, request });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Get all effects for admin (matching /api/admin/effects)
 
 // Get all effects for admin
@@ -124,10 +140,10 @@ router.get('/gift-coins', authMiddleware, adminMiddleware, async (req, res) => {
 
 router.put('/gift-coins/:giftId', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const { coins } = req.body;
+        const { coins, giftName } = req.body;
         const config = await GiftConfig.findOneAndUpdate(
             { giftId: req.params.giftId },
-            { coins, updatedAt: new Date() },
+            { coins, giftName: giftName || req.params.giftId, updatedAt: new Date() },
             { upsert: true, new: true }
         );
         res.json({ success: true, config });
@@ -141,7 +157,7 @@ router.post('/gift-coins/bulk-update', authMiddleware, adminMiddleware, async (r
         for (const update of updates) {
             const config = await GiftConfig.findOneAndUpdate(
                 { giftId: update.giftId },
-                { coins: update.coins, updatedAt: new Date() },
+                { coins: update.coins, giftName: update.giftName || update.giftId, updatedAt: new Date() },
                 { upsert: true, new: true }
             );
             results.push(config);
@@ -163,6 +179,97 @@ router.get('/gift-icons', authMiddleware, adminMiddleware, async (req, res) => {
         }));
         res.json({ success: true, icons });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.post('/gift-icons/upload', authMiddleware, adminMiddleware, iconUpload.single('icon'), async (req, res) => {
+    try {
+        const { giftId } = req.body;
+        if (!giftId || !req.file) {
+            return res.status(400).json({ success: false, message: 'Missing giftId or icon file' });
+        }
+
+        const iconsDir = path.join(__dirname, '../assets/gift-icons');
+        if (!fs.existsSync(iconsDir)) fs.mkdirSync(iconsDir, { recursive: true });
+
+        const safeGiftId = String(giftId).toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const targetName = `${safeGiftId}${path.extname(req.file.originalname || '.png')}`;
+        const targetPath = path.join(iconsDir, targetName);
+
+        fs.copyFileSync(req.file.path, targetPath);
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+
+        res.json({ success: true, icon: `/assets/gift-icons/${targetName}` });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/gift-icons/add', authMiddleware, adminMiddleware, iconUpload.single('icon'), async (req, res) => {
+    try {
+        const { giftId, name } = req.body;
+        if (!giftId || !name || !req.file) {
+            return res.status(400).json({ success: false, message: 'Missing giftId, name or icon file' });
+        }
+
+        const iconsDir = path.join(__dirname, '../assets/gift-icons');
+        if (!fs.existsSync(iconsDir)) fs.mkdirSync(iconsDir, { recursive: true });
+
+        const safeGiftId = String(giftId).toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const fileName = `${safeGiftId}${path.extname(req.file.originalname || '.png')}`;
+        const targetPath = path.join(iconsDir, fileName);
+        fs.copyFileSync(req.file.path, targetPath);
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+
+        await GiftConfig.findOneAndUpdate(
+            { giftId: safeGiftId },
+            { giftName: name, coins: 1, updatedAt: new Date() },
+            { upsert: true, new: true }
+        );
+
+        res.json({ success: true, gift: { id: safeGiftId, name, icon: `/assets/gift-icons/${fileName}` } });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.delete('/gift-icons/:giftId', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const iconsDir = path.join(__dirname, '../assets/gift-icons');
+        const safeGiftId = String(req.params.giftId).toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        if (!fs.existsSync(iconsDir)) return res.json({ success: true });
+
+        const files = fs.readdirSync(iconsDir);
+        files.forEach(file => {
+            const base = path.parse(file).name.toLowerCase().replace(/[-_]/g, '_');
+            if (base === safeGiftId || base === safeGiftId.replace(/_/g, ' ')) {
+                const filePath = path.join(iconsDir, file);
+                try { fs.unlinkSync(filePath); } catch (e) {}
+            }
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/gift-coins/reset', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        await GiftConfig.updateMany({}, { $set: { coins: 1, updatedAt: new Date() } });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.get('/payments/:id', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const payment = await Payment.findById(req.params.id);
+        if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+        res.json({ success: true, payment });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 module.exports = router;

@@ -13,7 +13,6 @@ EffectStore uses a hybrid communication model to balance performance and real-ti
 The UI is built on a custom design system focused on the "Premium Pro" aesthetic:
 - **Base**: `desktop/renderer/index.html` (Single Page Application architecture).
 - **Logic**: `desktop/renderer/js/home.js` (Class-based state management).
-- **Designer**: `desktop/renderer/js/gift-menu-designer.js` (Modular component for gift customization).
 
 ### Key Design Tokens:
 - **Glass**: `rgba(255, 255, 255, 0.05)` background with `12px` blur.

@@ -353,6 +353,17 @@
         const API_URL = 'http://localhost:9000';
         let selectedGift = null;
         let selectedEffect = null;
+
+        function getAuthToken() {
+            return localStorage.getItem('token') || '';
+        }
+
+        function authHeaders(extra = {}) {
+            const token = getAuthToken();
+            return token
+                ? { ...extra, 'Authorization': `Bearer ${token}` }
+                : extra;
+        }
         
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -512,10 +523,7 @@ async function loadGifts() {
                 
                 const res = await fetch(`${API_URL}/api/tiktok/map-gift`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-machine-id': getMachineId()
-                    },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({
                         giftId: selectedGift.id,
                         giftName: selectedGift.name,
@@ -547,7 +555,7 @@ async function loadGifts() {
         async function loadMappings() {
             try {
                 const res = await fetch(`${API_URL}/api/tiktok/mappings`, {
-                    headers: { 'x-machine-id': getMachineId() }
+                    headers: authHeaders()
                 });
                 const data = await res.json();
                 
@@ -582,7 +590,8 @@ async function loadGifts() {
         async function toggleMapping(id) {
             try {
                 const res = await fetch(`${API_URL}/api/tiktok/mappings/${id}/toggle`, {
-                    method: 'PUT'
+                    method: 'PUT',
+                    headers: authHeaders()
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -599,7 +608,7 @@ async function loadGifts() {
         async function deleteMapping(id) {
             if (!confirm('Xóa mapping này?')) return;
             try {
-                await fetch(`${API_URL}/api/tiktok/mappings/${id}`, { method: 'DELETE' });
+                await fetch(`${API_URL}/api/tiktok/mappings/${id}`, { method: 'DELETE', headers: authHeaders() });
                 loadMappings();
                 loadGifts();
                 playSuccessSound();
@@ -616,7 +625,7 @@ async function loadGifts() {
                 
                 const res = await fetch(`${API_URL}/api/tiktok/test-trigger`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ mappingId })
                 });
                 const data = await res.json();
@@ -636,7 +645,7 @@ async function loadGifts() {
         async function loadLogs() {
             try {
                 const res = await fetch(`${API_URL}/api/tiktok/logs`, {
-                    headers: { 'x-machine-id': getMachineId() }
+                    headers: authHeaders()
                 });
                 const data = await res.json();
                 
@@ -666,7 +675,7 @@ async function clearLogs() {
         console.log('🗑️ Deleting logs...');
         const res = await fetch(`${API_URL}/api/tiktok/logs`, { 
             method: 'DELETE',
-            headers: { 'x-machine-id': getMachineId() }
+            headers: authHeaders()
         });
         const data = await res.json();
         console.log('Delete response:', data);
@@ -812,7 +821,7 @@ async function connectTikTok() {
         showNotification('info', 'Đang kết nối TikTok Live...');
         const res = await fetch(`${API_URL}/api/tiktok/connect`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ roomId })
         });
         const data = await res.json();

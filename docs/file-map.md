@@ -27,7 +27,6 @@
 | `backend/services/obsService.js` | OBS WebSocket control & Scene automation. |
 | `backend/services/effectQueue.js` | Sequential playback management. |
 | `desktop/renderer/js/home.js` | **Frontend Brain**: View switching, State, TTS. |
-| `desktop/renderer/js/gift-menu-designer.js` | Canvas-based menu designer module. |
 | `backend/utils/encrypt-video.js` | DRM protection logic for WebM files. |
 
 ## 🚫 Critical Junctions
