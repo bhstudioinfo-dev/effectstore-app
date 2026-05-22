@@ -10,6 +10,7 @@ const Effect = require('../models/Effect');
 const User = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
 const giftMenuLayoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
+const giftGoalConfigPath = path.join(__dirname, '..', 'uploads', 'gift-goal-config.json');
 
 // Connect
 router.post('/connect', authMiddleware, async (req, res) => {
@@ -224,7 +225,17 @@ router.get('/gifts-library', async (req, res) => {
 router.get('/gift-menu-layout', async (_req, res) => {
     try {
         if (!fs.existsSync(giftMenuLayoutPath)) {
-            return res.json({ success: true, layout: { version: 2, aspectRatio: '9:16', canvasSize: { width: 720, height: 960 }, items: [] } });
+            return res.json({
+                success: true,
+                layout: {
+                    version: 2,
+                    aspectRatio: '9:16',
+                    canvasSize: { width: 720, height: 960 },
+                    exportSize: { width: 1080, height: 1920 },
+                    items: [],
+                    exportedItems: []
+                }
+            });
         }
         const raw = fs.readFileSync(giftMenuLayoutPath, 'utf8');
         const layout = JSON.parse(raw || '{}');
@@ -242,10 +253,113 @@ router.post('/gift-menu-layout', async (req, res) => {
             savedAt: new Date().toISOString(),
             aspectRatio: payload.aspectRatio || '9:16',
             canvasSize: payload.canvasSize || { width: 720, height: 960 },
-            items: Array.isArray(payload.items) ? payload.items : []
+            safeArea: payload.safeArea || null,
+            exportSize: payload.exportSize || { width: 1080, height: 1920 },
+            items: Array.isArray(payload.items) ? payload.items : [],
+            exportedItems: Array.isArray(payload.exportedItems) ? payload.exportedItems : []
         };
         fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(safeLayout, null, 2), 'utf8');
         res.json({ success: true, layout: safeLayout });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Gift Goal Tracker config/state
+router.get('/goal-tracker/config', async (_req, res) => {
+    try {
+        if (!fs.existsSync(giftGoalConfigPath)) {
+            return res.json({
+                success: true,
+                config: {
+                    title: 'Mở quà đặc biệt 🎁',
+                    goals: [],
+                    layout: {
+                        canvasWidth: 720,
+                        canvasHeight: 1280,
+                        x: 80,
+                        y: 80,
+                        width: 560,
+                        height: 220
+                    },
+                    style: {
+                        preset: 'neon',
+                        glow: 1,
+                        accentColor: '#b287ff'
+                    }
+                }
+            });
+        }
+        const raw = fs.readFileSync(giftGoalConfigPath, 'utf8');
+        const config = JSON.parse(raw || '{}');
+        res.json({ success: true, config });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.get('/goal-tracker/state', async (_req, res) => {
+    try {
+        res.json({ success: true, state: tiktokService.getGoalState() });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/goal-tracker/config', async (req, res) => {
+    try {
+        const payload = req.body || {};
+        const safeConfig = {
+            title: payload.title || 'Mở quà đặc biệt 🎁',
+            goals: Array.isArray(payload.goals) ? payload.goals.map((goal) => ({
+                id: goal.id || `goal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                giftId: goal.giftId || '',
+                giftName: goal.giftName || '',
+                giftIcon: goal.giftIcon || '',
+                target: Math.max(1, parseInt(goal.target, 10) || 1),
+                current: Math.max(0, parseInt(goal.current, 10) || 0)
+            })) : [],
+            layout: {
+                canvasWidth: Math.max(1, parseInt(payload?.layout?.canvasWidth, 10) || 720),
+                canvasHeight: Math.max(1, parseInt(payload?.layout?.canvasHeight, 10) || 1280),
+                x: Math.max(0, parseInt(payload?.layout?.x, 10) || 80),
+                y: Math.max(0, parseInt(payload?.layout?.y, 10) || 80),
+                width: Math.max(200, parseInt(payload?.layout?.width, 10) || 560),
+                height: Math.max(120, parseInt(payload?.layout?.height, 10) || 220)
+            },
+            style: {
+                preset: ['neon', 'aurora', 'holo', 'electric', 'plasma', 'sunset'].includes(payload?.style?.preset)
+                    ? payload.style.preset
+                    : 'neon',
+                glow: Math.max(0.4, Math.min(2, parseFloat(payload?.style?.glow) || 1)),
+                accentColor: String(payload?.style?.accentColor || '#b287ff')
+            }
+        };
+
+        fs.writeFileSync(giftGoalConfigPath, JSON.stringify(safeConfig, null, 2), 'utf8');
+        tiktokService.setGoalConfig(safeConfig);
+
+        res.json({ success: true, config: safeConfig, state: tiktokService.getGoalState() });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/goal-tracker/reset', async (_req, res) => {
+    try {
+        if (fs.existsSync(giftGoalConfigPath)) {
+            const raw = fs.readFileSync(giftGoalConfigPath, 'utf8');
+            const config = JSON.parse(raw || '{}');
+            config.goals = Array.isArray(config.goals)
+                ? config.goals.map((goal) => ({ ...goal, current: 0 }))
+                : [];
+            fs.writeFileSync(giftGoalConfigPath, JSON.stringify(config, null, 2), 'utf8');
+            tiktokService.setGoalConfig(config);
+        } else {
+            tiktokService.resetGoalProgress();
+        }
+
+        res.json({ success: true, state: tiktokService.getGoalState() });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

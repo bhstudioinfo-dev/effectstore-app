@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Goal Overlay</title>
+    <style>
+        :root {
+            --accent-1: #7c3aed;
+            --accent-2: #d946ef;
+            --accent-3: #fbbf24;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            overflow: hidden;
+            color: #eef2ff;
+        }
+        #stage {
+            position: relative;
+            width: 1080px;
+            height: 1920px;
+            transform-origin: top left;
+        }
+        #goal-widget {
+            --goal-accent: #b287ff;
+            position: absolute;
+            border-radius: 34px;
+            border: 1px solid rgba(174, 141, 255, 0.48);
+            background:
+                radial-gradient(circle at 40% -50%, rgba(130, 54, 238, 0.4), transparent 58%),
+                linear-gradient(145deg, rgba(14, 16, 30, 0.9), rgba(10, 12, 24, 0.8));
+            box-shadow:
+                0 0 32px rgba(137, 80, 248, 0.28),
+                inset 0 0 24px rgba(132, 80, 255, 0.18);
+            padding: 24px;
+            backdrop-filter: blur(8px);
+            --goal-glow: 1;
+        }
+        #goal-widget.preset-neon {
+            border-color: color-mix(in srgb, var(--goal-accent) 72%, white 28%);
+            box-shadow:
+                0 0 calc(32px * var(--goal-glow)) color-mix(in srgb, var(--goal-accent) 45%, transparent),
+                inset 0 0 calc(24px * var(--goal-glow)) color-mix(in srgb, var(--goal-accent) 35%, transparent);
+        }
+        #goal-widget.preset-aurora {
+            background:
+                radial-gradient(circle at 15% 10%, rgba(77, 255, 213, 0.2), transparent 45%),
+                radial-gradient(circle at 80% 10%, rgba(255, 108, 240, 0.24), transparent 42%),
+                linear-gradient(145deg, rgba(14, 16, 30, 0.9), rgba(10, 12, 24, 0.8));
+            box-shadow:
+                0 0 calc(24px * var(--goal-glow)) rgba(77, 255, 213, 0.26),
+                0 0 calc(38px * var(--goal-glow)) rgba(255, 108, 240, 0.2),
+                inset 0 0 24px rgba(132, 80, 255, 0.12);
+        }
+        #goal-widget.preset-holo {
+            background:
+                linear-gradient(120deg, rgba(114, 221, 255, 0.16), rgba(228, 110, 255, 0.16), rgba(255, 206, 95, 0.1)),
+                linear-gradient(145deg, rgba(14, 16, 30, 0.9), rgba(10, 12, 24, 0.8));
+            box-shadow:
+                0 0 calc(26px * var(--goal-glow)) rgba(114, 221, 255, 0.25),
+                0 0 calc(36px * var(--goal-glow)) rgba(228, 110, 255, 0.2),
+                inset 0 0 24px rgba(255, 255, 255, 0.12);
+        }
+        #goal-widget.preset-electric {
+            border-color: rgba(140, 180, 255, 0.55);
+            box-shadow:
+                0 0 calc(20px * var(--goal-glow)) rgba(85, 167, 255, 0.35),
+                0 0 calc(40px * var(--goal-glow)) rgba(168, 112, 255, 0.22),
+                inset 0 0 16px rgba(123, 185, 255, 0.14);
+        }
+        #goal-widget.preset-electric::before {
+            content: "";
+            position: absolute;
+            inset: -2px;
+            border-radius: 34px;
+            border: 1px solid rgba(135, 193, 255, 0.6);
+            animation: electricPulse 1.5s ease-in-out infinite;
+            pointer-events: none;
+        }
+        #goal-widget.preset-plasma {
+            background:
+                radial-gradient(circle at 20% 10%, rgba(255, 96, 180, 0.2), transparent 42%),
+                radial-gradient(circle at 80% 90%, rgba(96, 180, 255, 0.22), transparent 46%),
+                linear-gradient(145deg, rgba(14, 16, 30, 0.9), rgba(10, 12, 24, 0.8));
+            box-shadow:
+                0 0 calc(24px * var(--goal-glow)) color-mix(in srgb, var(--goal-accent) 55%, rgba(255, 96, 180, 0.3)),
+                inset 0 0 18px rgba(255, 255, 255, 0.07);
+        }
+        #goal-widget.preset-sunset {
+            background:
+                linear-gradient(120deg, rgba(255, 140, 84, 0.16), rgba(255, 209, 102, 0.14), rgba(255, 99, 132, 0.12)),
+                linear-gradient(145deg, rgba(14, 16, 30, 0.9), rgba(10, 12, 24, 0.8));
+            box-shadow:
+                0 0 calc(20px * var(--goal-glow)) rgba(255, 180, 80, 0.22),
+                0 0 calc(28px * var(--goal-glow)) color-mix(in srgb, var(--goal-accent) 35%, rgba(255, 120, 80, 0.3));
+        }
+        .goal-title {
+            font-size: 34px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            line-height: 1.2;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+        }
+        .goal-item {
+            display: grid;
+            grid-template-columns: 64px minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .goal-item:last-child { margin-bottom: 0; }
+        .goal-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+        }
+        .goal-icon img {
+            width: 90%;
+            height: 90%;
+            object-fit: contain;
+        }
+        .goal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            gap: 10px;
+        }
+        .goal-head strong {
+            font-size: 30px;
+            font-weight: 800;
+            color: #f4f6ff;
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+        }
+        .goal-head span {
+            font-size: 28px;
+            font-weight: 700;
+            color: #e9ddff;
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+        }
+        .goal-track {
+            width: 100%;
+            height: 18px;
+            border-radius: 999px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .goal-fill {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, color-mix(in srgb, var(--goal-accent) 85%, var(--accent-1) 15%), var(--accent-2), var(--accent-3));
+            box-shadow:
+                0 0 16px rgba(124, 58, 237, 0.7),
+                0 0 26px rgba(217, 70, 239, 0.35);
+            transition: width 420ms cubic-bezier(0.21, 0.94, 0.35, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .goal-fill::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(115deg, transparent 12%, rgba(255, 255, 255, 0.28) 45%, transparent 70%);
+            transform: translateX(-120%);
+            animation: shimmer 2.9s linear infinite;
+        }
+        @keyframes shimmer {
+            to { transform: translateX(180%); }
+        }
+        @keyframes electricPulse {
+            0%, 100% { opacity: 0.35; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="stage">
+        <div id="goal-widget"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:9000';
+        const WS_URL = 'ws://localhost:9001';
+        let ws = null;
+        let reconnectTimer = null;
+        let reconnectDelay = 1200;
+
+        const state = {
+            title: 'Muc tieu qua tang',
+            goals: [],
+            layout: {
+                canvasWidth: 1080,
+                canvasHeight: 1920,
+                x: 120,
+                y: 180,
+                width: 460
+            },
+            style: {
+                preset: 'neon',
+                glow: 1,
+                accentColor: '#b287ff'
+            }
+        };
+
+        function normalizeLayout(layout = {}) {
+            const canvasWidth = Math.max(320, parseInt(layout.canvasWidth, 10) || 1080);
+            const canvasHeight = Math.max(568, parseInt(layout.canvasHeight, 10) || 1920);
+            const width = Math.min(canvasWidth, Math.max(220, parseInt(layout.width, 10) || 460));
+            const height = Math.min(canvasHeight, Math.max(120, parseInt(layout.height, 10) || 220));
+            const x = Math.max(0, Math.min(canvasWidth - width, parseInt(layout.x, 10) || 120));
+            const y = Math.max(0, Math.min(canvasHeight - height, parseInt(layout.y, 10) || 180));
+            return { canvasWidth, canvasHeight, x, y, width, height };
+        }
+
+        function resolveIconUrl(icon) {
+            if (!icon) return '';
+            const raw = String(icon).trim();
+            if (!raw) return '';
+            if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+            if (raw.startsWith('/')) return `${API_BASE}${raw}`;
+            if (raw.startsWith('assets/')) return `${API_BASE}/${raw}`;
+            if (raw.startsWith('file:///')) return '';
+            if (/^[a-zA-Z]:[\\/]/.test(raw)) return '';
+            return `${API_BASE}/${raw}`;
+        }
+
+        function calcPercent(current, target) {
+            const t = Math.max(1, parseInt(target, 10) || 1);
+            const c = Math.max(0, parseInt(current, 10) || 0);
+            return Math.max(0, Math.min(100, (c / t) * 100));
+        }
+
+        function renderWidget() {
+            const widget = document.getElementById('goal-widget');
+            const layout = normalizeLayout(state.layout);
+            state.layout = layout;
+
+            widget.style.left = `${layout.x}px`;
+            widget.style.top = `${layout.y}px`;
+            widget.style.width = `${layout.width}px`;
+            widget.style.minHeight = `${layout.height}px`;
+            widget.className = `preset-${state.style?.preset || 'neon'}`;
+            widget.style.setProperty('--goal-glow', String(state.style?.glow || 1));
+            widget.style.setProperty('--goal-accent', String(state.style?.accentColor || '#b287ff'));
+
+            widget.innerHTML = `
+                <div class="goal-title">${state.title || 'Muc tieu qua tang'}</div>
+                ${(state.goals || []).map((goal) => `
+                    <div class="goal-item">
+                        <div class="goal-icon">${goal.giftIcon ? `<img src="${resolveIconUrl(goal.giftIcon)}" alt="" />` : ''}</div>
+                        <div>
+                            <div class="goal-head">
+                                <strong>${goal.giftName || 'Gift'}</strong>
+                                <span>${Math.max(0, parseInt(goal.current, 10) || 0)}/${Math.max(1, parseInt(goal.target, 10) || 1)}</span>
+                            </div>
+                            <div class="goal-track">
+                                <div class="goal-fill" style="width:${calcPercent(goal.current, goal.target)}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        async function loadInitialConfig() {
+            try {
+                const res = await fetch(`${API_BASE}/api/tiktok/goal-tracker/config`, { cache: 'no-store' });
+                const data = await res.json();
+                if (!data?.success || !data.config) return;
+                state.title = data.config.title || state.title;
+                state.goals = Array.isArray(data.config.goals) ? data.config.goals : [];
+                state.layout = normalizeLayout(data.config.layout || state.layout);
+                state.style = { ...state.style, ...(data.config.style || {}) };
+                renderWidget();
+            } catch (error) {
+                console.error('Cannot load goal config:', error);
+            }
+        }
+
+        function applyGoalUpdate(payload) {
+            if (!payload) return;
+            const index = state.goals.findIndex((goal) =>
+                (goal.id && payload.goalId && goal.id === payload.goalId) ||
+                (goal.giftId && payload.giftId && String(goal.giftId) === String(payload.giftId))
+            );
+            if (index < 0) return;
+            state.goals[index].current = payload.progress || 0;
+            renderWidget();
+        }
+
+        function connectWs() {
+            try {
+                ws = new WebSocket(WS_URL);
+                ws.onopen = () => { reconnectDelay = 1200; };
+                ws.onmessage = (event) => {
+                    try {
+                        const packet = JSON.parse(event.data || '{}');
+                        if (packet.event === 'goal_state' && packet.data) {
+                            state.title = packet.data.title || state.title;
+                            state.goals = Array.isArray(packet.data.goals) ? packet.data.goals : [];
+                            state.layout = normalizeLayout(packet.data.layout || state.layout);
+                            state.style = { ...state.style, ...(packet.data.style || {}) };
+                            renderWidget();
+                            return;
+                        }
+                        if (packet.event === 'goal_update' && packet.data) {
+                            applyGoalUpdate(packet.data);
+                        }
+                    } catch (error) {
+                        console.error('WS parse error:', error);
+                    }
+                };
+                ws.onclose = scheduleReconnect;
+                ws.onerror = () => { try { ws.close(); } catch (_) {} };
+            } catch (_error) {
+                scheduleReconnect();
+            }
+        }
+
+        function scheduleReconnect() {
+            if (reconnectTimer) return;
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                reconnectDelay = Math.min(reconnectDelay * 1.7, 8000);
+                connectWs();
+            }, reconnectDelay);
+        }
+
+        renderWidget();
+        loadInitialConfig();
+        connectWs();
+    </script>
+</body>
+</html>

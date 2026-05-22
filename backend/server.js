@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 const EffectRequest = require('./models/EffectRequest');
+const giftGoalConfigPath = path.join(__dirname, 'uploads', 'gift-goal-config.json');
 
 // Services
 const obsService = require('./services/obsService');
@@ -31,6 +32,13 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use(express.static(path.join(__dirname, 'public'), {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    }
+}));
 
 // Ensure directories exist
 const directories = [
@@ -87,6 +95,16 @@ function broadcastToClients(event, data) {
 tiktokService.init(broadcastToClients);
 effectQueue.setBroadcastFn(broadcastToClients);
 
+try {
+    if (fs.existsSync(giftGoalConfigPath)) {
+        const savedGoalConfig = JSON.parse(fs.readFileSync(giftGoalConfigPath, 'utf8') || '{}');
+        tiktokService.setGoalConfig(savedGoalConfig);
+        console.log('✅ Gift Goal config loaded');
+    }
+} catch (error) {
+    console.error('⚠️ Cannot load Gift Goal config:', error.message);
+}
+
 // Connect to OBS on startup
 obsService.connect(
     process.env.OBS_HOST || '127.0.0.1',
@@ -142,7 +160,13 @@ app.use('/assets/gift-icons', express.static(path.join(__dirname, 'assets', 'gif
 
 // OBS Browser Source overlay renderer for Gift Menu Designer
 app.get('/overlay/gift-menu/', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.sendFile(path.join(__dirname, 'public', 'gift-menu-overlay.html'));
+});
+
+app.get('/overlay/goal/', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.sendFile(path.join(__dirname, 'public', 'goal-overlay.html'));
 });
 
 // ========================================

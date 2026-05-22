@@ -411,12 +411,38 @@ class EffectStoreApp {
             const heroBanner = document.querySelector('.hero-banner-new');
 
             if (data.success && data.banner && heroBanner) {
-                const bannerUrl = `${this.API_URL}${data.banner.url}`;
+                const normalizeBannerUrl = (base, path) => {
+                    const safePath = String(path || '').trim();
+                    if (!safePath) return '';
+                    try {
+                        return new URL(safePath, base).toString();
+                    } catch (_error) {
+                        return `${base}${safePath.startsWith('/') ? '' : '/'}${safePath}`;
+                    }
+                };
+
+                const bannerVersion = encodeURIComponent(
+                    String(data.banner.updatedAt || data.banner.filename || data.banner.id || '1')
+                );
+                const primaryUrl = normalizeBannerUrl(this.API_URL, data.banner.url);
+                const fallbackBase = this.API_URL.includes('127.0.0.1')
+                    ? this.API_URL.replace('127.0.0.1', 'localhost')
+                    : this.API_URL.replace('localhost', '127.0.0.1');
+                const fallbackUrl = normalizeBannerUrl(fallbackBase, data.banner.url);
+                const bannerUrl = `${encodeURI(primaryUrl)}?v=${bannerVersion}`;
                 // Use backgroundImage to preserve existing background settings like gradient overlays
                 heroBanner.style.backgroundImage = `url('${bannerUrl}')`;
                 heroBanner.style.backgroundSize = 'cover';
                 heroBanner.style.backgroundPosition = 'center';
                 heroBanner.style.backgroundRepeat = 'no-repeat';
+
+                if (fallbackUrl && fallbackUrl !== primaryUrl) {
+                    const preloadImg = new Image();
+                    preloadImg.onerror = () => {
+                        heroBanner.style.backgroundImage = `url('${encodeURI(fallbackUrl)}?v=${bannerVersion}')`;
+                    };
+                    preloadImg.src = bannerUrl;
+                }
 
                 console.log('✅ Banner loaded:', data.banner.url);
             } else if (!heroBanner) {
@@ -1468,7 +1494,7 @@ class EffectStoreApp {
         );
         if (activeNav) activeNav.classList.add('active');
 
-        const viewsToHide = ['store', 'library', 'admin', 'settings', 'gift-mapping', 'gift-menu-designer'];
+        const viewsToHide = ['store', 'library', 'admin', 'settings', 'gift-mapping', 'gift-menu-designer', 'gift-goal-tracker'];
         viewsToHide.forEach(v => {
             const el = document.getElementById(`${v}-view`);
             if (el) {
@@ -1516,6 +1542,12 @@ class EffectStoreApp {
             } else if (view === 'gift-menu-designer') {
                 document.getElementById('page-title').textContent = '🎨 Gift Menu Designer';
                 if (rightSidebar) rightSidebar.style.display = 'none';
+            } else if (view === 'gift-goal-tracker') {
+                document.getElementById('page-title').textContent = '🎯 Bảng Mục Tiêu Quà Tặng';
+                if (rightSidebar) rightSidebar.style.display = 'none';
+                if (window.giftGoalTracker && typeof window.giftGoalTracker.init === 'function') {
+                    window.giftGoalTracker.init();
+                }
             } else {
                 document.getElementById('page-title').textContent = 'EffectStore';
             }

@@ -9,6 +9,7 @@
             this.filteredGifts = [];
             this.items = [];
             this.selectedId = null;
+            this.selectedIds = [];
             this.aspectRatio = '9:16';
             this.dragState = null;
             this.canvasSize = { width: 720, height: 960 };
@@ -17,6 +18,11 @@
             this.panY = 0;
             this.isSpacePressed = false;
             this.inspectorTab = 'gift';
+            this.history = [];
+            this.historyIndex = -1;
+            this.isRestoringHistory = false;
+            this.snapEnabled = true;
+            this.activeGuides = { x: null, y: null };
             this.auraOptions = [
                 { value: 'None', label: 'Không có' },
                 { value: 'Glow', label: 'Glow (Tỏa sáng)' },
@@ -25,14 +31,28 @@
                 { value: 'Neon Frame', label: 'Neon Frame (Khung Neon)' },
                 { value: 'Light Sweep', label: 'Light Sweep (Quét sáng)' }
             ];
+            this.auraOptions.push(
+                { value: 'Fire Aura', label: 'Fire Aura (Lửa)' },
+                { value: 'Electric Aura', label: 'Electric Aura (Điện)' }
+            );
         }
 
         init() {
             if (!this.mount) return;
+            this.injectSharedRendererCss();
             this.render();
             this.bindEvents();
             this.loadGiftLibrary();
             this.loadLayout();
+        }
+
+        injectSharedRendererCss() {
+            if (document.getElementById('gift-menu-renderer-css')) return;
+            const link = document.createElement('link');
+            link.id = 'gift-menu-renderer-css';
+            link.rel = 'stylesheet';
+            link.href = `${this.apiBase}/gift-menu-renderer.css?v=7`;
+            document.head.appendChild(link);
         }
 
         render() {
@@ -80,8 +100,25 @@
                             <div class="gmd-canvas-header">
                                 <h3>2. Thiết kế menu</h3>
                                 <div class="gmd-canvas-tools">
-                                    <button class="gmd-btn icon" data-action="duplicate"><i class="far fa-clone"></i></button>
-                                    <button class="gmd-btn icon" data-action="delete"><i class="far fa-trash-alt"></i></button>
+                                    <div class="gmd-tool-group">
+                                        <button class="gmd-btn icon" data-action="snap-toggle" title="Bật/Tắt Snap"><i class="fas fa-magnet"></i></button>
+                                    </div>
+                                    <div class="gmd-tool-group">
+                                        <button class="gmd-btn icon" data-action="align-left" title="Căn trái"><i class="fas fa-align-left"></i></button>
+                                        <button class="gmd-btn icon" data-action="align-center-x" title="Căn giữa ngang"><i class="fas fa-align-center"></i></button>
+                                        <button class="gmd-btn icon" data-action="align-right" title="Căn phải"><i class="fas fa-align-right"></i></button>
+                                        <button class="gmd-btn icon" data-action="align-top" title="Căn trên"><i class="fas fa-align-left fa-rotate-90"></i></button>
+                                        <button class="gmd-btn icon" data-action="align-center-y" title="Căn giữa dọc"><i class="fas fa-align-center fa-rotate-90"></i></button>
+                                        <button class="gmd-btn icon" data-action="align-bottom" title="Căn dưới"><i class="fas fa-align-right fa-rotate-90"></i></button>
+                                    </div>
+                                    <div class="gmd-tool-group">
+                                        <button class="gmd-btn icon" data-action="distribute-x" title="Căn đều ngang"><i class="fas fa-arrows-alt-h"></i></button>
+                                        <button class="gmd-btn icon" data-action="distribute-y" title="Căn đều dọc"><i class="fas fa-arrows-alt-v"></i></button>
+                                    </div>
+                                    <div class="gmd-tool-group">
+                                        <button class="gmd-btn icon" data-action="duplicate"><i class="far fa-clone"></i></button>
+                                        <button class="gmd-btn icon" data-action="delete"><i class="far fa-trash-alt"></i></button>
+                                    </div>
                                 </div>
                                 <div class="gmd-ratios">
                                     <button class="gmd-btn active" data-ratio="9:16">9:16</button>
@@ -92,6 +129,8 @@
                             <div id="gmd-canvas" class="gmd-canvas">
                                 <div id="gmd-stage" class="gmd-stage">
                                     <div id="gmd-safe-area" class="gmd-safe-area"></div>
+                                    <div id="gmd-guide-x" class="gmd-guide gmd-guide-x"></div>
+                                    <div id="gmd-guide-y" class="gmd-guide gmd-guide-y"></div>
                                 </div>
                                 <div class="gmd-zoom-pill">
                                     <button class="gmd-zoom-btn" data-action="zoom-out">−</button>
@@ -112,9 +151,98 @@
                 </div>
             `;
             if (this.sidebarRight) this.sidebarRight.style.display = 'none';
+            const snapBtn = this.mount.querySelector('[data-action="snap-toggle"]');
+            if (snapBtn) snapBtn.classList.toggle('active', this.snapEnabled);
             this.updateCanvasSizeByRatio();
             this.renderInspector();
             this.renderMyLibrary();
+            this.pushHistory('init');
+        }
+
+        createHistorySnapshot() {
+            return JSON.stringify({
+                items: this.items.map((i) => ({ ...i })),
+                selectedId: this.selectedId,
+                selectedIds: [...this.selectedIds],
+                aspectRatio: this.aspectRatio
+            });
+        }
+
+        restoreHistorySnapshot(snapshot) {
+            try {
+                const data = JSON.parse(snapshot);
+                this.items = Array.isArray(data.items) ? data.items.map((i) => ({ ...i })) : [];
+                this.selectedId = data.selectedId || null;
+                this.selectedIds = Array.isArray(data.selectedIds) ? data.selectedIds : (this.selectedId ? [this.selectedId] : []);
+                this.aspectRatio = data.aspectRatio || '9:16';
+                this.syncSelectionAfterDataChange();
+                this.mount.querySelectorAll('[data-ratio]').forEach((b) => b.classList.toggle('active', b.dataset.ratio === this.aspectRatio));
+                this.updateCanvasSizeByRatio();
+                this.renderCanvas();
+                this.renderInspector();
+                this.renderMyLibrary();
+                this.updateHistoryButtons();
+            } catch (_e) {}
+        }
+
+        pushHistory(_label = '') {
+            if (this.isRestoringHistory) return;
+            const snapshot = this.createHistorySnapshot();
+            if (this.historyIndex >= 0 && this.history[this.historyIndex] === snapshot) return;
+            if (this.historyIndex < this.history.length - 1) this.history = this.history.slice(0, this.historyIndex + 1);
+            this.history.push(snapshot);
+            if (this.history.length > 200) this.history.shift();
+            this.historyIndex = this.history.length - 1;
+            this.updateHistoryButtons();
+        }
+
+        updateHistoryButtons() {
+            const undoBtn = this.mount.querySelector('[data-action="undo"]');
+            const redoBtn = this.mount.querySelector('[data-action="redo"]');
+            if (undoBtn) undoBtn.disabled = this.historyIndex <= 0;
+            if (redoBtn) redoBtn.disabled = this.historyIndex >= this.history.length - 1;
+        }
+
+        undo() {
+            if (this.historyIndex <= 0) return;
+            this.isRestoringHistory = true;
+            this.historyIndex -= 1;
+            this.restoreHistorySnapshot(this.history[this.historyIndex]);
+            this.isRestoringHistory = false;
+        }
+
+        redo() {
+            if (this.historyIndex >= this.history.length - 1) return;
+            this.isRestoringHistory = true;
+            this.historyIndex += 1;
+            this.restoreHistorySnapshot(this.history[this.historyIndex]);
+            this.isRestoringHistory = false;
+        }
+
+        isSelected(id) {
+            return this.selectedIds.includes(id);
+        }
+
+        setSelection(ids = [], primaryId = null) {
+            const unique = Array.from(new Set(ids.filter(Boolean)));
+            this.selectedIds = unique;
+            this.selectedId = primaryId && unique.includes(primaryId) ? primaryId : (unique[0] || null);
+        }
+
+        clearSelection() {
+            this.selectedId = null;
+            this.selectedIds = [];
+        }
+
+        getSelectedItems() {
+            return this.items.filter((i) => this.selectedIds.includes(i.id));
+        }
+
+        syncSelectionAfterDataChange() {
+            const valid = new Set(this.items.map((i) => i.id));
+            this.selectedIds = this.selectedIds.filter((id) => valid.has(id));
+            if (!this.selectedIds.length) this.selectedId = null;
+            else if (!this.selectedId || !valid.has(this.selectedId)) this.selectedId = this.selectedIds[0];
         }
 
         async loadGiftLibrary() {
@@ -179,19 +307,20 @@
             const item = this.createItemFromGift(giftId, p.x, p.y);
             if (!item) return;
             this.items.push(item);
-            this.selectedId = item.id;
+            this.setSelection([item.id], item.id);
             this.renderCanvas();
             this.renderInspector();
             this.renderMyLibrary();
+            this.pushHistory('add-gift');
         }
 
         getAuraClass(type) {
-            const map = { Glow: 'aura-glow', Bubble: 'aura-bubble', 'Magic Ring': 'aura-ring', 'Neon Frame': 'aura-frame', 'Light Sweep': 'aura-sweep' };
+            const map = { Glow: 'aura-glow', Bubble: 'aura-bubble', 'Magic Ring': 'aura-ring', 'Neon Frame': 'aura-frame', 'Light Sweep': 'aura-sweep', 'Fire Aura': 'aura-fire', 'Electric Aura': 'aura-electric' };
             return map[type] || '';
         }
 
         getMotionClass(type) {
-            const map = { Pulse: 'anim-pulse', Bounce: 'anim-bounce', Float: 'anim-float', Zoom: 'anim-zoom', Shake: 'anim-shake', 'Light Sweep': 'anim-sweep' };
+            const map = { Pulse: 'anim-pulse', Bounce: 'anim-bounce', Float: 'anim-float', Zoom: 'anim-zoom', Shake: 'anim-shake' };
             return map[type] || '';
         }
 
@@ -202,7 +331,7 @@
             Array.from(stage.querySelectorAll('.gmd-item')).forEach((n) => n.remove());
             this.items.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).forEach((item) => {
                 if (item.visible === false) return;
-                const selected = this.selectedId === item.id;
+                const selected = this.isSelected(item.id);
                 const el = document.createElement('div');
                 el.className = `gmd-item ${selected ? 'selected' : ''}`;
                 el.dataset.itemId = item.id;
@@ -224,7 +353,7 @@
                         <span class="gmd-aura gmd-aura-front ${this.getAuraClass(item.auraType)}"></span>
                     </div>
                     ${item.showName ? `<div class="gmd-item-label" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;">${item.name}</div>` : ''}
-                    ${selected && !item.locked ? '<span class="gmd-handle gmd-rotate-handle" data-handle="rotate">⟳</span><span class="gmd-handle gmd-resize-handle" data-handle="resize"></span>' : ''}
+                    ${selected && !item.locked && this.selectedId === item.id && this.selectedIds.length <= 1 ? '<span class="gmd-handle gmd-rotate-handle" data-handle="rotate">⟳</span><span class="gmd-handle gmd-resize-handle" data-handle="resize"></span>' : ''}
                 `;
                 stage.appendChild(el);
             });
@@ -247,8 +376,14 @@
             }
         }
 
-        selectItem(id) {
-            this.selectedId = id;
+        selectItem(id, append = false) {
+            if (!append) this.setSelection([id], id);
+            else if (this.selectedIds.includes(id)) {
+                const next = this.selectedIds.filter((x) => x !== id);
+                this.setSelection(next, next[0] || null);
+            } else {
+                this.setSelection([...this.selectedIds, id], id);
+            }
             this.renderCanvas();
             this.renderInspector();
         }
@@ -268,7 +403,7 @@
                     <h4><i class="fas fa-layer-group"></i> LAYERS</h4>
                     <div class="gmd-layer-list">
                         ${sorted.length ? sorted.map((item) => `
-                            <div class="gmd-layer-item ${this.selectedId === item.id ? 'active' : ''}">
+                            <div class="gmd-layer-item ${this.isSelected(item.id) ? 'active' : ''}">
                                 <button class="gmd-layer-main" data-action="layer-select" data-layer-id="${item.id}">
                                     <img src="${item.iconUrl}" alt="${item.name}">
                                     <span>${item.name}</span>
@@ -339,8 +474,8 @@
 
                 <div class="gmd-section">
                     <h4><i class="fas fa-sparkles"></i> HIỆU ỨNG</h4>
-                    <div class="gmd-field"><label>Hiệu ứng xuất hiện</label>${this.renderSelect('animationType', selected.animationType, ['None', 'Pulse', 'Bounce', 'Float', 'Zoom', 'Shake', 'Light Sweep'])}</div>
-                    <div class="gmd-field"><label>Tốc độ xuất hiện</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0.2" max="8" step="0.1" data-key="animationSpeed" value="${selected.animationSpeed || 1}"><span>s</span></div></div>
+                    <div class="gmd-field"><label>Hiệu ứng loop</label>${this.renderSelect('animationType', selected.animationType, ['None', 'Pulse', 'Bounce', 'Float', 'Zoom', 'Shake'])}</div>
+                    <div class="gmd-field"><label>Tốc độ loop</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0.2" max="8" step="0.1" data-key="animationSpeed" value="${selected.animationSpeed || 1}"><span>s</span></div></div>
                     <input class="gmd-range" type="range" min="0.2" max="8" step="0.1" data-key="animationSpeed" value="${selected.animationSpeed || 1}">
                     <div class="gmd-field"><label>Hiệu ứng nền (Aura)</label>${this.renderSelect('auraType', selected.auraType, this.auraOptions)}</div>
                     <div class="gmd-field"><label>Tốc độ Aura</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0.2" max="8" step="0.1" data-key="auraSpeed" value="${selected.auraSpeed || 1}"><span>s</span></div></div>
@@ -362,12 +497,26 @@
         updateSelectedItem(key, value, refreshInspector = true) {
             const item = this.items.find((x) => x.id === this.selectedId);
             if (!item) return;
+            const selectedItems = this.getSelectedItems().filter((x) => !x.locked);
+            const oldWidth = item.width;
+            const oldHeight = item.height;
             if (key === 'showName') item[key] = Boolean(value);
             else if (['x', 'y', 'width', 'height', 'rotation', 'textSize', 'textGap', 'animationSpeed', 'auraSpeed', 'auraScale'].includes(key)) {
                 item[key] = Number(value);
                 // Keep icon box square by default for cleaner designer UX
                 if (key === 'width') item.height = item.width;
                 if (key === 'height') item.width = item.height;
+                if ((key === 'width' || key === 'height') && selectedItems.length > 1) {
+                    const sourceBefore = Math.max(1, key === 'width' ? oldWidth : oldHeight);
+                    const nextSize = Math.max(1, key === 'width' ? item.width : item.height);
+                    const ratio = nextSize / sourceBefore;
+                    selectedItems.forEach((s) => {
+                        if (s.id === item.id) return;
+                        s.width = Math.round(s.width * ratio);
+                        s.height = s.width;
+                        this.clampInsideCanvas(s);
+                    });
+                }
                 if (key === 'animationSpeed' || key === 'auraSpeed') {
                     item[key] = Math.max(0.2, Math.min(8, item[key] || 1));
                 }
@@ -382,6 +531,7 @@
             } else item[key] = value;
             this.renderCanvas();
             if (refreshInspector) this.renderInspector();
+            this.pushHistory('update-item');
         }
 
         syncInspectorLinkedControls(sourceEl, key, value) {
@@ -395,23 +545,32 @@
         }
 
         duplicateSelected() {
-            const item = this.items.find((x) => x.id === this.selectedId);
-            if (!item) return;
-            const clone = { ...item, id: `itm_${Date.now()}_${Math.floor(Math.random() * 1000)}`, x: item.x + 20, y: item.y + 20, zIndex: this.items.length + 1 };
-            this.items.push(clone);
-            this.selectedId = clone.id;
+            const selected = this.getSelectedItems();
+            if (!selected.length) return;
+            const clones = selected.map((item, idx) => ({
+                ...item,
+                id: `itm_${Date.now()}_${Math.floor(Math.random() * 1000)}_${idx}`,
+                x: item.x + 20,
+                y: item.y + 20,
+                zIndex: this.items.length + idx + 1
+            }));
+            this.items.push(...clones);
+            this.setSelection(clones.map((c) => c.id), clones[0].id);
             this.renderCanvas();
             this.renderInspector();
             this.renderMyLibrary();
+            this.pushHistory('duplicate');
         }
 
         deleteSelected() {
-            if (!this.selectedId) return;
-            this.items = this.items.filter((i) => i.id !== this.selectedId);
-            this.selectedId = null;
+            if (!this.selectedIds.length && !this.selectedId) return;
+            const removeSet = new Set(this.selectedIds.length ? this.selectedIds : [this.selectedId]);
+            this.items = this.items.filter((i) => !removeSet.has(i.id));
+            this.clearSelection();
             this.renderCanvas();
             this.renderInspector();
             this.renderMyLibrary();
+            this.pushHistory('delete');
         }
 
         normalizeZIndexOrder() {
@@ -434,6 +593,108 @@
             target.zIndex = tmp;
             this.renderCanvas();
             this.renderInspector();
+            this.pushHistory('move-layer');
+        }
+
+        applyAlign(mode) {
+            const canvas = this.mount.querySelector('#gmd-canvas');
+            const safe = this.mount.querySelector('#gmd-safe-area');
+            const selected = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
+            if (!canvas || !safe || !selected.length) return;
+            const safeRect = safe.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            const left = Math.round(safeRect.left - canvasRect.left);
+            const top = Math.round(safeRect.top - canvasRect.top);
+            const right = Math.round(left + safe.clientWidth);
+            const bottom = Math.round(top + safe.clientHeight);
+            selected.forEach((item) => {
+                if (mode === 'left') item.x = left;
+                if (mode === 'center-x') item.x = Math.round(left + ((safe.clientWidth - item.width) / 2));
+                if (mode === 'right') item.x = Math.round(right - item.width);
+                if (mode === 'top') item.y = top;
+                if (mode === 'center-y') item.y = Math.round(top + ((safe.clientHeight - item.height) / 2));
+                if (mode === 'bottom') item.y = Math.round(bottom - item.height);
+                item.x = Math.max(left, Math.min(item.x, right - item.width));
+                item.y = Math.max(top, Math.min(item.y, bottom - item.height));
+            });
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory(`align-${mode}`);
+        }
+
+        applyDistribute(axis) {
+            const selected = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
+            if (selected.length < 3) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('warning', 'Cần chọn ít nhất 3 phần quà để căn đều khoảng cách');
+                }
+                return;
+            }
+            if (axis === 'x') {
+                const sorted = [...selected].sort((a, b) => a.x - b.x);
+                const first = sorted[0];
+                const last = sorted[sorted.length - 1];
+                const span = (last.x + last.width) - first.x;
+                const totalWidth = sorted.reduce((sum, i) => sum + i.width, 0);
+                const gap = (span - totalWidth) / (sorted.length - 1);
+                if (!Number.isFinite(gap)) return;
+                let cursor = first.x;
+                sorted.forEach((item) => {
+                    item.x = Math.round(cursor);
+                    cursor += item.width + gap;
+                });
+            } else {
+                const sorted = [...selected].sort((a, b) => a.y - b.y);
+                const first = sorted[0];
+                const last = sorted[sorted.length - 1];
+                const span = (last.y + last.height) - first.y;
+                const totalHeight = sorted.reduce((sum, i) => sum + i.height, 0);
+                const gap = (span - totalHeight) / (sorted.length - 1);
+                if (!Number.isFinite(gap)) return;
+                let cursor = first.y;
+                sorted.forEach((item) => {
+                    item.y = Math.round(cursor);
+                    cursor += item.height + gap;
+                });
+            }
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory(`distribute-${axis}`);
+        }
+
+        applySnapForItem(baseX, baseY, item) {
+            if (!this.snapEnabled) return { x: baseX, y: baseY, guideX: null, guideY: null };
+            const canvas = this.mount.querySelector('#gmd-canvas');
+            if (!canvas) return { x: baseX, y: baseY, guideX: null, guideY: null };
+            const threshold = 8;
+            const cx = Math.round((canvas.clientWidth - item.width) / 2);
+            const cy = Math.round((canvas.clientHeight - item.height) / 2);
+            const candidatesX = [0, cx, canvas.clientWidth - item.width];
+            const candidatesY = [0, cy, canvas.clientHeight - item.height];
+            let x = baseX;
+            let y = baseY;
+            let guideX = null;
+            let guideY = null;
+            candidatesX.forEach((v) => {
+                if (Math.abs(x - v) <= threshold) { x = v; guideX = Math.round(v + (item.width / 2)); }
+            });
+            candidatesY.forEach((v) => {
+                if (Math.abs(y - v) <= threshold) { y = v; guideY = Math.round(v + (item.height / 2)); }
+            });
+            return { x, y, guideX, guideY };
+        }
+
+        updateGuides(guideX = null, guideY = null) {
+            const gx = this.mount.querySelector('#gmd-guide-x');
+            const gy = this.mount.querySelector('#gmd-guide-y');
+            if (gx) {
+                gx.style.display = guideX == null ? 'none' : 'block';
+                if (guideX != null) gx.style.left = `${guideX}px`;
+            }
+            if (gy) {
+                gy.style.display = guideY == null ? 'none' : 'block';
+                if (guideY != null) gy.style.top = `${guideY}px`;
+            }
         }
 
         setAspectRatio(ratio) {
@@ -486,7 +747,44 @@
         }
 
         async saveLayout(showToast = true) {
-            const payload = { version: 2, savedAt: new Date().toISOString(), aspectRatio: this.aspectRatio, canvasSize: this.canvasSize, items: this.items.map((i) => ({ ...i })) };
+            const canvas = this.mount ? this.mount.querySelector('#gmd-canvas') : null;
+            const safe = this.mount ? this.mount.querySelector('#gmd-safe-area') : null;
+            const liveCanvasSize = {
+                width: canvas && canvas.clientWidth ? canvas.clientWidth : this.canvasSize.width,
+                height: canvas && canvas.clientHeight ? canvas.clientHeight : this.canvasSize.height
+            };
+            const safeSize = {
+                width: safe && safe.clientWidth ? safe.clientWidth : 360,
+                height: safe && safe.clientHeight ? safe.clientHeight : 640
+            };
+            const safeOffset = {
+                x: Math.round((liveCanvasSize.width - safeSize.width) / 2),
+                y: Math.round((liveCanvasSize.height - safeSize.height) / 2)
+            };
+            const exportSize = this.aspectRatio === '9:16'
+                ? { width: 1080, height: 1920 }
+                : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
+            const sx = exportSize.width / safeSize.width;
+            const sy = exportSize.height / safeSize.height;
+            const exportedItems = this.items.map((i) => ({
+                ...i,
+                x: Math.round((i.x - safeOffset.x) * sx),
+                y: Math.round((i.y - safeOffset.y) * sy),
+                width: Math.round(i.width * sx),
+                height: Math.round(i.height * sy),
+                textSize: Number(i.textSize || 13) * ((sx + sy) / 2),
+                textGap: Number(i.textGap || 4) * sy
+            }));
+            const payload = {
+                version: 2,
+                savedAt: new Date().toISOString(),
+                aspectRatio: this.aspectRatio,
+                canvasSize: liveCanvasSize,
+                safeArea: { ...safeSize, ...safeOffset },
+                exportSize,
+                items: this.items.map((i) => ({ ...i })),
+                exportedItems
+            };
             localStorage.setItem('giftMenuDesignerLayoutV2', JSON.stringify(payload));
             try {
                 const headers = { 'Content-Type': 'application/json' };
@@ -495,6 +793,43 @@
             } catch (_e) {}
             if (showToast && window.app && typeof window.app.showNotification === 'function') window.app.showNotification('success', 'Đã lưu layout');
             this.renderMyLibrary();
+        }
+
+        async exportToOBS() {
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (this.token) headers.Authorization = `Bearer ${this.token}`;
+                const res = await fetch(`${this.apiBase}/api/obs/setup-gift-menu`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({})
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    const msg = (data && (data.message || data.error)) || 'Không thể kết nối OBS';
+                    throw new Error(msg);
+                }
+                return data;
+            } catch (e) {
+                throw e;
+            }
+        }
+
+        async saveAndExport() {
+            try {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('info', 'Đang lưu và đẩy Gift Menu lên OBS...');
+                }
+                await this.saveLayout(false);
+                const data = await this.exportToOBS();
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('success', `Đã lưu & kết nối OBS (${data.sourceName || 'gift_menu_overlay'})`);
+                }
+            } catch (e) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', `Lưu & xuất thất bại: ${e.message || 'Lỗi không xác định'}`);
+                }
+            }
         }
 
         async loadLayout() {
@@ -521,11 +856,14 @@
                 locked: Boolean(item.locked),
                 zIndex: item.zIndex || idx + 1
             }));
-            this.selectedId = this.items[0] ? this.items[0].id : null;
+            this.setSelection(this.items[0] ? [this.items[0].id] : [], this.items[0] ? this.items[0].id : null);
             this.setAspectRatio(this.aspectRatio);
             this.renderCanvas();
             this.renderInspector();
             this.renderMyLibrary();
+            this.history = [];
+            this.historyIndex = -1;
+            this.pushHistory('load-layout');
         }
 
         renderMyLibrary() {
@@ -550,9 +888,9 @@
                 const itemNode = e.target.closest('.gmd-item');
                 const clickedCanvas = e.target.closest('#gmd-canvas');
                 if (giftCard) this.addGiftToCanvas(giftCard.dataset.giftId);
-                if (itemNode) this.selectItem(itemNode.dataset.itemId);
+                if (itemNode) this.selectItem(itemNode.dataset.itemId, e.shiftKey);
                 if (!giftCard && !itemNode && !btn && clickedCanvas) {
-                    this.selectedId = null;
+                    this.clearSelection();
                     this.renderCanvas();
                     this.renderInspector();
                 }
@@ -566,16 +904,19 @@
                     return;
                 }
                 if (action === 'layer-select' && layerId) {
-                    this.selectItem(layerId);
+                    this.selectItem(layerId, e.shiftKey);
                     return;
                 }
                 if (action === 'layer-toggle-visible' && layerId) {
                     const item = this.items.find((x) => x.id === layerId);
                     if (!item) return;
                     item.visible = item.visible === false;
-                    if (item.visible === false && this.selectedId === layerId) this.selectedId = null;
+                    if (item.visible === false && this.isSelected(layerId)) {
+                        this.setSelection(this.selectedIds.filter((x) => x !== layerId), this.selectedId === layerId ? null : this.selectedId);
+                    }
                     this.renderCanvas();
                     this.renderInspector();
+                    this.pushHistory('toggle-visible');
                     return;
                 }
                 if (action === 'layer-toggle-lock' && layerId) {
@@ -584,6 +925,7 @@
                     item.locked = !item.locked;
                     this.renderCanvas();
                     this.renderInspector();
+                    this.pushHistory('toggle-lock');
                     return;
                 }
                 if (action === 'layer-up' && layerId) {
@@ -594,11 +936,27 @@
                     this.moveLayer(layerId, 'down');
                     return;
                 }
+                if (action === 'snap-toggle') {
+                    this.snapEnabled = !this.snapEnabled;
+                    btn.classList.toggle('active', this.snapEnabled);
+                    return;
+                }
+                if (action === 'align-left') this.applyAlign('left');
+                if (action === 'align-center-x') this.applyAlign('center-x');
+                if (action === 'align-right') this.applyAlign('right');
+                if (action === 'align-top') this.applyAlign('top');
+                if (action === 'align-center-y') this.applyAlign('center-y');
+                if (action === 'align-bottom') this.applyAlign('bottom');
+                if (action === 'distribute-x') this.applyDistribute('x');
+                if (action === 'distribute-y') this.applyDistribute('y');
                 if (action === 'duplicate') this.duplicateSelected();
                 if (action === 'delete') this.deleteSelected();
-                if (action === 'save' || action === 'save-export') this.saveLayout(true);
+                if (action === 'undo') this.undo();
+                if (action === 'redo') this.redo();
+                if (action === 'save') this.saveLayout(true);
+                if (action === 'save-export') this.saveAndExport();
                 if (action === 'preview-browser') window.open('http://localhost:9000/overlay/gift-menu/', '_blank');
-                if (action === 'new-layout') { this.items = []; this.selectedId = null; this.renderCanvas(); this.renderInspector(); this.renderMyLibrary(); }
+                if (action === 'new-layout') { this.items = []; this.clearSelection(); this.renderCanvas(); this.renderInspector(); this.renderMyLibrary(); this.pushHistory('new-layout'); }
                 if (action === 'zoom-in') this.setZoom(this.zoomLevel + 0.1);
                 if (action === 'zoom-out') this.setZoom(this.zoomLevel - 0.1);
             });
@@ -639,10 +997,11 @@
                     if (!item) return;
                     this.clampInsideCanvas(item);
                     this.items.push(item);
-                    this.selectedId = item.id;
+                    this.setSelection([item.id], item.id);
                     this.renderCanvas();
                     this.renderInspector();
                     this.renderMyLibrary();
+                    this.pushHistory('drop-gift');
                 });
             }
 
@@ -660,17 +1019,25 @@
                 }
                 const item = this.items.find((x) => x.id === itemNode.dataset.itemId);
                 if (!item) return;
+                if (e.shiftKey) {
+                    // Let click handler manage multi-select toggle without starting drag.
+                    return;
+                }
                 if (item.locked) {
-                    this.selectedId = item.id;
+                    this.setSelection([item.id], item.id);
                     this.renderCanvas();
                     this.renderInspector();
                     return;
                 }
                 const handle = e.target.closest('[data-handle]');
-                this.selectedId = item.id;
+                if (!this.isSelected(item.id)) this.setSelection([item.id], item.id);
                 if (handle && handle.dataset.handle === 'resize') this.dragState = { mode: 'resize', id: item.id, sx: e.clientX, sy: e.clientY, width: item.width, height: item.height };
                 else if (handle && handle.dataset.handle === 'rotate') this.dragState = { mode: 'rotate', id: item.id, sx: e.clientX, startRot: item.rotation };
-                else this.dragState = { mode: 'move', id: item.id, sx: e.clientX, sy: e.clientY, x: item.x, y: item.y };
+                else {
+                    const moving = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
+                    const startPositions = Object.fromEntries(moving.map((m) => [m.id, { x: m.x, y: m.y }]));
+                    this.dragState = { mode: 'move', id: item.id, sx: e.clientX, sy: e.clientY, x: item.x, y: item.y, movingIds: moving.map((m) => m.id), startPositions };
+                }
                 this.renderCanvas();
                 this.renderInspector();
             });
@@ -686,9 +1053,22 @@
                 }
                 if (!item) return;
                 if (this.dragState.mode === 'move') {
-                    item.x = Math.round(this.dragState.x + ((e.clientX - this.dragState.sx) / this.zoomLevel));
-                    item.y = Math.round(this.dragState.y + ((e.clientY - this.dragState.sy) / this.zoomLevel));
-                    this.clampInsideCanvas(item);
+                    const dx = ((e.clientX - this.dragState.sx) / this.zoomLevel);
+                    const dy = ((e.clientY - this.dragState.sy) / this.zoomLevel);
+                    const baseX = Math.round(this.dragState.x + dx);
+                    const baseY = Math.round(this.dragState.y + dy);
+                    const snapped = this.applySnapForItem(baseX, baseY, item);
+                    const snapDx = snapped.x - this.dragState.x;
+                    const snapDy = snapped.y - this.dragState.y;
+                    (this.dragState.movingIds || [item.id]).forEach((id) => {
+                        const movingItem = this.items.find((x) => x.id === id);
+                        const start = this.dragState.startPositions ? this.dragState.startPositions[id] : null;
+                        if (!movingItem || !start) return;
+                        movingItem.x = Math.round(start.x + snapDx);
+                        movingItem.y = Math.round(start.y + snapDy);
+                        this.clampInsideCanvas(movingItem);
+                    });
+                    this.updateGuides(snapped.guideX, snapped.guideY);
                 } else if (this.dragState.mode === 'resize') {
                     const dx = (e.clientX - this.dragState.sx) / this.zoomLevel;
                     const dy = (e.clientY - this.dragState.sy) / this.zoomLevel;
@@ -702,7 +1082,11 @@
                 this.renderInspector();
             });
 
-            window.addEventListener('mouseup', () => { this.dragState = null; });
+            window.addEventListener('mouseup', () => {
+                if (this.dragState && this.dragState.mode !== 'pan') this.pushHistory('drag-finish');
+                this.updateGuides(null, null);
+                this.dragState = null;
+            });
 
             window.addEventListener('mouseup', () => {
                 const canvas = this.mount.querySelector('#gmd-canvas');

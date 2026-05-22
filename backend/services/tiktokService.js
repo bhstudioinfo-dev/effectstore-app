@@ -18,10 +18,114 @@ class TikTokService {
             isLive: false
         };
         this.broadcastFn = null;
+        this.goalState = {
+            title: 'Mục tiêu quà tặng',
+            goals: [],
+            layout: {
+                canvasWidth: 720,
+                canvasHeight: 1280,
+                x: 80,
+                y: 80,
+                width: 560,
+                height: 220
+            },
+            style: {
+                preset: 'neon',
+                glow: 1,
+                accentColor: '#b287ff'
+            }
+        };
     }
 
     init(broadcastFn) {
         this.broadcastFn = broadcastFn;
+    }
+
+    normalizeGiftId(value) {
+        if (value === undefined || value === null) return '';
+        return String(value).trim().toLowerCase();
+    }
+
+    setGoalConfig(config = {}) {
+        const goals = Array.isArray(config.goals) ? config.goals : [];
+        this.goalState = {
+            title: config.title || 'Mục tiêu quà tặng',
+            layout: {
+                canvasWidth: Math.max(1, parseInt(config?.layout?.canvasWidth, 10) || 720),
+                canvasHeight: Math.max(1, parseInt(config?.layout?.canvasHeight, 10) || 1280),
+                x: Math.max(0, parseInt(config?.layout?.x, 10) || 80),
+                y: Math.max(0, parseInt(config?.layout?.y, 10) || 80),
+                width: Math.max(200, parseInt(config?.layout?.width, 10) || 560),
+                height: Math.max(120, parseInt(config?.layout?.height, 10) || 220)
+            },
+            style: {
+                preset: ['neon', 'aurora', 'holo', 'electric', 'plasma', 'sunset'].includes(config?.style?.preset)
+                    ? config.style.preset
+                    : 'neon',
+                glow: Math.max(0.4, Math.min(2, parseFloat(config?.style?.glow) || 1)),
+                accentColor: String(config?.style?.accentColor || '#b287ff')
+            },
+            goals: goals.map((goal) => ({
+                id: goal.id || `goal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                giftId: this.normalizeGiftId(goal.giftId),
+                giftName: goal.giftName || '',
+                giftIcon: goal.giftIcon || '',
+                target: Math.max(1, parseInt(goal.target, 10) || 1),
+                current: Math.max(0, parseInt(goal.current, 10) || 0)
+            }))
+        };
+        this.broadcast('goal_state', this.goalState);
+    }
+
+    getGoalState() {
+        return this.goalState;
+    }
+
+    resetGoalProgress() {
+        this.goalState.goals = this.goalState.goals.map((goal) => ({ ...goal, current: 0 }));
+        this.broadcast('goal_state', this.goalState);
+    }
+
+    processGiftGoalUpdate(giftData = {}) {
+        if (!this.goalState.goals.length) return;
+
+        const incomingGiftId = this.normalizeGiftId(giftData.giftId);
+        const incomingGiftName = this.normalizeGiftId(giftData.giftName);
+        let hasUpdate = false;
+
+        this.goalState.goals = this.goalState.goals.map((goal) => {
+            const goalGiftId = this.normalizeGiftId(goal.giftId);
+            const goalGiftName = this.normalizeGiftId(goal.giftName);
+
+            const matched = (
+                (goalGiftId && incomingGiftId && goalGiftId === incomingGiftId) ||
+                (goalGiftName && incomingGiftName && goalGiftName === incomingGiftName)
+            );
+
+            if (!matched) return goal;
+
+            hasUpdate = true;
+            const nextCurrent = goal.current + 1;
+            const updatedGoal = { ...goal, current: nextCurrent };
+
+            // Payload quan trọng theo yêu cầu
+            this.broadcast('goal_update', {
+                type: 'goal_update',
+                title: this.goalState.title,
+                goalId: updatedGoal.id,
+                giftId: updatedGoal.giftId,
+                giftName: updatedGoal.giftName,
+                progress: updatedGoal.current,
+                total: updatedGoal.target,
+                percent: Math.min(100, Math.round((updatedGoal.current / updatedGoal.target) * 100))
+            });
+
+            return updatedGoal;
+        });
+
+        if (hasUpdate) {
+            this.broadcast('goal_state', this.goalState);
+        }
     }
 
     async connect(roomId, userId = null) {
@@ -55,6 +159,7 @@ class TikTokService {
             this.tiktokClient.on('gift', async (data) => {
                 console.log('🎁 Gift received:', data);
                 this.liveStats.gifts++;
+                this.processGiftGoalUpdate(data);
 
                 let mapping = null;
                 if (this.currentLiveUserId) {

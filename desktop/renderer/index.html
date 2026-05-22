@@ -11,6 +11,7 @@
     <!-- Link đến file CSS chính -->
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/gift-menu-designer.css">
+    <link rel="stylesheet" href="styles/gift-goal-tracker.css">
 
 
     <style>
@@ -362,6 +363,9 @@
                 </div>
                 <div class="menu-item-new" onclick="switchView('gift-menu-designer')">
                     <i class="fas fa-wand-magic-sparkles"></i> Gift Menu Designer
+                </div>
+                <div class="menu-item-new" onclick="switchView('gift-goal-tracker')">
+                    <i class="fas fa-bullseye"></i> Bảng Mục Tiêu
                 </div>
                 <div class="menu-item-new" id="admin-nav-item" style="display:none;" onclick="switchView('admin')">
                     <i class="fas fa-user-shield"></i> Admin Dashboard
@@ -1004,6 +1008,7 @@
 
             <!-- VIEW: GIFT MENU DESIGNER -->
             <section id="gift-menu-designer-view" class="hidden view-section"></section>
+            <section id="gift-goal-tracker-view" class="hidden view-section"></section>
 
             <!-- VIEW: GIFT MAPPING -->
             <div id="gift-mapping-view" class="hidden">
@@ -1710,6 +1715,7 @@
 
     <script src="js/home.js?v=4"></script>
     <script src="js/gift-menu-designer.js"></script>
+    <script src="js/gift-goal-tracker.js"></script>
 </body>
 
 </html>

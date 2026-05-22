@@ -1,0 +1,34 @@
+{
+  "title": "Mở quà đặc biệt 🎁",
+  "goals": [
+    {
+      "id": "goal_1779453726878_sp8h8",
+      "giftId": "doughnut",
+      "giftName": "Doughnut",
+      "giftIcon": "http://127.0.0.1:9000/assets/gift-icons/Doughnut.png",
+      "target": 100,
+      "current": 0
+    },
+    {
+      "id": "goal_1779453728970_h9gd2",
+      "giftId": "sunglasses",
+      "giftName": "Sunglasses",
+      "giftIcon": "http://127.0.0.1:9000/assets/gift-icons/Sunglasses.png",
+      "target": 100,
+      "current": 0
+    }
+  ],
+  "layout": {
+    "canvasWidth": 720,
+    "canvasHeight": 1280,
+    "x": 80,
+    "y": 80,
+    "width": 500,
+    "height": 217
+  },
+  "style": {
+    "preset": "neon",
+    "glow": 1,
+    "accentColor": "#b287ff"
+  }
+}

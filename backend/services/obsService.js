@@ -42,6 +42,21 @@ class OBSService {
         }
     }
 
+    async ensureConnected() {
+        if (this._isConnected) return true;
+
+        const fallbackHost = process.env.OBS_HOST || '127.0.0.1';
+        const fallbackPort = process.env.OBS_PORT || 4455;
+        const fallbackPassword = process.env.OBS_PASSWORD || 'obs123';
+        const config = this._lastConfig || {
+            host: fallbackHost,
+            port: fallbackPort,
+            password: fallbackPassword
+        };
+
+        return this.connect(config.host, config.port, config.password);
+    }
+
     startReconnect() {
         if (this._reconnectTimer) return;
         this._reconnectTimer = setInterval(() => {
