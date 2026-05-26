@@ -1,34 +1,260 @@
 {
-  "title": "Mở quà đặc biệt 🎁",
+  "campaignTitle": "Mở quà đặc biệt 🎁",
+  "skin": "cute-pink",
+  "settings": {
+    "showPercentage": true,
+    "soundEnabled": true,
+    "autoReset": false,
+    "autoNextGoal": false,
+    "comboBoost": true,
+    "topContributors": true,
+    "backgroundEffect": "sparkle",
+    "milestones": [
+      100
+    ],
+    "clampAtTarget": true,
+    "soundFile": "unlock.mp3"
+  },
   "goals": [
     {
       "id": "goal_1779453726878_sp8h8",
-      "giftId": "doughnut",
-      "giftName": "Doughnut",
-      "giftIcon": "http://127.0.0.1:9000/assets/gift-icons/Doughnut.png",
-      "target": 100,
-      "current": 0
+      "giftId": "heart_me",
+      "giftName": "Heart Me",
+      "diamondCount": 1,
+      "target": 11,
+      "current": 11,
+      "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Heart_Me.png",
+      "enabled": true,
+      "reachedMilestones": []
     },
     {
       "id": "goal_1779453728970_h9gd2",
-      "giftId": "sunglasses",
-      "giftName": "Sunglasses",
-      "giftIcon": "http://127.0.0.1:9000/assets/gift-icons/Sunglasses.png",
+      "giftId": "finger_heart",
+      "giftName": "Finger Heart",
+      "diamondCount": 1,
+      "target": 99,
+      "current": 100,
+      "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Finger_Heart.png",
+      "enabled": true,
+      "reachedMilestones": []
+    },
+    {
+      "id": "goal_1779641157417",
+      "giftId": "boxing_gloves",
+      "giftName": "Boxing Gloves",
+      "diamondCount": 1,
       "target": 100,
-      "current": 0
+      "current": 100,
+      "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Boxing_Gloves.png",
+      "enabled": true,
+      "reachedMilestones": []
+    },
+    {
+      "id": "goal_1779644798296",
+      "giftId": "friendship_necklace",
+      "giftName": "Friendship Necklace",
+      "diamondCount": 1,
+      "target": 100,
+      "current": 0,
+      "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Friendship_Necklace.png",
+      "enabled": true,
+      "reachedMilestones": []
+    },
+    {
+      "id": "goal_1779644798600",
+      "giftId": "doughnut",
+      "giftName": "Doughnut",
+      "diamondCount": 1,
+      "target": 100,
+      "current": 0,
+      "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Doughnut.png",
+      "enabled": true,
+      "reachedMilestones": []
+    },
+    {
+      "id": "goal_1779644821238",
+      "giftId": "boxing_gloves",
+      "giftName": "Boxing Gloves",
+      "diamondCount": 1,
+      "target": 100,
+      "current": 0,
+      "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Boxing_Gloves.png",
+      "enabled": true,
+      "reachedMilestones": []
+    },
+    {
+      "id": "goal_1779644821765",
+      "giftId": "boxing_gloves",
+      "giftName": "Boxing Gloves",
+      "diamondCount": 1,
+      "target": 100,
+      "current": 0,
+      "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Boxing_Gloves.png",
+      "enabled": true,
+      "reachedMilestones": []
+    },
+    {
+      "id": "goal_1779644821965",
+      "giftId": "boxing_gloves",
+      "giftName": "Boxing Gloves",
+      "diamondCount": 1,
+      "target": 100,
+      "current": 0,
+      "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Boxing_Gloves.png",
+      "enabled": true,
+      "reachedMilestones": []
+    },
+    {
+      "id": "goal_1779644822148",
+      "giftId": "finger_heart",
+      "giftName": "Finger Heart",
+      "diamondCount": 1,
+      "target": 100,
+      "current": 0,
+      "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Finger_Heart.png",
+      "enabled": true,
+      "reachedMilestones": []
     }
   ],
+  "contributors": {
+    "mock_user_1779641484500": {
+      "uniqueId": "mock_user_1779641484500",
+      "nickname": "Cường Đô La 💎",
+      "totalDiamonds": 5511
+    },
+    "mock_user_1779641485252": {
+      "uniqueId": "mock_user_1779641485252",
+      "nickname": "Cường Đô La 💎",
+      "totalDiamonds": 3748
+    },
+    "mock_user_1779641485786": {
+      "uniqueId": "mock_user_1779641485786",
+      "nickname": "Đại Gia Phố Núi 💎",
+      "totalDiamonds": 4049
+    },
+    "mock_user_1779644653863": {
+      "uniqueId": "mock_user_1779644653863",
+      "nickname": "Anh Bảy TikTok 👑",
+      "totalDiamonds": 2321
+    }
+  },
+  "combo": {
+    "active": false,
+    "count": 10,
+    "lastGiftAt": null,
+    "lastUser": null
+  },
+  "overlayLayout": {
+    "canvas": {
+      "width": 1080,
+      "height": 1920,
+      "aspectRatio": "9:16"
+    },
+    "widgets": [
+      {
+        "id": "widget_group_1779644844400_yv0",
+        "type": "custom-group",
+        "x": 100,
+        "y": 0,
+        "w": 880,
+        "h": 1860,
+        "zIndex": 3,
+        "locked": false,
+        "visible": true,
+        "subWidgets": [
+          {
+            "id": "widget_goal_list_1779644668398_0",
+            "type": "goal-list",
+            "x": 200,
+            "y": 330,
+            "w": 690,
+            "h": 1230,
+            "zIndex": 2,
+            "locked": false,
+            "visible": true,
+            "style": {
+              "opacity": 1,
+              "borderRadius": 24,
+              "glow": 0.8,
+              "skin": "neon-purple",
+              "animation": "shake",
+              "showIcon": true,
+              "showPercent": true,
+              "showCount": true,
+              "maxItems": 4,
+              "bgVideo": "none",
+              "progressBarPreset": "neon-purple",
+              "scale": 0.9,
+              "showHallOfFame": false,
+              "luckyWheel": false,
+              "pkMode": false
+            },
+            "relX": 0,
+            "relY": 0.18,
+            "relW": 0.971830985915493,
+            "relH": 0.82,
+            "originalW": 690,
+            "originalH": 1230
+          },
+          {
+            "id": "widget_webm_asset_1779644668398_1",
+            "type": "webm-asset",
+            "x": 522,
+            "y": 60,
+            "w": 388,
+            "h": 438,
+            "zIndex": 3,
+            "locked": false,
+            "visible": true,
+            "style": {
+              "opacity": 1,
+              "borderRadius": 24,
+              "glow": 0.8,
+              "skin": "neon-purple",
+              "animation": "fade-slide",
+              "showIcon": true,
+              "showPercent": true,
+              "showCount": true,
+              "maxItems": 4,
+              "bgVideo": "none",
+              "progressBarPreset": "neon-purple",
+              "fit": "contain",
+              "loop": true,
+              "muted": true,
+              "scale": 0.35
+            },
+            "assetUrl": "/assets/webm-frames/qa.webm",
+            "relX": 0.4535211267605634,
+            "relY": 0,
+            "relW": 0.5464788732394367,
+            "relH": 0.292,
+            "originalW": 388,
+            "originalH": 438
+          }
+        ],
+        "style": {
+          "opacity": 1,
+          "borderRadius": 24,
+          "glow": 0.8,
+          "skin": "cute-pink",
+          "scale": 1.2394366197183098
+        }
+      }
+    ]
+  },
+  "title": "Mở quà đặc biệt 🎁",
   "layout": {
     "canvasWidth": 720,
     "canvasHeight": 1280,
-    "x": 80,
-    "y": 80,
-    "width": 500,
-    "height": 217
+    "x": 34,
+    "y": 132,
+    "width": 436,
+    "height": 140
   },
   "style": {
     "preset": "neon",
-    "glow": 1,
+    "glow": 0.8,
     "accentColor": "#b287ff"
-  }
+  },
+  "type": "goal_update"
 }

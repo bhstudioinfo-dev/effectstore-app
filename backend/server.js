@@ -6,8 +6,6 @@ const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 const EffectRequest = require('./models/EffectRequest');
-const giftGoalConfigPath = path.join(__dirname, 'uploads', 'gift-goal-config.json');
-
 // Services
 const obsService = require('./services/obsService');
 const tiktokService = require('./services/tiktokService');
@@ -32,6 +30,13 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/overlay', express.static(path.join(__dirname, '..', 'frontend', 'overlay'), {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    }
+}));
 app.use(express.static(path.join(__dirname, 'public'), {
     etag: false,
     lastModified: false,
@@ -47,7 +52,10 @@ const directories = [
     path.join(__dirname, 'uploads', 'temp'),
     path.join(__dirname, 'uploads', 'banners'),
     path.join(__dirname, 'assets', 'gift-icons'),
-    path.join(__dirname, 'uploads', 'thumbs')
+    path.join(__dirname, 'uploads', 'thumbs'),
+    path.join(__dirname, 'assets', 'webm-frames'),
+    path.join(__dirname, 'assets', 'goal'),
+    path.join(__dirname, 'uploads', 'goal')
 ];
 
 directories.forEach(dir => {
@@ -75,6 +83,15 @@ try {
     });
     wss.on('connection', (ws) => {
         clients.add(ws);
+        ws.send(JSON.stringify({ event: 'gift_catalog_update', data: { type: 'gift_catalog_update', gifts: tiktokService.getGiftCatalogState().gifts } }));
+        ws.on('message', (raw) => {
+            try {
+                const packet = JSON.parse(raw.toString() || '{}');
+                // process other socket messages if any
+            } catch (error) {
+                console.error('⚠️ WebSocket message ignored:', error.message);
+            }
+        });
         ws.on('close', () => clients.delete(ws));
     });
 } catch (err) {
@@ -94,16 +111,6 @@ function broadcastToClients(event, data) {
 // Initialize services with broadcasting capability
 tiktokService.init(broadcastToClients);
 effectQueue.setBroadcastFn(broadcastToClients);
-
-try {
-    if (fs.existsSync(giftGoalConfigPath)) {
-        const savedGoalConfig = JSON.parse(fs.readFileSync(giftGoalConfigPath, 'utf8') || '{}');
-        tiktokService.setGoalConfig(savedGoalConfig);
-        console.log('✅ Gift Goal config loaded');
-    }
-} catch (error) {
-    console.error('⚠️ Cannot load Gift Goal config:', error.message);
-}
 
 // Connect to OBS on startup
 obsService.connect(
@@ -156,17 +163,13 @@ app.get('/api/system/status', async (req, res) => {
 });
 
 // Legacy/Asset Routes
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/assets/gift-icons', express.static(path.join(__dirname, 'assets', 'gift-icons')));
 
 // OBS Browser Source overlay renderer for Gift Menu Designer
 app.get('/overlay/gift-menu/', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.sendFile(path.join(__dirname, 'public', 'gift-menu-overlay.html'));
-});
-
-app.get('/overlay/goal/', (_req, res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.sendFile(path.join(__dirname, 'public', 'goal-overlay.html'));
 });
 
 // ========================================

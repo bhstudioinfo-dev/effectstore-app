@@ -10,7 +10,6 @@ const Effect = require('../models/Effect');
 const User = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
 const giftMenuLayoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
-const giftGoalConfigPath = path.join(__dirname, '..', 'uploads', 'gift-goal-config.json');
 
 // Connect
 router.post('/connect', authMiddleware, async (req, res) => {
@@ -190,6 +189,23 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
 // Gifts library
 router.get('/gifts-library', async (req, res) => {
     try {
+        const liveCatalog = tiktokService.getGiftCatalogState();
+        if (liveCatalog.source === 'tiktok-live' && liveCatalog.gifts.length) {
+            return res.json({
+                success: true,
+                source: liveCatalog.source,
+                gifts: liveCatalog.gifts.map((gift) => ({
+                    id: String(gift.giftId),
+                    name: gift.giftName,
+                    icon: gift.iconUrl,
+                    coins: gift.diamondCount || 0,
+                    giftId: String(gift.giftId),
+                    giftName: gift.giftName,
+                    diamondCount: gift.diamondCount || 0,
+                    iconUrl: gift.iconUrl || ''
+                }))
+            });
+        }
         const defaultGifts = [
             { id: 'rose', name: 'Rose', icon: '/assets/gift-icons/Rose.png', coins: 1 },
             { id: 'tiktok', name: 'TikTok', icon: '/assets/gift-icons/TikTok.png', coins: 1 },
@@ -208,11 +224,27 @@ router.get('/gifts-library', async (req, res) => {
             { id: 'youre_awesome', name: "You're Awesome", icon: '/assets/gift-icons/You\'re_awesome.png', coins: 88 }
         ];
 
+        const giftIconDir = path.join(__dirname, '..', 'assets', 'gift-icons');
+        const fileGifts = fs.existsSync(giftIconDir)
+            ? fs.readdirSync(giftIconDir)
+                .filter((file) => /\.(png|jpg|jpeg|webp|gif)$/i.test(file))
+                .map((file) => {
+                    const name = path.basename(file, path.extname(file)).replace(/\s*\(\d+\)$/g, '').replace(/_/g, ' ');
+                    const id = path.basename(file, path.extname(file)).toLowerCase().replace(/\s*\(\d+\)$/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                    return { id, name, icon: `/assets/gift-icons/${file}`, coins: 1 };
+                })
+            : [];
+
         const configs = await GiftConfig.find();
         const coinsMap = {};
         configs.forEach(c => coinsMap[c.giftId] = c.coins);
 
-        const gifts = defaultGifts.map(g => ({
+        const mergedById = new Map();
+        [...defaultGifts, ...fileGifts].forEach((gift) => {
+            if (!mergedById.has(gift.id)) mergedById.set(gift.id, gift);
+        });
+
+        const gifts = [...mergedById.values()].map(g => ({
             ...g,
             coins: coinsMap[g.id] || g.coins
         }));
@@ -265,104 +297,232 @@ router.post('/gift-menu-layout', async (req, res) => {
     }
 });
 
-// Gift Goal Tracker config/state
-router.get('/goal-tracker/config', async (_req, res) => {
+
+// ==========================================
+// GOAL BOARD ENDPOINTS (PHASE 1)
+// ==========================================
+
+const multer = require('multer');
+const goalBoardLayoutPath = path.join(__dirname, '..', 'uploads', 'goal-board-layout.json');
+
+// Configure multer storage
+const goalAssetStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, path.join(__dirname, '..', 'uploads', 'goal'));
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname);
+        cb(null, 'asset-' + uniqueSuffix + ext);
+    }
+});
+
+const uploadGoalAsset = multer({
+    storage: goalAssetStorage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.webm', '.mp4'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (allowedTypes.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Chỉ cho phép tải lên các định dạng PNG, JPG, JPEG, WEBP, GIF, WEBM, MP4.'));
+        }
+    },
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+});
+
+// GET active Goal Board layout
+router.get('/goal-board/layout', async (_req, res) => {
     try {
-        if (!fs.existsSync(giftGoalConfigPath)) {
+        if (!fs.existsSync(goalBoardLayoutPath)) {
             return res.json({
                 success: true,
-                config: {
-                    title: 'Mở quà đặc biệt 🎁',
-                    goals: [],
-                    layout: {
-                        canvasWidth: 720,
-                        canvasHeight: 1280,
-                        x: 80,
-                        y: 80,
-                        width: 560,
-                        height: 220
-                    },
-                    style: {
-                        preset: 'neon',
-                        glow: 1,
-                        accentColor: '#b287ff'
-                    }
+                layout: {
+                    version: 1,
+                    savedAt: new Date().toISOString(),
+                    aspectRatio: '9:16',
+                    canvas: { width: 1080, height: 1920, aspectRatio: '9:16' },
+                    layers: []
                 }
             });
         }
-        const raw = fs.readFileSync(giftGoalConfigPath, 'utf8');
-        const config = JSON.parse(raw || '{}');
-        res.json({ success: true, config });
+        const raw = fs.readFileSync(goalBoardLayoutPath, 'utf8');
+        const layout = JSON.parse(raw || '{}');
+        res.json({ success: true, layout });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-router.get('/goal-tracker/state', async (_req, res) => {
-    try {
-        res.json({ success: true, state: tiktokService.getGoalState() });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-router.post('/goal-tracker/config', async (req, res) => {
+// POST active Goal Board layout
+router.post('/goal-board/layout', async (req, res) => {
     try {
         const payload = req.body || {};
-        const safeConfig = {
-            title: payload.title || 'Mở quà đặc biệt 🎁',
-            goals: Array.isArray(payload.goals) ? payload.goals.map((goal) => ({
-                id: goal.id || `goal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-                giftId: goal.giftId || '',
-                giftName: goal.giftName || '',
-                giftIcon: goal.giftIcon || '',
-                target: Math.max(1, parseInt(goal.target, 10) || 1),
-                current: Math.max(0, parseInt(goal.current, 10) || 0)
-            })) : [],
-            layout: {
-                canvasWidth: Math.max(1, parseInt(payload?.layout?.canvasWidth, 10) || 720),
-                canvasHeight: Math.max(1, parseInt(payload?.layout?.canvasHeight, 10) || 1280),
-                x: Math.max(0, parseInt(payload?.layout?.x, 10) || 80),
-                y: Math.max(0, parseInt(payload?.layout?.y, 10) || 80),
-                width: Math.max(200, parseInt(payload?.layout?.width, 10) || 560),
-                height: Math.max(120, parseInt(payload?.layout?.height, 10) || 220)
-            },
-            style: {
-                preset: ['neon', 'aurora', 'holo', 'electric', 'plasma', 'sunset'].includes(payload?.style?.preset)
-                    ? payload.style.preset
-                    : 'neon',
-                glow: Math.max(0.4, Math.min(2, parseFloat(payload?.style?.glow) || 1)),
-                accentColor: String(payload?.style?.accentColor || '#b287ff')
-            }
+        const safeLayout = {
+            version: 1,
+            savedAt: new Date().toISOString(),
+            aspectRatio: payload.aspectRatio || '9:16',
+            canvas: payload.canvas || { width: 1080, height: 1920, aspectRatio: '9:16' },
+            layers: Array.isArray(payload.layers) ? payload.layers : []
         };
-
-        fs.writeFileSync(giftGoalConfigPath, JSON.stringify(safeConfig, null, 2), 'utf8');
-        tiktokService.setGoalConfig(safeConfig);
-
-        res.json({ success: true, config: safeConfig, state: tiktokService.getGoalState() });
+        fs.writeFileSync(goalBoardLayoutPath, JSON.stringify(safeLayout, null, 2), 'utf8');
+        
+        // Update live service memory cache
+        tiktokService.setGoalBoardLayout(safeLayout);
+        
+        // Broadcast layout update to WebSocket clients
+        if (tiktokService.broadcast) {
+            tiktokService.broadcast('goal_board_layout_update', { type: 'goal_board_layout_update', layout: safeLayout });
+        }
+        
+        res.json({ success: true, layout: safeLayout });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-router.post('/goal-tracker/reset', async (_req, res) => {
+// GET all static Assets scanned from backend/assets/goal/ and backend/uploads/goal/
+router.get('/goal-board/assets', async (_req, res) => {
     try {
-        if (fs.existsSync(giftGoalConfigPath)) {
-            const raw = fs.readFileSync(giftGoalConfigPath, 'utf8');
-            const config = JSON.parse(raw || '{}');
-            config.goals = Array.isArray(config.goals)
-                ? config.goals.map((goal) => ({ ...goal, current: 0 }))
-                : [];
-            fs.writeFileSync(giftGoalConfigPath, JSON.stringify(config, null, 2), 'utf8');
-            tiktokService.setGoalConfig(config);
-        } else {
-            tiktokService.resetGoalProgress();
+        const assetsGoalDir = path.join(__dirname, '..', 'assets', 'goal');
+        const uploadsGoalDir = path.join(__dirname, '..', 'uploads', 'goal');
+        
+        let files = [];
+        
+        if (fs.existsSync(assetsGoalDir)) {
+            const list = fs.readdirSync(assetsGoalDir);
+            list.forEach(file => {
+                const ext = path.extname(file).toLowerCase();
+                if (['.png', '.jpg', '.jpeg', '.webp', '.gif', '.webm', '.mp4'].includes(ext)) {
+                    files.push({
+                        name: file,
+                        url: `/assets/goal/${file}`,
+                        type: ext === '.webm' || ext === '.mp4' ? 'video' : 'image'
+                    });
+                }
+            });
+        }
+        
+        if (fs.existsSync(uploadsGoalDir)) {
+            const list = fs.readdirSync(uploadsGoalDir);
+            list.forEach(file => {
+                const ext = path.extname(file).toLowerCase();
+                if (['.png', '.jpg', '.jpeg', '.webp', '.gif', '.webm', '.mp4'].includes(ext)) {
+                    files.push({
+                        name: file,
+                        url: `/uploads/goal/${file}`,
+                        type: ext === '.webm' || ext === '.mp4' ? 'video' : 'image'
+                    });
+                }
+            });
+        }
+        
+        res.json({ success: true, assets: files });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// POST Upload custom asset PNG/WebM/etc.
+router.post('/goal-board/upload-asset', (req, res) => {
+    uploadGoalAsset.single('assetFile')(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({ success: false, error: err.message });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: 'Vui lòng chọn file để tải lên.' });
+        }
+        
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        const asset = {
+            name: req.file.filename,
+            url: `/uploads/goal/${req.file.filename}`,
+            type: ext === '.webm' || ext === '.mp4' ? 'video' : 'image'
+        };
+        
+        res.json({ success: true, asset });
+    });
+});
+
+// GET custom & system templates
+const goalBoardTemplatesPath = path.join(__dirname, '..', 'uploads', 'goal-board-templates.json');
+
+router.get('/goal-board/templates', async (req, res) => {
+    try {
+        let customTemplates = [];
+        if (fs.existsSync(goalBoardTemplatesPath)) {
+            const raw = fs.readFileSync(goalBoardTemplatesPath, 'utf8');
+            customTemplates = JSON.parse(raw || '[]');
+        }
+        res.json({ success: true, customTemplates });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// POST save a new custom template
+router.post('/goal-board/templates', async (req, res) => {
+    try {
+        const payload = req.body || {};
+        if (!payload.name || !Array.isArray(payload.layers)) {
+            return res.status(400).json({ success: false, error: 'Missing name or layers array' });
         }
 
-        res.json({ success: true, state: tiktokService.getGoalState() });
+        // Create uploads folder if not exists
+        const uploadsDir = path.join(__dirname, '..', 'uploads');
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        let customTemplates = [];
+        if (fs.existsSync(goalBoardTemplatesPath)) {
+            const raw = fs.readFileSync(goalBoardTemplatesPath, 'utf8');
+            customTemplates = JSON.parse(raw || '[]');
+        }
+
+        const newTemplate = {
+            id: payload.id || `custom_tmpl_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            name: payload.name,
+            category: payload.category || 'user-custom',
+            tags: Array.isArray(payload.tags) ? payload.tags : [payload.category || 'custom'],
+            isPremium: payload.isPremium !== undefined ? Boolean(payload.isPremium) : false,
+            price: Number(payload.price || 0),
+            author: 'user',
+            editable: true,
+            canvas: payload.canvas || { width: 1080, height: 1920, aspectRatio: '9:16' },
+            layers: payload.layers
+        };
+
+        // Prepend so latest custom templates appear first in sidebar
+        customTemplates.unshift(newTemplate);
+
+        fs.writeFileSync(goalBoardTemplatesPath, JSON.stringify(customTemplates, null, 2), 'utf8');
+
+        res.json({ success: true, template: newTemplate, customTemplates });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// POST simulate goal board gift
+router.post('/goal-board/simulate', async (req, res) => {
+    try {
+        const { giftId, giftName, repeatCount, diamondCount, nickname, iconUrl } = req.body || {};
+        
+        await tiktokService.processGoalBoardGift({
+            giftId: giftId || 'rose',
+            giftName: giftName || 'Rose',
+            repeatCount: Number(repeatCount) || 1,
+            diamondCount: Number(diamondCount) || 1,
+            nickname: nickname || 'Người dùng Thử nghiệm',
+            iconUrl: iconUrl || '/assets/gift-icons/Rose.png'
+        });
+        
+        res.json({ success: true, message: 'Simulated gift processed' });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 module.exports = router;
+

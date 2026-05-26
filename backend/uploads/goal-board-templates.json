@@ -1,0 +1,68 @@
+[
+  {
+    "id": "custom_tmpl_1779798880709_826",
+    "name": "mở khóa hộp quà 1",
+    "category": "unlock-reward",
+    "tags": [
+      "Mở khóa"
+    ],
+    "isPremium": true,
+    "price": 15000,
+    "author": "user",
+    "editable": true,
+    "canvas": {
+      "width": 1080,
+      "height": 1920,
+      "aspectRatio": "9:16"
+    },
+    "layers": [
+      {
+        "id": "layer_goal-bar_1779797611548_984_0",
+        "name": "🎁 Mở quà bí mật",
+        "type": "goal-bar",
+        "x": 119,
+        "y": 989,
+        "w": 819,
+        "h": 277,
+        "zIndex": 2,
+        "visible": true,
+        "locked": false,
+        "giftId": "rose",
+        "giftName": "Rose",
+        "targetCount": 500,
+        "currentCount": 110,
+        "showPercentage": true,
+        "barColor": "#ff0080",
+        "glowColor": "#5f00b8",
+        "borderRadius": 20,
+        "themeStyle": "neon",
+        "titleColor": "#ffffff",
+        "subtitleText": "Mục tiêu: 150/500 Rose",
+        "subtitleColor": "#a855f7",
+        "groupId": "group_1779797611548_812",
+        "barStyle": "gradient-sweep",
+        "subtitleFontSize": 35
+      },
+      {
+        "id": "asset_1779797682222_184",
+        "name": "asset-1779719966265-472058285.webm",
+        "type": "media-asset",
+        "assetUrl": "/uploads/goal/asset-1779719966265-472058285.webm",
+        "isWebM": true,
+        "x": 453,
+        "y": 793,
+        "w": 360,
+        "h": 360,
+        "opacity": 1,
+        "fitMode": "contain",
+        "autoplay": true,
+        "loop": true,
+        "muted": true,
+        "playsinline": true,
+        "zIndex": 3,
+        "visible": true,
+        "locked": false
+      }
+    ]
+  }
+]

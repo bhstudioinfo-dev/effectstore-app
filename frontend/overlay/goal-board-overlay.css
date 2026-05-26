@@ -1,0 +1,675 @@
+/* General Transparent Reset */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent !important;
+    overflow: hidden;
+    font-family: 'Outfit', 'Inter', sans-serif;
+    color: #ffffff;
+    box-sizing: border-box;
+}
+
+#goal-board-stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: transparent !important;
+    overflow: hidden;
+}
+
+/* Layer Base Styles */
+.gmd-item {
+    position: absolute;
+    display: block;
+    user-select: none;
+    transform-origin: center center;
+    overflow: visible;
+}
+
+.gmd-visual {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+}
+
+/* 1. Goal Bar Widget Styles */
+.gmd-goal-bar-widget {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+}
+
+.gmd-goal-bar-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #ffffff;
+    font-weight: 800;
+}
+
+.gmd-goal-bar-title-row span {
+    color: #94a3b8;
+}
+
+.gmd-goal-bar-outer {
+    width: 100%;
+    height: 18px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    position: relative;
+}
+
+.gmd-goal-bar-inner {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Neon Theme Additional Styles */
+.theme-neon {
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 2. Boss Bar Widget Styles */
+.gmd-boss-bar-widget {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(10, 10, 20, 0.9);
+    border: 1.5px solid #d946ef;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 0 20px rgba(217, 70, 239, 0.3), 0 8px 32px rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+}
+
+.gmd-boss-bar-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.gmd-boss-avatar {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, #4a0e4e, #8b5cf6);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 0 10px rgba(217, 70, 239, 0.5);
+    animation: gmdGlowPulse 2s infinite alternate;
+}
+
+.gmd-boss-info {
+    flex: 1;
+}
+
+.gmd-boss-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.1;
+    text-shadow: 0 0 5px rgba(255,255,255,0.2);
+}
+
+.gmd-boss-sub {
+    font-size: 10px;
+    color: #d946ef;
+    font-weight: 700;
+}
+
+.gmd-boss-bar-outer {
+    height: 12px;
+    border-radius: 999px;
+    background: #1e0024;
+    border: 1px solid rgba(217, 70, 239, 0.4);
+    overflow: hidden;
+}
+
+.gmd-boss-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #d946ef, #8b5cf6, #ef4444);
+    box-shadow: 0 0 12px #d946ef;
+    transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 3. Contributors Widget Styles */
+.gmd-contributors-widget {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    text-align: left;
+    backdrop-filter: blur(8px);
+}
+
+.gmd-contrib-header {
+    font-size: 13px;
+    font-weight: 800;
+    color: #eab308;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 6px;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gmd-contrib-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    overflow: hidden;
+}
+
+.gmd-contrib-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #e2e8f0;
+    padding: 4px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    transition: transform 0.2s ease;
+}
+
+.gmd-contrib-item:hover {
+    transform: translateX(4px);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.gmd-contrib-rank {
+    width: auto;
+    min-width: 1.8em;
+    flex-shrink: 0;
+    font-weight: 900;
+    color: #a855f7;
+    font-size: 11px;
+}
+
+.gmd-contrib-item:nth-child(1) .gmd-contrib-rank { color: #f59e0b; } /* Gold */
+.gmd-contrib-item:nth-child(2) .gmd-contrib-rank { color: #94a3b8; } /* Silver */
+.gmd-contrib-item:nth-child(3) .gmd-contrib-rank { color: #b45309; } /* Bronze */
+
+.gmd-contrib-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+
+.gmd-contrib-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 700;
+}
+
+.gmd-contrib-val {
+    font-weight: 800;
+    color: #f59e0b;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* 4. Combo Widget Styles */
+.gmd-combo-widget {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(6, 78, 59, 0.85), rgba(2, 44, 34, 0.85));
+    border: 1.5px solid #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3), 0 8px 24px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #ffffff;
+    font-weight: 900;
+    font-size: 14px;
+    backdrop-filter: blur(6px);
+}
+
+.gmd-combo-num {
+    font-size: 24px;
+    color: #34d399;
+    text-shadow: 0 0 10px #10b981;
+    animation: gmdPulse 0.8s infinite alternate;
+}
+
+/* Micro-Animations Classes */
+.anim-pulse { animation: gmdPulse var(--anim-speed, 1s) ease-in-out infinite; }
+.anim-bounce { animation: gmdBounce var(--anim-speed, 1s) ease-in-out infinite; }
+.anim-float { animation: gmdFloat var(--anim-speed, 1s) ease-in-out infinite; }
+.anim-zoom { animation: gmdZoom var(--anim-speed, 1s) ease-in-out infinite; }
+.anim-shake { animation: gmdShake var(--anim-speed, 1s) ease-in-out infinite; }
+
+/* CSS Keyframes */
+@keyframes gmdPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+@keyframes gmdBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+}
+
+@keyframes gmdFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+@keyframes gmdZoom {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.14); }
+}
+
+@keyframes gmdShake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-3deg); }
+    75% { transform: rotate(3deg); }
+}
+
+@keyframes gmdGlowPulse {
+    0%, 100% { opacity: 0.75; filter: drop-shadow(0 0 4px rgba(217, 70, 239, 0.4)); }
+    50% { opacity: 1; filter: drop-shadow(0 0 12px rgba(217, 70, 239, 0.8)); }
+}
+
+/* ==========================================
+   GAMIFIED STREAM DONATION STYLES
+   ========================================== */
+
+/* 1. Royal Throne Podium Board */
+.gmd-podium-widget {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 14px;
+    border-radius: 16px;
+    background: radial-gradient(circle at 50% 0%, #1e1145, #08051a 90%);
+    border: 1.5px solid #d946ef;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 8px 32px rgba(217, 70, 239, 0.25), 0 12px 48px rgba(0,0,0,0.7);
+    pointer-events: none;
+    text-align: center;
+}
+
+.gmd-podium-header {
+    font-size: 13px;
+    font-weight: 900;
+    color: #d946ef;
+    text-shadow: 0 0 8px rgba(217, 70, 239, 0.6);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 4px;
+    letter-spacing: 0.8px;
+}
+
+.gmd-podium-podium {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    flex: 1;
+    margin-top: 8px;
+}
+
+.gmd-podium-spot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 30%;
+    transition: transform 0.2s ease;
+}
+
+.gmd-podium-avatar-wrap {
+    position: relative;
+    margin-bottom: 4px;
+}
+
+.gmd-podium-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1.5px solid #94a3b8;
+    background: #1e293b;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+}
+
+.gmd-podium-crown {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    z-index: 10;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.rank-1 .gmd-podium-avatar {
+    width: 44px;
+    height: 44px;
+    border-color: #fbbf24;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+}
+
+.rank-1 .gmd-podium-crown {
+    font-size: 20px;
+    top: -18px;
+    animation: gmdFloat 1.5s infinite alternate ease-in-out;
+}
+
+.rank-1 .gmd-podium-glow-ring {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid #fbbf24;
+    animation: gmdSpin 4s linear infinite;
+    opacity: 0.7;
+}
+
+.rank-2 .gmd-podium-avatar { border-color: #cbd5e1; }
+.rank-3 .gmd-podium-avatar { border-color: #b45309; }
+
+.gmd-podium-name {
+    font-size: 9px;
+    font-weight: 700;
+    color: #e2e8f0;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gmd-podium-value {
+    font-size: 9px;
+    font-weight: 800;
+    color: #fbbf24;
+}
+
+/* 2. Mystery Chests Tracker Styles */
+.gmd-mystery-widget {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(10, 15, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+}
+
+.gmd-mystery-header {
+    font-size: 11px;
+    font-weight: 900;
+    color: #fbbf24;
+    text-shadow: 0 0 6px rgba(251,191,36,0.3);
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.gmd-mystery-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: #94a3b8;
+}
+
+.gmd-mystery-track-wrap {
+    position: relative;
+    width: 90%;
+    margin: 8px auto 14px;
+}
+
+.gmd-mystery-bar-outer {
+    width: 100%;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.gmd-mystery-bar-inner {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f59e0b, #fb7185, #a855f7);
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+    transition: width 0.4s ease;
+}
+
+.gmd-mystery-milestones {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.gmd-mystery-node {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.gmd-mystery-chest {
+    font-size: 18px;
+    filter: grayscale(1) opacity(0.5) drop-shadow(0 0 0 transparent);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: gmdFloat 2s infinite alternate ease-in-out;
+}
+
+.gmd-mystery-pct {
+    font-size: 7px;
+    font-weight: 800;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+/* Unlocked states */
+.unlocked .gmd-mystery-chest {
+    filter: grayscale(0) opacity(1) drop-shadow(0 0 6px rgba(251,191,36,0.6));
+    font-size: 24px;
+}
+
+.unlocked .gmd-mystery-pct {
+    color: #fbbf24;
+    font-weight: 900;
+    text-shadow: 0 0 4px rgba(251,191,36,0.3);
+}
+
+@keyframes gmdSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 3. Multi Goal List & Event Mission Board Styles */
+.gmd-goal-list-widget {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    background: radial-gradient(circle at 50% 0%, rgba(30, 20, 50, 0.95), rgba(10, 10, 20, 0.95));
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+    backdrop-filter: blur(12px);
+}
+
+.gmd-goal-list-header {
+    font-weight: 900;
+    color: #f59e0b;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    text-align: center;
+    border-bottom: 1.5px dashed rgba(168, 85, 247, 0.2);
+    padding-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.gmd-goal-list-row {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.gmd-goal-list-icon {
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.gmd-goal-list-name-row {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 800;
+}
+
+.gmd-goal-list-label {
+    color: #f8fafc;
+}
+
+.gmd-goal-list-counts {
+    color: #e2e8f0;
+}
+
+.gmd-goal-list-bar-outer {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.gmd-goal-list-bar-inner {
+    height: 100%;
+    transition: width 0.4s ease;
+    background: linear-gradient(90deg, #a855f7, #ec4899);
+}
+
+/* 4. Text Widget Overlay Styles */
+.gmd-text-widget {
+    pointer-events: none;
+    user-select: none;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+/* Beautiful Progress Bar Effects */
+.gmd-goal-bar-inner, .gmd-boss-bar-inner, .gmd-mystery-bar-inner, .gmd-goal-list-bar-inner {
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+/* Glow Pulse Effect */
+.gmd-bar-style-glow-pulse {
+    animation: gmdGlowPulseStyle 1.5s infinite alternate ease-in-out !important;
+}
+
+/* Gradient Sweep Effect */
+.gmd-bar-style-gradient-sweep::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent) !important;
+    transform: translate3d(-100%, 0, 0);
+    -webkit-transform: translate3d(-100%, 0, 0);
+    animation: gmdGradientSweep 1.8s infinite linear !important;
+}
+
+/* Candy Stripe Effect */
+.gmd-bar-style-candy-stripe::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.25) 0px, rgba(255, 255, 255, 0.25) 15px, transparent 15px, transparent 30px) !important;
+    background-size: 42.42px 42.42px !important;
+    animation: gmdCandyStripe 1s linear infinite !important;
+}
+
+@keyframes gmdGlowPulseStyle {
+    0% {
+        filter: drop-shadow(0 0 2px var(--bar-glow, rgba(255, 0, 127, 0.5))) brightness(0.9);
+        box-shadow: 0 0 8px var(--bar-glow, rgba(255, 0, 127, 0.5)) !important;
+    }
+    100% {
+        filter: drop-shadow(0 0 15px var(--bar-glow, rgba(255, 0, 127, 0.9))) brightness(1.25);
+        box-shadow: 0 0 24px var(--bar-glow, rgba(255, 0, 127, 0.9)) !important;
+    }
+}
+
+@keyframes gmdGradientSweep {
+    0% { transform: translate3d(-100%, 0, 0); -webkit-transform: translate3d(-100%, 0, 0); }
+    100% { transform: translate3d(100%, 0, 0); -webkit-transform: translate3d(100%, 0, 0); }
+}
+
+@keyframes gmdCandyStripe {
+    0% { background-position: 0px 0px; }
+    100% { background-position: 42.42px 0px; }
+}
+
+
+

@@ -1493,8 +1493,7 @@ class EffectStoreApp {
             el.getAttribute('onclick')?.includes(`'${view}'`)
         );
         if (activeNav) activeNav.classList.add('active');
-
-        const viewsToHide = ['store', 'library', 'admin', 'settings', 'gift-mapping', 'gift-menu-designer', 'gift-goal-tracker'];
+        const viewsToHide = ['store', 'library', 'admin', 'settings', 'gift-mapping', 'gift-menu-designer'];
         viewsToHide.forEach(v => {
             const el = document.getElementById(`${v}-view`);
             if (el) {
@@ -1542,12 +1541,6 @@ class EffectStoreApp {
             } else if (view === 'gift-menu-designer') {
                 document.getElementById('page-title').textContent = '🎨 Gift Menu Designer';
                 if (rightSidebar) rightSidebar.style.display = 'none';
-            } else if (view === 'gift-goal-tracker') {
-                document.getElementById('page-title').textContent = '🎯 Bảng Mục Tiêu Quà Tặng';
-                if (rightSidebar) rightSidebar.style.display = 'none';
-                if (window.giftGoalTracker && typeof window.giftGoalTracker.init === 'function') {
-                    window.giftGoalTracker.init();
-                }
             } else {
                 document.getElementById('page-title').textContent = 'EffectStore';
             }
