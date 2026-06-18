@@ -1,9 +1,17 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Gift Menu Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    if (new URLSearchParams(window.location.search).get('preview') === 'true') {
+      document.documentElement.classList.add('gmd-preview-mode');
+    }
+  </script>
   <style>
     html, body {
       margin: 0;
@@ -15,6 +23,10 @@
       letter-spacing: 0;
     }
 
+    html.gmd-preview-mode, html.gmd-preview-mode body {
+      background: #060d1f !important;
+    }
+
     #overlay-root {
       position: relative;
       width: 100vw;
@@ -22,8 +34,9 @@
       background: transparent;
       overflow: hidden;
     }
+
   </style>
-  <link rel="stylesheet" href="/gift-menu-renderer.css?v=9" />
+  <link rel="stylesheet" href="/gift-menu-renderer.css?v=11" />
   <style id="gmd-inline-renderer">
 #gift-menu-designer-view {
     height: calc(100vh - 150px);
@@ -1252,9 +1265,6 @@
 
     .gmd-export-item .gmd-item-label {
       position: absolute !important;
-      top: calc(100% + var(--label-gap, 4px)) !important;
-      left: 50% !important;
-      transform: translateX(-50%) !important;
       white-space: nowrap !important;
       font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
       font-weight: 800 !important;
@@ -1264,6 +1274,35 @@
       text-shadow:
         0 2px 8px rgba(0, 0, 0, .72),
         0 0 1px rgba(0, 0, 0, .9) !important;
+    }
+
+    .gmd-export-item .gmd-item-label.pos-bottom {
+      top: calc(100% + var(--label-gap, 4px)) !important;
+      left: 50% !important;
+      right: auto !important;
+      bottom: auto !important;
+      transform: translateX(-50%) !important;
+    }
+    .gmd-export-item .gmd-item-label.pos-top {
+      bottom: calc(100% + var(--label-gap, 4px)) !important;
+      left: 50% !important;
+      right: auto !important;
+      top: auto !important;
+      transform: translateX(-50%) !important;
+    }
+    .gmd-export-item .gmd-item-label.pos-left {
+      right: calc(100% + var(--label-gap, 4px)) !important;
+      top: 50% !important;
+      left: auto !important;
+      bottom: auto !important;
+      transform: translateY(-50%) !important;
+    }
+    .gmd-export-item .gmd-item-label.pos-right {
+      left: calc(100% + var(--label-gap, 4px)) !important;
+      top: 50% !important;
+      right: auto !important;
+      bottom: auto !important;
+      transform: translateY(-50%) !important;
     }
 
     /* OBS glow smoothing: keep same design but soften hard edges on video background */
@@ -1376,17 +1415,12 @@
       opacity: .6 !important;
     }
   </style>
-</head>
-<body>
-  <div id="overlay-root"></div>
-
   <script>
-    const root = document.getElementById('overlay-root');
-    let lastLayoutSignature = '';
-
     const auraMap = {
-      Glow: 'aura-glow',
-      Bubble: 'aura-bubble',
+      'Glow': 'aura-glow',
+      'Glow Aura': 'aura-glow',
+      'Bubble': 'aura-bubble',
+      'Bubble Aura': 'aura-bubble',
       'Magic Ring': 'aura-ring',
       'Neon Frame': 'aura-frame',
       'Light Sweep': 'aura-sweep',
@@ -1428,62 +1462,432 @@
       }[char]));
     }
 
+    let lastLayoutSignature = '';
+
     function render(layout) {
+      const root = document.getElementById('overlay-root') || document.body;
+      if (!root) {
+        window.addEventListener('DOMContentLoaded', () => render(layout));
+        return;
+      }
       const items = Array.isArray(layout.exportedItems)
         ? layout.exportedItems
         : (Array.isArray(layout.items) ? layout.items : []);
+
+      if (items.length === 0) {
+        if (new URLSearchParams(window.location.search).get('preview') === 'true') {
+          root.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #94a3b8; font-family: Inter, sans-serif; text-align: center; padding: 24px; box-sizing: border-box;">
+              <div style="font-size: 54px; margin-bottom: 16px; animation: gmdFloat 3s ease-in-out infinite;">🎨</div>
+              <h2 style="color: #fff; margin: 0 0 12px 0; font-size: 24px; font-weight: 800;">Gift Menu Preview</h2>
+              <p style="margin: 4px 0; font-size: 15px; line-height: 1.5;">Thiết kế của bạn hiện đang trống hoặc chưa được lưu.</p>
+              <p style="font-size: 13px; color: #64748b; margin-top: 8px;">Hãy thêm các phần quà/bảng mục tiêu trên Canvas của designer và bấm <strong>Lưu</strong>.</p>
+            </div>
+          `;
+          return;
+        }
+      }
+
       const exportW = Number(layout.exportSize && layout.exportSize.width) || 1080;
       const exportH = Number(layout.exportSize && layout.exportSize.height) || 1920;
       const sx = window.innerWidth / exportW;
       const sy = window.innerHeight / exportH;
+      const s = Math.min(sx, sy) || 1;
+      
+      const offsetX = Math.round((window.innerWidth - (exportW * s)) / 2);
+      const offsetY = Math.round((window.innerHeight - (exportH * s)) / 2);
+
       root.innerHTML = '';
+
+      const getTranslucentBg = (colorHex, defaultHex = '#0a0a14') => {
+        const hex = colorHex || defaultHex;
+        return (hex.startsWith('#') && hex.length === 7) ? hex + '40' : hex;
+      };
 
       [...items]
         .filter((item) => item && item.visible !== false)
         .sort((a, b) => (Number(a.zIndex) || 0) - (Number(b.zIndex) || 0))
         .forEach((item) => {
-          const auraClass = auraMap[item.auraType] || '';
-          const motionClass = motionMap[item.animationType] || '';
-          const shape = auraShapeVars(item.auraShape);
-          const left = (Number(item.x) || 0) * sx;
-          const top = (Number(item.y) || 0) * sy;
-          const width = (Number(item.width) || 84) * sx;
-          const height = (Number(item.height) || 84) * sy;
-          const textSize = (Number(item.textSize) || 13) * ((sx + sy) / 2);
-          const textGap = (Number(item.textGap) || 4) * sy;
-          const auraSpeed = Math.max(0.2, Number(item.auraSpeed) || 1);
-          const animSpeed = Math.max(0.2, Number(item.animationSpeed) || 1);
-          const auraScale = Number(item.auraScale || 1);
-          const iconUrl = item.iconUrl || '';
-          const name = safeText(item.name || '');
-
           const el = document.createElement('div');
           el.className = 'gmd-item gmd-export-item';
-          el.style.left = `${left}px`;
-          el.style.top = `${top}px`;
-          el.style.width = `${width}px`;
-          el.style.height = `${height}px`;
-          el.style.transform = `rotate(${Number(item.rotation) || 0}deg)`;
-          el.style.zIndex = String(Number(item.zIndex) || 1);
+          
+          if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
+            // GOAL BOARD WIDGET RENDERING
+            let refW = item.lockedW || item.w || 900;
+            let refH = item.lockedH || item.h || 160;
+            
+            if (!item.lockRatio) {
+              if (item.type === 'boss-bar') { refW = 840; refH = 180; }
+              else if (item.type === 'combo') { refW = 800; refH = 220; }
+              else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
+              else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
+              else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
+              else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
+              else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
+            }
 
-          el.innerHTML = `
-            <div class="gmd-visual ${motionClass} ${auraClass}"
-              style="--aura-color:${item.auraColor || '#d7b2ff'};--aura-radius:${shape.radius};--aura-clip:${shape.clip};--anim-speed:${animSpeed}s;--aura-speed:${auraSpeed}s;--aura-scale:${auraScale};--icon-url:url('${iconUrl}');">
-              <span class="gmd-aura gmd-aura-back ${auraClass}"></span>
-              <span class="gmd-icon-wrap" style="--icon-url:url('${iconUrl}')">
-                <img src="${iconUrl}" alt="${name}">
-              </span>
-              <span class="gmd-aura gmd-aura-front ${auraClass}"></span>
-            </div>
-            ${item.showName ? `<div class="gmd-item-label" style="font-size:${textSize}px;color:${item.textColor || '#f7cb64'};--label-gap:${textGap}px;">${name}</div>` : ''}
-          `;
+            el.style.left = `${Math.round(offsetX + (item.x || 0) * s)}px`;
+            el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
+            el.style.width = `${Math.round((item.width || refW / 3) * s)}px`;
+            el.style.height = `${Math.round((item.height || refH / 3) * s)}px`;
+            el.style.zIndex = String(Number(item.zIndex) || 1);
+
+            let widgetHTML = '';
+            let skipHTMLUpdate = false;
+
+            if (item.type === 'media-asset') {
+              const isVideo = item.isWebM || (item.assetUrl && item.assetUrl.endsWith('.webm'));
+              const opacity = item.opacity !== undefined ? item.opacity : 1;
+              const fitMode = item.fitMode || 'contain';
+              const assetSrc = item.assetUrl ? (item.assetUrl.startsWith('http') ? item.assetUrl : `${item.assetUrl.startsWith('/') ? '' : '/'}${item.assetUrl}`) : '';
+              
+              widgetHTML = `
+                <div class="gmd-asset-container" style="width:100%; height:100%; position:relative;">
+                  ${assetSrc ? (isVideo
+                    ? `<video src="${assetSrc}" style="position:relative; z-index:2; width:100%; height:100%; object-fit:${fitMode}; opacity:${opacity}; background:transparent;" autoplay loop muted playsinline></video>`
+                    : `<img src="${assetSrc}" style="position:relative; z-index:2; width:100%; height:100%; object-fit:${fitMode}; opacity:${opacity}; background:transparent;" alt="">`
+                  ) : ''}
+                </div>
+              `;
+            } else if (item.type === 'goal-bar') {
+              const current = Number(item.currentCount || 0);
+              const target = Number(item.targetCount || 100);
+              const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+              const color = item.barColor || '#ff007f';
+              const glow = item.glowColor || 'rgba(255,0,127,0.5)';
+              const titleSize = Math.round((item.fontSize || 38) * s);
+              const subSize = Math.round((item.subtitleFontSize || 24) * s);
+              
+              widgetHTML = `
+                <div class="gmd-goal-bar-widget ${item.themeStyle === 'neon' ? 'theme-neon' : ''}" style="border-radius: ${Math.round((item.borderRadius || 12) * s)}px; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `${color}80`)}; box-shadow: ${item.hideBg ? 'none' : `0 ${Math.round(10 * s)}px ${Math.round(30 * s)}px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 ${Math.round(15 * s)}px ${color}26`}; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at top left, ${color}12, #0f172a)`)}; padding: ${Math.round(16 * s)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
+                  <div style="transform: translateY(${Math.round((item.contentOffsetY || 0) * s)}px); display: flex; flex-direction: column; gap: ${Math.round(8 * s)}px; width: 100%;">
+                    <div class="gmd-goal-bar-title-row" style="font-size: ${titleSize}px;">
+                      <span style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')}; text-shadow: 0 0 ${Math.round(10 * s)}px ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')}80; font-size: ${titleSize}px;">${safeText(item.name) || (safeText(item.giftName) + ' Goal') || 'Rose Goal'}</span>
+                      <span style="color: ${color}; text-shadow: 0 0 ${Math.round(10 * s)}px ${color}80; font-size: ${titleSize}px;">${current}/${target}</span>
+                    </div>
+                    <div class="gmd-goal-bar-outer" style="height: ${Math.round((item.barHeight !== undefined ? item.barHeight : 54) * s)}px; border-radius: ${Math.round((item.borderRadius || 12) * s)}px;">
+                      <div class="gmd-goal-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width: ${pct}%; --bar-color: ${color}; --bar-glow: ${glow}; background: linear-gradient(90deg, ${color}, ${glow}); box-shadow: 0 0 ${Math.round(24 * s)}px ${glow}; border-radius: ${Math.round((item.borderRadius || 12) * s)}px;"></div>
+                    </div>
+                    ${item.subtitleText ? `<div class="gmd-goal-bar-subtitle" style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : (item.subtitleColor || '#cbd5e1')}; text-align: left; margin-top: ${Math.round(2 * s)}px; line-height: 1.2; opacity: 0.9;">${safeText(item.subtitleText)}</div>` : ''}
+                  </div>
+                </div>
+              `;
+            } else if (item.type === 'goal-circle') {
+              const current = Number(item.currentCount || 0);
+              const target = Number(item.targetCount || 100);
+              const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+              const color = item.barColor || '#ff007f';
+              const titleSize = Math.round((item.fontSize || 24) * s);
+              const subSize = Math.round((item.subtitleFontSize || 16) * s);
+              const numSize = Math.round((item.numberFontSize || 16) * s);
+              const centerIcon = item.centerIcon || '❤️';
+
+              const r = 50;
+              const circ = 2 * Math.PI * r;
+              const strokeOffset = circ - (pct / 100) * circ;
+
+              let innerIconHTML = `<span style="font-size: ${Math.round(32 * s)}px; filter: drop-shadow(0 0 ${Math.round(6 * s)}px ${color});">${centerIcon}</span>`;
+              if (centerIcon === 'gift-icon' && item.iconUrl) {
+                const gIcon = item.iconUrl.startsWith('http') ? item.iconUrl : `${item.iconUrl.startsWith('/') ? '' : '/'}${item.iconUrl}`;
+                innerIconHTML = `<img src="${gIcon}" style="width: ${Math.round(44 * s)}px; height: ${Math.round(44 * s)}px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 ${Math.round(6 * s)}px ${color});">`;
+              }
+
+              widgetHTML = `
+                <div class="gmd-goal-circle-widget" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; background:${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : 'radial-gradient(circle at center, rgba(10,15,30,0.5) 0%, #0a0a14 100%)')}; border:${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : 'rgba(255,255,255,0.08)'}`}; border-radius: ${Math.round(24 * s)}px; padding: ${Math.round(16 * s)}px; box-shadow:${item.hideBg ? 'none' : `0 ${Math.round(8 * s)}px ${Math.round(32 * s)}px rgba(0,0,0,0.37)`};">
+                  <div style="transform: translateY(${Math.round((item.contentOffsetY || 0) * s)}px); display:flex; flex-direction:column; align-items:center; width:100%; position:relative;">
+                    <div style="font-size: ${titleSize}px; font-weight: 900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 ${Math.round(10 * s)}px ${color}80; margin-bottom: ${Math.round(8 * s)}px;">${pct}%</div>
+                    <div style="position: relative; width: ${Math.round(120 * s)}px; height: ${Math.round(120 * s)}px; display: flex; align-items: center; justify-content: center;">
+                      <svg width="${Math.round(120 * s)}" height="${Math.round(120 * s)}" viewBox="0 0 120 120" style="transform: rotate(-90deg);">
+                        <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" />
+                        <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${color}" stroke-width="8"
+                                stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}"
+                                stroke-linecap="round" style="transition: stroke-dashoffset 0.3s ease; filter: drop-shadow(0 0 ${Math.round(8 * s)}px ${color});" />
+                      </svg>
+                      <div style="position: absolute; display: flex; align-items: center; justify-content: center;">
+                        ${innerIconHTML}
+                      </div>
+                    </div>
+                    <div style="font-size: ${titleSize}px; font-weight: 800; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; margin-top: ${Math.round(12 * s)}px; text-align: center; line-height: 1.2;">${safeText(item.name || item.giftName || 'Goal')}</div>
+                    <div style="font-size: ${numSize}px; font-weight: 800; color: ${color}; text-shadow: 0 0 ${Math.round(8 * s)}px ${color}60; margin-top: ${Math.round(4 * s)}px;">${current}/${target}</div>
+                    ${item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#94a3b8') : '#94a3b8'}; margin-top: ${Math.round(4 * s)}px; text-align: center; font-weight: 600; line-height: 1.2;">${safeText(item.subtitleText)}</div>` : ''}
+                  </div>
+                </div>
+              `;
+            } else if (item.type === 'boss-bar') {
+              const current = Number(item.currentCount || 0);
+              const target = Number(item.targetCount || 100);
+              const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+              const color = item.barColor || '#ef4444';
+              const titleSize = Math.round((item.fontSize || 38) * s);
+              const subSize = Math.round((item.subtitleFontSize || 26) * s);
+              const formatNum = (num) => {
+                if (num >= 1000) return (num / 1000).toFixed(1).replace('.0', '') + 'k';
+                return num;
+              };
+              
+              widgetHTML = `
+                <div class="gmd-boss-bar-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 ${Math.round(30 * s)}px ${color}4d, 0 ${Math.round(8 * s)}px ${Math.round(32 * s)}px rgba(0,0,0,0.6)`}; display: flex; flex-direction: column; justify-content: center; padding: ${Math.round(16 * s)}px; box-sizing: border-box; width: 100%; height: 100%;">
+                  <div style="transform: translateY(${Math.round((item.contentOffsetY || 0) * s)}px); display: flex; flex-direction: column; gap: ${Math.round(14 * s)}px; width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: ${titleSize}px; font-weight: 900; color: #fff; line-height: 1;">
+                      <span style="display: flex; align-items: center; gap: ${Math.round(6 * s)}px; text-shadow: 0 0 ${Math.round(10 * s)}px ${color}; font-size: ${titleSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'};">🐉 ${safeText(item.bossName) || 'BOSS HP'}</span>
+                      <span style="color: ${color}; text-shadow: 0 0 ${Math.round(10 * s)}px ${color}; font-size: ${titleSize}px;">${pct}%</span>
+                    </div>
+                    <div class="gmd-boss-bar-outer" style="height: ${Math.round((item.barHeight !== undefined ? item.barHeight : 24) * s)}px; background: rgba(0, 0, 0, 0.6); border-radius: 4px; overflow: hidden; border: 1px solid ${color}40; position: relative; box-sizing: border-box; width: 100%;">
+                      <div class="gmd-boss-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="height: 100%; width: ${pct}%; --bar-color: ${color}; --bar-glow: ${color}; background: linear-gradient(90deg, #b91c1c, ${color}); box-shadow: 0 0 ${Math.round(12 * s)}px ${color};"></div>
+                    </div>
+                    <div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#9ca3af') : '#9ca3af'}; text-align: left; display: flex; justify-content: space-between; line-height: 1;">
+                      <span style="font-size: ${subSize}px;">⚔️ ${safeText(item.bossSub) || 'Corgi tấn công'}</span>
+                      <span style="color: ${color}; font-weight: bold; font-size: ${subSize}px;">${formatNum(current)}/${formatNum(target)}</span>
+                    </div>
+                  </div>
+                </div>
+              `;
+            } else if (item.type === 'top-contributors') {
+              const contributors = Array.isArray(item.contributors) ? item.contributors : [];
+              const limit = Number(item.limitCount || 3);
+              const sliced = contributors.slice(0, limit);
+              const color = item.barColor || '#eab308';
+              const headerSize = Math.round((item.fontSize || 34) * s);
+              const rowSize = Math.round((item.rowFontSize || 30) * s);
+              widgetHTML = `
+                <div class="gmd-contributors-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 ${Math.round(20 * s)}px ${color}33, 0 ${Math.round(8 * s)}px ${Math.round(32 * s)}px rgba(0,0,0,0.6)`}; padding: ${Math.round(12 * s)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
+                  <div style="transform: translateY(${Math.round((item.contentOffsetY || 0) * s)}px); display: flex; flex-direction: column; gap: ${Math.round(6 * s)}px; width: 100%;">
+                    <div class="gmd-contrib-header" style="font-size: ${headerSize}px; padding-bottom: ${Math.round(14 * s)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; border-bottom-color: ${color}4d;">🏆 BẢNG VINH DANH</div>
+                    <div class="gmd-contrib-list" style="display: flex; flex-direction: column; gap: ${Math.round(6 * s)}px;">
+                      ${sliced.map((c, idx) => `
+                        <div class="gmd-contrib-item" style="font-size: ${rowSize}px; padding: ${Math.round(10 * s)}px ${Math.round(14 * s)}px; gap: ${Math.round(18 * s)}px; border-radius: ${Math.round(14 * s)}px;">
+                          <span class="gmd-contrib-rank" style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">#${idx + 1}</span>
+                          ${item.showAvatar !== false ? `<div class="gmd-contrib-avatar" style="width: ${Math.round(48 * s)}px; height: ${Math.round(48 * s)}px; border-radius: 50%; background: #2e3b5e; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0; background-image: url('${c.avatar || ''}'); background-size: cover;"></div>` : ''}
+                          <span class="gmd-contrib-name" style="color: ${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : ''};">${safeText(c.nickname || 'BH Studio')}</span>
+                          ${item.showValue !== false ? `<span class="gmd-contrib-val">${c.value}💎</span>` : ''}
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                </div>
+              `;
+            } else if (item.type === 'podium-contributors') {
+              const contributors = Array.isArray(item.contributors) ? item.contributors : [];
+              const headerSize = Math.round((item.fontSize || 34) * s);
+              const nameSize = Math.round((item.rowFontSize || 22) * s);
+              const valSize = Math.round((item.valueFontSize || 22) * s);
+              widgetHTML = `
+                <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : '#eab308'}`}; border-radius: ${Math.round(24 * s)}px; padding: ${Math.round(18 * s)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
+                  <div style="transform: translateY(${Math.round((item.contentOffsetY || 0) * s)}px); display: flex; flex-direction: column; width: 100%;">
+                    <div class="gmd-podium-header" style="font-size: ${headerSize}px; padding-bottom: ${Math.round(8 * s)}px; color: ${item.useCustomTextColor ? (item.textColor || '#eab308') : ''};">👑 VƯƠNG MIỆN HOÀNG GIA</div>
+                    <div class="gmd-podium-podium" style="gap: ${Math.round(14 * s)}px;">
+                      <div class="gmd-podium-spot rank-2">
+                        <div class="gmd-podium-avatar-wrap">
+                          <div class="gmd-podium-crown" style="font-size: ${Math.round(32 * s)}px; top: -${Math.round(20 * s)}px;">🥈</div>
+                          <div class="gmd-podium-avatar" style="width: ${Math.round(64 * s)}px; height: ${Math.round(64 * s)}px; display:flex; align-items:center; justify-content:center; font-size:${Math.round(28 * s)}px; background-image: url('${contributors[1]?.avatar || ''}'); background-size: cover;">${contributors[1]?.avatar ? '' : '👤'}</div>
+                        </div>
+                        <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${safeText(contributors[1]?.nickname || 'Trống')}</div>
+                        ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[1]?.value || 0}💎</div>` : ''}
+                      </div>
+                      <div class="gmd-podium-spot rank-1">
+                        <div class="gmd-podium-avatar-wrap">
+                          <div class="gmd-podium-crown" style="font-size: ${Math.round(44 * s)}px; top: -${Math.round(28 * s)}px;">👑</div>
+                          <div class="gmd-podium-glow-ring" style="inset: -${Math.round(6 * s)}px; border-width: ${Math.round(3 * s)}px;"></div>
+                          <div class="gmd-podium-avatar" style="width: ${Math.round(88 * s)}px; height: ${Math.round(88 * s)}px; display:flex; align-items:center; justify-content:center; font-size:${Math.round(38 * s)}px; background-image: url('${contributors[0]?.avatar || ''}'); background-size: cover;">${contributors[0]?.avatar ? '' : '👤'}</div>
+                        </div>
+                        <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${safeText(contributors[0]?.nickname || 'Vua Donate')}</div>
+                        ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[0]?.value || 0}💎</div>` : ''}
+                      </div>
+                      <div class="gmd-podium-spot rank-3">
+                        <div class="gmd-podium-avatar-wrap">
+                          <div class="gmd-podium-crown" style="font-size: ${Math.round(32 * s)}px; top: -${Math.round(20 * s)}px;">🥉</div>
+                          <div class="gmd-podium-avatar" style="width: ${Math.round(64 * s)}px; height: ${Math.round(64 * s)}px; display:flex; align-items:center; justify-content:center; font-size:${Math.round(28 * s)}px; background-image: url('${contributors[2]?.avatar || ''}'); background-size: cover;">${contributors[2]?.avatar ? '' : '👤'}</div>
+                        </div>
+                        <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${safeText(contributors[2]?.nickname || 'Trống')}</div>
+                        ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[2]?.value || 0}💎</div>` : ''}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            } else if (item.type === 'mystery-chests') {
+              const current = Number(item.currentCount || 0);
+              const target = Number(item.targetCount || 100);
+              const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+              const titleText = item.name || '🎁 MỞ KHÓA HỘP QUÀ KỲ BÍ';
+              const titleSize = Math.round((item.fontSize || 32) * s);
+              const subSize = Math.round((item.subtitleFontSize || 20) * s);
+              
+              widgetHTML = `
+                <div class="gmd-mystery-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(168, 85, 247, 0.1) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : (item.barColor || '#a855f7')}`}; border-radius: ${Math.round(24 * s)}px; padding: ${Math.round(18 * s)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
+                  <div style="transform: translateY(${Math.round((item.contentOffsetY || 0) * s)}px); display: flex; flex-direction: column; width: 100%;">
+                    <div class="gmd-mystery-header" style="font-size: ${titleSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')};">${safeText(titleText)}</div>
+                    <div class="gmd-mystery-title-row" style="font-size: ${Math.round(26 * s)}px; margin-top: ${Math.round(6 * s)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">
+                      <span>${safeText(item.giftName || 'Hộp Quà')} Goal</span>
+                      <span>${current}/${target}</span>
+                    </div>
+                    <div class="gmd-mystery-track-wrap" style="margin-top: ${Math.round(16 * s)}px;">
+                      <div class="gmd-mystery-bar-outer" style="height: ${Math.round((item.barHeight !== undefined ? item.barHeight : 24) * s)}px; border-radius: ${Math.round(24 * s)}px;">
+                        <div class="gmd-mystery-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width: ${pct}%; border-radius: ${Math.round(24 * s)}px; --bar-color: ${item.barColor || '#a855f7'}; --bar-glow: ${item.glowColor || '#fb7185'};"></div>
+                      </div>
+                      <div class="gmd-mystery-milestones">
+                        <div class="gmd-mystery-node ${pct >= 25 ? 'unlocked' : ''}" style="left: 25%;">
+                          <span class="gmd-mystery-chest" style="font-size: ${Math.round((pct >= 25 ? 44 : 32) * s)}px; top: -${Math.round(8 * s)}px;">📦</span>
+                          <span class="gmd-mystery-pct" style="font-size: ${Math.round(20 * s)}px; margin-top: ${Math.round(8 * s)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">25%</span>
+                        </div>
+                        <div class="gmd-mystery-node ${pct >= 50 ? 'unlocked' : ''}" style="left: 50%;">
+                          <span class="gmd-mystery-chest" style="font-size: ${Math.round((pct >= 50 ? 44 : 32) * s)}px; top: -${Math.round(8 * s)}px;">🧰</span>
+                          <span class="gmd-mystery-pct" style="font-size: ${Math.round(20 * s)}px; margin-top: ${Math.round(8 * s)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">50%</span>
+                        </div>
+                        <div class="gmd-mystery-node ${pct >= 75 ? 'unlocked' : ''}" style="left: 75%;">
+                          <span class="gmd-mystery-chest" style="font-size: ${Math.round((pct >= 75 ? 44 : 32) * s)}px; top: -${Math.round(8 * s)}px;">🪙</span>
+                          <span class="gmd-mystery-pct" style="font-size: ${Math.round(20 * s)}px; margin-top: ${Math.round(8 * s)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">75%</span>
+                        </div>
+                        <div class="gmd-mystery-node ${pct >= 100 ? 'unlocked' : ''}" style="left: 100%;">
+                          <span class="gmd-mystery-chest" style="font-size: ${Math.round((pct >= 100 ? 44 : 32) * s)}px; top: -${Math.round(8 * s)}px;">💎</span>
+                          <span class="gmd-mystery-pct" style="font-size: ${Math.round(20 * s)}px; margin-top: ${Math.round(8 * s)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">100%</span>
+                        </div>
+                      </div>
+                    </div>
+                    ${item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#fda4af') : (item.subtitleColor || '#fda4af')}; text-align: center; margin-top: ${Math.round(6 * s)}px; font-weight: bold; line-height: 1.2;">${safeText(item.subtitleText)}</div>` : ''}
+                  </div>
+                </div>
+              `;
+            } else if (item.type === 'combo') {
+              const count = item.comboCount || 88;
+              const titleSize = Math.round((item.fontSize || 40) * s);
+              const numSize = Math.round((item.numberFontSize || 64) * s);
+              const subSize = Math.round((item.subtitleFontSize || 20) * s);
+              const subtitle = item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#fca5a5') : (item.subtitleColor || '#fca5a5')}; font-weight: bold; margin-top: ${Math.round(4 * s)}px; line-height: 1.2;">${safeText(item.subtitleText)}</div>` : '';
+              
+              widgetHTML = `
+                <div class="gmd-combo-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(239, 68, 68, 0.15) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? 'none' : `1.5px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : (item.barColor || '#ef4444')}`}; font-size: ${titleSize}px; border-radius: ${Math.round(24 * s)}px; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; padding: ${Math.round(12 * s)}px; gap: ${Math.round(8 * s)}px; display: flex; align-items: center; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; box-shadow: ${item.hideBg ? 'none' : `0 0 ${Math.round(12 * s)}px rgba(239, 68, 68, 0.2)`};">
+                  <div style="transform: translateY(${Math.round((item.contentOffsetY || 0) * s)}px); display: flex; flex-direction: column; align-items: center; gap: ${Math.round(8 * s)}px; width: 100%;">
+                    <div class="gmd-combo-num" style="font-size: ${numSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">x${count}</div>
+                    <div style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${item.name || 'COMBO ĐANG CHẠY!'}</div>
+                    ${subtitle}
+                  </div>
+                </div>
+              `;
+            } else if (item.type === 'goal-list') {
+              const title = item.name || 'MỤC TIÊU HÔM NAY 🎯';
+              const goals = Array.isArray(item.goals) ? item.goals : [];
+              const footerText = item.footerText || '';
+              const color = item.barColor || '#ff007f';
+              const headerSize = Math.round((item.fontSize || 32) * s);
+              const rowSize = Math.round((item.rowFontSize || 22) * s);
+              const footerSize = Math.round((item.footerFontSize || 20) * s);
+
+              const isAutoScroll = item.autoScroll === true;
+              const scrollDuration = item.autoScrollSpeed !== undefined ? item.autoScrollSpeed : 15;
+              const enableShimmer = item.shimmerEffect !== false;
+
+              // Duplicate the list when auto scroll is active to support seamless vertical looping
+              const goalsListToRender = isAutoScroll && goals.length > 0 ? [...goals, ...goals] : goals;
+              
+              widgetHTML = `
+                <div class="gmd-goal-list-widget" style="width:100%; height:100%; padding: ${Math.round(24 * s)}px; box-sizing: border-box; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : color}`}; border-radius: ${Math.round(24 * s)}px; display:flex; flex-direction:column; justify-content:flex-start; overflow:hidden; box-shadow: ${item.hideBg ? 'none' : `0 0 ${Math.round(30 * s)}px ${color}26, 0 ${Math.round(8 * s)}px ${Math.round(32 * s)}px rgba(0,0,0,0.6)`};">
+                  <div class="gmd-goal-list-header" style="font-weight:900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 ${Math.round(10 * s)}px ${color}80; text-align:center; font-size: ${headerSize}px; margin-bottom: ${Math.round(12 * s)}px; flex-shrink: 0; transform: translateY(${Math.round((item.contentOffsetY || 0) * s)}px);">${safeText(title)}</div>
+                  
+                  <div class="gmd-goal-list-scroll-container" style="flex: 1; overflow: hidden; position: relative; width: 100%; transform: translateY(${Math.round((item.contentOffsetY || 0) * s)}px);">
+                    <div class="${isAutoScroll ? 'gmd-goal-list-marquee-track' : 'gmd-goal-list-static-track'}" style="${isAutoScroll ? `animation: gmdMarqueeVertical ${scrollDuration}s linear infinite;` : `display:flex; flex-direction:column; gap: ${Math.round(12 * s)}px;`}">
+                      ${goalsListToRender.map(g => {
+                        const pct = Math.min(100, Math.round((g.current || 0) / (g.target || 1) * 100));
+                        const iconUrl = g.icon ? (g.icon.startsWith('http') ? g.icon : `${g.icon.startsWith('/') ? '' : '/'}${g.icon}`) : '';
+                        return `
+                          <div class="gmd-goal-list-row ${enableShimmer ? 'gmd-shimmer-row' : ''}" style="display:flex; flex-direction:column; gap: ${Math.round(8 * s)}px; background:rgba(255,255,255,0.02); padding: ${Math.round(12 * s)}px ${Math.round(16 * s)}px; border-radius: ${Math.round(12 * s)}px; margin-bottom: ${isAutoScroll ? `${Math.round(12 * s)}px` : '0'}; position: relative; overflow: hidden;">
+                            <div class="gmd-goal-list-text-row" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                              <div style="display:flex; align-items:center; gap:${Math.round(8 * s)}px;">
+                                ${iconUrl ? `<img class="gmd-goal-list-icon" src="${iconUrl}" style="width: ${Math.round((item.iconSize !== undefined ? item.iconSize : 28) * s)}px; height: ${Math.round((item.iconSize !== undefined ? item.iconSize : 28) * s)}px; border-radius:50%;" alt="">` : `<div style="font-size:${Math.round((item.iconSize !== undefined ? Math.round(item.iconSize * 0.7) : 20) * s)}px;">🎁</div>`}
+                                ${item.showGiftName !== false ? `<span class="gmd-goal-list-label" style="font-size: ${rowSize}px; font-weight:800; color:${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : '#e2e8f0'};">${safeText(g.giftName || 'Gift')}</span>` : ''}
+                              </div>
+                              <span class="gmd-goal-list-counts" style="font-size: ${rowSize}px; font-weight:800; color: ${item.barColor || '#38bdf8'}; text-shadow: 0 0 ${Math.round(10 * s)}px ${item.barColor || '#38bdf8'}80;">${g.current}/${g.target} (${pct}%)</span>
+                            </div>
+                            <div class="gmd-goal-list-bar-outer" style="width:100%; height: ${Math.round((item.barHeight !== undefined ? item.barHeight : 12) * s)}px; background:rgba(0,0,0,0.35); border-radius:99px; overflow:hidden; border: none; position:relative;">
+                              <div class="gmd-goal-list-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width:${pct}%; height:100%; --bar-color: ${item.barColor || '#38bdf8'}; --bar-glow: ${item.barColor || '#38bdf8'}; background:${item.barColor || '#38bdf8'}; border-radius:99px; box-shadow: 0 0 ${Math.round(12 * s)}px ${item.barColor || '#38bdf8'};"></div>
+                            </div>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                  
+                  ${footerText ? `<div class="gmd-goal-list-footer" style="text-align:center; font-size: ${footerSize}px; color:#cbd5e1; font-weight:bold; margin-top: ${Math.round(12 * s)}px; flex-shrink: 0; transform: translateY(${Math.round((item.contentOffsetY || 0) * s)}px);">${safeText(footerText)}</div>` : ''}
+                </div>
+              `;
+            } else if (item.type === 'text') {
+              widgetHTML = `
+                <div class="gmd-text-widget" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:${item.color || '#ffffff'}; font-size:${Math.round((item.fontSize || 36) * s)}px; font-weight:${item.fontWeight || 'bold'}; text-shadow:${item.textShadow || 'none'}; text-align:${item.textAlign || 'center'}; font-family:inherit; line-height:1.2; word-break:break-word; pointer-events:none;">
+                  ${safeText(item.text || 'Nhập văn bản')}
+                </div>
+              `;
+            }
+
+            // Outer wrapper scale transformation
+            const scaleX = (item.width || refW / 3) / refW;
+            const scaleY = (item.height || refH / 3) / refH;
+            const wrapperScaleX = scaleX * s;
+            const wrapperScaleY = scaleY * s;
+
+            el.innerHTML = `
+              <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${wrapperScaleX}, ${wrapperScaleY}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
+                ${widgetHTML}
+              </div>
+            `;
+          } else {
+            // STANDARD GIFT RENDERING
+            const auraClass = auraMap[item.auraType] || '';
+            const motionClass = motionMap[item.animationType] || '';
+            const shape = auraShapeVars(item.auraShape);
+            const left = offsetX + (Number(item.x) || 0) * s;
+            const top = offsetY + (Number(item.y) || 0) * s;
+            const width = (Number(item.width) || 84) * s;
+            const height = (Number(item.height) || 84) * s;
+            const scale = s;
+            const textSize = (Number(item.textSize) || 13) * scale;
+            const textGap = (Number(item.textGap) || 4) * scale;
+            const auraSpeed = Math.max(0.2, Number(item.auraSpeed) || 1);
+            const animSpeed = Math.max(0.2, Number(item.animationSpeed) || 1);
+            const auraScale = Number(item.auraScale || 1);
+            const iconUrl = item.iconUrl || '';
+            const name = safeText(item.name || '');
+
+            el.style.left = `${left}px`;
+            el.style.top = `${top}px`;
+            el.style.width = `${width}px`;
+            el.style.height = `${height}px`;
+            el.style.transform = `rotate(${Number(item.rotation) || 0}deg)`;
+            el.style.zIndex = String(Number(item.zIndex) || 1);
+
+            el.innerHTML = `
+              <div class="gmd-visual ${motionClass} ${auraClass}"
+                style="--aura-color:${item.auraColor || '#d7b2ff'};--aura-radius:${shape.radius};--aura-clip:${shape.clip};--anim-speed:${animSpeed}s;--aura-speed:${auraSpeed}s;--aura-scale:${auraScale};--icon-url:url('${iconUrl}');">
+                <span class="gmd-aura gmd-aura-back ${auraClass}"></span>
+                <span class="gmd-icon-wrap" style="--icon-url:url('${iconUrl}')">
+                  <img src="${iconUrl}" alt="${name}">
+                </span>
+                <span class="gmd-aura gmd-aura-front ${auraClass}"></span>
+              </div>
+              ${item.showName ? `<div class="gmd-item-label pos-${item.textPosition || 'bottom'}" style="font-size:${textSize}px;color:${item.textColor || '#f7cb64'};--label-gap:${textGap}px;">${name}</div>` : ''}
+            `;
+          }
           root.appendChild(el);
         });
     }
 
     async function loadAndRender(force = false) {
       try {
-        const res = await fetch(`/api/tiktok/gift-menu-layout?t=${Date.now()}`, { cache: 'no-store' });
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('preview') === 'true') {
+          if (document.body) {
+            document.body.style.background = '#060d1f';
+          } else {
+            window.addEventListener('DOMContentLoaded', () => {
+              document.body.style.background = '#060d1f';
+            });
+          }
+        }
+        const layoutId = params.get('layoutId') || '';
+        const userId = params.get('userId') || '';
+        let url = `/api/tiktok/gift-menu-layout?t=${Date.now()}`;
+        if (layoutId) url += `&layoutId=${layoutId}`;
+        if (userId) url += `&userId=${userId}`;
+        const res = await fetch(url, { cache: 'no-store' });
         const data = await res.json();
         if (!(data && data.success && data.layout)) return;
 
@@ -1497,7 +1901,9 @@
 
         lastLayoutSignature = signature;
         render(layout);
-      } catch (_) {}
+      } catch (err) {
+        console.error('Error loading or rendering layout:', err);
+      }
     }
 
     window.addEventListener('resize', () => loadAndRender(true));
@@ -1506,6 +1912,3 @@
   </script>
 </body>
 </html>
-
-
-

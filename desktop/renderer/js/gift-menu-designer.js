@@ -2,7 +2,6 @@
     class GiftMenuDesigner {
         constructor() {
             this.apiBase = (window.app && window.app.API_URL) || 'http://localhost:9000';
-            this.token = (window.app && window.app.authToken) || localStorage.getItem('effectstore_auth_token') || '';
             this.mount = document.getElementById('gift-menu-designer-view');
             this.sidebarRight = document.querySelector('.sidebar-right');
             this.gifts = [];
@@ -13,6 +12,9 @@
             this.aspectRatio = '9:16';
             this.dragState = null;
             this.canvasSize = { width: 720, height: 960 };
+            this.layouts = [];
+            this.currentLayoutId = null;
+            this.currentLayoutName = '';
             this.zoomLevel = 1;
             this.panX = 0;
             this.panY = 0;
@@ -29,16 +31,12 @@
                 { value: 'Bubble', label: 'Bubble (Bong bóng)' },
                 { value: 'Magic Ring', label: 'Magic Ring (Vòng phép thuật)' },
                 { value: 'Neon Frame', label: 'Neon Frame (Khung Neon)' },
-                { value: 'Light Sweep', label: 'Light Sweep (Quét sáng)' }
-            ];
-            this.auraOptions.push(
+                { value: 'Light Sweep', label: 'Light Sweep (Quét sáng)' },
                 { value: 'Fire Aura', label: 'Fire Aura (Lửa)' },
                 { value: 'Electric Aura', label: 'Electric Aura (Điện)' }
-            );
+            ];
 
-            // GOAL BOARD STATE (PHASE 1)
-            this.mode = 'gift-menu'; // 'gift-menu' or 'goal-board'
-            this.leftPanelTab = 'templates'; // 'templates' or 'assets'
+            // GOAL BOARD STATE
             this.goalBoard = {
                 items: [],
                 selectedId: null,
@@ -60,14 +58,38 @@
             });
         }
 
+        get token() {
+            return (window.app && window.app.authToken) || localStorage.getItem('token') || localStorage.getItem('effectstore_auth_token') || '';
+        }
+
+        get isAdmin() {
+            return window.app && window.app.currentUser && (window.app.currentUser.isAdmin || window.app.currentUser.email === 'admin@effectstore.vn');
+        }
+
+        onViewSwitch() {
+            if (!this.mount) return;
+            const publishBtn = this.mount.querySelector('[data-action="publish-store"]');
+            if (publishBtn) {
+                publishBtn.style.display = this.isAdmin ? 'inline-block' : 'none';
+            }
+        }
+
         init() {
             if (!this.mount) return;
             this.injectSharedRendererCss();
             this.render();
             this.bindEvents();
             this.loadGiftLibrary();
-            this.loadLayout();
+            this.loadGoalAssets();
+            this.loadGoalTemplates();
+            this.loadLayoutsList().then(() => {
+                this.loadLayout();
+            });
             this.connectWebSocket();
+            window.addEventListener('resize', () => {
+                this.applyZoom();
+            });
+            this.onViewSwitch();
         }
 
         connectWebSocket() {
@@ -84,29 +106,31 @@
                     try {
                         const packet = JSON.parse(event.data || '{}');
                         if (packet.event === 'goal_board_progress_update' && packet.data?.layers) {
-                            if (this.mode === 'goal-board') {
-                                this.goalBoard.items = packet.data.layers.map(layer => {
-                                    // Keep lock and visibility state from current designer items if present
-                                    const currentItem = this.goalBoard.items.find(x => x.id === layer.id);
-                                    return {
-                                        ...layer,
-                                        visible: currentItem ? currentItem.visible : (layer.visible !== false),
-                                        locked: currentItem ? currentItem.locked : Boolean(layer.locked)
-                                    };
-                                });
+                            let updated = false;
+                            packet.data.layers.forEach(layer => {
+                                const existing = this.items.find(x => x.id === layer.id);
+                                if (existing) {
+                                    if (layer.currentCount !== undefined) existing.currentCount = layer.currentCount;
+                                    if (layer.comboCount !== undefined) existing.comboCount = layer.comboCount;
+                                    if (layer.goals !== undefined) existing.goals = layer.goals;
+                                    if (layer.contributors !== undefined) existing.contributors = layer.contributors;
+                                    updated = true;
+                                }
+                            });
+                            if (updated) {
                                 this.renderCanvas();
                                 if (this.inspectorTab !== 'layers') {
                                     this.renderInspector();
                                 }
                             }
                         }
-                    } catch (_err) {}
+                    } catch (_err) { }
                 };
 
                 ws.onclose = () => {
                     setTimeout(() => this.connectWebSocket(), 5000);
                 };
-                
+
                 ws.onerror = () => {
                     ws.close();
                 };
@@ -122,6 +146,43 @@
                 const style = document.createElement('style');
                 style.id = styleId;
                 style.textContent = `
+                    .gmd-left-col {
+                        display: flex !important;
+                        flex-direction: column !important;
+                        gap: 12px !important;
+                        height: 100% !important;
+                        min-height: 0 !important;
+                    }
+                    .gmd-library-panel {
+                        flex: 1 !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        min-height: 250px !important;
+                        height: 0 !important;
+                    }
+                    .gmd-gift-list {
+                        flex: 1 !important;
+                        min-height: 0 !important;
+                        display: grid !important;
+                        grid-template-columns: 1fr 1fr !important;
+                        gap: 8px !important;
+                        max-height: none !important;
+                        overflow-y: auto !important;
+                        padding-right: 4px !important;
+                    }
+                    .gmd-gift-card {
+                        min-height: 80px !important;
+                        padding: 6px !important;
+                        gap: 5px !important;
+                    }
+                    .gmd-my-library {
+                        flex: 0 0 auto !important;
+                    }
+                    .gmd-my-library-list {
+                        max-height: 180px !important;
+                        overflow-y: auto !important;
+                    }
+
                     .gmd-goal-bar-inner, .gmd-boss-bar-inner, .gmd-mystery-bar-inner, .gmd-goal-list-bar-inner {
                         position: relative !important;
                         overflow: hidden !important;
@@ -191,7 +252,7 @@
             const link = document.createElement('link');
             link.id = 'gift-menu-renderer-css';
             link.rel = 'stylesheet';
-            link.href = `${this.apiBase}/gift-menu-renderer.css?v=7`;
+            link.href = `${this.apiBase}/gift-menu-renderer.css?v=11`;
             document.head.appendChild(link);
         }
 
@@ -206,39 +267,63 @@
                             <button class="gmd-btn icon" data-action="undo" disabled><i class="fas fa-undo"></i></button>
                             <button class="gmd-btn icon" data-action="redo" disabled><i class="fas fa-redo"></i></button>
                             <button class="gmd-btn" data-action="help"><i class="far fa-question-circle"></i> Hướng dẫn</button>
-                            <div class="gmd-mode-switch">
-                                <button class="gmd-btn active" data-action="switch-mode" data-mode="gift-menu"><i class="fas fa-gift"></i> Menu Quà</button>
-                                <button class="gmd-btn" data-action="switch-mode" data-mode="goal-board"><i class="fas fa-trophy"></i> Bảng Mục Tiêu</button>
-                            </div>
                         </div>
                         <div class="gmd-group">
-                            <button class="gmd-btn" data-action="preview-browser"><i class="fas fa-desktop"></i> Xem trên trình duyệt</button>
-                            <button class="gmd-btn" data-action="save-new-template" id="gmd-save-template-btn" style="display:none; background:#8b5cf6; color:#ffffff; border:1px solid #a78bfa;"><i class="fas fa-star"></i> Lưu thành bảng mới</button>
+                            <button class="gmd-btn" data-action="publish-store" style="display:none; background:#10b981; color:#fff; border:none; font-weight:700;"><i class="fas fa-store"></i> Đưa lên Cửa hàng</button>
                             <button class="gmd-btn" data-action="save"><i class="fas fa-save"></i> Lưu</button>
                             <button class="gmd-btn primary" data-action="save-export"><i class="fas fa-download"></i> Lưu & Xuất</button>
                         </div>
                     </div>
                     <div class="gmd-layout">
                         <aside class="gmd-left-col">
-                            <section class="gmd-panel gmd-library-panel">
-                                <h3>1. Chọn quà tặng</h3>
-                                <p class="gmd-subline">Kéo thả hoặc click để thêm vào menu</p>
-                                <div class="gmd-library-controls">
-                                    <div class="gmd-search-wrap">
-                                        <i class="fas fa-search"></i>
-                                        <input id="gmd-search" class="gmd-input" placeholder="Tìm quà..." />
-                                    </div>
-                                    <button class="gmd-add-btn"><i class="fas fa-plus"></i></button>
+                            <section class="gmd-panel gmd-library-panel" style="flex: 1; display: flex; flex-direction: column; min-height: 250px;">
+                                <div class="gmd-left-tabs" style="display:flex; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:6px; gap:4px; flex-shrink: 0;">
+                                    <button class="gmd-left-tab-btn active" data-tab-name="gifts" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid #3b82f6; color:#fff; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-gift"></i> Quà tặng</button>
+                                    <button class="gmd-left-tab-btn" data-tab-name="widgets" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid transparent; color:#888; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-trophy"></i> Mục tiêu</button>
+                                    <button class="gmd-left-tab-btn" data-tab-name="assets" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid transparent; color:#888; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-images"></i> Tài nguyên</button>
                                 </div>
-                                <div id="gmd-gift-list" class="gmd-gift-list"></div>
+                                <div id="gmd-gifts-tab-content" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                                    <div class="gmd-library-controls">
+                                        <div class="gmd-search-wrap">
+                                            <i class="fas fa-search"></i>
+                                            <input id="gmd-search" class="gmd-input" placeholder="Tìm quà..." />
+                                        </div>
+                                        <button class="gmd-add-btn"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                    <div id="gmd-gift-list" class="gmd-gift-list" style="flex: 1; min-height: 0;"></div>
+                                </div>
+                                <div id="gmd-widgets-tab-content" style="display:none; flex: 1; flex-direction: column; min-height: 0; overflow-y: auto;">
+                                    <div class="gmd-template-grid" id="gmd-widgets-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                                </div>
+                                <div id="gmd-assets-tab-content" style="display:none; flex: 1; flex-direction: column; min-height: 0; overflow-y: auto; gap: 8px;">
+                                    <div class="gmd-asset-upload-row" style="display: flex; gap: 8px; margin-bottom: 8px; flex-shrink: 0;">
+                                        <button class="gmd-btn primary" id="gmd-upload-asset-btn" style="flex: 1;"><i class="fas fa-upload"></i> Tải lên</button>
+                                        <input type="file" id="gmd-asset-file-input" style="display: none;" accept=".webm,.png,.gif,.jpg,.jpeg">
+                                        <button class="gmd-btn" id="gmd-add-text-btn" style="white-space: nowrap;"><i class="fas fa-font"></i> Thêm Chữ</button>
+                                    </div>
+                                    <div class="gmd-assets-grid" id="gmd-assets-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;"></div>
+                                </div>
                             </section>
                             <section class="gmd-panel gmd-my-library">
-                                <div class="gmd-my-library-top">
-                                    <h4>Thư viện của tôi</h4>
-                                    <button class="gmd-btn" data-action="new-layout"><i class="fas fa-plus"></i> Tạo mới</button>
+                                <div class="gmd-lib-tabs" style="display:flex; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:6px;">
+                                    <button class="gmd-lib-tab-btn active" data-tab-name="my-library" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid #3b82f6; color:#fff; cursor:pointer; font-weight:600; font-size:12px;">Thư viện</button>
+                                    <button class="gmd-lib-tab-btn" data-tab-name="templates" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid transparent; color:#888; cursor:pointer; font-weight:600; font-size:12px;">Mẫu thiết kế</button>
                                 </div>
-                                <div class="gmd-subline">Menu đã lưu</div>
-                                <div class="gmd-my-library-list" id="gmd-my-library-list"></div>
+                                <div id="gmd-my-library-content">
+                                    <div class="gmd-my-library-top">
+                                        <h4>Thư viện của tôi</h4>
+                                        <button class="gmd-btn" data-action="new-layout"><i class="fas fa-plus"></i> Tạo mới</button>
+                                    </div>
+                                    <div class="gmd-subline">Menu đã lưu</div>
+                                    <div class="gmd-my-library-list" id="gmd-my-library-list"></div>
+                                </div>
+                                <div id="gmd-templates-content" style="display:none;">
+                                    <div class="gmd-my-library-top">
+                                        <h4>Mẫu từ Admin</h4>
+                                    </div>
+                                    <div class="gmd-subline">Click để dùng hoặc mua</div>
+                                    <div class="gmd-templates-list" id="gmd-templates-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;"></div>
+                                </div>
                             </section>
                         </aside>
                         <main class="gmd-panel gmd-canvas-wrap">
@@ -327,7 +412,7 @@
                 this.renderInspector();
                 this.renderMyLibrary();
                 this.updateHistoryButtons();
-            } catch (_e) {}
+            } catch (_e) { }
         }
 
         pushHistory(_label = '') {
@@ -405,6 +490,52 @@
             }
         }
 
+        async loadTemplatesList() {
+            const listEl = this.mount.querySelector('#gmd-templates-list');
+            if (!listEl) return;
+            listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+            try {
+                const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-templates`, { headers });
+                const data = await res.json();
+                if (data.success && Array.isArray(data.templates)) {
+                    if (data.templates.length === 0) {
+                        listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;">Không có mẫu thiết kế nào</div>';
+                        return;
+                    }
+                    listEl.innerHTML = data.templates.map(t => {
+                        const isOwned = t.isPurchased || t.price === 0;
+                        const actionText = isOwned ? 'Sử dụng' : `Mua ${t.price.toLocaleString('vi-VN')}đ`;
+                        const bgStyle = isOwned ? 'background:#10b981;' : 'background:#8b5cf6;';
+                        return `
+                            <div class="gmd-tmpl-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px; gap:8px;">
+                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                    <span style="font-size:12px; color:#fff; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:110px;" title="${t.name}">${t.name}</span>
+                                    <span style="font-size:10px; color:#888;">Tỷ lệ: ${t.aspectRatio || '9:16'}</span>
+                                </div>
+                                <button class="gmd-btn-use-tmpl" data-template-id="${t._id}" style="font-size:10px; ${bgStyle} border:none; color:#fff; padding:4px 8px; border-radius:4px; cursor:pointer; font-weight:700; white-space:nowrap;">
+                                    ${actionText}
+                                </button>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#ef4444;">Lỗi tải mẫu thiết kế</div>';
+                }
+            } catch (err) {
+                console.error(err);
+                listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#ef4444;">Lỗi kết nối máy chủ</div>';
+            }
+        }
+
+        async buyOrUseTemplateFromSidebar(templateId) {
+            if (window.app && typeof window.app.buyOrUseMenuTemplate === 'function') {
+                window.app.buyOrUseMenuTemplate(templateId);
+            } else {
+                alert('Không tìm thấy chức năng thanh toán chính.');
+            }
+        }
+
         normalizeIcon(icon) {
             if (!icon) return '';
             return icon.startsWith('http') ? icon : `${this.apiBase}${icon}`;
@@ -435,6 +566,7 @@
                 iconUrl: this.normalizeIcon(gift.icon),
                 x, y, width: 84, height: 84, rotation: 0,
                 showName: true, textSize: 13, textColor: '#f7cb64', textGap: 4,
+                textPosition: 'bottom',
                 auraType: 'None', auraColor: '#d7b2ff', auraShape: 'Circle',
                 animationType: 'None', animationSpeed: 1, auraSpeed: 1, auraScale: 1, zIndex: this.items.length + 1,
                 visible: true, locked: false
@@ -470,13 +602,15 @@
         }
 
         renderCanvas() {
-            if (this.mode === 'goal-board') {
-                this.renderGoalBoardCanvas();
-                return;
-            }
             const canvas = this.mount.querySelector('#gmd-canvas');
             const stage = this.mount.querySelector('#gmd-stage');
             if (!canvas || !stage) return;
+            
+            const getTranslucentBg = (colorHex, defaultHex = '#0a0a14') => {
+                const hex = colorHex || defaultHex;
+                return (hex.startsWith('#') && hex.length === 7) ? hex + '40' : hex;
+            };
+
             Array.from(stage.querySelectorAll('.gmd-item')).forEach((n) => n.remove());
             this.items.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).forEach((item) => {
                 if (item.visible === false) return;
@@ -488,22 +622,344 @@
                 el.style.top = `${item.y}px`;
                 el.style.width = `${item.width}px`;
                 el.style.height = `${item.height}px`;
-                el.style.transform = `rotate(${item.rotation}deg)`;
+                el.style.transform = `rotate(${item.rotation || 0}deg)`;
                 el.style.zIndex = String(item.zIndex || 1);
-                const auraShapeVars = this.getAuraShapeVars(item.auraShape);
-                const lightSweepOverlay = '';
-                el.innerHTML = `
-                    <div class="gmd-visual ${this.getMotionClass(item.animationType)} ${this.getAuraClass(item.auraType)}" style="--aura-color:${item.auraColor};${auraShapeVars};--anim-speed:${item.animationSpeed}s;--aura-speed:${item.auraSpeed || 1}s;--aura-scale:${item.auraScale || 1};--icon-url:url('${item.iconUrl}');">
-                        <span class="gmd-aura gmd-aura-back ${this.getAuraClass(item.auraType)}"></span>
-                        <span class="gmd-icon-wrap" style="--icon-url:url('${item.iconUrl}')">
-                            <img src="${item.iconUrl}" alt="${item.name}">
-                            ${lightSweepOverlay}
-                        </span>
-                        <span class="gmd-aura gmd-aura-front ${this.getAuraClass(item.auraType)}"></span>
-                    </div>
-                    ${item.showName ? `<div class="gmd-item-label" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;">${item.name}</div>` : ''}
-                    ${selected && !item.locked && this.selectedId === item.id && this.selectedIds.length <= 1 ? '<span class="gmd-handle gmd-rotate-handle" data-handle="rotate">⟳</span><span class="gmd-handle gmd-resize-handle" data-handle="resize"></span>' : ''}
-                `;
+
+                const isWidget = item.type && item.type !== 'gift';
+                if (isWidget) {
+                    let refW = item.lockedW || item.w || 900;
+                    let refH = item.lockedH || item.h || 160;
+                    if (!item.lockRatio) {
+                        if (item.type === 'boss-bar') { refW = 840; refH = 180; }
+                        else if (item.type === 'combo') { refW = 800; refH = 220; }
+                        else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
+                        else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
+                        else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
+                        else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
+                        else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
+                    }
+
+                    let widgetHTML = '';
+                    if (item.type === 'goal-bar') {
+                        const current = Number(item.currentCount || 0);
+                        const target = Number(item.targetCount || 100);
+                        const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+                        const color = item.barColor || '#ff007f';
+                        const glow = item.glowColor || 'rgba(255,0,127,0.5)';
+                        const titleSize = item.fontSize || 38;
+                        const subSize = item.subtitleFontSize || 24;
+                        widgetHTML = `
+                            <div class="gmd-goal-bar-widget ${item.themeStyle === 'neon' ? 'theme-neon' : ''}" style="border-radius: ${item.borderRadius || 12}px; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `${color}80`)}; box-shadow: ${item.hideBg ? 'none' : `0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 15px ${color}26`}; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at top left, ${color}12, #0f172a)`)}; padding: 16px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
+                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                                    <div class="gmd-goal-bar-title-row" style="font-size: ${titleSize}px;">
+                                        <span style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')}; text-shadow: 0 0 10px ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')}80; font-size: ${titleSize}px;">${item.name || (item.giftName + ' Goal') || 'Rose Goal'}</span>
+                                        <span style="color: ${color}; text-shadow: 0 0 10px ${color}80; font-size: ${titleSize}px;">${current}/${target}</span>
+                                    </div>
+                                    <div class="gmd-goal-bar-outer" style="height: ${item.barHeight !== undefined ? item.barHeight : 54}px;">
+                                        <div class="gmd-goal-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width: ${pct}%; --bar-color: ${color}; --bar-glow: ${glow}; background: linear-gradient(90deg, ${color}, ${glow}); box-shadow: 0 0 24px ${glow};"></div>
+                                    </div>
+                                    ${item.subtitleText ? `<div class="gmd-goal-bar-subtitle" style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : (item.subtitleColor || '#cbd5e1')}; text-align: left; margin-top: 2px; line-height: 1.2; opacity: 0.9;">${item.subtitleText}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    } else if (item.type === 'goal-circle') {
+                        const current = Number(item.currentCount || 0);
+                        const target = Number(item.targetCount || 100);
+                        const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+                        const color = item.barColor || '#ff007f';
+                        const titleSize = item.fontSize || 24;
+                        const subSize = item.subtitleFontSize || 16;
+                        const numSize = item.numberFontSize || 16;
+                        const centerIcon = item.centerIcon || '❤️';
+
+                        const r = 50;
+                        const circ = 2 * Math.PI * r;
+                        const strokeOffset = circ - (pct / 100) * circ;
+
+                        let innerIconHTML = `<span style="font-size: 32px; filter: drop-shadow(0 0 6px ${color});">${centerIcon}</span>`;
+                        if (centerIcon === 'gift-icon' && item.giftId) {
+                            const gift = this.gifts.find(g => String(g.id) === String(item.giftId));
+                            const gIcon = gift && gift.icon ? (gift.icon.startsWith('http') ? gift.icon : this.apiBase + gift.icon) : '';
+                            if (gIcon) {
+                                innerIconHTML = `<img src="${gIcon}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 6px ${color});">`;
+                            }
+                        }
+
+                        widgetHTML = `
+                            <div class="gmd-goal-circle-widget" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; background:${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : 'radial-gradient(circle at center, rgba(10,15,30,0.5) 0%, #0a0a14 100%)')}; border:${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : 'rgba(255,255,255,0.08)'}`}; border-radius: 24px; padding: 16px; box-shadow:${item.hideBg ? 'none' : '0 8px 32px rgba(0,0,0,0.37)'};">
+                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display:flex; flex-direction:column; align-items:center; width:100%; position:relative;">
+                                    <div style="font-size: ${titleSize}px; font-weight: 900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 10px ${color}80; margin-bottom: 8px;">${pct}%</div>
+                                    <div style="position: relative; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center;">
+                                        <svg width="120" height="120" viewBox="0 0 120 120" style="transform: rotate(-90deg);">
+                                            <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" />
+                                            <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${color}" stroke-width="8"
+                                                    stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}"
+                                                    stroke-linecap="round" style="transition: stroke-dashoffset 0.3s ease; filter: drop-shadow(0 0 8px ${color});" />
+                                        </svg>
+                                        <div style="position: absolute; display: flex; align-items: center; justify-content: center;">
+                                            ${innerIconHTML}
+                                        </div>
+                                    </div>
+                                    <div style="font-size: ${titleSize}px; font-weight: 800; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; margin-top: 12px; text-align: center;">${item.name || (item.giftName || 'Goal')}</div>
+                                    <div style="font-size: ${numSize}px; font-weight: 800; color: ${color}; text-shadow: 0 0 8px ${color}60; margin-top: 4px;">${current}/${target}</div>
+                                    ${item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#94a3b8') : '#94a3b8'}; margin-top: 4px; text-align: center; font-weight: 600;">${item.subtitleText}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    } else if (item.type === 'boss-bar') {
+                        const current = Number(item.currentCount || 0);
+                        const target = Number(item.targetCount || 100);
+                        const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+                        const color = item.barColor || '#ef4444';
+                        const titleSize = item.fontSize || 38;
+                        const subSize = item.subtitleFontSize || 26;
+                        const formatNum = (num) => {
+                            if (num >= 1000) return (num / 1000).toFixed(1).replace('.0', '') + 'k';
+                            return num;
+                        };
+                        widgetHTML = `
+                            <div class="gmd-boss-bar-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 30px ${color}4d, 0 8px 32px rgba(0,0,0,0.6)`}; display: flex; flex-direction: column; justify-content: center; padding: 16px; box-sizing: border-box; width: 100%; height: 100%;">
+                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; gap: 14px; width: 100%;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: ${titleSize}px; font-weight: 900; color: #fff; line-height: 1;">
+                                        <span style="display: flex; align-items: center; gap: 6px; text-shadow: 0 0 10px ${color}; font-size: ${titleSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'};">🐉 ${item.bossName || 'BOSS HP'}</span>
+                                        <span style="color: ${color}; text-shadow: 0 0 10px ${color}; font-size: ${titleSize}px;">${pct}%</span>
+                                    </div>
+                                    <div class="gmd-boss-bar-outer" style="height: ${item.barHeight !== undefined ? item.barHeight : 24}px; background: rgba(0, 0, 0, 0.6); border-radius: 4px; overflow: hidden; border: 1px solid ${color}40; position: relative; box-sizing: border-box; width: 100%;">
+                                        <div class="gmd-boss-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="height: 100%; width: ${pct}%; --bar-color: ${color}; --bar-glow: ${color}; background: linear-gradient(90deg, #b91c1c, ${color}); box-shadow: 0 0 12px ${color};"></div>
+                                    </div>
+                                    <div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#9ca3af') : '#9ca3af'}; text-align: left; display: flex; justify-content: space-between; line-height: 1;">
+                                        <span>⚔️ ${item.bossSub || 'Corgi tấn công'}</span>
+                                        <span style="color: ${color}; font-weight: bold;">${formatNum(current)}/${formatNum(target)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else if (item.type === 'top-contributors') {
+                        const contributors = Array.isArray(item.contributors) ? item.contributors : [
+                            { nickname: 'BH Studio', value: 520, avatar: '' },
+                            { nickname: 'Minh Anh', value: 120, avatar: '' },
+                            { nickname: 'Khánh Huyền', value: 99, avatar: '' }
+                        ];
+                        const limit = Number(item.limitCount || 3);
+                        const sliced = contributors.slice(0, limit);
+                        const color = item.barColor || '#eab308';
+                        const headerSize = item.fontSize || 34;
+                        const rowSize = item.rowFontSize || 30;
+                        widgetHTML = `
+                            <div class="gmd-contributors-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 20px ${color}33, 0 8px 32px rgba(0,0,0,0.6)`}; padding: 12px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
+                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                                    <div class="gmd-contrib-header" style="font-size: ${headerSize}px; padding-bottom: 14px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; border-bottom-color: ${color}4d;">🏆 BẢNG VINH DANH</div>
+                                    <div class="gmd-contrib-list" style="display: flex; flex-direction: column; gap: 6px;">
+                                        ${sliced.map((c, idx) => `
+                                            <div class="gmd-contrib-item" style="font-size: ${rowSize}px; padding: 10px 14px; gap: 18px; border-radius: 14px;">
+                                                <span class="gmd-contrib-rank" style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">#${idx + 1}</span>
+                                                ${item.showAvatar !== false ? `<div class="gmd-contrib-avatar" style="width: 48px; height: 48px; border-radius: 50%; background: #2e3b5e; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0; background-image: url('${c.avatar || ''}'); background-size: cover;"></div>` : ''}
+                                                <span class="gmd-contrib-name" style="color: ${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : ''};">${c.nickname || 'BH Studio'}</span>
+                                                ${item.showValue !== false ? `<span class="gmd-contrib-val">${c.value}💎</span>` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else if (item.type === 'podium-contributors') {
+                        const contributors = Array.isArray(item.contributors) ? item.contributors : [
+                            { nickname: 'Vua Donate', value: 520, avatar: '' },
+                            { nickname: 'Minh Anh', value: 120, avatar: '' },
+                            { nickname: 'Khánh Huyền', value: 99, avatar: '' }
+                        ];
+                        const headerSize = item.fontSize || 34;
+                        const nameSize = item.rowFontSize || 22;
+                        const valSize = item.valueFontSize || 22;
+                        widgetHTML = `
+                            <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : '#eab308'}`}; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; box-shadow: ${item.hideBg ? 'none' : ''};">
+                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; width: 100%;">
+                                    <div class="gmd-podium-header" style="font-size: ${headerSize}px; padding-bottom: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#eab308') : ''};">👑 VƯƠNG MIỆN HOÀNG GIA</div>
+                                    <div class="gmd-podium-podium" style="gap: 14px;">
+                                        <div class="gmd-podium-spot rank-2">
+                                            <div class="gmd-podium-avatar-wrap">
+                                                <div class="gmd-podium-crown" style="font-size: 32px; top: -20px;">🥈</div>
+                                                <div class="gmd-podium-avatar" style="width: 64px; height: 64px; display:flex; align-items:center; justify-content:center; font-size:28px; background-image: url('${contributors[1]?.avatar || ''}'); background-size: cover;">${contributors[1]?.avatar ? '' : '👤'}</div>
+                                            </div>
+                                            <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${contributors[1]?.nickname || 'Trống'}</div>
+                                            ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[1]?.value || 0}💎</div>` : ''}
+                                        </div>
+                                        <div class="gmd-podium-spot rank-1">
+                                            <div class="gmd-podium-avatar-wrap">
+                                                <div class="gmd-podium-crown" style="font-size: 44px; top: -28px;">👑</div>
+                                                <div class="gmd-podium-glow-ring" style="inset: -6px; border-width: 3px;"></div>
+                                                <div class="gmd-podium-avatar" style="width: 88px; height: 88px; display:flex; align-items:center; justify-content:center; font-size:38px; background-image: url('${contributors[0]?.avatar || ''}'); background-size: cover;">${contributors[0]?.avatar ? '' : '👤'}</div>
+                                            </div>
+                                            <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${contributors[0]?.nickname || 'Vua Donate'}</div>
+                                            ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[0]?.value || 0}💎</div>` : ''}
+                                        </div>
+                                        <div class="gmd-podium-spot rank-3">
+                                            <div class="gmd-podium-avatar-wrap">
+                                                <div class="gmd-podium-crown" style="font-size: 32px; top: -20px;">🥉</div>
+                                                <div class="gmd-podium-avatar" style="width: 64px; height: 64px; display:flex; align-items:center; justify-content:center; font-size:28px; background-image: url('${contributors[2]?.avatar || ''}'); background-size: cover;">${contributors[2]?.avatar ? '' : '👤'}</div>
+                                            </div>
+                                            <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${contributors[2]?.nickname || 'Trống'}</div>
+                                            ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[2]?.value || 0}💎</div>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else if (item.type === 'mystery-chests') {
+                        const current = Number(item.currentCount || 0);
+                        const target = Number(item.targetCount || 100);
+                        const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+                        const titleText = item.name || '🎁 MỞ KHÓA HỘP QUÀ KỲ BÍ';
+                        const titleSize = item.fontSize || 32;
+                        const subSize = item.subtitleFontSize || 20;
+                        widgetHTML = `
+                            <div class="gmd-mystery-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(168, 85, 247, 0.1) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : (item.barColor || '#a855f7')}`}; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; box-shadow: ${item.hideBg ? 'none' : ''};">
+                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; width: 100%;">
+                                    <div class="gmd-mystery-header" style="font-size: ${titleSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')};">${titleText}</div>
+                                    <div class="gmd-mystery-title-row" style="font-size: 26px; margin-top: 6px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">
+                                        <span>${item.giftName || 'Hộp Quà'} Goal</span>
+                                        <span>${current}/${target}</span>
+                                    </div>
+                                    <div class="gmd-mystery-track-wrap" style="margin-top: 16px;">
+                                        <div class="gmd-mystery-bar-outer" style="height: ${item.barHeight !== undefined ? item.barHeight : 24}px; border-radius: 24px;">
+                                            <div class="gmd-mystery-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width: ${pct}%; border-radius: 24px; --bar-color: ${item.barColor || '#a855f7'}; --bar-glow: ${item.glowColor || '#fb7185'};"></div>
+                                        </div>
+                                        <div class="gmd-mystery-milestones">
+                                            <div class="gmd-mystery-node ${pct >= 25 ? 'unlocked' : ''}" style="left: 25%;">
+                                                <span class="gmd-mystery-chest" style="font-size: ${pct >= 25 ? 44 : 32}px; top: -8px;">📦</span>
+                                                <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">25%</span>
+                                            </div>
+                                            <div class="gmd-mystery-node ${pct >= 50 ? 'unlocked' : ''}" style="left: 50%;">
+                                                <span class="gmd-mystery-chest" style="font-size: ${pct >= 50 ? 44 : 32}px; top: -8px;">🧰</span>
+                                                <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">50%</span>
+                                            </div>
+                                            <div class="gmd-mystery-node ${pct >= 75 ? 'unlocked' : ''}" style="left: 75%;">
+                                                <span class="gmd-mystery-chest" style="font-size: ${pct >= 75 ? 44 : 32}px; top: -8px;">🪙</span>
+                                                <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">75%</span>
+                                            </div>
+                                            <div class="gmd-mystery-node ${pct >= 100 ? 'unlocked' : ''}" style="left: 100%;">
+                                                <span class="gmd-mystery-chest" style="font-size: ${pct >= 100 ? 44 : 32}px; top: -8px;">💎</span>
+                                                <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">100%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ${item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#fda4af') : (item.subtitleColor || '#fda4af')}; text-align: center; margin-top: 6px; font-weight: bold; line-height: 1.2;">${item.subtitleText}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    } else if (item.type === 'combo') {
+                        const count = item.comboCount || 88;
+                        const titleSize = item.fontSize || 40;
+                        const numSize = item.numberFontSize || 64;
+                        const subSize = item.subtitleFontSize || 20;
+                        const subtitle = item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#fca5a5') : (item.subtitleColor || '#fca5a5')}; font-weight: bold; margin-top: 4px; line-height: 1.2;">${item.subtitleText}</div>` : '';
+                        widgetHTML = `
+                            <div class="gmd-combo-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(239, 68, 68, 0.15) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? 'none' : `1.5px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : (item.barColor || '#ef4444')}`}; font-size: ${titleSize}px; border-radius: 24px; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; padding: 12px; gap: 8px; display: flex; align-items: center; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; box-shadow: ${item.hideBg ? 'none' : '0 0 12px rgba(239, 68, 68, 0.2)'};">
+                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%;">
+                                    <div class="gmd-combo-num" style="font-size: ${numSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">x${count}</div>
+                                    <div style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${item.name || 'COMBO ĐANG CHẠY!'}</div>
+                                    ${subtitle}
+                                </div>
+                            </div>
+                        `;
+                    } else if (item.type === 'media-asset') {
+                        const isVideo = item.isWebM || (item.assetUrl && item.assetUrl.endsWith('.webm'));
+                        const opacity = item.opacity !== undefined ? item.opacity : 1;
+                        const fitMode = item.fitMode || 'contain';
+                        const assetSrc = item.assetUrl ? (item.assetUrl.startsWith('http') ? item.assetUrl : `${this.apiBase}${item.assetUrl}`) : '';
+                        widgetHTML = `
+                            <div class="gmd-asset-container" style="width:100%; height:100%; position:relative;">
+                                <div class="gmd-asset-fallback-box" style="position:absolute; inset:0; display: ${assetSrc ? 'none' : 'flex'}; flex-direction: column; align-items: center; justify-content: center; background: rgba(168, 85, 247, 0.03); border: 1px dashed rgba(168, 85, 247, 0.25); border-radius: 16px; box-sizing: border-box; text-align: center; padding: 12px; pointer-events: none; z-index: 1;">
+                                    <div style="font-size: 36px; opacity: 0.6;">🖼️</div>
+                                    <div style="font-size: 20px; font-weight: bold; color: rgba(192, 132, 252, 0.8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 90%; margin-top: 1px;" title="${item.name || 'Tài nguyên'}">${item.name || 'Tài nguyên'}</div>
+                                </div>
+                                ${assetSrc ? (isVideo
+                                ? `<video src="${assetSrc}" style="position:relative; z-index:2; width:100%; height:100%; object-fit:${fitMode}; opacity:${opacity}; background:transparent;" autoplay loop muted playsinline></video>`
+                                : `<img src="${assetSrc}" style="position:relative; z-index:2; width:100%; height:100%; object-fit:${fitMode}; opacity:${opacity}; background:transparent;" alt="">`
+                            ) : ''}
+                            </div>
+                        `;
+                    } else if (item.type === 'goal-list') {
+                        const title = item.name || 'MỤC TIÊU HÔM NAY 🎯';
+                        const goals = Array.isArray(item.goals) ? item.goals : [];
+                        const footerText = item.footerText || '';
+                        const color = item.barColor || '#ff007f';
+                        const headerSize = item.fontSize || 32;
+                        const rowSize = item.rowFontSize || 22;
+                        const footerSize = item.footerFontSize || 20;
+
+                        const isAutoScroll = item.autoScroll === true;
+                        const scrollDuration = item.autoScrollSpeed !== undefined ? item.autoScrollSpeed : 15;
+                        const enableShimmer = item.shimmerEffect !== false;
+
+                        // Create duplicate list if auto scroll is enabled for seamless vertical marquee looping
+                        const goalsListToRender = isAutoScroll && goals.length > 0 ? [...goals, ...goals] : goals;
+
+                        widgetHTML = `
+                            <div class="gmd-goal-list-widget" style="width:100%; height:100%; padding: 24px; box-sizing: border-box; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : color}`}; border-radius: 24px; display:flex; flex-direction:column; justify-content:flex-start; overflow:hidden; box-shadow: ${item.hideBg ? 'none' : `0 0 30px ${color}26, 0 8px 32px rgba(0,0,0,0.6)`};">
+                                <div class="gmd-goal-list-header" style="font-weight:900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 10px ${color}80; text-align:center; font-size: ${headerSize}px; margin-bottom: 12px; flex-shrink: 0; transform: translateY(${item.contentOffsetY || 0}px);">${title}</div>
+                                
+                                <div class="gmd-goal-list-scroll-container" style="flex: 1; overflow: hidden; position: relative; width: 100%; transform: translateY(${item.contentOffsetY || 0}px);">
+                                    <div class="${isAutoScroll ? 'gmd-goal-list-marquee-track' : 'gmd-goal-list-static-track'}" style="${isAutoScroll ? `animation: gmdMarqueeVertical ${scrollDuration}s linear infinite;` : 'display:flex; flex-direction:column; gap: 12px;'}">
+                                        ${goalsListToRender.map(g => {
+                                            const pct = Math.min(100, Math.round((g.current || 0) / (g.target || 1) * 100));
+                                            const iconUrl = g.icon ? (g.icon.startsWith('http') ? g.icon : `${this.apiBase}${g.icon}`) : '';
+                                            return `
+                                                <div class="gmd-goal-list-row ${enableShimmer ? 'gmd-shimmer-row' : ''}" style="display:flex; flex-direction:column; gap: 8px; background:rgba(255,255,255,0.02); padding: 12px 16px; border-radius: 12px; margin-bottom: ${isAutoScroll ? '12px' : '0'}; position: relative; overflow: hidden;">
+                                                    <div class="gmd-goal-list-text-row" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                                        <div style="display:flex; align-items:center; gap:8px;">
+                                                            ${iconUrl ? `<img class="gmd-goal-list-icon" src="${iconUrl}" style="width: ${item.iconSize !== undefined ? item.iconSize : 28}px; height: ${item.iconSize !== undefined ? item.iconSize : 28}px; border-radius:50%;" alt="">` : `<div style="font-size:${item.iconSize !== undefined ? Math.round(item.iconSize * 0.7) : 20}px;">🎁</div>`}
+                                                            ${item.showGiftName !== false ? `<span class="gmd-goal-list-label" style="font-size: ${rowSize}px; font-weight:800; color:${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : '#e2e8f0'};">${g.giftName || 'Gift'}</span>` : ''}
+                                                        </div>
+                                                        <span class="gmd-goal-list-counts" style="font-size: ${rowSize}px; font-weight:800; color: ${item.barColor || '#38bdf8'}; text-shadow: 0 0 10px ${item.barColor || '#38bdf8'}80;">${g.current}/${g.target} (${pct}%)</span>
+                                                    </div>
+                                                    <div class="gmd-goal-list-bar-outer" style="width:100%; height: ${item.barHeight !== undefined ? item.barHeight : 12}px; background:rgba(0,0,0,0.35); border-radius:99px; overflow:hidden; border: none; position:relative;">
+                                                        <div class="gmd-goal-list-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width:${pct}%; height:100%; --bar-color: ${item.barColor || '#38bdf8'}; --bar-glow: ${item.barColor || '#38bdf8'}; background:${item.barColor || '#38bdf8'}; border-radius:99px; box-shadow: 0 0 12px ${item.barColor || '#38bdf8'};"></div>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                </div>
+                                
+                                ${footerText ? `<div class="gmd-goal-list-footer" style="text-align:center; font-size: ${footerSize}px; color:#cbd5e1; font-weight:bold; margin-top: 12px; flex-shrink: 0; transform: translateY(${item.contentOffsetY || 0}px);">${footerText}</div>` : ''}
+                            </div>
+                        `;
+                    } else if (item.type === 'text') {
+                        widgetHTML = `
+                            <div class="gmd-text-widget" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:${item.color || '#ffffff'}; font-size:${item.fontSize || 36}px; font-weight:${item.fontWeight || 'bold'}; text-shadow:${item.textShadow || 'none'}; text-align:${item.textAlign || 'center'}; font-family:inherit; line-height:1.2; word-break:break-word; pointer-events:none;">
+                                ${item.text || 'Nhập văn bản'}
+                            </div>
+                        `;
+                    }
+
+                    const scaleX = item.width / refW;
+                    const scaleY = item.height / refH;
+                    el.innerHTML = `
+                        <div class="gmd-visual" style="width:100%; height:100%; position: relative; overflow: visible;">
+                            <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${scaleX}, ${scaleY}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
+                                ${widgetHTML}
+                            </div>
+                        </div>
+                        ${selected && !item.locked && this.selectedId === item.id ? '<span class="gmd-handle gmd-resize-handle" data-handle="resize"></span>' : ''}
+                    `;
+                } else {
+                    const auraShapeVars = this.getAuraShapeVars(item.auraShape);
+                    const lightSweepOverlay = '';
+                    el.innerHTML = `
+                        <div class="gmd-visual ${this.getMotionClass(item.animationType)} ${this.getAuraClass(item.auraType)}" style="--aura-color:${item.auraColor};${auraShapeVars};--anim-speed:${item.animationSpeed}s;--aura-speed:${item.auraSpeed || 1}s;--aura-scale:${item.auraScale || 1};--icon-url:url('${item.iconUrl}');">
+                            <span class="gmd-aura gmd-aura-back ${this.getAuraClass(item.auraType)}"></span>
+                            <span class="gmd-icon-wrap" style="--icon-url:url('${item.iconUrl}')">
+                                <img src="${item.iconUrl}" alt="${item.name}">
+                                ${lightSweepOverlay}
+                            </span>
+                            <span class="gmd-aura gmd-aura-front ${this.getAuraClass(item.auraType)}"></span>
+                        </div>
+                        ${item.showName ? `<div class="gmd-item-label pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;">${item.name}</div>` : ''}
+                        ${selected && !item.locked && this.selectedId === item.id ? '<span class="gmd-handle gmd-rotate-handle" data-handle="rotate">⟳</span><span class="gmd-handle gmd-resize-handle" data-handle="resize"></span>' : ''}
+                    `;
+                }
+
                 stage.appendChild(el);
             });
             this.applyZoom();
@@ -571,10 +1027,6 @@
         }
 
         renderInspector() {
-            if (this.mode === 'goal-board') {
-                this.renderGoalBoardInspector();
-                return;
-            }
             const inspector = this.mount.querySelector('#gmd-inspector');
             if (!inspector) return;
             const giftTabBtn = this.mount.querySelector('.gmd-inspector-tabs [data-tab="gift"]');
@@ -587,16 +1039,37 @@
             }
             const selected = this.items.find((x) => x.id === this.selectedId);
             if (!selected) {
-                inspector.innerHTML = '<div class="gmd-inspector-empty"><i class="fas fa-mouse-pointer"></i><p>Chọn một quà tặng<br>trên canvas để tùy chỉnh</p><small>(Giữ Shift để chọn nhiều)</small></div>';
+                inspector.innerHTML = '<div class="gmd-inspector-empty"><i class="fas fa-mouse-pointer"></i><p>Chọn một quà tặng hoặc widget<br>trên canvas để tùy chỉnh</p><small>(Giữ Shift để chọn nhiều)</small></div>';
+                return;
+            }
+            if (selected.type && selected.type !== 'gift') {
+                this.renderGoalBoardInspector();
                 return;
             }
             const iconPreview = selected.iconUrl || '';
+            const isMultiSelect = this.selectedIds.length > 1;
+            let selectedHeaderHTML = '';
+            if (isMultiSelect) {
+                selectedHeaderHTML = `
+                    <div class="gmd-selected-card multi" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px; color: #a78bfa;">
+                            <i class="fas fa-layer-group"></i>
+                            <span>Đang chọn <strong>${this.selectedIds.length}</strong> quà tặng</span>
+                        </div>
+                        <button class="gmd-delete-btn" data-action="delete" title="Xóa tất cả" style="background: rgba(239, 68, 68, 0.2); border: none; color: #ef4444; padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: background 0.2s;"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+            } else {
+                selectedHeaderHTML = `
+                    <div class="gmd-selected-card">
+                        <img src="${iconPreview}" alt="${selected.name}">
+                        <input class="gmd-title-input" data-key="name" value="${selected.name}">
+                        <button class="gmd-delete-btn" data-action="delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+            }
             inspector.innerHTML = `
-                <div class="gmd-selected-card">
-                    <img src="${iconPreview}" alt="${selected.name}">
-                    <input class="gmd-title-input" data-key="name" value="${selected.name}">
-                    <button class="gmd-delete-btn" data-action="delete"><i class="fas fa-trash"></i></button>
-                </div>
+                ${selectedHeaderHTML}
 
                 <div class="gmd-section">
                     <h4><i class="fas fa-ruler-combined"></i> KÍCH THƯỚC & VỊ TRÍ</h4>
@@ -618,6 +1091,12 @@
                             <span></span>
                         </label>
                     </div>
+                    <div class="gmd-field"><label>Vị trí chữ</label>${this.renderSelect('textPosition', selected.textPosition || 'bottom', [
+                { value: 'bottom', label: 'Dưới' },
+                { value: 'top', label: 'Trên' },
+                { value: 'left', label: 'Trái' },
+                { value: 'right', label: 'Phải' }
+            ])}</div>
                     <div class="gmd-field"><label>Cỡ chữ</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textSize" value="${selected.textSize}"><span>px</span></div></div>
                     <input class="gmd-range" type="range" min="10" max="48" data-key="textSize" value="${selected.textSize}">
                     <div class="gmd-field"><label>Khoảng cách (Gap)</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textGap" value="${selected.textGap}"><span>px</span></div></div>
@@ -637,51 +1116,49 @@
                     <input class="gmd-range" type="range" min="0.6" max="1.8" step="0.05" data-key="auraScale" value="${selected.auraScale || 1}">
                     <div class="gmd-field"><label>Màu Aura</label><div class="gmd-inline-color"><input class="gmd-input gmd-input-compact" data-key="auraColor" value="${selected.auraColor}"><input class="gmd-color" type="color" data-key="auraColor" value="${selected.auraColor}"></div></div>
                     <div class="gmd-field"><label>Hình dáng Aura</label>${this.renderSelect('auraShape', selected.auraShape, [
-                        { value: 'Circle', label: 'Tròn' },
-                        { value: 'Square', label: 'Vuông' },
-                        { value: 'Hexagon', label: 'Lục giác' },
-                        { value: 'Star', label: 'Ngôi sao' },
-                        { value: 'Oval', label: 'Oval' }
-                    ])}</div>
+                { value: 'Circle', label: 'Tròn' },
+                { value: 'Square', label: 'Vuông' },
+                { value: 'Hexagon', label: 'Lục giác' },
+                { value: 'Star', label: 'Ngôi sao' },
+                { value: 'Oval', label: 'Oval' }
+            ])}</div>
                 </div>
             `;
         }
 
         updateSelectedItem(key, value, refreshInspector = true) {
-            const item = this.items.find((x) => x.id === this.selectedId);
-            if (!item) return;
+            const primaryItem = this.items.find((x) => x.id === this.selectedId);
+            if (!primaryItem) return;
             const selectedItems = this.getSelectedItems().filter((x) => !x.locked);
-            const oldWidth = item.width;
-            const oldHeight = item.height;
-            if (key === 'showName') item[key] = Boolean(value);
-            else if (['x', 'y', 'width', 'height', 'rotation', 'textSize', 'textGap', 'animationSpeed', 'auraSpeed', 'auraScale'].includes(key)) {
-                item[key] = Number(value);
-                // Keep icon box square by default for cleaner designer UX
-                if (key === 'width') item.height = item.width;
-                if (key === 'height') item.width = item.height;
-                if ((key === 'width' || key === 'height') && selectedItems.length > 1) {
-                    const sourceBefore = Math.max(1, key === 'width' ? oldWidth : oldHeight);
-                    const nextSize = Math.max(1, key === 'width' ? item.width : item.height);
-                    const ratio = nextSize / sourceBefore;
-                    selectedItems.forEach((s) => {
-                        if (s.id === item.id) return;
-                        s.width = Math.round(s.width * ratio);
-                        s.height = s.width;
-                        this.clampInsideCanvas(s);
-                    });
+
+            selectedItems.forEach((item) => {
+                if (key === 'showName') {
+                    item[key] = Boolean(value);
+                } else if (['x', 'y', 'width', 'height', 'rotation', 'textSize', 'textGap', 'animationSpeed', 'auraSpeed', 'auraScale'].includes(key)) {
+                    item[key] = Number(value);
+                    if (key === 'width') item.height = item.width;
+                    if (key === 'height') item.width = item.height;
+                    if (key === 'animationSpeed' || key === 'auraSpeed') {
+                        item[key] = Math.max(0.2, Math.min(8, item[key] || 1));
+                    }
+                    if (key === 'auraScale') {
+                        item[key] = Math.max(0.6, Math.min(1.8, item[key] || 1));
+                    }
+                    this.clampInsideCanvas(item);
+                } else if (key === 'auraColor') {
+                    let v = String(value || '').trim();
+                    if (v && !v.startsWith('#')) v = `#${v}`;
+                    item[key] = v || '#c084fc';
+                } else if (key === 'name') {
+                    // Only update name on the primary item to avoid duplicate labels
+                    if (item.id === this.selectedId) {
+                        item[key] = value;
+                    }
+                } else {
+                    item[key] = value;
                 }
-                if (key === 'animationSpeed' || key === 'auraSpeed') {
-                    item[key] = Math.max(0.2, Math.min(8, item[key] || 1));
-                }
-                if (key === 'auraScale') {
-                    item[key] = Math.max(0.6, Math.min(1.8, item[key] || 1));
-                }
-            }
-            else if (key === 'auraColor') {
-                let v = String(value || '').trim();
-                if (v && !v.startsWith('#')) v = `#${v}`;
-                item[key] = v || '#c084fc';
-            } else item[key] = value;
+            });
+
             this.renderCanvas();
             if (refreshInspector) this.renderInspector();
             this.pushHistory('update-item');
@@ -817,13 +1294,13 @@
 
         applySnapForItem(baseX, baseY, item) {
             if (!this.snapEnabled) return { x: baseX, y: baseY, guideX: null, guideY: null };
-            const canvas = this.mount.querySelector('#gmd-canvas');
-            if (!canvas) return { x: baseX, y: baseY, guideX: null, guideY: null };
             const threshold = 8;
-            const cx = Math.round((canvas.clientWidth - item.width) / 2);
-            const cy = Math.round((canvas.clientHeight - item.height) / 2);
-            const candidatesX = [0, cx, canvas.clientWidth - item.width];
-            const candidatesY = [0, cy, canvas.clientHeight - item.height];
+            const w = this.canvasSize.width;
+            const h = this.canvasSize.height;
+            const cx = Math.round((w - item.width) / 2);
+            const cy = Math.round((h - item.height) / 2);
+            const candidatesX = [0, cx, w - item.width];
+            const candidatesY = [0, cy, h - item.height];
             let x = baseX;
             let y = baseY;
             let guideX = null;
@@ -867,10 +1344,28 @@
             this.applyZoom();
         }
 
+        getFitScale() {
+            const canvas = this.mount ? this.mount.querySelector('#gmd-canvas') : null;
+            if (!canvas || canvas.clientWidth <= 50 || canvas.clientHeight <= 50) return 0.5;
+            const pad = 30;
+            const scaleX = (canvas.clientWidth - pad) / this.canvasSize.width;
+            const scaleY = (canvas.clientHeight - pad) / this.canvasSize.height;
+            return Math.max(0.1, Math.min(scaleX, scaleY, 1));
+        }
+
         applyZoom() {
             const stage = this.mount.querySelector('#gmd-stage');
             const zoomText = this.mount.querySelector('#gmd-zoom-value');
-            if (stage) stage.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoomLevel})`;
+            const fitScale = this.getFitScale();
+            const finalScale = fitScale * this.zoomLevel;
+            if (stage) {
+                stage.style.position = 'absolute';
+                stage.style.left = '50%';
+                stage.style.top = '50%';
+                stage.style.width = `${this.canvasSize.width}px`;
+                stage.style.height = `${this.canvasSize.height}px`;
+                stage.style.transform = `translate(-50%, -50%) translate(${this.panX}px, ${this.panY}px) scale(${finalScale})`;
+            }
             if (zoomText) zoomText.textContent = `${Math.round(this.zoomLevel * 100)}%`;
             const canvas = this.mount.querySelector('#gmd-canvas');
             if (canvas) canvas.classList.toggle('is-zoomed', this.zoomLevel > 1.01);
@@ -888,27 +1383,152 @@
         clientToCanvasPoint(clientX, clientY) {
             const canvas = this.mount.querySelector('#gmd-canvas');
             if (!canvas) return { x: 0, y: 0 };
+            const finalScale = this.getFitScale() * this.zoomLevel;
             const rect = canvas.getBoundingClientRect();
             const cx = canvas.clientWidth / 2;
             const cy = canvas.clientHeight / 2;
             const px = clientX - rect.left;
             const py = clientY - rect.top;
+            const stageLeft = cx + this.panX - (this.canvasSize.width / 2) * finalScale;
+            const stageTop = cy + this.panY - (this.canvasSize.height / 2) * finalScale;
             return {
-                x: (((px - cx) - this.panX) / this.zoomLevel) + cx,
-                y: (((py - cy) - this.panY) / this.zoomLevel) + cy
+                x: (px - stageLeft) / finalScale,
+                y: (py - stageTop) / finalScale
             };
         }
 
-        async saveLayout(showToast = true) {
-            const canvas = this.mount ? this.mount.querySelector('#gmd-canvas') : null;
-            const safe = this.mount ? this.mount.querySelector('#gmd-safe-area') : null;
+        showPromptModal(title, defaultValue = '') {
+            return new Promise((resolve) => {
+                const modalId = 'gmd-custom-prompt-modal';
+                let existing = document.getElementById(modalId);
+                if (existing) existing.remove();
+
+                const modal = document.createElement('div');
+                modal.id = modalId;
+                modal.style.position = 'fixed';
+                modal.style.inset = '0';
+                modal.style.background = 'rgba(3, 7, 18, 0.75)';
+                modal.style.backdropFilter = 'blur(8px)';
+                modal.style.zIndex = '99999';
+                modal.style.display = 'flex';
+                modal.style.alignItems = 'center';
+                modal.style.justifyContent = 'center';
+
+                modal.innerHTML = `
+                    <div style="background: linear-gradient(180deg, #0f172a 0%, #090d16 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; width: 380px; padding: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); font-family: system-ui, sans-serif;">
+                        <h4 style="margin: 0 0 12px; color: #f8fafc; font-size: 16px; font-weight: 800;">${title}</h4>
+                        <input id="gmd-prompt-input" type="text" value="${defaultValue}" style="width: 100%; padding: 10px; background: rgba(3, 7, 18, 0.9); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; color: #f8fafc; font-size: 13px; margin-bottom: 16px; box-sizing: border-box; outline: none; transition: border-color 0.2s;" />
+                        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                            <button id="gmd-prompt-cancel" class="gmd-btn" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1;">Hủy</button>
+                            <button id="gmd-prompt-submit" class="gmd-btn primary" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); border: none; color: #fff;">Xác nhận</button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+
+                const input = modal.querySelector('#gmd-prompt-input');
+                input.focus();
+                input.select();
+
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const val = input.value;
+                        modal.remove();
+                        resolve(val);
+                    }
+                    if (e.key === 'Escape') {
+                        modal.remove();
+                        resolve(null);
+                    }
+                });
+
+                modal.querySelector('#gmd-prompt-cancel').onclick = () => {
+                    modal.remove();
+                    resolve(null);
+                };
+
+                modal.querySelector('#gmd-prompt-submit').onclick = () => {
+                    const val = input.value;
+                    modal.remove();
+                    resolve(val);
+                };
+            });
+        }
+
+        showConfirmModal(title) {
+            return new Promise((resolve) => {
+                const modalId = 'gmd-custom-confirm-modal';
+                let existing = document.getElementById(modalId);
+                if (existing) existing.remove();
+
+                const modal = document.createElement('div');
+                modal.id = modalId;
+                modal.style.position = 'fixed';
+                modal.style.inset = '0';
+                modal.style.background = 'rgba(3, 7, 18, 0.75)';
+                modal.style.backdropFilter = 'blur(8px)';
+                modal.style.zIndex = '99999';
+                modal.style.display = 'flex';
+                modal.style.alignItems = 'center';
+                modal.style.justifyContent = 'center';
+
+                modal.innerHTML = `
+                    <div style="background: linear-gradient(180deg, #0f172a 0%, #090d16 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; width: 360px; padding: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); font-family: system-ui, sans-serif;">
+                        <h4 style="margin: 0 0 16px; color: #f8fafc; font-size: 15px; font-weight: 800; line-height: 1.4;">${title}</h4>
+                        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                            <button id="gmd-confirm-cancel" class="gmd-btn" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1;">Hủy</button>
+                            <button id="gmd-confirm-submit" class="gmd-btn primary" style="background: linear-gradient(135deg, #ef4444, #b91c1c); border: none; color: #fff;">Xóa</button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+
+                const handleKey = (e) => {
+                    if (e.key === 'Escape') {
+                        modal.remove();
+                        resolve(false);
+                    }
+                };
+                window.addEventListener('keydown', handleKey);
+
+                modal.querySelector('#gmd-confirm-cancel').onclick = () => {
+                    modal.remove();
+                    window.removeEventListener('keydown', handleKey);
+                    resolve(false);
+                };
+
+                modal.querySelector('#gmd-confirm-submit').onclick = () => {
+                    modal.remove();
+                    window.removeEventListener('keydown', handleKey);
+                    resolve(true);
+                };
+            });
+        }
+
+        async saveLayout(showToast = true, forcePromptName = false) {
+            let nameToSave = this.currentLayoutName || 'Menu mới';
+            if (forcePromptName || !this.currentLayoutId || this.currentLayoutName === 'Menu mặc định' || this.currentLayoutName === 'New Menu') {
+                const name = await this.showPromptModal('Nhập tên thiết kế để lưu:', this.currentLayoutName || 'Menu mới');
+                if (name === null) return false; // user cancelled naming
+                nameToSave = name.trim() || 'Menu mới';
+                this.currentLayoutName = nameToSave;
+            }
+
+            const map = {
+                '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
+                '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
+                '1:1': { width: 480, height: 480, canvasW: 900, canvasH: 900 }
+            };
+            const cfg = map[this.aspectRatio] || map['9:16'];
             const liveCanvasSize = {
-                width: canvas && canvas.clientWidth ? canvas.clientWidth : this.canvasSize.width,
-                height: canvas && canvas.clientHeight ? canvas.clientHeight : this.canvasSize.height
+                width: cfg.canvasW,
+                height: cfg.canvasH
             };
             const safeSize = {
-                width: safe && safe.clientWidth ? safe.clientWidth : 360,
-                height: safe && safe.clientHeight ? safe.clientHeight : 640
+                width: cfg.width,
+                height: cfg.height
             };
             const safeOffset = {
                 x: Math.round((liveCanvasSize.width - safeSize.width) / 2),
@@ -919,16 +1539,25 @@
                 : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
             const sx = exportSize.width / safeSize.width;
             const sy = exportSize.height / safeSize.height;
-            const exportedItems = this.items.map((i) => ({
-                ...i,
-                x: Math.round((i.x - safeOffset.x) * sx),
-                y: Math.round((i.y - safeOffset.y) * sy),
-                width: Math.round(i.width * sx),
-                height: Math.round(i.height * sy),
-                textSize: Number(i.textSize || 13) * ((sx + sy) / 2),
-                textGap: Number(i.textGap || 4) * sy
-            }));
+            const exportedItems = this.items.map((i) => {
+                const itemExport = {
+                    ...i,
+                    x: Math.round((i.x - safeOffset.x) * sx),
+                    y: Math.round((i.y - safeOffset.y) * sy),
+                    width: Math.round(i.width * sx),
+                    height: Math.round(i.height * sy),
+                    textSize: Number(i.textSize || 13) * ((sx + sy) / 2),
+                    textGap: Number(i.textGap || 4) * sy
+                };
+                if (i.type && i.type !== 'gift') {
+                    itemExport.w = itemExport.width;
+                    itemExport.h = itemExport.height;
+                }
+                return itemExport;
+            });
             const payload = {
+                id: this.currentLayoutId || undefined,
+                name: nameToSave,
                 version: 2,
                 savedAt: new Date().toISOString(),
                 aspectRatio: this.aspectRatio,
@@ -942,10 +1571,24 @@
             try {
                 const headers = { 'Content-Type': 'application/json' };
                 if (this.token) headers.Authorization = `Bearer ${this.token}`;
-                await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout`, { method: 'POST', headers, body: JSON.stringify(payload) });
-            } catch (_e) {}
+                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout`, { method: 'POST', headers, body: JSON.stringify(payload) });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data && data.success && data.layout) {
+                    this.currentLayoutId = data.layout._id;
+                    this.currentLayoutName = data.layout.name;
+                } else {
+                    throw new Error((data && (data.message || data.error)) || `HTTP ${res.status}`);
+                }
+            } catch (err) {
+                console.error('❌ Failed to save layout:', err);
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', `Không thể lưu thiết kế: ${err.message || err}`);
+                }
+                return false;
+            }
             if (showToast && window.app && typeof window.app.showNotification === 'function') window.app.showNotification('success', 'Đã lưu layout');
-            this.renderMyLibrary();
+            await this.loadLayoutsList();
+            return true;
         }
 
         async exportToOBS() {
@@ -955,7 +1598,7 @@
                 const res = await fetch(`${this.apiBase}/api/obs/setup-gift-menu`, {
                     method: 'POST',
                     headers,
-                    body: JSON.stringify({})
+                    body: JSON.stringify({ layoutId: this.currentLayoutId })
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || !data.success) {
@@ -973,7 +1616,8 @@
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('info', 'Đang lưu và đẩy Gift Menu lên OBS...');
                 }
-                await this.saveLayout(false);
+                const saved = await this.saveLayout(false, false);
+                if (saved === false) return; // user cancelled naming
                 const data = await this.exportToOBS();
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('success', `Đã lưu & kết nối OBS (${data.sourceName || 'gift_menu_overlay'})`);
@@ -985,30 +1629,65 @@
             }
         }
 
+        async loadLayoutsList() {
+            try {
+                const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layouts`, { headers });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.success && Array.isArray(data.layouts)) {
+                        this.layouts = data.layouts;
+                    }
+                }
+            } catch (_e) {
+                this.layouts = [];
+            }
+            this.renderMyLibrary();
+        }
+
         async loadLayout() {
             let payload = null;
+            let loadedFromDb = false;
             try {
                 const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
                 const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout`, { headers });
                 if (res.ok) {
                     const data = await res.json();
-                    if (data && data.success && data.layout) payload = data.layout;
+                    if (data && data.success) {
+                        payload = data.layout;
+                        loadedFromDb = true;
+                    }
                 }
-            } catch (_e) {}
-            if (!payload) {
+            } catch (_e) { }
+            if (!payload && !loadedFromDb) {
                 try { payload = JSON.parse(localStorage.getItem('giftMenuDesignerLayoutV2') || 'null'); } catch (_e) { payload = null; }
             }
-            if (!payload || !Array.isArray(payload.items)) return;
+            if (!payload) {
+                if (loadedFromDb) {
+                    localStorage.removeItem('giftMenuDesignerLayoutV2');
+                }
+                this.currentLayoutId = null;
+                this.currentLayoutName = '';
+                this.items = [];
+                this.clearSelection();
+                this.renderCanvas();
+                this.renderInspector();
+                this.renderMyLibrary();
+                return;
+            }
+            this.currentLayoutId = payload._id || null;
+            this.currentLayoutName = payload.name || 'Menu mặc định';
             this.aspectRatio = payload.aspectRatio || '9:16';
-            this.items = payload.items.map((item, idx) => ({
+            this.items = Array.isArray(payload.items) ? payload.items.map((item, idx) => ({
                 ...item,
                 animationSpeed: Number(item.animationSpeed || 1),
                 auraSpeed: Number(item.auraSpeed || 1),
                 auraScale: Number(item.auraScale || 1),
+                textPosition: item.textPosition || 'bottom',
                 visible: item.visible !== false,
                 locked: Boolean(item.locked),
                 zIndex: item.zIndex || idx + 1
-            }));
+            })) : [];
             this.setSelection(this.items[0] ? [this.items[0].id] : [], this.items[0] ? this.items[0].id : null);
             this.setAspectRatio(this.aspectRatio);
             this.renderCanvas();
@@ -1019,19 +1698,151 @@
             this.pushHistory('load-layout');
         }
 
+        async createNewLayout(name) {
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (this.token) headers.Authorization = `Bearer ${this.token}`;
+                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout/create`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                if (data && data.success && data.layout) {
+                    if (window.app && typeof window.app.showNotification === 'function') {
+                        window.app.showNotification('success', 'Đã tạo thiết kế mới');
+                    }
+                    this.currentLayoutId = data.layout._id;
+                    this.currentLayoutName = data.layout.name;
+                    this.items = [];
+                    this.clearSelection();
+                    this.setAspectRatio('9:16');
+                    this.renderCanvas();
+                    this.renderInspector();
+                    await this.loadLayoutsList();
+                    this.history = [];
+                    this.historyIndex = -1;
+                    this.pushHistory('new-layout');
+                }
+            } catch (err) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', 'Không thể tạo thiết kế mới');
+                }
+            }
+        }
+
+        async activateLayout(layoutId) {
+            try {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('info', 'Đang kích hoạt layout...');
+                }
+                const headers = { 'Content-Type': 'application/json' };
+                if (this.token) headers.Authorization = `Bearer ${this.token}`;
+                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout/${layoutId}/activate`, { method: 'PUT', headers });
+                const data = await res.json();
+                if (data && data.success) {
+                    if (window.app && typeof window.app.showNotification === 'function') {
+                        window.app.showNotification('success', 'Đã kích hoạt layout');
+                    }
+                    await this.loadLayoutsList();
+                    await this.loadLayout();
+                }
+            } catch (err) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', 'Không thể kích hoạt layout');
+                }
+            }
+        }
+
+        async deleteLayout(layoutId) {
+            const confirmed = await this.showConfirmModal('Bạn có chắc chắn muốn xóa thiết kế này?');
+            if (!confirmed) return;
+            try {
+                const headers = {};
+                if (this.token) headers.Authorization = `Bearer ${this.token}`;
+                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout/${layoutId}`, { method: 'DELETE', headers });
+                const data = await res.json();
+                if (data && data.success) {
+                    if (window.app && typeof window.app.showNotification === 'function') {
+                        window.app.showNotification('success', 'Đã xóa thiết kế');
+                    }
+                    await this.loadLayoutsList();
+                    if (this.currentLayoutId === layoutId) {
+                        this.currentLayoutId = null;
+                        this.currentLayoutName = '';
+                        await this.loadLayout();
+                    }
+                }
+            } catch (err) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', 'Không thể xóa thiết kế');
+                }
+            }
+        }
+
+        async renameLayout(layoutId, newName) {
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (this.token) headers.Authorization = `Bearer ${this.token}`;
+                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        id: layoutId,
+                        name: newName
+                    })
+                });
+                const data = await res.json();
+                if (data && data.success) {
+                    if (window.app && typeof window.app.showNotification === 'function') {
+                        window.app.showNotification('success', 'Đã đổi tên thiết kế');
+                    }
+                    if (this.currentLayoutId === layoutId) {
+                        this.currentLayoutName = newName;
+                    }
+                    await this.loadLayoutsList();
+                }
+            } catch (err) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', 'Không thể đổi tên thiết kế');
+                }
+            }
+        }
+
         renderMyLibrary() {
             const box = this.mount.querySelector('#gmd-my-library-list');
             if (!box) return;
-            box.innerHTML = `<div class="gmd-my-library-item active"><strong>New Menu</strong><span>${this.items.length} phần quà</span><i class="fas fa-check-circle"></i></div>`;
+            if (!this.layouts || !this.layouts.length) {
+                box.innerHTML = `<div style="text-align: center; padding: 24px 12px; font-size: 11px; color: rgba(255,255,255,0.4); line-height: 1.5; border: 1px dashed rgba(255,255,255,0.08); border-radius: 8px;">
+                    Chưa có thiết kế nào.<br>Hãy bấm <strong>"Tạo mới"</strong> ở trên để bắt đầu!
+                </div>`;
+                return;
+            }
+            box.innerHTML = this.layouts.map(layout => {
+                const isActive = layout.isActive || (this.currentLayoutId === layout._id);
+                return `
+                    <div class="gmd-my-library-item ${isActive ? 'active' : ''}" data-layout-id="${layout._id}">
+                        <div class="gmd-my-library-info">
+                            <strong>${layout.name || 'Menu không tên'}</strong>
+                            <span>${(layout.items || []).length} phần quà</span>
+                        </div>
+                        <div class="gmd-my-library-actions">
+                            ${isActive ? '<i class="fas fa-check-circle active-check" title="Đang hoạt động"></i>' : `<button class="gmd-lib-btn activate-btn" data-action="activate-layout" data-layout-id="${layout._id}" title="Kích hoạt"><i class="fas fa-power-off"></i></button>`}
+                            <button class="gmd-lib-btn rename-btn" data-action="rename-layout" data-layout-id="${layout._id}" title="Đổi tên"><i class="fas fa-edit"></i></button>
+                            <button class="gmd-lib-btn delete-btn" data-action="delete-layout" data-layout-id="${layout._id}" title="Xóa"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         clampInsideCanvas(item) {
-            const canvas = this.mount.querySelector('#gmd-canvas');
-            if (!canvas) return;
-            item.width = Math.max(30, Math.min(item.width, canvas.clientWidth));
-            item.height = Math.max(30, Math.min(item.height, canvas.clientHeight));
-            item.x = Math.max(0, Math.min(item.x, canvas.clientWidth - item.width));
-            item.y = Math.max(0, Math.min(item.y, canvas.clientHeight - item.height));
+            const w = this.canvasSize.width;
+            const h = this.canvasSize.height;
+            item.width = Math.max(30, Math.min(item.width, w));
+            item.height = Math.max(30, Math.min(item.height, h));
+            item.x = Math.max(0, Math.min(item.x, w - item.width));
+            item.y = Math.max(0, Math.min(item.y, h - item.height));
         }
 
         bindEvents() {
@@ -1040,139 +1851,90 @@
                 const giftCard = e.target.closest('.gmd-gift-card');
                 const itemNode = e.target.closest('.gmd-item');
                 const clickedCanvas = e.target.closest('#gmd-canvas');
-                
-                // Goal Board Mode Clicks
-                if (this.mode === 'goal-board') {
-                    const tabBtn = e.target.closest('[data-panel-tab]');
-                    if (tabBtn) {
-                        this.leftPanelTab = tabBtn.dataset.panelTab;
-                        this.renderLeftPanel();
-                        return;
+
+                // Unified Sidebar Left Tabs Click Handling
+                const leftTab = e.target.closest('.gmd-left-tab-btn');
+                if (leftTab) {
+                    const tabName = leftTab.dataset.tabName;
+                    this.leftPanelTab = tabName;
+                    this.mount.querySelectorAll('.gmd-left-tab-btn').forEach(b => {
+                        b.classList.toggle('active', b === leftTab);
+                        b.style.borderBottomColor = b === leftTab ? '#3b82f6' : 'transparent';
+                        b.style.color = b === leftTab ? '#fff' : '#888';
+                    });
+                    
+                    const giftsContent = this.mount.querySelector('#gmd-gifts-tab-content');
+                    const widgetsContent = this.mount.querySelector('#gmd-widgets-tab-content');
+                    const assetsContent = this.mount.querySelector('#gmd-assets-tab-content');
+                    
+                    if (giftsContent) giftsContent.style.display = tabName === 'gifts' ? 'flex' : 'none';
+                    if (widgetsContent) widgetsContent.style.display = tabName === 'widgets' ? 'flex' : 'none';
+                    if (assetsContent) assetsContent.style.display = tabName === 'assets' ? 'flex' : 'none';
+                    
+                    if (tabName === 'widgets') {
+                        this.renderWidgetsList();
+                    } else if (tabName === 'assets') {
+                        this.renderAssetsList();
                     }
-                    const tmplCard = e.target.closest('.gmd-template-card');
-                    if (tmplCard) {
-                        this.addTemplateToCanvas(tmplCard.dataset.templateId);
-                        return;
-                    }
-                    if (btn) {
-                        const action = btn.dataset.action;
-                        const layerId = btn.dataset.layerId;
-                        
-                        if (action === 'goal-layer-select' && layerId) {
-                            if (e.shiftKey) {
-                                if (this.goalBoard.selectedIds.includes(layerId)) {
-                                    this.goalBoard.selectedIds = this.goalBoard.selectedIds.filter(id => id !== layerId);
-                                    if (this.goalBoard.selectedId === layerId) {
-                                        this.goalBoard.selectedId = this.goalBoard.selectedIds[0] || null;
-                                    }
-                                } else {
-                                    this.goalBoard.selectedIds.push(layerId);
-                                    this.goalBoard.selectedId = layerId;
-                                }
-                            } else {
-                                this.goalBoard.selectedId = layerId;
-                                this.goalBoard.selectedIds = [layerId];
-                            }
-                            this.renderCanvas();
-                            this.renderInspector();
-                            return;
-                        }
-                        if (action === 'goal-layer-toggle-visible' && layerId) {
-                            const item = this.goalBoard.items.find(x => x.id === layerId);
-                            if (item) {
-                                item.visible = item.visible === false;
-                                this.renderCanvas();
-                                this.renderInspector();
-                                this.pushHistory('goal-toggle-visible');
-                            }
-                            return;
-                        }
-                        if (action === 'goal-layer-toggle-lock' && layerId) {
-                            const item = this.goalBoard.items.find(x => x.id === layerId);
-                            if (item) {
-                                item.locked = !item.locked;
-                                this.renderCanvas();
-                                this.renderInspector();
-                                this.pushHistory('goal-toggle-lock');
-                            }
-                            return;
-                        }
-                        if (action === 'goal-layer-up' && layerId) {
-                            const items = this.goalBoard.items;
-                            const idx = items.findIndex(x => x.id === layerId);
-                            if (idx < items.length - 1) {
-                                const tmp = items[idx].zIndex;
-                                items[idx].zIndex = items[idx+1].zIndex;
-                                items[idx+1].zIndex = tmp;
-                                this.renderCanvas();
-                                this.renderInspector();
-                                this.pushHistory('goal-layer-up');
-                            }
-                            return;
-                        }
-                        if (action === 'goal-layer-down' && layerId) {
-                            const items = this.goalBoard.items;
-                            const idx = items.findIndex(x => x.id === layerId);
-                            if (idx > 0) {
-                                const tmp = items[idx].zIndex;
-                                items[idx].zIndex = items[idx-1].zIndex;
-                                items[idx-1].zIndex = tmp;
-                                this.renderCanvas();
-                                this.renderInspector();
-                                this.pushHistory('goal-layer-down');
-                            }
-                            return;
-                        }
-                        if (action === 'goal-duplicate') {
-                            const sel = this.goalBoard.items.find(x => x.id === this.goalBoard.selectedId);
-                            if (sel) {
-                                const clone = {
-                                    ...sel,
-                                    id: `asset_dup_${Date.now()}_${Math.floor(Math.random()*1000)}`,
-                                    x: sel.x + 30,
-                                    y: sel.y + 30,
-                                    zIndex: this.goalBoard.items.length + 1
-                                };
-                                this.goalBoard.items.push(clone);
-                                this.goalBoard.selectedId = clone.id;
-                                this.goalBoard.selectedIds = [clone.id];
-                                this.renderCanvas();
-                                this.renderInspector();
-                                this.pushHistory('goal-duplicate');
-                            }
-                            return;
-                        }
-                        if (action === 'goal-delete') {
-                            if (this.goalBoard.selectedId) {
-                                this.goalBoard.items = this.goalBoard.items.filter(x => x.id !== this.goalBoard.selectedId);
-                                this.goalBoard.selectedId = null;
-                                this.goalBoard.selectedIds = [];
-                                this.renderCanvas();
-                                this.renderInspector();
-                                this.pushHistory('goal-delete');
-                            }
-                            return;
-                        }
-                        if (action === 'save-new-template') {
-                            this.showSaveTemplateModal();
-                            return;
-                        }
-                    }
-                }
-                
-                // Switch Mode click
-                const modeBtn = e.target.closest('[data-action="switch-mode"]');
-                if (modeBtn) {
-                    this.switchMode(modeBtn.dataset.mode);
                     return;
                 }
-                
-                if (this.mode === 'goal-board') {
-                    const clickedInspectorTab = e.target.closest('.gmd-inspector-tabs button');
-                    if (clickedInspectorTab) {
-                        this.inspectorTab = clickedInspectorTab.dataset.tab;
-                        this.renderInspector();
+
+                // Add Text Button Click
+                const addTextBtn = e.target.closest('#gmd-add-text-btn');
+                if (addTextBtn) {
+                    this.addTextToCanvas();
+                    return;
+                }
+
+                // Upload trigger button
+                const uploadBtn = e.target.closest('#gmd-upload-asset-btn');
+                const fileInput = this.mount.querySelector('#gmd-asset-file-input');
+                if (uploadBtn && fileInput) {
+                    fileInput.click();
+                    return;
+                }
+
+                // Sidebar Tabs Click Handling (Bottom panel)
+                const libTab = e.target.closest('.gmd-lib-tab-btn');
+                if (libTab) {
+                    const tabName = libTab.dataset.tabName;
+                    this.mount.querySelectorAll('.gmd-lib-tab-btn').forEach(b => b.classList.toggle('active', b === libTab));
+                    
+                    const myLibContent = this.mount.querySelector('#gmd-my-library-content');
+                    const tmplContent = this.mount.querySelector('#gmd-templates-content');
+                    
+                    if (tabName === 'my-library') {
+                        if (myLibContent) myLibContent.style.display = 'block';
+                        if (tmplContent) tmplContent.style.display = 'none';
+                    } else if (tabName === 'templates') {
+                        if (myLibContent) myLibContent.style.display = 'none';
+                        if (tmplContent) tmplContent.style.display = 'block';
+                        this.loadTemplatesList();
                     }
+                    return;
+                }
+
+                // Sidebar Use Template Click
+                const tmplUseBtn = e.target.closest('.gmd-btn-use-tmpl');
+                if (tmplUseBtn) {
+                    const templateId = tmplUseBtn.dataset.templateId;
+                    this.buyOrUseTemplateFromSidebar(templateId);
+                    return;
+                }
+
+                // Unified Widget/Template Card Clicks
+                const tmplCard = e.target.closest('.gmd-template-card');
+                if (tmplCard) {
+                    const templateId = tmplCard.dataset.templateId;
+                    this.addTemplateToCanvas(templateId);
+                    return;
+                }
+                const assetCard = e.target.closest('.gmd-asset-card');
+                if (assetCard) {
+                    const url = assetCard.dataset.assetUrl;
+                    const name = assetCard.dataset.assetName;
+                    const type = assetCard.dataset.assetType;
+                    this.addAssetToCanvas(url, name, type);
                     return;
                 }
 
@@ -1247,40 +2009,80 @@
                     this.showSaveTemplateModal();
                     return;
                 }
+                if (action === 'clear-goal-board') {
+                    this.clearGoalBoard();
+                    return;
+                }
+                if (action === 'publish-store') {
+                    this.showPublishStoreModal();
+                    return;
+                }
                 if (action === 'save') {
-                    if (this.mode === 'goal-board') this.saveGoalBoardLayout(true);
-                    else this.saveLayout(true);
+                    this.saveLayout(true, true);
                 }
                 if (action === 'save-export') {
-                    if (this.mode === 'goal-board') this.saveGoalBoardLayout(true);
-                    else this.saveAndExport();
+                    this.saveAndExport();
                 }
-                if (action === 'preview-browser') {
-                    if (this.mode === 'goal-board') window.open(`${this.apiBase}/overlay/goal-board-overlay.html`, '_blank');
-                    else window.open(`${this.apiBase}/overlay/gift-menu/`, '_blank');
+                
+                // Library panel actions
+                const libItem = e.target.closest('.gmd-my-library-item');
+                if (libItem) {
+                    const deleteBtn = e.target.closest('[data-action="delete-layout"]');
+                    const renameBtn = e.target.closest('[data-action="rename-layout"]');
+                    const activateBtn = e.target.closest('[data-action="activate-layout"]');
+                    const layoutId = libItem.dataset.layoutId;
+
+                    if (deleteBtn) {
+                        e.stopPropagation();
+                        if (layoutId) this.deleteLayout(layoutId);
+                        return;
+                    }
+                    if (renameBtn) {
+                        e.stopPropagation();
+                        if (layoutId) {
+                            const layout = this.layouts.find(x => x._id === layoutId);
+                            const oldName = layout ? layout.name : 'Menu mới';
+                            this.showPromptModal('Nhập tên mới cho thiết kế:', oldName).then(newName => {
+                                if (newName !== null && newName.trim()) {
+                                    this.renameLayout(layoutId, newName.trim());
+                                }
+                            });
+                        }
+                        return;
+                    }
+                    if (activateBtn || (!deleteBtn && !renameBtn)) {
+                        if (layoutId && layoutId !== this.currentLayoutId) {
+                            this.activateLayout(layoutId);
+                        }
+                        return;
+                    }
                 }
-                if (action === 'new-layout') { this.items = []; this.clearSelection(); this.renderCanvas(); this.renderInspector(); this.renderMyLibrary(); this.pushHistory('new-layout'); }
+
+                if (action === 'new-layout') {
+                    this.showPromptModal('Nhập tên thiết kế mới:', 'Menu mới').then(name => {
+                        if (name === null) return;
+                        const safeName = name.trim() || 'Menu mới';
+                        this.createNewLayout(safeName);
+                    });
+                    return;
+                }
                 if (action === 'zoom-in') this.setZoom(this.zoomLevel + 0.1);
                 if (action === 'zoom-out') this.setZoom(this.zoomLevel - 0.1);
             });
 
             const handleInputChange = (e) => {
                 const el = e.target;
-                
-                // Goal Board inputs
-                if (this.mode === 'goal-board') {
-                    if (el.dataset && el.dataset.goalKey) {
-                        const key = el.dataset.goalKey;
-                        const value = el.type === 'checkbox' ? el.checked : el.value;
-                        this.updateGoalBoardSelectedItem(key, value);
-                    }
-                    return;
-                }
-                
+
                 if (el.id === 'gmd-search') {
                     const q = String(el.value || '').trim().toLowerCase();
                     this.filteredGifts = this.gifts.filter((g) => String(g.name || '').toLowerCase().includes(q) || String(g.id || '').toLowerCase().includes(q));
                     this.renderGiftLibrary();
+                    return;
+                }
+                if (el.dataset && el.dataset.goalKey) {
+                    const key = el.dataset.goalKey;
+                    const value = el.type === 'checkbox' ? el.checked : el.value;
+                    this.updateGoalBoardSelectedItem(key, value);
                     return;
                 }
                 if (el.dataset && el.dataset.key) {
@@ -1297,22 +2099,23 @@
             this.mount.querySelectorAll('[data-ratio]').forEach((btn) => btn.addEventListener('click', () => this.setAspectRatio(btn.dataset.ratio)));
 
             this.mount.addEventListener('dragstart', (e) => {
-                if (this.mode === 'goal-board') {
-                    const assetCard = e.target.closest('.gmd-asset-card');
-                    if (assetCard) {
-                        e.dataTransfer.setData('asset-url', assetCard.dataset.assetUrl || '');
-                        e.dataTransfer.setData('asset-name', assetCard.dataset.assetName || '');
-                        e.dataTransfer.setData('asset-type', assetCard.dataset.assetType || '');
-                    }
-                    const tmplCard = e.target.closest('.gmd-template-card');
-                    if (tmplCard) {
-                        e.dataTransfer.setData('template-id', tmplCard.dataset.templateId || '');
-                    }
+                const giftCard = e.target.closest('.gmd-gift-card');
+                if (giftCard) {
+                    e.dataTransfer.setData('text/plain', giftCard.dataset.giftId || '');
                     return;
                 }
-                const giftCard = e.target.closest('.gmd-gift-card');
-                if (!giftCard) return;
-                e.dataTransfer.setData('text/plain', giftCard.dataset.giftId || '');
+                const tmplCard = e.target.closest('.gmd-template-card');
+                if (tmplCard) {
+                    e.dataTransfer.setData('template-id', tmplCard.dataset.templateId || '');
+                    return;
+                }
+                const assetCard = e.target.closest('.gmd-asset-card');
+                if (assetCard) {
+                    e.dataTransfer.setData('asset-url', assetCard.dataset.assetUrl || '');
+                    e.dataTransfer.setData('asset-name', assetCard.dataset.assetName || '');
+                    e.dataTransfer.setData('asset-type', assetCard.dataset.assetType || '');
+                    return;
+                }
             });
 
             const canvas = this.mount.querySelector('#gmd-canvas');
@@ -1320,38 +2123,26 @@
                 canvas.addEventListener('dragover', (e) => e.preventDefault());
                 canvas.addEventListener('drop', (e) => {
                     e.preventDefault();
-                    
-                    if (this.mode === 'goal-board') {
-                        const assetUrl = e.dataTransfer.getData('asset-url');
-                        const assetName = e.dataTransfer.getData('asset-name');
-                        const assetType = e.dataTransfer.getData('asset-type');
-                        const templateId = e.dataTransfer.getData('template-id');
-                        
-                        const safe = this.mount.querySelector('#gmd-safe-area');
-                        const s = safe.clientWidth / 1080;
-                        const rect = safe.getBoundingClientRect();
-                        
-                        const px = e.clientX - rect.left;
-                        const py = e.clientY - rect.top;
-                        
-                        if (templateId) {
-                            // Center the template dynamically on the drop cursor based on its bounding box
-                            this.addTemplateToCanvas(templateId, px / s, py / s);
-                            return;
-                        }
-                        
-                        if (!assetUrl) return;
-                        
-                        const lx = px / s - 180;
-                        const ly = py / s - 180;
-                        
-                        this.addAssetToCanvas(assetUrl, assetName, assetType, lx, ly);
+
+                    const templateId = e.dataTransfer.getData('template-id');
+                    const assetUrl = e.dataTransfer.getData('asset-url');
+                    const assetName = e.dataTransfer.getData('asset-name');
+                    const assetType = e.dataTransfer.getData('asset-type');
+
+                    const point = this.clientToCanvasPoint(e.clientX, e.clientY);
+
+                    if (templateId) {
+                        this.addTemplateToCanvas(templateId, point.x, point.y);
                         return;
                     }
-                    
+
+                    if (assetUrl) {
+                        this.addAssetToCanvas(assetUrl, assetName, assetType, point.x - 60, point.y - 60);
+                        return;
+                    }
+
                     const giftId = e.dataTransfer.getData('text/plain');
                     if (!giftId) return;
-                    const point = this.clientToCanvasPoint(e.clientX, e.clientY);
                     const item = this.createItemFromGift(giftId, Math.round(point.x - 28), Math.round(point.y - 28));
                     if (!item) return;
                     this.clampInsideCanvas(item);
@@ -1365,10 +2156,6 @@
             }
 
             this.mount.addEventListener('mousedown', (e) => {
-                if (this.mode === 'goal-board') {
-                    this.handleGoalBoardMouseDown(e);
-                    return;
-                }
                 const itemNode = e.target.closest('.gmd-item');
                 if (!itemNode) {
                     const canvas = this.mount.querySelector('#gmd-canvas');
@@ -1393,10 +2180,26 @@
                 }
                 const handle = e.target.closest('[data-handle]');
                 if (!this.isSelected(item.id)) this.setSelection([item.id], item.id);
-                if (handle && handle.dataset.handle === 'resize') this.dragState = { mode: 'resize', id: item.id, sx: e.clientX, sy: e.clientY, width: item.width, height: item.height };
-                else if (handle && handle.dataset.handle === 'rotate') this.dragState = { mode: 'rotate', id: item.id, sx: e.clientX, startRot: item.rotation };
-                else {
+                if (handle && handle.dataset.handle === 'resize') {
+                    let moving = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
+                    const groupIds = new Set(moving.map(m => m.groupId).filter(Boolean));
+                    if (groupIds.size > 0) {
+                        const extra = this.items.filter(x => groupIds.has(x.groupId) && !x.locked && x.visible !== false);
+                        moving = Array.from(new Set([...moving, ...extra]));
+                    }
+                    const startSizes = Object.fromEntries(moving.map((m) => [m.id, { width: m.width, height: m.height, fontSize: m.fontSize || 36 }]));
+                    this.dragState = { mode: 'resize', id: item.id, sx: e.clientX, sy: e.clientY, width: item.width, height: item.height, movingIds: moving.map((m) => m.id), startSizes };
+                } else if (handle && handle.dataset.handle === 'rotate') {
                     const moving = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
+                    const startRotations = Object.fromEntries(moving.map((m) => [m.id, m.rotation]));
+                    this.dragState = { mode: 'rotate', id: item.id, sx: e.clientX, startRot: item.rotation, movingIds: moving.map((m) => m.id), startRotations };
+                } else {
+                    let moving = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
+                    const groupIds = new Set(moving.map(m => m.groupId).filter(Boolean));
+                    if (groupIds.size > 0) {
+                        const extra = this.items.filter(x => groupIds.has(x.groupId) && !x.locked && x.visible !== false);
+                        moving = Array.from(new Set([...moving, ...extra]));
+                    }
                     const startPositions = Object.fromEntries(moving.map((m) => [m.id, { x: m.x, y: m.y }]));
                     this.dragState = { mode: 'move', id: item.id, sx: e.clientX, sy: e.clientY, x: item.x, y: item.y, movingIds: moving.map((m) => m.id), startPositions };
                 }
@@ -1406,21 +2209,21 @@
 
             window.addEventListener('mousemove', (e) => {
                 if (!this.dragState) return;
-                
+
                 if (this.dragState.mode === 'goal-move') {
                     const dx = e.clientX - this.dragState.sx;
                     const dy = e.clientY - this.dragState.sy;
                     const s = this.dragState.scale;
-                    
+
                     const primaryItem = this.goalBoard.items.find(x => x.id === this.dragState.id);
                     if (primaryItem) {
                         const logicalDx = Math.round(dx / s);
                         const logicalDy = Math.round(dy / s);
-                        
+
                         if (primaryItem.groupId) {
                             // Find all layers in this group and apply displacement based on original start coordinates
                             const groupItems = this.goalBoard.items.filter(x => x.groupId === primaryItem.groupId && !x.locked);
-                            
+
                             // Compute overall group bounding box based on start coordinates to clamp group as a rigid unit
                             let minX = Infinity, minY = Infinity;
                             let maxX = -Infinity, maxY = -Infinity;
@@ -1433,7 +2236,7 @@
                                     if (startPos.y + item.h > maxY) maxY = startPos.y + item.h;
                                 }
                             });
-                            
+
                             let allowedDx = logicalDx;
                             let allowedDy = logicalDy;
                             if (minX !== Infinity) {
@@ -1442,13 +2245,13 @@
                             if (minY !== Infinity) {
                                 allowedDy = Math.max(-minY, Math.min(allowedDy, 1920 - maxY));
                             }
-                            
+
                             groupItems.forEach(item => {
                                 const startPos = this.dragState.groupStarts[item.id];
                                 if (startPos) {
                                     item.x = startPos.x + allowedDx;
                                     item.y = startPos.y + allowedDy;
-                                    
+
                                     // Update DOM directly to avoid restarting videos/WebMs
                                     const el = this.mount.querySelector(`[data-item-id="${item.id}"]`);
                                     if (el) {
@@ -1460,10 +2263,10 @@
                         } else {
                             primaryItem.x = Math.round(this.dragState.x + logicalDx);
                             primaryItem.y = Math.round(this.dragState.y + logicalDy);
-                            
+
                             primaryItem.x = Math.max(0, Math.min(primaryItem.x, 1080 - primaryItem.w));
                             primaryItem.y = Math.max(0, Math.min(primaryItem.y, 1920 - primaryItem.h));
-                            
+
                             // Update DOM directly to avoid restarting videos/WebMs
                             const el = this.mount.querySelector(`[data-item-id="${primaryItem.id}"]`);
                             if (el) {
@@ -1471,34 +2274,34 @@
                                 el.style.top = `${Math.round(primaryItem.y * s)}px`;
                             }
                         }
-                        
+
                         this.renderInspector();
                     }
                     return;
                 }
-                
+
                 if (this.dragState.mode === 'goal-resize') {
                     const dx = e.clientX - this.dragState.sx;
                     const dy = e.clientY - this.dragState.sy;
                     const s = this.dragState.scale;
-                    
+
                     const item = this.goalBoard.items.find(x => x.id === this.dragState.id);
                     if (item) {
                         const logicalDx = dx / s;
                         const logicalDy = dy / s;
-                        
-                        const groupItems = item.groupId 
+
+                        const groupItems = item.groupId
                             ? this.goalBoard.items.filter(x => x.groupId === item.groupId && !x.locked)
                             : [];
-                            
+
                         if (item.groupId && groupItems.length > 1 && this.dragState.groupStarts[item.id]) {
                             const primaryStart = this.dragState.groupStarts[item.id];
                             // Scale factor of the primary resized item
                             const scaleW = Math.max(0.1, (primaryStart.w + logicalDx) / primaryStart.w);
-                            
+
                             const minX = this.dragState.minX;
                             const minY = this.dragState.minY;
-                            
+
                             groupItems.forEach(gItem => {
                                 const start = this.dragState.groupStarts[gItem.id];
                                 if (start) {
@@ -1506,7 +2309,7 @@
                                     gItem.h = Math.max(10, Math.round(start.h * scaleW));
                                     gItem.x = Math.round(minX + (start.x - minX) * scaleW);
                                     gItem.y = Math.round(minY + (start.y - minY) * scaleW);
-                                    
+
                                     // Scale text font size if it is a text layer
                                     if (gItem.type === 'text') {
                                         gItem.fontSize = Math.max(10, Math.round(start.fontSize * scaleW));
@@ -1526,13 +2329,13 @@
                                 item.h = Math.max(30, Math.min(item.h, 1920));
                             }
                         }
-                        
+
                         this.renderCanvas();
                         this.renderInspector();
                     }
                     return;
                 }
-                
+
                 const item = this.items.find((x) => x.id === this.dragState.id);
                 if (this.dragState.mode === 'pan') {
                     this.panX = this.dragState.panX + (e.clientX - this.dragState.sx);
@@ -1542,8 +2345,9 @@
                 }
                 if (!item) return;
                 if (this.dragState.mode === 'move') {
-                    const dx = ((e.clientX - this.dragState.sx) / this.zoomLevel);
-                    const dy = ((e.clientY - this.dragState.sy) / this.zoomLevel);
+                    const finalScale = this.getFitScale() * this.zoomLevel;
+                    const dx = ((e.clientX - this.dragState.sx) / finalScale);
+                    const dy = ((e.clientY - this.dragState.sy) / finalScale);
                     const baseX = Math.round(this.dragState.x + dx);
                     const baseY = Math.round(this.dragState.y + dy);
                     const snapped = this.applySnapForItem(baseX, baseY, item);
@@ -1559,14 +2363,58 @@
                     });
                     this.updateGuides(snapped.guideX, snapped.guideY);
                 } else if (this.dragState.mode === 'resize') {
-                    const dx = (e.clientX - this.dragState.sx) / this.zoomLevel;
-                    const dy = (e.clientY - this.dragState.sy) / this.zoomLevel;
+                    const finalScale = this.getFitScale() * this.zoomLevel;
+                    const dx = (e.clientX - this.dragState.sx) / finalScale;
+                    const dy = (e.clientY - this.dragState.sy) / finalScale;
                     const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
-                    const nextSize = Math.round(this.dragState.width + delta);
-                    item.width = nextSize;
-                    item.height = nextSize;
-                    this.clampInsideCanvas(item);
-                } else if (this.dragState.mode === 'rotate') item.rotation = Math.round(this.dragState.startRot + (e.clientX - this.dragState.sx) * 0.7);
+                    (this.dragState.movingIds || [item.id]).forEach((id) => {
+                        const target = this.items.find((x) => x.id === id);
+                        const start = this.dragState.startSizes ? this.dragState.startSizes[id] : null;
+                        if (!target || !start) return;
+                        const isWidget = target.type && target.type !== 'gift';
+                        if (isWidget) {
+                            if (target.lockRatio) {
+                                const ratio = start.height / start.width;
+                                target.width = Math.round(start.width + dx);
+                                target.height = Math.round(target.width * ratio);
+                            } else {
+                                target.width = Math.round(start.width + dx);
+                                target.height = Math.round(start.height + dy);
+                            }
+                            // Sync logical w/h
+                            const map = {
+                                '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
+                                '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
+                                '1:1': { width: 480, height: 480, canvasW: 900, canvasH: 900 }
+                            };
+                            const cfg = map[this.aspectRatio] || map['9:16'];
+                            const exportSize = this.aspectRatio === '9:16'
+                                ? { width: 1080, height: 1920 }
+                                : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
+                            const sx = exportSize.width / cfg.width;
+                            const sy = exportSize.height / cfg.height;
+                            target.w = Math.round(target.width * sx);
+                            target.h = Math.round(target.height * sy);
+                            if (target.type === 'text') {
+                                const scaleW = target.width / start.width;
+                                target.fontSize = Math.max(10, Math.round((start.fontSize || 36) * scaleW));
+                            }
+                        } else {
+                            const nextSize = Math.round(start.width + delta);
+                            target.width = nextSize;
+                            target.height = nextSize;
+                        }
+                        this.clampInsideCanvas(target);
+                    });
+                } else if (this.dragState.mode === 'rotate') {
+                    const deltaRot = Math.round((e.clientX - this.dragState.sx) * 0.7);
+                    (this.dragState.movingIds || [item.id]).forEach((id) => {
+                        const target = this.items.find((x) => x.id === id);
+                        const startRot = this.dragState.startRotations ? this.dragState.startRotations[id] : 0;
+                        if (!target) return;
+                        target.rotation = Math.round(startRot + deltaRot);
+                    });
+                }
                 this.renderCanvas();
                 this.renderInspector();
             });
@@ -1587,6 +2435,27 @@
                 const canvas = this.mount.querySelector('#gmd-canvas');
                 if (canvas) canvas.classList.remove('is-panning');
             });
+
+            const canvasEl = this.mount.querySelector('#gmd-canvas');
+            if (canvasEl) {
+                canvasEl.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    if (e.ctrlKey) {
+                        // Ctrl + Wheel: Zoom
+                        const zoomFactor = 1.1;
+                        if (e.deltaY < 0) {
+                            this.setZoom(this.zoomLevel * zoomFactor);
+                        } else {
+                            this.setZoom(this.zoomLevel / zoomFactor);
+                        }
+                    } else {
+                        // Mouse Wheel: Pan
+                        this.panX -= e.deltaX;
+                        this.panY -= e.deltaY;
+                        this.applyZoom();
+                    }
+                }, { passive: false });
+            }
 
             window.addEventListener('keydown', (e) => {
                 if (e.code === 'Space') {
@@ -1611,393 +2480,1327 @@
         // ==========================================
         // GOAL BOARD DESIGNER METHODS (PHASE 1)
         // ==========================================
-        
-        switchMode(newMode) {
-            if (this.mode === newMode) return;
-            this.mode = newMode;
+
+        logicalToStage(item) {
+            const map = {
+                '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
+                '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
+                '1:1': { width: 480, height: 480, canvasW: 900, canvasH: 900 }
+            };
+            const cfg = map[this.aspectRatio] || map['9:16'];
+            const safeSize = {
+                width: cfg.width,
+                height: cfg.height
+            };
+            const safeOffset = {
+                x: Math.round((cfg.canvasW - cfg.width) / 2),
+                y: Math.round((cfg.canvasH - cfg.height) / 2)
+            };
+            const exportSize = this.aspectRatio === '9:16'
+                ? { width: 1080, height: 1920 }
+                : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
             
-            const designerEl = this.mount.querySelector('.gift-menu-designer');
-            const myLibPanel = this.mount.querySelector('#gmd-my-library-panel');
-            const leftCol = this.mount.querySelector('.gmd-left-col');
-            const saveTemplateBtn = document.getElementById('gmd-save-template-btn');
-            
-            this.mount.querySelectorAll('[data-action="switch-mode"]').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === newMode);
-            });
-            
-            if (saveTemplateBtn) {
-                saveTemplateBtn.style.display = newMode === 'goal-board' ? 'inline-flex' : 'none';
-            }
-            
-            if (newMode === 'goal-board') {
-                if (designerEl) designerEl.classList.add('goal-board-active');
-                if (myLibPanel) myLibPanel.style.display = 'none';
-                if (leftCol) leftCol.style.gridTemplateRows = '1fr';
-                
-                const ratioGroup = this.mount.querySelector('.gmd-ratios');
-                if (ratioGroup) ratioGroup.style.display = 'none';
-                
-                this.inspectorTab = 'gift';
-                this.loadGoalBoardLayout();
-                this.loadGoalAssets();
-                this.loadGoalTemplates();
-            } else {
-                if (designerEl) designerEl.classList.remove('goal-board-active');
-                if (myLibPanel) myLibPanel.style.display = '';
-                if (leftCol) leftCol.style.gridTemplateRows = '';
-                
-                const ratioGroup = this.mount.querySelector('.gmd-ratios');
-                if (ratioGroup) ratioGroup.style.display = '';
-                
-                this.loadLayout();
-            }
-            
-            this.renderLeftPanel();
+            const sx = safeSize.width / exportSize.width;
+            const sy = safeSize.height / exportSize.height;
+
+            const logicalX = item.x !== undefined ? item.x : 90;
+            const logicalY = item.y !== undefined ? item.y : 800;
+            const logicalW = item.w !== undefined ? item.w : (item.width !== undefined ? item.width : 900);
+            const logicalH = item.h !== undefined ? item.h : (item.height !== undefined ? item.height : 160);
+
+            return {
+                x: Math.round(safeOffset.x + logicalX * sx),
+                y: Math.round(safeOffset.y + logicalY * sy),
+                width: Math.round(logicalW * sx),
+                height: Math.round(logicalH * sy),
+                w: logicalW,
+                h: logicalH
+            };
         }
 
-        renderLeftPanel() {
-            const leftPanel = this.mount.querySelector('.gmd-library-panel');
-            if (!leftPanel) return;
+        stageToLogical(item) {
+            const map = {
+                '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
+                '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
+                '1:1': { width: 480, height: 480, canvasW: 900, canvasH: 900 }
+            };
+            const cfg = map[this.aspectRatio] || map['9:16'];
+            const safeOffset = {
+                x: Math.round((cfg.canvasW - cfg.width) / 2),
+                y: Math.round((cfg.canvasH - cfg.height) / 2)
+            };
+            const exportSize = this.aspectRatio === '9:16'
+                ? { width: 1080, height: 1920 }
+                : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
+            const sx = exportSize.width / cfg.width;
+            const sy = exportSize.height / cfg.height;
+
+            return {
+                x: Math.round((item.x - safeOffset.x) * sx),
+                y: Math.round((item.y - safeOffset.y) * sy),
+                w: Math.round(item.width * sx),
+                h: Math.round(item.height * sy)
+            };
+        }
+
+        renderWidgetsList() {
+            const listEl = this.mount.querySelector('#gmd-widgets-list');
+            if (!listEl) return;
+
+            const standardTemplates = this.getDefaultTemplates();
+            const allTemplates = [...(this.customTemplates || []), ...standardTemplates];
             
-            if (this.mode !== 'goal-board') {
-                leftPanel.innerHTML = `
-                    <h3>1. Chọn quà tặng</h3>
-                    <p class="gmd-subline">Kéo thả hoặc click để thêm vào menu</p>
-                    <div class="gmd-library-controls">
-                        <div class="gmd-search-wrap">
-                            <i class="fas fa-search"></i>
-                            <input id="gmd-search" class="gmd-input" placeholder="Tìm quà..." value="" />
+            listEl.innerHTML = `
+                <div class="gmd-template-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: calc(100vh - 280px); overflow-y: auto;">
+                    ${allTemplates.map(t => {
+                        let previewHTML = '';
+                        if (t.id === 'tmpl_neon_purple') {
+                            previewHTML = `
+                                <div class="gmd-mini-widget" style="background: radial-gradient(circle at top left, #1e1145, #090518); border: 1px solid #ff007f; box-shadow: 0 0 10px rgba(255,0,127,0.3); border-radius: 6px; padding: 6px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-sizing: border-box;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 800; color: #fff; line-height: 1;">
+                                        <span style="text-shadow: 0 0 4px #ff007f; display: flex; align-items: center; gap: 2px;">🎁 Mở quà</span>
+                                        <span style="color: #ff007f; text-shadow: 0 0 4px #ff007f; font-size: 7px;">30%</span>
+                                    </div>
+                                    <div style="width: 100%; height: 6px; background: rgba(0, 0, 0, 0.6); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255, 0, 127, 0.2); position: relative; box-sizing: border-box;">
+                                        <div style="height: 100%; border-radius: 99px; width: 30%; background: linear-gradient(90deg, #ff007f, #a855f7); box-shadow: 0 0 8px #ff007f;"></div>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (t.id === 'tmpl_boss_challenge_gaming') {
+                            previewHTML = `
+                                <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #1f0b0b, #0c0202); border: 1px solid #ef4444; box-shadow: 0 0 10px rgba(239,68,68,0.3); border-radius: 6px; padding: 6px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-sizing: border-box;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 7px; font-weight: 900; color: #ff5f5f; line-height: 1;">
+                                        <span style="display: flex; align-items: center; gap: 3px; text-shadow: 0 0 4px #ef4444;">🐉 BOSS HP</span>
+                                        <span style="color: #ef4444; text-shadow: 0 0 4px #ef4444; font-size: 6px;">35%</span>
+                                    </div>
+                                    <div style="width: 100%; height: 6px; background: rgba(0, 0, 0, 0.6); border-radius: 2px; overflow: hidden; border: 1px solid rgba(239, 68, 68, 0.2); position: relative; box-sizing: border-box;">
+                                        <div style="height: 100%; width: 35%; background: linear-gradient(90deg, #b91c1c, #ef4444); box-shadow: 0 0 8px #ef4444;"></div>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (t.id === 'tmpl_lucky_mystery_box') {
+                            previewHTML = `
+                                <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #1b0e3d, #080315); border: 1px solid #a855f7; box-shadow: 0 0 10px rgba(168,85,247,0.3); border-radius: 6px; padding: 6px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-sizing: border-box;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 800; color: #fbbf24; text-shadow: 0 0 4px #fbbf24; line-height: 1;">
+                                        <span>LUCKY BOX</span>
+                                        <span style="font-size: 6px; color: #a855f7;">70%</span>
+                                    </div>
+                                    <div style="width: 100%; height: 5px; background: rgba(0, 0, 0, 0.6); border-radius: 99px; overflow: hidden; border: 1px solid rgba(168, 85, 247, 0.2); box-sizing: border-box;">
+                                        <div style="height: 100%; width: 70%; background: linear-gradient(90deg, #a855f7, #f43f5e); box-shadow: 0 0 6px #d946ef;"></div>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (t.id === 'tmpl_multi_goal_list' || t.id === 'tmpl_event_mission_board') {
+                            const isPurple = t.id === 'tmpl_event_mission_board';
+                            const primaryColor = isPurple ? '#8b5cf6' : '#38bdf8';
+                            const title = isPurple ? '📋 NHIỆM VỤ LIVE' : '🎯 MỤC TIÊU HÔM NAY';
+                            previewHTML = `
+                                <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, ${isPurple ? '#160e2a' : '#0a172a'}, #05050d); border: 1px solid ${primaryColor}75; box-shadow: 0 0 10px ${primaryColor}40; border-radius: 6px; padding: 4px 6px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box;">
+                                    <div style="font-size: 6px; font-weight: 800; color: ${primaryColor}; text-align: center; margin-bottom: 2px;">${title}</div>
+                                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                                        <div style="display: flex; justify-content: space-between; font-size: 5px; color: #fff; line-height: 1;">
+                                            <span style="transform: scale(0.95);">Rose</span><span style="font-size: 5px; opacity:0.85;">30%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 3px; background: rgba(0, 0, 0, 0.6); border-radius: 99px; overflow: hidden;">
+                                            <div style="height: 100%; width: 30%; background: ${primaryColor};"></div>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; font-size: 5px; color: #fff; line-height: 1;">
+                                            <span style="transform: scale(0.95);">${isPurple ? 'Corgi' : 'TikTok'}</span><span style="font-size: 5px; opacity:0.85;">32%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 3px; background: rgba(0, 0, 0, 0.6); border-radius: 99px; overflow: hidden;">
+                                            <div style="height: 100%; width: 32%; background: ${primaryColor};"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (t.id === 'tmpl_top_supporters_board') {
+                            previewHTML = `
+                                <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #1a1508, #050402); border: 1px solid #eab30875; box-shadow: 0 0 10px rgba(234,179,8,0.25); border-radius: 6px; padding: 4px 6px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box;">
+                                    <div style="font-size: 6px; font-weight: 900; color: #eab308; text-align: center; margin-bottom: 2px; border-bottom: 1px dashed rgba(234,179,8,0.2); padding-bottom: 1px; line-height: 1;">🏆 TOP SUPPORTERS</div>
+                                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 5px; color: #fff; background: rgba(255,255,255,0.02); padding: 1px 3px; border-radius: 2px; line-height: 1;">
+                                            <span style="color: #eab308; font-weight: bold;">#1</span>
+                                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 32px; font-size: 5px;">BH Studio</span>
+                                            <span style="color: #eab308; font-size: 5px;">1.2k</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 5px; color: #fff; background: rgba(255,255,255,0.02); padding: 1px 3px; border-radius: 2px; line-height: 1;">
+                                            <span style="color: #cbd5e1; font-weight: bold;">#2</span>
+                                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 32px; font-size: 5px;">Minh Anh</span>
+                                            <span style="color: #888; font-size: 5px;">850</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (t.id === 'tmpl_combo_boost_popup') {
+                            previewHTML = `
+                                <div class="gmd-mini-widget" style="background: linear-gradient(135deg, rgba(220,38,38,0.18), rgba(15,23,42,0.88)); border: 1px solid #ef444475; box-shadow: 0 0 10px rgba(239,68,68,0.3); border-radius: 6px; padding: 4px 6px; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; box-sizing: border-box;">
+                                    <div style="font-size: 10px; font-weight: 900; color: #ef4444; text-shadow: 0 0 4px #ef4444; line-height: 1;">x88</div>
+                                    <div style="font-size: 5px; font-weight: 800; color: #fff; line-height: 1; margin-top: 1px;">🔥 x10 COMBO!</div>
+                                    <div style="font-size: 4px; color: #fca5a5; transform: scale(0.9); line-height: 1;">Chuỗi quà liên tiếp!</div>
+                                </div>
+                            `;
+                        } else if (t.id === 'tmpl_unlock_reward_board') {
+                            previewHTML = `
+                                <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #1b0e35, #070414); border: 1px solid #a855f775; box-shadow: 0 0 10px rgba(168,85,247,0.25); border-radius: 6px; padding: 4px 6px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 2px; box-sizing: border-box;">
+                                    <div style="font-size: 6px; font-weight: 800; color: #fff; text-align: center; line-height: 1; margin-bottom: 1px;">🔒 SẮP MỞ KHÓA</div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 5px; color: #a855f7; font-weight: bold; line-height: 1;">
+                                        <span style="font-size: 5px;">Rose Goal</span>
+                                        <span style="font-size: 5px;">150/500</span>
+                                    </div>
+                                    <div style="position: relative; width: 100%; height: 4px; background: rgba(0, 0, 0, 0.6); border-radius: 99px; margin-top: 1px;">
+                                        <div style="height: 100%; width: 30%; background: linear-gradient(90deg, #a855f7, #fb7185); border-radius: 99px;"></div>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (t.id === 'tmpl_circular_heart_goal') {
+                            previewHTML = `
+                                <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, rgba(10,15,30,0.5) 0%, #0a0a14 100%); border: 1px solid #ff007f; box-shadow: 0 0 10px rgba(255,0,127,0.3); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box;">
+                                    <div style="font-size: 6px; font-weight: 900; color: #ff007f; margin-bottom: 2px; line-height: 1;">62%</div>
+                                    <div style="position: relative; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;">
+                                        <svg width="26" height="26" viewBox="0 0 26 26" style="transform: rotate(-90deg);">
+                                            <circle cx="13" cy="13" r="10" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+                                            <circle cx="13" cy="13" r="10" fill="transparent" stroke="#ff007f" stroke-width="2"
+                                                    stroke-dasharray="62.8" stroke-dashoffset="23.8" stroke-linecap="round" />
+                                        </svg>
+                                        <div style="position: absolute; font-size: 8px;">❤️</div>
+                                    </div>
+                                    <div style="font-size: 5px; color: #fff; margin-top: 1px; font-weight: bold; transform: scale(0.9); line-height: 1;">MỤC TIÊU</div>
+                                </div>
+                            `;
+                        } else {
+                            previewHTML = `<div style="font-size: 18px;">📊</div>`;
+                        }
+
+                        const isPremium = Boolean(t.isPremium);
+                        const priceTag = isPremium ? `${Number(t.price || 0).toLocaleString()}đ` : 'Free';
+
+                        return `
+                            <div class="gmd-template-card" draggable="true" data-template-id="${t.id}" style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; cursor: grab;">
+                                <div class="gmd-template-preview-box" style="width: 100%; height: 60px; background: rgba(0,0,0,0.35); border-radius: 6px; display: flex; align-items: center; justify-content: center; padding: 4px; box-sizing: border-box; overflow: hidden;">
+                                    ${previewHTML}
+                                </div>
+                                <div class="gmd-template-info" style="width: 100%;">
+                                    <div class="gmd-template-name" style="font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff;" title="${t.name}">${t.name}</div>
+                                    <div class="gmd-template-meta" style="margin-top: 2px; display: flex; justify-content: space-between; align-items: center;">
+                                        <span class="gmd-template-tag" style="font-size: 9px; color: #888;">${t.tag || 'Widget'}</span>
+                                        <span style="background: ${isPremium ? 'rgba(139,92,246,0.15)' : 'rgba(16,185,129,0.15)'}; color: ${isPremium ? '#c084fc' : '#10b981'}; font-weight: 800; border-radius: 4px; padding: 1px 4px; font-size: 9px;">${priceTag}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        renderAssetsList() {
+            const listEl = this.mount.querySelector('#gmd-assets-list');
+            if (!listEl) return;
+
+            listEl.innerHTML = this.goalAssets.length ? this.goalAssets.map(a => {
+                const isVideo = a.type === 'video' || a.url.endsWith('.webm');
+                return `
+                    <div class="gmd-asset-card" draggable="true" data-asset-url="${a.url}" data-asset-name="${a.name}" data-asset-type="${a.type}" style="display: flex; flex-direction: column; gap: 4px; padding: 6px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; cursor: grab;">
+                        <div class="gmd-asset-preview" style="width: 100%; height: 50px; background: rgba(0,0,0,0.3); border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                            ${isVideo
+                                ? `<video src="${this.apiBase}${a.url}" style="width: 100%; height: 100%; object-fit: contain;" autoplay loop muted playsinline></video>`
+                                : `<img src="${this.apiBase}${a.url}" style="width: 100%; height: 100%; object-fit: contain;" alt="${a.name}">`
+                            }
                         </div>
-                        <button class="gmd-add-btn"><i class="fas fa-plus"></i></button>
+                        <div class="gmd-asset-name" style="font-size: 10px; text-align: center; color: #aaa; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${a.name}">${a.name}</div>
                     </div>
-                    <div id="gmd-gift-list" class="gmd-gift-list"></div>
                 `;
-                this.renderGiftLibrary();
+            }).join('') : '<div class="gmd-inspector-empty" style="grid-column: 1/-1; height: 80px; padding: 12px; font-size: 11px;">Chưa có tài nguyên.</div>';
+
+            const fileInput = this.mount.querySelector('#gmd-asset-file-input');
+            if (fileInput && !fileInput.dataset.bound) {
+                fileInput.dataset.bound = 'true';
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files && e.target.files[0]) {
+                        this.uploadGoalAsset(e.target.files[0]);
+                    }
+                });
+            }
+        }
+
+        addTemplateToCanvas(templateId, dropX = null, dropY = null) {
+            const templates = this.getDefaultTemplates();
+            const allTemplates = [...(this.customTemplates || []), ...templates];
+            const tmpl = allTemplates.find(t => t.id === templateId);
+            if (!tmpl) return;
+
+            const baseZ = this.items.length;
+            const groupUniqueId = `group_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+            let minX = Infinity;
+            let minY = Infinity;
+            let maxX = -Infinity;
+            let maxY = -Infinity;
+            tmpl.layers.forEach(layer => {
+                if (layer.x < minX) minX = layer.x;
+                if (layer.y < minY) minY = layer.y;
+                if (layer.x + layer.w > maxX) maxX = layer.x + layer.w;
+                if (layer.y + layer.h > maxY) maxY = layer.y + layer.h;
+            });
+            const w = maxX - minX;
+            const h = maxY - minY;
+
+            const newLayers = tmpl.layers.map((layer, idx) => {
+                const uniqueId = `layer_${layer.type}_${Date.now()}_${Math.floor(Math.random() * 1000)}_${idx}`;
+                let newX = layer.x;
+                let newY = layer.y;
+                if (dropX !== null && dropY !== null) {
+                    newX = dropX - (w / 2) + (layer.x - minX);
+                    newY = dropY - (h / 2) + (layer.y - minY);
+                }
+
+                const freshLayer = {
+                    ...layer,
+                    id: uniqueId,
+                    groupId: groupUniqueId,
+                    x: Math.round(newX),
+                    y: Math.round(newY),
+                    zIndex: baseZ + idx + 1
+                };
+
+                const stageCoords = this.logicalToStage(freshLayer);
+                freshLayer.x = stageCoords.x;
+                freshLayer.y = stageCoords.y;
+                freshLayer.width = stageCoords.width;
+                freshLayer.height = stageCoords.height;
+                freshLayer.w = stageCoords.w;
+                freshLayer.h = stageCoords.h;
+
+                if (freshLayer.currentCount !== undefined) freshLayer.currentCount = 0;
+                if (freshLayer.comboCount !== undefined) freshLayer.comboCount = 0;
+                if (Array.isArray(freshLayer.goals)) {
+                    freshLayer.goals = freshLayer.goals.map(g => ({ ...g, current: 0 }));
+                }
+                if (Array.isArray(freshLayer.contributors)) {
+                    freshLayer.contributors = [];
+                }
+
+                return freshLayer;
+            });
+
+            this.items.push(...newLayers);
+
+            if (newLayers[0]) {
+                this.setSelection(newLayers.map(l => l.id), newLayers[0].id);
+            }
+
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('add-template');
+        }
+
+        addAssetToCanvas(assetUrl, assetName, assetType, x = 100, y = 100) {
+            const uniqueId = `asset_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+            const isWebM = assetType === 'video' || assetUrl.endsWith('.webm');
+
+            const newLayer = {
+                id: uniqueId,
+                name: assetName || (isWebM ? 'Asset WebM' : 'Asset PNG'),
+                type: 'media-asset',
+                assetUrl: assetUrl,
+                isWebM: isWebM,
+                x: Math.round(x),
+                y: Math.round(y),
+                w: 360,
+                h: 360,
+                opacity: 1.0,
+                fitMode: 'contain',
+                autoplay: true,
+                loop: true,
+                muted: true,
+                playsinline: true,
+                zIndex: this.items.length + 1,
+                visible: true,
+                locked: false
+            };
+
+            const stageCoords = this.logicalToStage(newLayer);
+            newLayer.x = stageCoords.x;
+            newLayer.y = stageCoords.y;
+            newLayer.width = stageCoords.width;
+            newLayer.height = stageCoords.height;
+
+            this.items.push(newLayer);
+            this.setSelection([uniqueId], uniqueId);
+
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('add-asset');
+        }
+
+        addTextToCanvas(x = 200, y = 200) {
+            const uniqueId = `text_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+            const newLayer = {
+                id: uniqueId,
+                name: 'Văn bản',
+                type: 'text',
+                text: 'Nhập văn bản',
+                x: Math.round(x),
+                y: Math.round(y),
+                w: 600,
+                h: 120,
+                color: '#ffffff',
+                fontSize: 36,
+                fontWeight: 'bold',
+                textShadow: 'none',
+                textAlign: 'center',
+                zIndex: this.items.length + 1,
+                visible: true,
+                locked: false
+            };
+
+            const stageCoords = this.logicalToStage(newLayer);
+            newLayer.x = stageCoords.x;
+            newLayer.y = stageCoords.y;
+            newLayer.width = stageCoords.width;
+            newLayer.height = stageCoords.height;
+
+            this.items.push(newLayer);
+            this.setSelection([uniqueId], uniqueId);
+
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('add-text');
+        }
+
+        async loadGoalAssets() {
+            try {
+                const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+                const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/assets`, { headers });
+                const data = await res.json();
+                this.goalAssets = Array.isArray(data.assets) ? data.assets : [];
+                if (this.leftPanelTab === 'assets') {
+                    this.renderAssetsList();
+                }
+            } catch (_e) {
+                this.goalAssets = [];
+            }
+        }
+
+        async uploadGoalAsset(file) {
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('assetFile', file);
+
+            if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('info', 'Đang tải tài nguyên lên server...');
+            }
+
+            try {
+                const headers = {};
+                if (this.token) headers.Authorization = `Bearer ${this.token}`;
+
+                const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/upload-asset`, {
+                    method: 'POST',
+                    headers,
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (window.app && typeof window.app.showNotification === 'function') {
+                        window.app.showNotification('success', 'Đã tải lên thành công tài nguyên mới!');
+                    }
+                    await this.loadGoalAssets();
+                } else {
+                    throw new Error(data.error || 'Lỗi upload');
+                }
+            } catch (err) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', `Tải lên thất bại: ${err.message}`);
+                }
+            }
+        }
+
+        async loadGoalTemplates() {
+            try {
+                const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+                const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/templates`, { headers });
+                const data = await res.json();
+                this.customTemplates = Array.isArray(data.customTemplates) ? data.customTemplates : [];
+                if (this.leftPanelTab === 'widgets') {
+                    this.renderWidgetsList();
+                }
+            } catch (e) {
+                console.error('Failed to load custom goal templates:', e);
+                this.customTemplates = [];
+            }
+        }
+
+        renderGoalBoardInspector() {
+            const inspector = this.mount.querySelector('#gmd-inspector');
+            if (!inspector) return;
+
+            const selected = this.items.find((x) => x.id === this.selectedId);
+            const giftTabBtn = this.mount.querySelector('.gmd-inspector-tabs [data-tab="gift"]');
+            const layersTabBtn = this.mount.querySelector('.gmd-inspector-tabs [data-tab="layers"]');
+
+            if (giftTabBtn) {
+                giftTabBtn.innerHTML = '<i class="fas fa-sliders-h"></i> Thuộc tính';
+                giftTabBtn.classList.toggle('active', this.inspectorTab === 'gift');
+            }
+            if (layersTabBtn) {
+                layersTabBtn.classList.toggle('active', this.inspectorTab === 'layers');
+            }
+
+            if (this.inspectorTab === 'layers') {
+                inspector.innerHTML = this.renderLayerPanel();
                 return;
             }
-            
-            leftPanel.innerHTML = `
-                <div class="gmd-tabs-header">
-                    <button class="gmd-tab-btn ${this.leftPanelTab === 'templates' ? 'active' : ''}" data-panel-tab="templates"><i class="fas fa-cubes"></i> Bảng có sẵn</button>
-                    <button class="gmd-tab-btn ${this.leftPanelTab === 'assets' ? 'active' : ''}" data-panel-tab="assets"><i class="fas fa-images"></i> Tài nguyên</button>
+
+            if (!selected) {
+                inspector.innerHTML = '<div class="gmd-inspector-empty"><i class="fas fa-mouse-pointer"></i><p>Chọn một layer<br>trên canvas để tùy chỉnh</p></div>';
+                return;
+            }
+
+            const logical = this.stageToLogical(selected);
+
+            let testButtonHTML = '';
+            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'combo'].includes(selected.type)) {
+                testButtonHTML = `
+                    <div class="gmd-section" style="border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
+                        <h4 style="color: #a855f7; margin-bottom: 6px;"><i class="fas fa-flask"></i> CHẠY THỬ / TEST GOAL</h4>
+                        <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Gửi quà thử nghiệm ảo để xem hiệu ứng tiến trình trên canvas và OBS Overlay.</p>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: #8b5cf6; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.sendSimulatedGift('${selected.id}')"><i class="fas fa-play"></i> Gửi quà Test</button>
+                            <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem('${selected.id}')"><i class="fas fa-undo"></i> Reset lại đầu</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const makeCompactFontSizeField = (label, key, defaultValue, min = 10, max = 120) => `
+                <div class="gmd-field" style="margin-bottom: 6px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                        <label style="margin: 0; font-size: 11px; font-weight: 700; color: #cbd5e1;">${label}</label>
+                        <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 62px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="${key}" value="${selected[key] !== undefined ? selected[key] : defaultValue}"><span>px</span></div>
+                    </div>
+                    <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="${min}" max="${max}" data-goal-key="${key}" value="${selected[key] !== undefined ? selected[key] : defaultValue}">
                 </div>
-                <div id="gmd-goal-library-content" style="height: calc(100% - 44px); min-height: 0; overflow: hidden;"></div>
             `;
-            
-            const libContent = leftPanel.querySelector('#gmd-goal-library-content');
-            if (this.leftPanelTab === 'templates') {
-                const standardTemplates = this.getDefaultTemplates();
-                const allTemplates = [...(this.customTemplates || []), ...standardTemplates];
-                libContent.innerHTML = `
-                    <div class="gmd-template-grid">
-                        ${allTemplates.map(t => {
-                            let previewHTML = '';
-                            if (t.id === 'tmpl_neon_purple') {
-                                previewHTML = `
-                                    <div class="gmd-mini-widget" style="background: radial-gradient(circle at top left, #1e1145, #090518); border: 1px solid #ff007f; box-shadow: 0 0 10px rgba(255,0,127,0.3); border-radius: 6px; padding: 6px 10px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-sizing: border-box;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 800; color: #fff; line-height: 1;">
-                                            <span style="text-shadow: 0 0 4px #ff007f; display: flex; align-items: center; gap: 2px;">🎁 Mở quà bí mật</span>
-                                            <span style="color: #ff007f; text-shadow: 0 0 4px #ff007f; font-size: 7px;">30%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: rgba(0, 0, 0, 0.6); border-radius: 99px; overflow: hidden; border: 1px solid rgba(255, 0, 127, 0.2); position: relative; box-sizing: border-box;">
-                                            <div style="height: 100%; border-radius: 99px; width: 30%; background: linear-gradient(90deg, #ff007f, #a855f7); box-shadow: 0 0 8px #ff007f;"></div>
-                                        </div>
-                                        <div style="font-size: 5px; color: #a855f7; opacity: 0.8; text-align: left; line-height: 1;">Mục tiêu: 150/500 Rose</div>
-                                    </div>
-                                `;
-                            } else if (t.id === 'tmpl_boss_challenge_gaming') {
-                                previewHTML = `
-                                    <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #1f0b0b, #0c0202); border: 1px solid #ef4444; box-shadow: 0 0 10px rgba(239,68,68,0.3); border-radius: 6px; padding: 6px 10px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-sizing: border-box;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 7px; font-weight: 900; color: #ff5f5f; line-height: 1;">
-                                            <span style="display: flex; align-items: center; gap: 3px; text-shadow: 0 0 4px #ef4444;">🐉 BOSS HP</span>
-                                            <span style="color: #ef4444; text-shadow: 0 0 4px #ef4444; font-size: 6px;">35%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: rgba(0, 0, 0, 0.6); border-radius: 2px; overflow: hidden; border: 1px solid rgba(239, 68, 68, 0.2); position: relative; box-sizing: border-box;">
-                                            <div style="height: 100%; width: 35%; background: linear-gradient(90deg, #b91c1c, #ef4444); box-shadow: 0 0 8px #ef4444;"></div>
-                                        </div>
-                                        <div style="font-size: 5px; color: #9ca3af; text-align: left; display: flex; justify-content: space-between; line-height: 1;">
-                                            <span>⚔️ Corgi tấn công</span>
-                                            <span style="color: #ef4444;">3.5k/10k</span>
-                                        </div>
-                                    </div>
-                                `;
-                            } else if (t.id === 'tmpl_lucky_mystery_box') {
-                                previewHTML = `
-                                    <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #1b0e3d, #080315); border: 1px solid #a855f7; box-shadow: 0 0 10px rgba(168,85,247,0.3); border-radius: 6px; padding: 6px 10px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-sizing: border-box;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 800; color: #fbbf24; text-shadow: 0 0 4px #fbbf24; line-height: 1;">
-                                            <span>LUCKY BOX</span>
-                                            <span style="font-size: 6px; color: #a855f7;">70%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 5px; background: rgba(0, 0, 0, 0.6); border-radius: 99px; overflow: hidden; border: 1px solid rgba(168, 85, 247, 0.2); box-sizing: border-box;">
-                                            <div style="height: 100%; width: 70%; background: linear-gradient(90deg, #a855f7, #f43f5e); box-shadow: 0 0 6px #d946ef;"></div>
-                                        </div>
-                                        <div style="font-size: 5px; color: #cbd5e1; opacity: 0.8; line-height: 1; text-align: left;">Rose để mở hộp</div>
-                                    </div>
-                                `;
-                            } else if (t.id === 'tmpl_cute_pink_idol') {
-                                previewHTML = `
-                                    <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #2e121e, #14050b); border: 1px solid #fb7185; box-shadow: 0 0 10px rgba(251,113,133,0.3); border-radius: 6px; padding: 6px 10px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-sizing: border-box;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 800; color: #fecdd3; line-height: 1;">
-                                            <span style="display: flex; align-items: center; gap: 2px;">💖 Cute Challenge</span>
-                                            <span style="color: #fb7185; text-shadow: 0 0 4px #fb7185; font-size: 7px;">40%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: rgba(0, 0, 0, 0.6); border-radius: 99px; overflow: hidden; border: 1px solid rgba(251, 113, 133, 0.2); box-sizing: border-box;">
-                                            <div style="height: 100%; width: 40%; background: linear-gradient(90deg, #fb7185, #f472b6); box-shadow: 0 0 6px #fb7185;"></div>
-                                        </div>
-                                        <div style="font-size: 5px; color: #fda4af; text-align: left; opacity: 0.9; line-height: 1;">Mục tiêu: 120/300 Rose</div>
-                                    </div>
-                                `;
-                            } else if (t.id === 'tmpl_luxury_gold_vip') {
-                                previewHTML = `
-                                    <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #251b05, #0c0801); border: 1px solid #fbbf24; box-shadow: 0 0 10px rgba(251,191,36,0.3); border-radius: 6px; padding: 6px 10px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-sizing: border-box;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 900; color: #fbbf24; text-shadow: 0 0 4px rgba(251,191,36,0.4); line-height: 1;">
-                                            <span style="display: flex; align-items: center; gap: 3px;">👑 VIP GOAL</span>
-                                            <span style="font-size: 7px; color: #fff;">40%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: rgba(0, 0, 0, 0.6); border-radius: 4px; overflow: hidden; border: 1px solid rgba(251, 196, 36, 0.2); box-sizing: border-box;">
-                                            <div style="height: 100%; width: 40%; background: linear-gradient(90deg, #f59e0b, #fbbf24); box-shadow: 0 0 6px #fbbf24;"></div>
-                                        </div>
-                                        <div style="font-size: 5px; color: #d97706; text-align: left; font-weight: bold; line-height: 1;">Galaxy: 2/5</div>
-                                    </div>
-                                `;
-                            } else if (t.id === 'tmpl_multi_goal_list') {
-                                previewHTML = `
-                                    <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #0e172a, #020617); border: 1px solid #38bdf8; box-shadow: 0 0 8px rgba(56,189,248,0.15); border-radius: 6px; padding: 4px 8px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box; overflow: hidden; position: relative;">
-                                        <div style="font-size: 7px; font-weight: 800; color: #38bdf8; text-align: center; border-bottom: 1px solid rgba(56,189,248,0.2); padding-bottom: 1px; margin-bottom: 1px; text-transform: uppercase; line-height: 1;">🎯 MỤC TIÊU HÔM NAY</div>
-                                        <div style="display: flex; flex-direction: column; gap: 2px;">
-                                            <div style="display: flex; align-items: center; gap: 3px; font-size: 5px; color: #fff; line-height: 1;">
-                                                <span style="width: 25px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-align: left;">🌹 Rose</span>
-                                                <div style="flex: 1; height: 3px; background: rgba(0,0,0,0.5); border-radius: 2px; overflow: hidden;">
-                                                    <div style="height: 100%; width: 30%; background: #ff007f;"></div>
-                                                </div>
-                                                <span style="color: #ff007f; font-weight: bold;">30%</span>
-                                            </div>
-                                            <div style="display: flex; align-items: center; gap: 3px; font-size: 5px; color: #fff; line-height: 1;">
-                                                <span style="width: 25px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-align: left;">🔥 TikTok</span>
-                                                <div style="flex: 1; height: 3px; background: rgba(0,0,0,0.5); border-radius: 2px; overflow: hidden;">
-                                                    <div style="height: 100%; width: 32%; background: #2563eb;"></div>
-                                                </div>
-                                                <span style="color: #60a5fa; font-weight: bold;">32%</span>
-                                            </div>
-                                            <div style="display: flex; align-items: center; gap: 3px; font-size: 5px; color: #fff; line-height: 1;">
-                                                <span style="width: 25px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-align: left;">🐶 Corgi</span>
-                                                <div style="flex: 1; height: 3px; background: rgba(0,0,0,0.5); border-radius: 2px; overflow: hidden;">
-                                                    <div style="height: 100%; width: 30%; background: #eab308;"></div>
-                                                </div>
-                                                <span style="color: #facc15; font-weight: bold;">30%</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            } else if (t.id === 'tmpl_top_supporters_board') {
-                                previewHTML = `
-                                    <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #111827, #030712); border: 1px solid #f59e0b; box-shadow: 0 0 10px rgba(245,158,11,0.2); border-radius: 6px; padding: 4px 8px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 2px; box-sizing: border-box; overflow: hidden; position: relative;">
-                                        <div style="font-size: 7px; font-weight: 900; color: #f59e0b; text-align: center; border-bottom: 1px solid rgba(245,158,11,0.2); padding-bottom: 1px; display: flex; align-items: center; justify-content: center; gap: 3px; line-height: 1;">
-                                            <span>🏆 TOP SUPPORTERS</span>
-                                        </div>
-                                        <div style="display: flex; flex-direction: column; gap: 1px; width: 100%;">
-                                            <div style="display: flex; justify-content: space-between; font-size: 5px; color: #fcd34d; background: rgba(245,158,11,0.15); padding: 1px 3px; border-radius: 2px; line-height: 1;">
-                                                <span>🥇 #1 Streamer...</span>
-                                                <span style="font-weight: 800;">1.2k💎</span>
-                                            </div>
-                                            <div style="display: flex; justify-content: space-between; font-size: 5px; color: #e2e8f0; padding: 1px 3px; line-height: 1;">
-                                                <span>🥈 #2 FanCung</span>
-                                                <span>850💎</span>
-                                            </div>
-                                            <div style="display: flex; justify-content: space-between; font-size: 5px; color: #9ca3af; padding: 1px 3px; line-height: 1;">
-                                                <span>🥉 #3 User102</span>
-                                                <span>620💎</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            } else if (t.id === 'tmpl_combo_boost_popup') {
-                                previewHTML = `
-                                    <div class="gmd-mini-widget" style="background: linear-gradient(135deg, #022c22, #064e3b, #020617); border: 1px solid #10b981; box-shadow: 0 0 10px rgba(16,185,129,0.3); border-radius: 6px; padding: 6px 10px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; overflow: hidden; position: relative;">
-                                        <div style="position: relative; z-index: 2; font-size: 16px;">🔥</div>
-                                        <div style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px;">
-                                            <span style="font-size: 11px; font-weight: 900; color: #34d399; text-shadow: 0 0 6px #10b981; line-height: 1.1;">x10 COMBO!</span>
-                                            <span style="font-size: 5px; color: #a7f3d0; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1;">Chuỗi quà liên tiếp</span>
-                                        </div>
-                                    </div>
-                                `;
-                            } else if (t.id === 'tmpl_unlock_reward_board') {
-                                previewHTML = `
-                                    <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #0f172a, #020617); border: 1px solid #f43f5e; box-shadow: 0 0 10px rgba(244,63,94,0.25); border-radius: 6px; padding: 4px 8px; width: 100%; height: 100%; display: flex; align-items: center; gap: 6px; box-sizing: border-box; overflow: hidden; position: relative;">
-                                        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px; position: relative; z-index: 2;">
-                                            <div style="font-size: 7px; font-weight: 800; color: #fda4af; text-shadow: 0 0 3px #f43f5e; line-height: 1; text-align: left;">🔒 SẮP MỞ KHÓA</div>
-                                            <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.08); border-radius: 99px; position: relative; margin: 2px 0; box-sizing: border-box;">
-                                                <div style="height: 100%; width: 30%; background: #f43f5e; border-radius: 99px; box-shadow: 0 0 4px #f43f5e;"></div>
-                                                <div style="position: absolute; top: -1px; left: 25%; width: 6px; height: 6px; border-radius: 50%; background: #f43f5e; border: 1px solid #fff;"></div>
-                                                <div style="position: absolute; top: -1px; left: 50%; width: 6px; height: 6px; border-radius: 50%; background: #334155; border: 1px solid rgba(255,255,255,0.2);"></div>
-                                                <div style="position: absolute; top: -1px; left: 75%; width: 6px; height: 6px; border-radius: 50%; background: #334155; border: 1px solid rgba(255,255,255,0.2);"></div>
-                                                <div style="position: absolute; top: -1px; left: 95%; width: 6px; height: 6px; border-radius: 50%; background: #334155; border: 1px solid rgba(255,255,255,0.2);"></div>
-                                            </div>
-                                            <div style="display: flex; justify-content: space-between; font-size: 5px; color: #94a3b8; line-height: 1;">
-                                                <span>30% Hoàn thành</span>
-                                                <span style="color: #f43f5e;">150/500 Rose</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            } else if (t.id === 'tmpl_event_mission_board') {
-                                previewHTML = `
-                                    <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #1e1b4b, #090514); border: 1px solid #8b5cf6; box-shadow: 0 0 10px rgba(139,92,246,0.25); border-radius: 6px; padding: 4px 8px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 2px; box-sizing: border-box; overflow: hidden; position: relative;">
-                                        <div style="position: relative; z-index: 2; font-size: 7px; font-weight: 800; color: #a78bfa; text-align: center; border-bottom: 1px solid rgba(139,92,246,0.2); padding-bottom: 1px; margin-bottom: 1px; line-height: 1;">📋 NHIỆM VỤ LIVE</div>
-                                        <div style="position: relative; z-index: 2; display: flex; flex-direction: column; gap: 1px; text-align: left;">
-                                            <div style="display: flex; align-items: center; gap: 3px; font-size: 5px; color: #e2e8f0; line-height: 1;">
-                                                <div style="width: 5px; height: 5px; border-radius: 50%; background: #8b5cf6; display: flex; align-items: center; justify-content: center; font-size: 4px; color: #fff; font-weight: bold;">✓</div>
-                                                <span>🌹 Gửi 150/500 Rose</span>
-                                            </div>
-                                            <div style="display: flex; align-items: center; gap: 3px; font-size: 5px; color: #94a3b8; line-height: 1;">
-                                                <div style="width: 5px; height: 5px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); box-sizing: border-box;"></div>
-                                                <span>🐶 Gửi 3/10 Corgi</span>
-                                            </div>
-                                            <div style="display: flex; align-items: center; gap: 3px; font-size: 5px; color: #94a3b8; line-height: 1;">
-                                                <div style="width: 5px; height: 5px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); box-sizing: border-box;"></div>
-                                                <span>🕶️ Gửi 1/3 Sunglasses</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            } else {
-                                // Dynamic scans for user custom templates - Render a mini scale-down canvas to reflect all layers
-                                let minX = Infinity, minY = Infinity;
-                                let maxX = -Infinity, maxY = -Infinity;
-                                (t.layers || []).forEach(l => {
-                                    const lx = l.x || 0;
-                                    const ly = l.y || 0;
-                                    const lw = l.w || 100;
-                                    const lh = l.h || 100;
-                                    if (lx < minX) minX = lx;
-                                    if (ly < minY) minY = ly;
-                                    if (lx + lw > maxX) maxX = lx + lw;
-                                    if (ly + lh > maxY) maxY = ly + lh;
-                                });
-                                
-                                const bw = (maxX - minX > 0) ? (maxX - minX) : 1080;
-                                const bh = (maxY - minY > 0) ? (maxY - minY) : 1920;
-                                const maxScale = Math.min(80 / bw, 56 / bh);
-                                
-                                const miniLayersHTML = (t.layers || []).map(layer => {
-                                    let contentHTML = '';
-                                    if (layer.type === 'goal-bar') {
-                                        const color = layer.barColor || '#ff007f';
-                                        contentHTML = `<div style="width:100%; height:100%; background: ${layer.hideBg ? 'transparent' : (layer.useCustomBg ? (layer.bgColor || '#0a0a14') : `radial-gradient(circle at top left, ${color}12, #0f172a)`)}; border: 1px solid ${layer.hideBg ? 'transparent' : `${color}80`}; border-radius: 4px; box-sizing: border-box; display:flex; align-items:center; justify-content:center;"><div style="width:80%; height:4px; background:rgba(0,0,0,0.5); border-radius:2px;"><div style="width:30%; height:100%; background:${color}; border-radius:2px;"></div></div></div>`;
-                                    } else if (layer.type === 'boss-bar') {
-                                        const color = layer.barColor || '#ef4444';
-                                        contentHTML = `<div style="width:100%; height:100%; background: ${layer.hideBg ? 'transparent' : (layer.useCustomBg ? (layer.bgColor || '#0a0a14') : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: 1px solid ${color}; border-radius: 4px; box-sizing: border-box; display:flex; align-items:center; justify-content:center;"><div style="width:80%; height:4px; background:rgba(0,0,0,0.5); border-radius:2px;"><div style="width:35%; height:100%; background:${color}; border-radius:2px;"></div></div></div>`;
-                                    } else if (layer.type === 'top-contributors' || layer.type === 'podium-contributors') {
-                                        const color = layer.barColor || '#eab308';
-                                        contentHTML = `<div style="width:100%; height:100%; background: ${layer.hideBg ? 'transparent' : (layer.useCustomBg ? (layer.bgColor || '#0a0a14') : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: 1px solid ${color}; border-radius: 4px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px;"><div style="width:70%; height:2px; background:${color}60;"></div><div style="width:50%; height:2px; background:${color}40;"></div></div>`;
-                                    } else if (layer.type === 'mystery-chests') {
-                                        const color = layer.barColor || '#a855f7';
-                                        contentHTML = `<div style="width:100%; height:100%; background: ${layer.hideBg ? 'transparent' : (layer.useCustomBg ? (layer.bgColor || '#0a0a14') : `radial-gradient(circle at center, rgba(168, 85, 247, 0.1) 0%, #0a0a14 100%)`)}; border: 1px solid ${color}; border-radius: 4px; display:flex; align-items:center; justify-content:center; font-size:8px;">🎁</div>`;
-                                    } else if (layer.type === 'goal-list') {
-                                        const color = layer.barColor || '#ff007f';
-                                        contentHTML = `<div style="width:100%; height:100%; background: ${layer.hideBg ? 'transparent' : (layer.useCustomBg ? (layer.bgColor || '#0a0a14') : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: 1px solid ${color}; border-radius: 4px; display:flex; flex-direction:column; justify-content:center; gap:2px; padding:2px; box-sizing:border-box;"><div style="width:100%; height:2px; background:rgba(255,255,255,0.1);"></div><div style="width:100%; height:2px; background:rgba(255,255,255,0.1);"></div></div>`;
-                                    } else if (layer.type === 'combo') {
-                                        const color = layer.barColor || '#ef4444';
-                                        contentHTML = `<div style="width:100%; height:100%; background: ${layer.hideBg ? 'transparent' : (layer.useCustomBg ? (layer.bgColor || '#0a0a14') : `radial-gradient(circle at center, rgba(239, 68, 68, 0.15) 0%, #0a0a14 100%)`)}; border: 1px solid ${color}; border-radius: 4px; display:flex; align-items:center; justify-content:center; font-size:8px; color:${color}; font-weight:bold;">🔥</div>`;
-                                    } else if (layer.type === 'media-asset') {
-                                        const isVideo = layer.isWebM || (layer.assetUrl && layer.assetUrl.endsWith('.webm'));
-                                        const assetSrc = layer.assetUrl ? (layer.assetUrl.startsWith('http') ? layer.assetUrl : `${this.apiBase}${layer.assetUrl}`) : '';
-                                        contentHTML = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
-                                            ${isVideo 
-                                                ? `<video src="${assetSrc}" style="width:100%; height:100%; object-fit:${layer.fitMode || 'contain'};" autoplay loop muted playsinline></video>` 
-                                                : `<img src="${assetSrc}" style="width:100%; height:100%; object-fit:${layer.fitMode || 'contain'};">`
-                                            }
-                                        </div>`;
-                                    } else if (layer.type === 'text') {
-                                        contentHTML = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:${layer.color || '#fff'}; font-size:4px; font-weight:bold; text-align:center; overflow:hidden;">${layer.text || 'Text'}</div>`;
-                                    } else {
-                                        contentHTML = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:8px;">🎨</div>`;
-                                    }
-                                    
-                                    const lx = (layer.x - minX) * maxScale;
-                                    const ly = (layer.y - minY) * maxScale;
-                                    const lw = (layer.w || 100) * maxScale;
-                                    const lh = (layer.h || 100) * maxScale;
-                                    
+
+            const makeCustomGiftSelect = (label, currentId) => {
+                const currentGift = this.gifts.find(g => String(g.id) === String(currentId)) || this.gifts[0] || { id: '', name: 'Chọn quà', icon: '' };
+                const currentIcon = currentGift.icon ? (currentGift.icon.startsWith('http') ? currentGift.icon : this.apiBase + currentGift.icon) : '';
+                return `
+                    <div class="gmd-field">
+                        <label>${label}</label>
+                        <div class="gmd-custom-select">
+                            <div class="gmd-custom-select-header" onclick="this.nextElementSibling.classList.toggle('show')">
+                                ${currentIcon ? `<img src="${currentIcon}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain; margin-right: 8px;">` : '<div style="width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.1); margin-right: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px;">🎁</div>'}
+                                <span>${currentGift.name || currentGift.id}</span>
+                                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 10px; opacity: 0.7;"></i>
+                            </div>
+                            <div class="gmd-custom-select-options">
+                                ${this.gifts.map(g => {
+                                    const gIcon = g.icon ? (g.icon.startsWith('http') ? g.icon : this.apiBase + g.icon) : '';
                                     return `
-                                        <div style="position:absolute; left:${Math.round(lx)}px; top:${Math.round(ly)}px; width:${Math.round(lw)}px; height:${Math.round(lh)}px; z-index:${layer.zIndex || 1};">
-                                            ${contentHTML}
+                                        <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" onclick="window.giftMenuDesigner.updateGoalBoardSelectedItem('giftId', '${g.id}'); window.giftMenuDesigner.renderInspector();">
+                                            ${gIcon ? `<img src="${gIcon}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain;">` : '<div style="width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 10px;">🎁</div>'}
+                                            <span>${g.name || g.id}</span>
+                                            <span style="margin-left: auto; font-size: 9px; color: #a855f7;">${g.coins || 1}💎</span>
                                         </div>
                                     `;
-                                }).join('');
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            };
 
-                                previewHTML = `
-                                    <div style="position:relative; width:${Math.round(bw * maxScale)}px; height:${Math.round(bh * maxScale)}px; overflow:visible; background:transparent;">
-                                        ${miniLayersHTML}
+            const makeCustomGiftSelectForGoal = (goalIdx, currentId) => {
+                const currentGift = this.gifts.find(g => String(g.id) === String(currentId)) || this.gifts[0] || { id: '', name: 'Chọn quà', icon: '' };
+                const currentIcon = currentGift.icon ? (currentGift.icon.startsWith('http') ? currentGift.icon : this.apiBase + currentGift.icon) : '';
+                return `
+                    <div class="gmd-custom-select" style="grid-column: 1;">
+                        <div class="gmd-custom-select-header" style="height: 32px; padding: 4px 8px;" onclick="this.nextElementSibling.classList.toggle('show')">
+                            ${currentIcon ? `<img src="${currentIcon}" style="width: 16px; height: 16px; border-radius: 50%; object-fit: contain; margin-right: 4px;">` : '🎁'}
+                            <span style="font-size: 10px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:55px;">${currentGift.name || currentGift.id}</span>
+                        </div>
+                        <div class="gmd-custom-select-options">
+                            ${this.gifts.map(g => {
+                                const gIcon = g.icon ? (g.icon.startsWith('http') ? g.icon : this.apiBase + g.icon) : '';
+                                return `
+                                    <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" style="padding: 4px 6px; font-size: 11px;" onclick="window.giftMenuDesigner.updateGoalListItem(${goalIdx}, 'giftId', '${g.id}'); this.parentElement.classList.remove('show'); window.giftMenuDesigner.renderInspector();">
+                                        ${gIcon ? `<img src="${gIcon}" style="width: 16px; height: 16px; border-radius: 50%; object-fit: contain;">` : '🎁'}
+                                        <span>${g.name || g.id}</span>
                                     </div>
                                 `;
-                            }
-                            
-                            const isPremium = Boolean(t.isPremium);
-                            const priceTag = isPremium ? `${Number(t.price || 0).toLocaleString()}đ` : 'Free';
-                            
-                            return `
-                                 <div class="gmd-template-card" draggable="true" data-template-id="${t.id}" style="display: flex; flex-direction: column; gap: 8px; padding: 10px;">
-                                    <div class="gmd-template-preview-box" style="width: 100%; height: 64px; background: rgba(0,0,0,0.35); border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 4px; box-sizing: border-box; overflow: hidden; border: 1px solid rgba(255,255,255,0.06);">
-                                        ${previewHTML}
-                                    </div>
-                                    <div class="gmd-template-info" style="width: 100%;">
-                                        <div class="gmd-template-name" style="font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t.name}">${t.name}</div>
-                                        <div class="gmd-template-meta" style="margin-top: 2px; display: flex; justify-content: space-between; align-items: center;">
-                                            <span class="gmd-template-tag">${t.tag || 'Custom'}</span>
-                                            ${isPremium 
-                                                ? `<span class="gmd-template-premium" style="background: rgba(139,92,246,0.15); color: #c084fc; font-weight: 800; border: 1px solid rgba(139,92,246,0.3); border-radius: 4px; padding: 1px 4px; font-size: 9px;">${priceTag}</span>` 
-                                                : `<span class="gmd-template-tag" style="background: rgba(16,185,129,0.15); color: #10b981; font-weight: 800; border-radius: 4px; padding: 1px 4px; font-size: 9px;">${priceTag}</span>`
-                                            }
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            };
+
+            let specificConfigHTML = '';
+
+            if (selected.type === 'goal-bar') {
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-cog"></i> CẤU HÌNH TIẾN TRÌNH</h4>
+                        ${makeCustomGiftSelect('Chọn quà mục tiêu', selected.giftId)}
+                        <div class="gmd-field">
+                            <label>Số lượng mục tiêu (Target)</label>
+                            <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 100}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Số lượng hiện tại (Current)</label>
+                            <input class="gmd-input" type="number" data-goal-key="currentCount" value="${selected.currentCount || 0}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Dòng phụ hiển thị (Subtitle Text)</label>
+                            <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu tiến trình (Bar Color)</label>
+                            <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#ff007f'}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu tỏa sáng (Glow Color)</label>
+                            <input class="gmd-color" type="color" data-goal-key="glowColor" value="${selected.glowColor || 'rgba(255,0,127,0.5)'}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Bo góc bảng mục tiêu</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 12}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="0" max="64" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 12}">
+                        <div class="gmd-field">
+                            <label>Độ dày thanh (Bar Height)</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 54}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="10" max="100" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 54}">
+                        <div class="gmd-field">
+                            <label>Giao diện chủ đề (Theme Style)</label>
+                            <select class="gmd-select" data-goal-key="themeStyle">
+                                <option value="classic" ${selected.themeStyle === 'classic' ? 'selected' : ''}>Chủ đề Cổ điển (Classic)</option>
+                                <option value="neon" ${selected.themeStyle === 'neon' ? 'selected' : ''}>Tím Neon tỏa sáng (Neon Pro)</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Hiệu ứng thanh (Bar Style)</label>
+                            <select class="gmd-select" data-goal-key="barStyle">
+                                <option value="solid" ${selected.barStyle === 'solid' ? 'selected' : ''}>Classic Solid/Gradient</option>
+                                <option value="glow-pulse" ${selected.barStyle === 'glow-pulse' ? 'selected' : ''}>Neon Glow Pulse</option>
+                                <option value="gradient-sweep" ${selected.barStyle === 'gradient-sweep' ? 'selected' : ''}>Gradient Sweep</option>
+                                <option value="candy-stripe" ${selected.barStyle === 'candy-stripe' ? 'selected' : ''}>Candy Stripe Shimmer</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        ${makeCompactFontSizeField('Cỡ chữ tiêu đề', 'fontSize', 38)}
+                        ${makeCompactFontSizeField('Cỡ chữ dòng phụ', 'subtitleFontSize', 24)}
+                    </div>
+                `;
+            } else if (selected.type === 'goal-circle') {
+                const centerIcon = selected.centerIcon || '❤️';
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-cog"></i> CẤU HÌNH VÒNG TRÒN</h4>
+                        ${makeCustomGiftSelect('Chọn quà mục tiêu', selected.giftId)}
+                        <div class="gmd-field">
+                            <label>Số lượng mục tiêu (Target)</label>
+                            <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 100}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Số lượng hiện tại (Current)</label>
+                            <input class="gmd-input" type="number" data-goal-key="currentCount" value="${selected.currentCount || 0}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Icon ở tâm vòng tròn</label>
+                            <select class="gmd-select" data-goal-key="centerIcon">
+                                <option value="❤️" ${centerIcon === '❤️' ? 'selected' : ''}>Trái tim ❤️</option>
+                                <option value="⭐" ${centerIcon === '⭐' ? 'selected' : ''}>Ngôi sao ⭐</option>
+                                <option value="🎁" ${centerIcon === '🎁' ? 'selected' : ''}>Hộp quà 🎁</option>
+                                <option value="🔥" ${centerIcon === '🔥' ? 'selected' : ''}>Lửa 🔥</option>
+                                <option value="gift-icon" ${centerIcon === 'gift-icon' ? 'selected' : ''}>Hình ảnh Quà tặng (Chọn ở trên)</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Dòng phụ hiển thị (Subtitle Text)</label>
+                            <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu vòng tròn (Circle Color)</label>
+                            <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#ff007f'}">
+                        </div>
+                    </div>
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 24)}
+                        ${makeCompactFontSizeField('Cỡ chữ Dòng phụ', 'subtitleFontSize', 16)}
+                        ${makeCompactFontSizeField('Cỡ chữ Điểm số (Value)', 'numberFontSize', 16)}
+                    </div>
+                `;
+            } else if (selected.type === 'boss-bar') {
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-skull"></i> THÁCH ĐẤU BOSS</h4>
+                        ${makeCustomGiftSelect('Chọn quà tấn công Boss', selected.giftId)}
+                        <div class="gmd-field">
+                            <label>Tên quái thú / Boss Name</label>
+                            <input class="gmd-input" type="text" data-goal-key="bossName" value="${selected.bossName || 'BOSS HP'}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Tên hành động (Ví dụ: Corgi tấn công)</label>
+                            <input class="gmd-input" type="text" data-goal-key="bossSub" value="${selected.bossSub || ''}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>HP của Boss (Mục tiêu)</label>
+                            <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 100}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>HP hiện tại</label>
+                            <input class="gmd-input" type="number" data-goal-key="currentCount" value="${selected.currentCount || 0}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu HP thanh máu (Bar Color)</label>
+                            <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#ef4444'}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Độ dày thanh HP (Bar Height)</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 24}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="10" max="60" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 24}">
+                        <div class="gmd-field">
+                            <label>Hiệu ứng thanh máu (Bar Style)</label>
+                            <select class="gmd-select" data-goal-key="barStyle">
+                                <option value="solid" ${selected.barStyle === 'solid' ? 'selected' : ''}>Classic Solid/Gradient</option>
+                                <option value="glow-pulse" ${selected.barStyle === 'glow-pulse' ? 'selected' : ''}>Neon Glow Pulse</option>
+                                <option value="gradient-sweep" ${selected.barStyle === 'gradient-sweep' ? 'selected' : ''}>Gradient Sweep</option>
+                                <option value="candy-stripe" ${selected.barStyle === 'candy-stripe' ? 'selected' : ''}>Candy Stripe Shimmer</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        ${makeCompactFontSizeField('Cỡ chữ tên Boss', 'fontSize', 38)}
+                        ${makeCompactFontSizeField('Cỡ chữ dòng phụ', 'subtitleFontSize', 26)}
+                    </div>
+                `;
+            } else if (selected.type === 'top-contributors' || selected.type === 'podium-contributors') {
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-medal"></i> BẢNG VINH DANH</h4>
+                        ${selected.type === 'top-contributors' ? `
+                            <div class="gmd-field">
+                                <label>Giới hạn số người hiển thị</label>
+                                <select class="gmd-select" data-goal-key="limitCount">
+                                    <option value="3" ${Number(selected.limitCount) === 3 ? 'selected' : ''}>3 người</option>
+                                    <option value="5" ${Number(selected.limitCount) === 5 ? 'selected' : ''}>5 người</option>
+                                    <option value="10" ${Number(selected.limitCount) === 10 ? 'selected' : ''}>10 người</option>
+                                </select>
+                            </div>
+                            <div class="gmd-field gmd-toggle-row">
+                                <label>Hiển thị ảnh đại diện (Avatar)</label>
+                                <label class="gmd-switch">
+                                    <input type="checkbox" data-goal-key="showAvatar" ${selected.showAvatar !== false ? 'checked' : ''}>
+                                    <span></span>
+                                </label>
+                            </div>
+                        ` : ''}
+                        <div class="gmd-field gmd-toggle-row">
+                            <label>Hiển thị số tiền vinh danh (Value)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="showValue" ${selected.showValue !== false ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu chủ đề bảng vinh danh</label>
+                            <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#eab308'}">
+                        </div>
+                    </div>
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 34)}
+                        ${makeCompactFontSizeField('Cỡ chữ Tên người dùng', 'rowFontSize', selected.type === 'podium-contributors' ? 22 : 30)}
+                        ${selected.type === 'podium-contributors' ? makeCompactFontSizeField('Cỡ chữ Điểm số (Value)', 'valueFontSize', 22) : ''}
+                    </div>
+                `;
+            } else if (selected.type === 'mystery-chests') {
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-gift"></i> HỘP QUÀ BÍ MẬT</h4>
+                        ${makeCustomGiftSelect('Chọn quà tích lũy mở hộp', selected.giftId)}
+                        <div class="gmd-field">
+                            <label>Tiêu đề hộp quà</label>
+                            <input class="gmd-input" type="text" data-goal-key="name" value="${selected.name || '🎁 MỞ KHÓA HỘP QUÀ KỲ BÍ'}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Dòng phụ hiển thị (Subtitle Text)</label>
+                            <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Số lượng mục tiêu (Hộp 100%)</label>
+                            <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 100}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Số lượng hiện tại</label>
+                            <input class="gmd-input" type="number" data-goal-key="currentCount" value="${selected.currentCount || 0}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu tiến trình tích lũy (Bar Color)</label>
+                            <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#a855f7'}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu tỏa sáng (Glow Color)</label>
+                            <input class="gmd-color" type="color" data-goal-key="glowColor" value="${selected.glowColor || '#fb7185'}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Độ dày thanh tích lũy (Bar Height)</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 24}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="10" max="60" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 24}">
+                        <div class="gmd-field">
+                            <label>Hiệu ứng thanh tích lũy (Bar Style)</label>
+                            <select class="gmd-select" data-goal-key="barStyle">
+                                <option value="solid" ${selected.barStyle === 'solid' ? 'selected' : ''}>Classic Solid/Gradient</option>
+                                <option value="glow-pulse" ${selected.barStyle === 'glow-pulse' ? 'selected' : ''}>Neon Glow Pulse</option>
+                                <option value="gradient-sweep" ${selected.barStyle === 'gradient-sweep' ? 'selected' : ''}>Gradient Sweep</option>
+                                <option value="candy-stripe" ${selected.barStyle === 'candy-stripe' ? 'selected' : ''}>Candy Stripe Shimmer</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 32)}
+                        ${makeCompactFontSizeField('Cỡ chữ dòng phụ', 'subtitleFontSize', 20)}
+                    </div>
+                `;
+            } else if (selected.type === 'combo') {
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-fire"></i> HIỆU ỨNG COMBO</h4>
+                        <div class="gmd-field">
+                            <label>Số lượng Combo hiển thị</label>
+                            <input class="gmd-input" type="number" data-goal-key="comboCount" value="${selected.comboCount || 88}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Tiêu đề Combo</label>
+                            <input class="gmd-input" type="text" data-goal-key="name" value="${selected.name || 'COMBO ĐANG CHẠY!'}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Dòng phụ hiển thị (Subtitle Text)</label>
+                            <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu chủ đề Combo</label>
+                            <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#ef4444'}">
+                        </div>
+                    </div>
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 40)}
+                        ${makeCompactFontSizeField('Cỡ chữ Con số (Combo)', 'numberFontSize', 64)}
+                        ${makeCompactFontSizeField('Cỡ chữ Dòng phụ', 'subtitleFontSize', 20)}
+                    </div>
+                `;
+            } else if (selected.type === 'media-asset') {
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-photo-video"></i> THUỘC TÍNH MEDIA</h4>
+                        <div class="gmd-field">
+                            <label>Độ trong suốt (Opacity)</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="1" step="0.05" data-goal-key="opacity" value="${selected.opacity !== undefined ? selected.opacity : 1.0}"><span>%</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="0" max="1" step="0.05" data-goal-key="opacity" value="${selected.opacity !== undefined ? selected.opacity : 1.0}">
+                        <div class="gmd-field">
+                            <label>Chế độ hiển thị (Fit Mode)</label>
+                            <select class="gmd-select" data-goal-key="fitMode">
+                                <option value="contain" ${selected.fitMode === 'contain' ? 'selected' : ''}>Thu nhỏ vừa vặn (Contain)</option>
+                                <option value="cover" ${selected.fitMode === 'cover' ? 'selected' : ''}>Kéo giãn lấp đầy (Cover)</option>
+                                <option value="fill" ${selected.fitMode === 'fill' ? 'selected' : ''}>Kéo tràn khung (Fill)</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+            } else if (selected.type === 'goal-list') {
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-list-ul"></i> MULTI GOAL LIST</h4>
+                        <div class="gmd-field">
+                            <label>Dòng chân trang (Footer Text)</label>
+                            <input class="gmd-input" type="text" data-goal-key="footerText" value="${selected.footerText || ''}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu tiến trình chung</label>
+                            <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#ff007f'}">
+                        </div>
+                        <div class="gmd-field gmd-toggle-row">
+                            <label>Hiển thị tên quà</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="showGiftName" ${selected.showGiftName !== false ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Kích thước icon quà tặng (Icon Size)</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="iconSize" value="${selected.iconSize !== undefined ? selected.iconSize : 28}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="12" max="64" data-goal-key="iconSize" value="${selected.iconSize !== undefined ? selected.iconSize : 28}">
+                        <div class="gmd-field">
+                            <label>Độ dày thanh (Bar Height)</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 12}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="4" max="32" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 12}">
+                        <div class="gmd-field">
+                            <label>Hiệu ứng thanh (Bar Style)</label>
+                            <select class="gmd-select" data-goal-key="barStyle">
+                                <option value="solid" ${selected.barStyle === 'solid' ? 'selected' : ''}>Classic Solid/Gradient</option>
+                                <option value="glow-pulse" ${selected.barStyle === 'glow-pulse' ? 'selected' : ''}>Neon Glow Pulse</option>
+                                <option value="gradient-sweep" ${selected.barStyle === 'gradient-sweep' ? 'selected' : ''}>Gradient Sweep</option>
+                                <option value="candy-stripe" ${selected.barStyle === 'candy-stripe' ? 'selected' : ''}>Candy Stripe Shimmer</option>
+                            </select>
+                        </div>
+                    </div>
+
+                        <div class="gmd-field gmd-toggle-row">
+                            <label>Cuộn tự động (Auto Scroll)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="autoScroll" ${selected.autoScroll ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.autoScroll ? `
+                        <div class="gmd-field">
+                            <label>Tốc độ cuộn (s)</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="1" max="60" data-goal-key="autoScrollSpeed" value="${selected.autoScrollSpeed !== undefined ? selected.autoScrollSpeed : 15}"><span>s</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="3" max="40" data-goal-key="autoScrollSpeed" value="${selected.autoScrollSpeed !== undefined ? selected.autoScrollSpeed : 15}">
+                        ` : ''}
+                        <div class="gmd-field gmd-toggle-row">
+                            <label>Hiệu ứng quét sáng (Shimmer)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="shimmerEffect" ${selected.shimmerEffect !== false ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Cỡ chữ Tiêu đề</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="fontSize" value="${selected.fontSize !== undefined ? selected.fontSize : 32}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="12" max="64" data-goal-key="fontSize" value="${selected.fontSize !== undefined ? selected.fontSize : 32}">
+                        <div class="gmd-field">
+                            <label>Cỡ chữ Dòng quà</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="rowFontSize" value="${selected.rowFontSize !== undefined ? selected.rowFontSize : 22}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="10" max="48" data-goal-key="rowFontSize" value="${selected.rowFontSize !== undefined ? selected.rowFontSize : 22}">
+                        <div class="gmd-field">
+                            <label>Cỡ chữ Chân trang</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="footerFontSize" value="${selected.footerFontSize !== undefined ? selected.footerFontSize : 20}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="10" max="48" data-goal-key="footerFontSize" value="${selected.footerFontSize !== undefined ? selected.footerFontSize : 20}">
+                        
+                    <div class="gmd-section">
+                        <div class="gmd-field" style="margin-top: 10px;">
+                            <label style="font-weight: 800; color: #a855f7;">Danh sách mục tiêu</label>
+                            <div class="gmd-subline" style="margin-bottom:8px; font-size:10px;">Các mục tiêu quà tặng hiển thị trong bảng:</div>
+                            <div class="gmd-goal-list-items-editor" style="display:flex; flex-direction:column; gap:8px;">
+                                ${(selected.goals || []).map((g, idx) => `
+                                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:6px; border-radius:6px; display:flex; flex-direction:column; gap:4px;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; font-weight:bold; color:#cbd5e1;">
+                                            <span>Mục tiêu #${idx + 1}: ${g.giftName || g.giftId}</span>
+                                            <button class="gmd-btn" style="background:none; border:none; color:#ef4444; padding:0; cursor:pointer;" onclick="window.giftMenuDesigner.removeGoalListItem('${selected.id}', ${idx})"><i class="fas fa-trash-alt"></i></button>
+                                        </div>
+                                        <div style="display:grid; grid-template-columns: 1.2fr 1fr 1fr; gap:6px; align-items:center;">
+                                            ${makeCustomGiftSelectForGoal(idx, g.giftId)}
+                                            <input class="gmd-input gmd-input-compact" style="font-size:10px; background:#1e293b; color:#fff; height: 32px;" type="number" placeholder="Mục tiêu" value="${g.target}" oninput="window.giftMenuDesigner.updateGoalListItem(${idx}, 'target', this.value)">
+                                            <input class="gmd-input gmd-input-compact" style="font-size:10px; background:#1e293b; color:#fff; height: 32px;" type="number" placeholder="Hiện tại" value="${g.current}" oninput="window.giftMenuDesigner.updateGoalListItem(${idx}, 'current', this.value)">
                                         </div>
                                     </div>
-                                </div>
-                            `;
-                        }).join('')}
+                                `).join('')}
+                            </div>
+                            <button class="gmd-btn" style="margin-top:8px; width:100%; font-size:11px; background:rgba(139,92,246,0.1); border:1px dashed rgba(139,92,246,0.4); color:#c084fc; padding:6px; border-radius:6px; cursor:pointer;" onclick="window.giftMenuDesigner.addGoalListItem('${selected.id}')"><i class="fas fa-plus"></i> Thêm mục tiêu</button>
+                        </div>
                     </div>
                 `;
-            } else {
-                libContent.innerHTML = `
-                    <div class="gmd-asset-grid">
-                        ${this.goalAssets.length ? this.goalAssets.map(a => {
-                            const isVideo = a.type === 'video';
-                            return `
-                                <div class="gmd-asset-card" draggable="true" data-asset-url="${a.url}" data-asset-name="${a.name}" data-asset-type="${a.type}">
-                                    <div class="gmd-asset-preview">
-                                        ${isVideo 
-                                            ? `<video src="${this.apiBase}${a.url}" autoplay loop muted playsinline></video>` 
-                                            : `<img src="${this.apiBase}${a.url}" alt="${a.name}">`
-                                        }
-                                    </div>
-                                    <div class="gmd-asset-name" title="${a.name}">${a.name}</div>
-                                </div>
-                            `;
-                        }).join('') : '<div class="gmd-inspector-empty" style="grid-column: 1/-1; height: 120px; padding: 12px; font-size: 11px;">Chưa có tài nguyên mẫu. Hãy copy file PNG/WebM vào thư mục backend/assets/goal/ hoặc upload bên dưới!</div>'}
-                    </div>
-                    
-                    <div class="gmd-upload-box" id="gmd-asset-upload-trigger">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <div>Thêm tài nguyên</div>
-                        <span>PNG, WebM (Tối đa 50MB)</span>
-                        <input type="file" id="gmd-asset-file-input" accept=".png,.jpg,.jpeg,.webp,.gif,.webm,.mp4" style="display: none;">
+            } else if (selected.type === 'text') {
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-font"></i> THUỘC TÍNH VĂN BẢN</h4>
+                        <div class="gmd-field">
+                            <label>Nội dung văn bản</label>
+                            <textarea class="gmd-input" style="height:60px; font-family:inherit; font-size:12px; resize:none; background:#1e293b; color:#fff;" data-goal-key="text">${selected.text || 'Nhập văn bản'}</textarea>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu chữ</label>
+                            <input class="gmd-color" type="color" data-goal-key="color" value="${selected.color || '#ffffff'}">
+                        </div>
+                        ${makeCompactFontSizeField('Cỡ chữ (Font Size)', 'fontSize', 36, 12, 120)}
+                        <div class="gmd-field">
+                            <label>Độ đậm (Font Weight)</label>
+                            <select class="gmd-select" data-goal-key="fontWeight">
+                                <option value="normal" ${selected.fontWeight === 'normal' ? 'selected' : ''}>Bình thường</option>
+                                <option value="bold" ${selected.fontWeight === 'bold' ? 'selected' : ''}>In đậm (Bold)</option>
+                                <option value="900" ${selected.fontWeight === '900' ? 'selected' : ''}>Siêu đậm (Black)</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Bóng chữ (Text Shadow)</label>
+                            <select class="gmd-select" data-goal-key="textShadow">
+                                <option value="none" ${selected.textShadow === 'none' ? 'selected' : ''}>Không bóng</option>
+                                <option value="0 0 8px rgba(168,85,247,0.8)" ${selected.textShadow === '0 0 8px rgba(168,85,247,0.8)' ? 'selected' : ''}>Tím Neon Glow</option>
+                                <option value="0 0 8px rgba(245,158,11,0.8)" ${selected.textShadow === '0 0 8px rgba(245,158,11,0.8)' ? 'selected' : ''}>Vàng Neon Glow</option>
+                                <option value="0 0 8px rgba(236,72,153,0.8)" ${selected.textShadow === '0 0 8px rgba(236,72,153,0.8)' ? 'selected' : ''}>Hồng Neon Glow</option>
+                                <option value="2px 2px 4px rgba(0,0,0,0.8)" ${selected.textShadow === '2px 2px 4px rgba(0,0,0,0.8)' ? 'selected' : ''}>Bóng đổ đen dịu</option>
+                            </select>
+                        </div>
                     </div>
                 `;
+            }
+
+            inspector.innerHTML = `
+                <div class="gmd-selected-card">
+                    <div style="font-size: 20px;">${selected.type === 'media-asset' ? '🖼️' : '📊'}</div>
+                    <input class="gmd-title-input" data-goal-key="name" value="${selected.name}">
+                    <button class="gmd-delete-btn" data-action="delete"><i class="fas fa-trash"></i></button>
+                </div>
                 
-                const uploadTrigger = libContent.querySelector('#gmd-asset-upload-trigger');
-                const fileInput = libContent.querySelector('#gmd-asset-file-input');
-                if (uploadTrigger && fileInput) {
-                    uploadTrigger.addEventListener('click', () => fileInput.click());
-                    fileInput.addEventListener('change', (e) => {
-                        if (e.target.files && e.target.files[0]) {
-                            this.uploadGoalAsset(e.target.files[0]);
+                <div class="gmd-section">
+                    <h4><i class="fas fa-ruler-combined"></i> KÍCH THƯỚC & VỊ TRÍ</h4>
+                    <div class="gmd-field"><label>Vị trí X / Y (Logical)</label></div>
+                    <div class="gmd-row">
+                        <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="x" value="&yen;${logical.x}"><span>px</span></div>
+                        <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="y" value="${logical.y}"><span>px</span></div>
+                    </div>
+                    <div class="gmd-row" style="margin-top: 8px;">
+                        <div class="gmd-field" style="margin-bottom: 4px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                                <label style="margin: 0; font-size: 11px;">Rộng (W)</label>
+                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="w" value="${logical.w}"><span>px</span></div>
+                            </div>
+                            <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="100" max="1080" data-goal-key="w" value="${logical.w}">
+                        </div>
+                        <div class="gmd-field" style="margin-bottom: 4px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                                <label style="margin: 0; font-size: 11px;">Cao (H)</label>
+                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="h" value="${logical.h}"><span>px</span></div>
+                            </div>
+                            <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="30" max="1920" data-goal-key="h" value="${logical.h}">
+                        </div>
+                    </div>
+                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                        <label style="font-size: 11px;">Khóa tỷ lệ (Aspect Ratio)</label>
+                        <label class="gmd-switch">
+                            <input type="checkbox" data-goal-key="lockRatio" ${selected.lockRatio ? 'checked' : ''}>
+                            <span></span>
+                        </label>
+                    </div>
+                    <div class="gmd-field" style="margin-top: 8px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                            <label style="margin: 0; font-size: 11px;">Vị trí nội dung (Dọc)</label>
+                            <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="contentOffsetY" value="${selected.contentOffsetY !== undefined ? selected.contentOffsetY : 0}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="-300" max="300" data-goal-key="contentOffsetY" value="${selected.contentOffsetY !== undefined ? selected.contentOffsetY : 0}">
+                    </div>
+
+                    <!-- Hide Background -->
+                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                        <label style="font-size: 11px;">Ẩn viền và nền bảng</label>
+                        <label class="gmd-switch">
+                            <input type="checkbox" data-goal-key="hideBg" ${selected.hideBg ? 'checked' : ''}>
+                            <span></span>
+                        </label>
+                    </div>
+
+                    <!-- Custom BG Color -->
+                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                        <label style="font-size: 11px;">Tự chọn màu nền bảng</label>
+                        <label class="gmd-switch">
+                            <input type="checkbox" data-goal-key="useCustomBg" ${selected.useCustomBg ? 'checked' : ''}>
+                            <span></span>
+                        </label>
+                    </div>
+                    ${selected.useCustomBg ? `
+                    <div class="gmd-field" style="margin-top: 4px;">
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu nền bảng</label>
+                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="bgColor" value="${selected.bgColor || '#0a0a14'}">
+                    </div>
+                    ` : ''}
+
+                    <!-- Custom Text Color -->
+                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                        <label style="font-size: 11px;">Tự chọn màu chữ</label>
+                        <label class="gmd-switch">
+                            <input type="checkbox" data-goal-key="useCustomTextColor" ${selected.useCustomTextColor ? 'checked' : ''}>
+                            <span></span>
+                        </label>
+                    </div>
+                    ${selected.useCustomTextColor ? `
+                    <div class="gmd-field" style="margin-top: 4px;">
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu chữ</label>
+                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}">
+                    </div>
+                    ` : ''}
+                    <div class="gmd-field" style="margin-top: 10px;">
+                        <div style="display:flex; gap:10px;">
+                            <button class="gmd-btn" data-action="duplicate"><i class="far fa-clone"></i> Nhân bản</button>
+                            <button class="gmd-btn" data-action="delete"><i class="far fa-trash-alt"></i> Xóa</button>
+                        </div>
+                    </div>
+                </div>
+                
+                ${testButtonHTML}
+                ${specificConfigHTML}
+            `;
+        }
+
+        updateGoalBoardSelectedItem(key, value) {
+            const item = this.items.find((x) => x.id === this.selectedId);
+            if (!item) return;
+
+            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'iconSize'].includes(key)) {
+                const numVal = Number(value);
+                if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
+                    const map = {
+                        '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
+                        '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
+                        '1:1': { width: 480, height: 480, canvasW: 900, canvasH: 900 }
+                    };
+                    const cfg = map[this.aspectRatio] || map['9:16'];
+                    const safeOffset = {
+                        x: Math.round((cfg.canvasW - cfg.width) / 2),
+                        y: Math.round((cfg.canvasH - cfg.height) / 2)
+                    };
+                    const exportSize = this.aspectRatio === '9:16'
+                        ? { width: 1080, height: 1920 }
+                        : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
+                    const stageSx = cfg.width / exportSize.width;
+                    const stageSy = cfg.height / exportSize.height;
+
+                    if (key === 'x') {
+                        item.x = Math.round(safeOffset.x + numVal * stageSx);
+                    } else if (key === 'y') {
+                        item.y = Math.round(safeOffset.y + numVal * stageSy);
+                    } else if (key === 'w') {
+                        item.w = numVal;
+                        item.width = Math.round(numVal * stageSx);
+                        if (item.lockRatio && item.h) {
+                            const ratio = item.h / numVal;
+                            item.height = Math.round(item.width * ratio);
+                            item.h = Math.round(item.w * ratio);
                         }
-                    });
+                    } else if (key === 'h') {
+                        item.h = numVal;
+                        item.height = Math.round(numVal * stageSy);
+                        if (item.lockRatio && item.w) {
+                            const ratio = item.w / numVal;
+                            item.width = Math.round(item.height * ratio);
+                            item.w = Math.round(item.h * ratio);
+                        }
+                    }
+                } else {
+                    item[key] = numVal;
                 }
+            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg') {
+                item[key] = Boolean(value);
+                if (key === 'lockRatio') {
+                    if (item.lockRatio) {
+                        item.lockedW = item.w || item.width;
+                        item.lockedH = item.h || item.height;
+                    } else {
+                        delete item.lockedW;
+                        delete item.lockedH;
+                    }
+                }
+            } else {
+                item[key] = value;
+                if (key === 'giftId') {
+                    const cleanVal = String(value).trim();
+                    const gift = this.gifts.find(g => String(g.id).toLowerCase() === cleanVal.toLowerCase());
+                    if (gift) {
+                        item.giftName = gift.name || cleanVal;
+                        item.iconUrl = gift.icon || '';
+                    }
+                }
+            }
+
+            const inputs = this.mount.querySelectorAll(`#gmd-inspector [data-goal-key="${key}"]`);
+            inputs.forEach(input => {
+                if (document.activeElement === input) return;
+                if (input.type === 'checkbox') {
+                    input.checked = Boolean(value);
+                } else {
+                    input.value = value;
+                }
+            });
+
+            this.renderCanvas();
+            this.pushHistory('update-goal-item');
+        }
+
+        updateGoalListItem(idx, field, value) {
+            const selected = this.items.find((x) => x.id === this.selectedId);
+            if (selected && selected.type === 'goal-list' && Array.isArray(selected.goals) && selected.goals[idx]) {
+                const goal = selected.goals[idx];
+                if (field === 'target' || field === 'current') {
+                    goal[field] = Number(value) || 0;
+                } else if (field === 'giftId') {
+                    const cleanVal = String(value).trim();
+                    goal.giftId = cleanVal;
+                    const gift = this.gifts.find(g => String(g.id).toLowerCase() === cleanVal.toLowerCase());
+                    if (gift) {
+                        goal.giftName = gift.name || cleanVal;
+                        goal.icon = gift.icon || '';
+                    } else {
+                        goal.giftName = cleanVal;
+                    }
+                }
+                this.renderCanvas();
+                this.pushHistory('update-goal-list-item');
+            }
+        }
+
+        addGoalListItem(itemId) {
+            const item = this.items.find((x) => x.id === itemId);
+            if (item && item.type === 'goal-list') {
+                if (!Array.isArray(item.goals)) {
+                    item.goals = [];
+                }
+                const firstGift = this.gifts[0] || { id: 'rose', name: 'Rose', icon: '/assets/gift-icons/Rose.png' };
+                item.goals.push({
+                    giftId: firstGift.id,
+                    giftName: firstGift.name || firstGift.id,
+                    current: 0,
+                    target: 100,
+                    icon: firstGift.icon || ''
+                });
+                this.renderCanvas();
+                this.renderInspector();
+                this.pushHistory('add-goal-list-item');
+            }
+        }
+
+        removeGoalListItem(itemId, idx) {
+            const item = this.items.find((x) => x.id === itemId);
+            if (item && item.type === 'goal-list' && Array.isArray(item.goals)) {
+                item.goals.splice(idx, 1);
+                this.renderCanvas();
+                this.renderInspector();
+                this.pushHistory('remove-goal-list-item');
+            }
+        }
+
+        async sendSimulatedGift(itemId) {
+            const item = this.items.find(x => x.id === itemId);
+            if (!item) return;
+
+            let giftId = 'rose';
+            let giftName = 'Rose';
+            let repeatCount = 1;
+
+            if (item.type === 'goal-bar' || item.type === 'boss-bar' || item.type === 'mystery-chests' || item.type === 'goal-circle') {
+                giftId = item.giftId || 'rose';
+                giftName = item.giftName || 'Rose';
+                repeatCount = item.type === 'boss-bar' ? Math.ceil((item.targetCount || 100) / 10) : 10;
+
+                item.currentCount = (Number(item.currentCount) || 0) + repeatCount;
+            } else if (item.type === 'goal-list' && Array.isArray(item.goals) && item.goals.length > 0) {
+                const randomGoal = item.goals[Math.floor(Math.random() * item.goals.length)];
+                giftId = randomGoal.giftId || 'rose';
+                giftName = randomGoal.giftName || 'Rose';
+                repeatCount = Math.ceil((randomGoal.target || 100) / 5);
+
+                randomGoal.current = (Number(randomGoal.current) || 0) + repeatCount;
+            } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
+                const testNames = ['Vua Tặng Quà 👑', 'Minh Anh idol', 'Thần Donate ⚡', 'Khánh Huyền Cute', 'Anh Hai Sài Gòn'];
+                const nickname = testNames[Math.floor(Math.random() * testNames.length)];
+                giftId = 'galaxy';
+                giftName = 'Galaxy';
+                repeatCount = 1;
+                const value = Math.floor(Math.random() * 500) + 100;
+
+                if (!Array.isArray(item.contributors)) item.contributors = [];
+                const existing = item.contributors.find(c => c.nickname === nickname);
+                if (existing) {
+                    existing.value = (Number(existing.value) || 0) + value;
+                } else {
+                    item.contributors.push({ nickname, value, avatar: '' });
+                }
+                item.contributors.sort((a, b) => b.value - a.value);
+                item.contributors = item.contributors.slice(0, 20);
+            } else if (item.type === 'combo') {
+                giftId = 'corgi';
+                giftName = 'Corgi';
+                repeatCount = (item.comboCount || 0) + 5;
+                item.comboCount = repeatCount;
+            }
+
+            this.renderCanvas();
+            this.renderInspector();
+
+            await this.saveLayout(false, false);
+
+        }
+
+        async resetGoalBoardItem(itemId) {
+            const item = this.items.find(x => x.id === itemId);
+            if (!item) return;
+
+            if (item.type === 'goal-bar' || item.type === 'boss-bar' || item.type === 'mystery-chests' || item.type === 'goal-circle') {
+                item.currentCount = 0;
+            } else if (item.type === 'goal-list' && Array.isArray(item.goals)) {
+                item.goals.forEach(g => {
+                    g.current = 0;
+                });
+            } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
+                item.contributors = [];
+            } else if (item.type === 'combo') {
+                item.comboCount = 0;
+            }
+
+            this.renderCanvas();
+            this.renderInspector();
+
+            await this.saveLayout(false, false);
+
+            if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('success', 'Đã reset tiến trình mục tiêu về ban đầu!');
             }
         }
 
         getDefaultTemplates() {
             return [
+                {
+                    id: 'tmpl_circular_heart_goal',
+                    name: 'Vòng tròn mục tiêu ❤️',
+                    tag: 'Vòng tròn',
+                    category: 'goal-circle',
+                    tags: ['circle', 'progress', 'heart'],
+                    isPremium: false,
+                    layers: [
+                        {
+                            id: 'circular_heart_goal_widget',
+                            name: 'MỤC TIÊU ❤️',
+                            type: 'goal-circle',
+                            x: 90,
+                            y: 100,
+                            w: 280,
+                            h: 320,
+                            width: 280,
+                            height: 320,
+                            zIndex: 1,
+                            visible: true,
+                            locked: false,
+                            lockRatio: true,
+                            giftId: 'rose',
+                            giftName: 'Rose',
+                            targetCount: 500,
+                            currentCount: 310,
+                            centerIcon: '❤️',
+                            subtitleText: '01:41:01 OFFLINE',
+                            barColor: '#ff007f',
+                            fontSize: 24,
+                            subtitleFontSize: 16,
+                            numberFontSize: 16
+                        }
+                    ]
+                },
                 {
                     id: 'tmpl_neon_purple',
                     name: 'Neon Purple Gift Goal',
@@ -2124,7 +3927,7 @@
                     isPremium: false,
                     layers: [
                         {
-                            id: 'unlock_reward_chests_widget',
+                            id: 'unlock_reward_widget',
                             name: '🔒 SẮP MỞ KHÓA',
                             type: 'mystery-chests',
                             x: 90,
@@ -2170,1394 +3973,115 @@
                             footerText: 'Hoàn thành để mở event đặc biệt!'
                         }
                     ]
+                },
+                {
+                    id: 'tmpl_beauty_live',
+                    name: 'Giao diện Livestream 2 Cột (Beauty Live)',
+                    tag: 'Beauty Premium',
+                    category: 'layout-template',
+                    tags: ['premium', 'beauty', '2-column'],
+                    isPremium: true,
+                    price: 49000,
+                    layers: [
+                        {
+                            id: 'beauty_live_circle_goal',
+                            name: 'Vòng Tròn Tiến Trình',
+                            type: 'goal-circle',
+                            x: 50,
+                            y: 80,
+                            w: 280,
+                            h: 320,
+                            width: 280,
+                            height: 320,
+                            zIndex: 2,
+                            visible: true,
+                            locked: false,
+                            lockRatio: true,
+                            giftId: 'rose',
+                            giftName: 'Rose',
+                            targetCount: 500,
+                            currentCount: 240,
+                            centerIcon: 'gift-icon',
+                            iconUrl: '/assets/gift-icons/Rose.png',
+                            subtitleText: 'Mục tiêu ngày',
+                            barColor: '#ff007f',
+                            fontSize: 24,
+                            subtitleFontSize: 16,
+                            numberFontSize: 16
+                        },
+                        {
+                            id: 'beauty_live_mission_list',
+                            name: 'Nhiệm Vụ Cuộn Tự Động',
+                            type: 'goal-list',
+                            x: 350,
+                            y: 80,
+                            w: 680,
+                            h: 320,
+                            width: 680,
+                            height: 320,
+                            zIndex: 1,
+                            visible: true,
+                            locked: false,
+                            barColor: '#ec4899',
+                            autoScroll: true,
+                            autoScrollSpeed: 10,
+                            shimmerEffect: true,
+                            goals: [
+                                { giftId: 'rose', giftName: 'Rose', current: 240, target: 500, icon: '/assets/gift-icons/Rose.png' },
+                                { giftId: 'tiktok', giftName: 'TikTok', current: 45, target: 100, icon: '/assets/gift-icons/TikTok.png' },
+                                { giftId: 'corgi', giftName: 'Corgi', current: 5, target: 15, icon: '/assets/gift-icons/Corgi.png' },
+                                { giftId: 'sunglasses', giftName: 'Sunglasses', current: 2, target: 5, icon: '/assets/gift-icons/Sunglasses.png' }
+                            ],
+                            footerText: 'Cảm ơn mọi người đã ủng hộ! 💖'
+                        }
+                    ]
                 }
             ];
         }
 
-        addTemplateToCanvas(templateId, dropX = null, dropY = null) {
-            const templates = this.getDefaultTemplates();
-            const allTemplates = [...(this.customTemplates || []), ...templates];
-            const tmpl = allTemplates.find(t => t.id === templateId);
-            if (!tmpl) return;
-            
-            this.goalBoard.selectedId = null;
-            this.goalBoard.selectedIds = [];
-            
-            const baseZ = this.goalBoard.items.length;
-            const groupUniqueId = `group_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-            
-            let minX = Infinity;
-            let minY = Infinity;
-            let maxX = -Infinity;
-            let maxY = -Infinity;
-            tmpl.layers.forEach(layer => {
-                if (layer.x < minX) minX = layer.x;
-                if (layer.y < minY) minY = layer.y;
-                if (layer.x + layer.w > maxX) maxX = layer.x + layer.w;
-                if (layer.y + layer.h > maxY) maxY = layer.y + layer.h;
-            });
-            const w = maxX - minX;
-            const h = maxY - minY;
-            
-            const newLayers = tmpl.layers.map((layer, idx) => {
-                const uniqueId = `layer_${layer.type}_${Date.now()}_${Math.floor(Math.random()*1000)}_${idx}`;
-                let newX = layer.x;
-                let newY = layer.y;
-                if (dropX !== null && dropY !== null) {
-                    newX = dropX - (w / 2) + (layer.x - minX);
-                    newY = dropY - (h / 2) + (layer.y - minY);
-                }
-                
-                const freshLayer = {
-                    ...layer,
-                    id: uniqueId,
-                    groupId: groupUniqueId,
-                    x: Math.round(newX),
-                    y: Math.round(newY),
-                    zIndex: baseZ + idx + 1
-                };
-
-                // Reset progress values to 0/empty for newly added templates
-                if (freshLayer.currentCount !== undefined) freshLayer.currentCount = 0;
-                if (freshLayer.comboCount !== undefined) freshLayer.comboCount = 0;
-                if (Array.isArray(freshLayer.goals)) {
-                    freshLayer.goals = freshLayer.goals.map(g => ({ ...g, current: 0 }));
-                }
-                if (Array.isArray(freshLayer.contributors)) {
-                    freshLayer.contributors = [];
-                }
-
-                return freshLayer;
-            });
-            
-            this.goalBoard.items.push(...newLayers);
-            
-            if (newLayers[0]) {
-                this.goalBoard.selectedId = newLayers[0].id;
-                this.goalBoard.selectedIds = [newLayers[0].id];
-            }
-            
-            this.renderCanvas();
-            this.renderInspector();
-            this.pushHistory('add-template');
-        }
-
-        async loadGoalAssets() {
-            try {
-                const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
-                const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/assets`, { headers });
-                const data = await res.json();
-                this.goalAssets = Array.isArray(data.assets) ? data.assets : [];
-                if (this.mode === 'goal-board' && this.leftPanelTab === 'assets') {
-                    this.renderLeftPanel();
-                }
-            } catch (_e) {
-                this.goalAssets = [];
-            }
-        }
-
-        async uploadGoalAsset(file) {
-            if (!file) return;
-            const formData = new FormData();
-            formData.append('assetFile', file);
-            
-            if (window.app && typeof window.app.showNotification === 'function') {
-                window.app.showNotification('info', 'Đang tải tài nguyên lên server...');
-            }
-            
-            try {
-                const headers = {};
-                if (this.token) headers.Authorization = `Bearer ${this.token}`;
-                
-                const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/upload-asset`, {
-                    method: 'POST',
-                    headers,
-                    body: formData
-                });
-                const data = await res.json();
-                if (data.success) {
-                    if (window.app && typeof window.app.showNotification === 'function') {
-                        window.app.showNotification('success', 'Đã tải lên thành công tài nguyên mới!');
-                    }
-                    await this.loadGoalAssets();
-                } else {
-                    throw new Error(data.error || 'Lỗi upload');
-                }
-            } catch (err) {
-                if (window.app && typeof window.app.showNotification === 'function') {
-                    window.app.showNotification('error', `Tải lên thất bại: ${err.message}`);
-                }
-            }
-        }
-
-        addAssetToCanvas(assetUrl, assetName, assetType, x = 100, y = 100) {
-            const uniqueId = `asset_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-            const isWebM = assetType === 'video' || assetUrl.endsWith('.webm');
-            
-            const newLayer = {
-                id: uniqueId,
-                name: assetName || (isWebM ? 'Asset WebM' : 'Asset PNG'),
-                type: 'media-asset',
-                assetUrl: assetUrl,
-                isWebM: isWebM,
-                x: Math.round(x),
-                y: Math.round(y),
-                w: 360,
-                h: 360,
-                opacity: 1.0,
-                fitMode: 'contain',
-                autoplay: true,
-                loop: true,
-                muted: true,
-                playsinline: true,
-                zIndex: this.goalBoard.items.length + 1,
-                visible: true,
-                locked: false
-            };
-            
-            this.goalBoard.items.push(newLayer);
-            this.goalBoard.selectedId = uniqueId;
-            this.goalBoard.selectedIds = [uniqueId];
-            
-            this.renderCanvas();
-            this.renderInspector();
-            this.pushHistory('add-asset');
-        }
-
-        renderGoalBoardCanvas() {
-            const canvas = this.mount.querySelector('#gmd-canvas');
-            const stage = this.mount.querySelector('#gmd-stage');
-            const safe = this.mount.querySelector('#gmd-safe-area');
-            if (!canvas || !stage || !safe) return;
-            
-            const getTranslucentBg = (colorHex, defaultHex = '#0a0a14') => {
-                const hex = colorHex || defaultHex;
-                return (hex.startsWith('#') && hex.length === 7) ? hex + '40' : hex;
-            };
-            
-            // Remove elements that are no longer active or visible
-            const activeIds = new Set((this.goalBoard.items || []).filter(item => item.visible !== false).map(item => String(item.id)));
-            Array.from(safe.querySelectorAll('.gmd-item')).forEach(child => {
-                const id = child.dataset.itemId;
-                if (!activeIds.has(id)) {
-                    child.remove();
-                }
-            });
-            
-            const s = safe.clientWidth / 1080;
-            
-            this.goalBoard.items.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).forEach((item) => {
-                if (item.visible === false) return;
-                
-                const selected = this.goalBoard.selectedIds.includes(item.id);
-                let el = safe.querySelector(`[data-item-id="${item.id}"]`);
-                const exists = !!el;
-                if (!exists) {
-                    el = document.createElement('div');
-                    el.dataset.itemId = item.id;
-                    safe.appendChild(el);
-                }
-                let refW = item.lockedW || item.w || 900;
-                let refH = item.lockedH || item.h || 160;
-                let isWidget = false;
-                
-                if (['goal-bar', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'goal-list'].includes(item.type)) {
-                    isWidget = true;
-                    if (!item.lockRatio) {
-                        if (item.type === 'boss-bar') { refW = 840; refH = 180; }
-                        else if (item.type === 'combo') { refW = 800; refH = 220; }
-                        else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
-                        else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
-                        else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
-                        else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
-                    }
-                }
-                
-                const fs = 1;
-                el.className = `gmd-item ${selected ? 'selected' : ''}`;
-                el.dataset.itemId = item.id;
-                
-                el.style.left = `${Math.round(item.x * s)}px`;
-                el.style.top = `${Math.round(item.y * s)}px`;
-                el.style.width = `${Math.round(item.w * s)}px`;
-                el.style.height = `${Math.round(item.h * s)}px`;
-                el.style.zIndex = String(item.zIndex || 1);
-                
-                let widgetHTML = '';
-                let skipHTMLUpdate = false;
-                if (item.type === 'goal-bar') {
-                    const current = Number(item.currentCount || 0);
-                    const target = Number(item.targetCount || 100);
-                    const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
-                    const color = item.barColor || '#ff007f';
-                    const glow = item.glowColor || 'rgba(255,0,127,0.5)';
-                    const titleSize = item.fontSize || 38;
-                    const subSize = item.subtitleFontSize || 24;
-                    const subtitle = item.subtitleText ? `<div class="gmd-goal-bar-subtitle" style="font-size: ${subSize}px; color: ${item.subtitleColor || '#cbd5e1'}; text-align: left; margin-top: 2px; line-height: 1.2; opacity: 0.9;">${item.subtitleText}</div>` : '';
-                    widgetHTML = `
-                        <div class="gmd-goal-bar-widget ${item.themeStyle === 'neon' ? 'theme-neon' : ''}" style="border-radius: ${item.borderRadius || 12}px; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `${color}80`)}; box-shadow: ${item.hideBg ? 'none' : `0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 15px ${color}26`}; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at top left, ${color}12, #0f172a)`)}; padding: 16px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
-                            <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; gap: 8px; width: 100%;">
-                                <div class="gmd-goal-bar-title-row" style="font-size: ${titleSize}px;">
-                                    <span style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')}; text-shadow: 0 0 10px ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')}80; font-size: ${titleSize}px;">${item.name || (item.giftName + ' Goal') || 'Rose Goal'}</span>
-                                    <span style="color: ${color}; text-shadow: 0 0 10px ${color}80; font-size: ${titleSize}px;">${current}/${target}</span>
-                                </div>
-                                <div class="gmd-goal-bar-outer" style="height: ${item.barHeight !== undefined ? item.barHeight : 54}px;">
-                                    <div class="gmd-goal-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width: ${pct}%; --bar-color: ${color}; --bar-glow: ${glow}; background: linear-gradient(90deg, ${color}, ${glow}); box-shadow: 0 0 24px ${glow};"></div>
-                                </div>
-                                ${item.subtitleText ? `<div class="gmd-goal-bar-subtitle" style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : (item.subtitleColor || '#cbd5e1')}; text-align: left; margin-top: 2px; line-height: 1.2; opacity: 0.9;">${item.subtitleText}</div>` : ''}
-                            </div>
-                        </div>
-                    `;
-                } else if (item.type === 'boss-bar') {
-                    const current = Number(item.currentCount || 0);
-                    const target = Number(item.targetCount || 100);
-                    const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
-                    const color = item.barColor || '#ef4444';
-                    const titleSize = item.fontSize || 38;
-                    const subSize = item.subtitleFontSize || 26;
-                    
-                    const formatNum = (num) => {
-                        if (num >= 1000) return (num / 1000).toFixed(1).replace('.0', '') + 'k';
-                        return num;
-                    };
-                    
-                    widgetHTML = `
-                        <div class="gmd-boss-bar-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 30px ${color}4d, 0 8px 32px rgba(0,0,0,0.6)`}; display: flex; flex-direction: column; justify-content: center; padding: 16px; box-sizing: border-box; width: 100%; height: 100%;">
-                            <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; gap: 14px; width: 100%;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: ${titleSize}px; font-weight: 900; color: #fff; line-height: 1;">
-                                    <span style="display: flex; align-items: center; gap: 6px; text-shadow: 0 0 10px ${color}; font-size: ${titleSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'};">🐉 ${item.bossName || 'BOSS HP'}</span>
-                                    <span style="color: ${color}; text-shadow: 0 0 10px ${color}; font-size: ${titleSize}px;">${pct}%</span>
-                                </div>
-                                <div class="gmd-boss-bar-outer" style="height: ${item.barHeight !== undefined ? item.barHeight : 24}px; background: rgba(0, 0, 0, 0.6); border-radius: 4px; overflow: hidden; border: 1px solid ${color}40; position: relative; box-sizing: border-box; width: 100%;">
-                                    <div class="gmd-boss-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="height: 100%; width: ${pct}%; --bar-color: ${color}; --bar-glow: ${color}; background: linear-gradient(90deg, #b91c1c, ${color}); box-shadow: 0 0 12px ${color};"></div>
-                                </div>
-                                <div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#9ca3af') : '#9ca3af'}; text-align: left; display: flex; justify-content: space-between; line-height: 1;">
-                                    <span style="font-size: ${subSize}px;">⚔️ ${item.bossSub || 'Corgi tấn công'}</span>
-                                    <span style="color: ${color}; font-weight: bold; font-size: ${subSize}px;">${formatNum(current)}/${formatNum(target)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else if (item.type === 'top-contributors') {
-                    const contributors = Array.isArray(item.contributors) ? item.contributors : [
-                        { nickname: 'BH Studio', value: 520, avatar: '' },
-                        { nickname: 'Minh Anh', value: 120, avatar: '' },
-                        { nickname: 'Khánh Huyền', value: 99, avatar: '' }
-                    ];
-                    const limit = Number(item.limitCount || 3);
-                    const sliced = contributors.slice(0, limit);
-                    const color = item.barColor || '#eab308';
-                    const headerSize = item.fontSize || 34;
-                    const rowSize = item.rowFontSize || 30;
-                    widgetHTML = `
-                        <div class="gmd-contributors-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 20px ${color}33, 0 8px 32px rgba(0,0,0,0.6)`}; padding: 12px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
-                            <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; gap: 6px; width: 100%;">
-                                <div class="gmd-contrib-header" style="font-size: ${headerSize}px; padding-bottom: 14px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; border-bottom-color: ${color}4d;">🏆 BẢNG VINH DANH</div>
-                                <div class="gmd-contrib-list">
-                                    ${sliced.map((c, idx) => `
-                                        <div class="gmd-contrib-item" style="font-size: ${rowSize}px; padding: 10px 14px; gap: 18px; border-radius: 14px;">
-                                            <span class="gmd-contrib-rank" style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">#${idx + 1}</span>
-                                            ${item.showAvatar !== false ? `<div class="gmd-contrib-avatar" style="width: 48px; height: 48px; border-radius: 50%; background: #2e3b5e; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0;"></div>` : ''}
-                                            <span class="gmd-contrib-name" style="color: ${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : ''};">${c.nickname || 'BH Studio'}</span>
-                                            ${item.showValue !== false ? `<span class="gmd-contrib-val">${c.value}💎</span>` : ''}
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else if (item.type === 'podium-contributors') {
-                    const contributors = Array.isArray(item.contributors) ? item.contributors : [
-                        { nickname: 'Vua Donate', value: 520, avatar: '' },
-                        { nickname: 'Minh Anh', value: 120, avatar: '' },
-                        { nickname: 'Khánh Huyền', value: 99, avatar: '' }
-                    ];
-                    const headerSize = item.fontSize || 34;
-                    const nameSize = item.rowFontSize || 22;
-                    const valSize = item.valueFontSize || 22;
-                    widgetHTML = `
-                        <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : '#eab308'}`}; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; box-shadow: ${item.hideBg ? 'none' : ''};">
-                            <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; width: 100%;">
-                                <div class="gmd-podium-header" style="font-size: ${headerSize}px; padding-bottom: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#eab308') : ''};">👑 VƯƠNG MIỆN HOÀNG GIA</div>
-                                <div class="gmd-podium-podium">
-                                    <div class="gmd-podium-spot rank-2">
-                                        <div class="gmd-podium-avatar-wrap">
-                                            <div class="gmd-podium-crown" style="font-size: 32px; top: -20px;">🥈</div>
-                                            <div class="gmd-podium-avatar" style="width: 64px; height: 64px; display:flex; align-items:center; justify-content:center; font-size:28px;">👤</div>
-                                        </div>
-                                        <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${contributors[1]?.nickname || 'Trống'}</div>
-                                        ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[1]?.value || 0}💎</div>` : ''}
-                                    </div>
-                                    <div class="gmd-podium-spot rank-1">
-                                        <div class="gmd-podium-avatar-wrap">
-                                            <div class="gmd-podium-crown" style="font-size: 44px; top: -28px;">👑</div>
-                                            <div class="gmd-podium-glow-ring" style="inset: -6px; border-width: 3px;"></div>
-                                            <div class="gmd-podium-avatar" style="width: 88px; height: 88px; display:flex; align-items:center; justify-content:center; font-size:38px;">👤</div>
-                                        </div>
-                                        <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${contributors[0]?.nickname || 'Vua Donate'}</div>
-                                        ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[0]?.value || 0}💎</div>` : ''}
-                                    </div>
-                                    <div class="gmd-podium-spot rank-3">
-                                        <div class="gmd-podium-avatar-wrap">
-                                            <div class="gmd-podium-crown" style="font-size: 32px; top: -20px;">🥉</div>
-                                            <div class="gmd-podium-avatar" style="width: 64px; height: 64px; display:flex; align-items:center; justify-content:center; font-size:28px;">👤</div>
-                                        </div>
-                                        <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${contributors[2]?.nickname || 'Trống'}</div>
-                                        ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[2]?.value || 0}💎</div>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else if (item.type === 'mystery-chests') {
-                    const current = Number(item.currentCount || 0);
-                    const target = Number(item.targetCount || 100);
-                    const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
-                    const titleText = item.name || '🎁 MỞ KHÓA HỘP QUÀ KỲ BÍ';
-                    const titleSize = item.fontSize || 32;
-                    const subSize = item.subtitleFontSize || 20;
-                    const subtitle = item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.subtitleColor || '#fda4af'}; text-align: center; margin-top: 6px; font-weight: bold; line-height: 1.2;">${item.subtitleText}</div>` : '';
-                    widgetHTML = `
-                        <div class="gmd-mystery-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(168, 85, 247, 0.1) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : (item.barColor || '#a855f7')}`}; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; box-shadow: ${item.hideBg ? 'none' : ''};">
-                            <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; width: 100%;">
-                                <div class="gmd-mystery-header" style="font-size: ${titleSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')};">${titleText}</div>
-                                <div class="gmd-mystery-title-row" style="font-size: 26px; margin-top: 6px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">
-                                    <span>${item.giftName || 'Hộp Quà'} Goal</span>
-                                    <span>${current}/${target}</span>
-                                </div>
-                                <div class="gmd-mystery-track-wrap" style="margin-top: 16px;">
-                                    <div class="gmd-mystery-bar-outer" style="height: ${item.barHeight !== undefined ? item.barHeight : 24}px; border-radius: 24px;">
-                                        <div class="gmd-mystery-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width: ${pct}%; border-radius: 24px; --bar-color: ${item.barColor || '#a855f7'}; --bar-glow: ${item.glowColor || '#fb7185'};"></div>
-                                    </div>
-                                    <div class="gmd-mystery-milestones">
-                                        <div class="gmd-mystery-node ${pct >= 25 ? 'unlocked' : ''}" style="left: 25%;">
-                                            <span class="gmd-mystery-chest" style="font-size: ${pct >= 25 ? 44 : 32}px; top: -8px;">📦</span>
-                                            <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">25%</span>
-                                        </div>
-                                        <div class="gmd-mystery-node ${pct >= 50 ? 'unlocked' : ''}" style="left: 50%;">
-                                            <span class="gmd-mystery-chest" style="font-size: ${pct >= 50 ? 44 : 32}px; top: -8px;">🧰</span>
-                                            <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">50%</span>
-                                        </div>
-                                        <div class="gmd-mystery-node ${pct >= 75 ? 'unlocked' : ''}" style="left: 75%;">
-                                            <span class="gmd-mystery-chest" style="font-size: ${pct >= 75 ? 44 : 32}px; top: -8px;">🪙</span>
-                                            <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">75%</span>
-                                        </div>
-                                        <div class="gmd-mystery-node ${pct >= 100 ? 'unlocked' : ''}" style="left: 100%;">
-                                            <span class="gmd-mystery-chest" style="font-size: ${pct >= 100 ? 44 : 32}px; top: -8px;">💎</span>
-                                            <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">100%</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                ${item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#fda4af') : (item.subtitleColor || '#fda4af')}; text-align: center; margin-top: 6px; font-weight: bold; line-height: 1.2;">${item.subtitleText}</div>` : ''}
-                            </div>
-                        </div>
-                    `;
-                } else if (item.type === 'combo') {
-                    const count = item.comboCount || 88;
-                    const titleSize = item.fontSize || 40;
-                    const numSize = item.numberFontSize || 64;
-                    const subSize = item.subtitleFontSize || 20;
-                    const subtitle = item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#fca5a5') : (item.subtitleColor || '#fca5a5')}; font-weight: bold; margin-top: 4px; line-height: 1.2;">${item.subtitleText}</div>` : '';
-                    widgetHTML = `
-                        <div class="gmd-combo-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(239, 68, 68, 0.15) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? 'none' : `1.5px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : (item.barColor || '#ef4444')}`}; font-size: ${titleSize}px; border-radius: 24px; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; padding: 12px; gap: 8px; display: flex; align-items: center; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; box-shadow: ${item.hideBg ? 'none' : '0 0 12px rgba(239, 68, 68, 0.2)'};">
-                            <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%;">
-                                <div class="gmd-combo-num" style="font-size: ${numSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">x${count}</div>
-                                <div style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${item.name || 'COMBO ĐANG CHẠY!'}</div>
-                                ${subtitle}
-                            </div>
-                        </div>
-                    `;
-                } else if (item.type === 'media-asset') {
-                    const isVideo = item.isWebM || (item.assetUrl && item.assetUrl.endsWith('.webm'));
-                    const opacity = item.opacity !== undefined ? item.opacity : 1;
-                    const fitMode = item.fitMode || 'contain';
-                    const assetSrc = item.assetUrl ? (item.assetUrl.startsWith('http') ? item.assetUrl : `${this.apiBase}${item.assetUrl}`) : '';
-                    
-                    if (exists) {
-                        if (isVideo) {
-                            const videoEl = el.querySelector('video');
-                            if (videoEl && (videoEl.src === assetSrc || videoEl.getAttribute('src') === item.assetUrl)) {
-                                videoEl.style.objectFit = fitMode;
-                                videoEl.style.opacity = String(opacity);
-                                skipHTMLUpdate = true;
-                            }
-                        } else {
-                            const imgEl = el.querySelector('img');
-                            if (imgEl && (imgEl.src === assetSrc || imgEl.getAttribute('src') === item.assetUrl)) {
-                                imgEl.style.objectFit = fitMode;
-                                imgEl.style.opacity = String(opacity);
-                                skipHTMLUpdate = true;
-                            }
-                        }
-                    }
-                    
-                    if (!skipHTMLUpdate) {
-                        widgetHTML = `
-                            <div class="gmd-asset-container" style="width:100%; height:100%; position:relative;">
-                                <div class="gmd-asset-fallback-box" style="position:absolute; inset:0; display: ${assetSrc ? 'none' : 'flex'}; flex-direction: column; align-items: center; justify-content: center; background: rgba(168, 85, 247, 0.03); border: 1px dashed rgba(168, 85, 247, 0.25); border-radius: 16px; box-sizing: border-box; text-align: center; padding: 12px; pointer-events: none; z-index: 1;">
-                                    <div style="font-size: 36px; opacity: 0.6;">🖼️</div>
-                                    <div style="font-size: 20px; font-weight: bold; color: rgba(192, 132, 252, 0.8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 90%; margin-top: 1px;" title="${item.name || 'Tài nguyên'}">${item.name || 'Tài nguyên'}</div>
-                                </div>
-                                ${assetSrc ? (isVideo
-                                    ? `<video src="${assetSrc}" style="position:relative; z-index:2; width:100%; height:100%; object-fit:${fitMode}; opacity:${opacity}; background:transparent;" autoplay loop muted playsinline></video>`
-                                    : `<img src="${assetSrc}" style="position:relative; z-index:2; width:100%; height:100%; object-fit:${fitMode}; opacity:${opacity}; background:transparent;" alt="">`
-                                ) : ''}
-                            </div>
-                        `;
-                    }
-                } else if (item.type === 'goal-list') {
-                    const title = item.name || 'MỤC TIÊU HÔM NAY 🎯';
-                    const goals = Array.isArray(item.goals) ? item.goals : [
-                        { giftName: 'Rose', current: 150, target: 500, icon: '/assets/gift-icons/Rose.png', giftId: 'rose' },
-                        { giftName: 'TikTok', current: 32, target: 100, icon: '/assets/gift-icons/TikTok.png', giftId: 'tiktok' },
-                        { giftName: 'Corgi', current: 3, target: 10, icon: '/assets/gift-icons/Corgi.png', giftId: 'corgi' }
-                    ];
-                    const footerText = item.footerText || '';
-                    const color = item.barColor || '#ff007f';
-                    const headerSize = item.fontSize || 32;
-                    const rowSize = item.rowFontSize || 22;
-                    const footerSize = item.footerFontSize || 20;
-                    widgetHTML = `
-                        <div class="gmd-goal-list-widget" style="width:100%; height:100%; padding: 24px; box-sizing: border-box; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : color}`}; border-radius: 24px; display:flex; flex-direction:column; justify-content:center; box-shadow: ${item.hideBg ? 'none' : `0 0 30px ${color}26, 0 8px 32px rgba(0,0,0,0.6)`};">
-                            <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; gap: 14px; width: 100%;">
-                                <div class="gmd-goal-list-header" style="font-weight:900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 10px ${color}80; text-align:center; font-size: ${headerSize}px; margin-bottom: 6px;">${title}</div>
-                                <div class="gmd-goal-list-body" style="display:flex; flex-direction:column; gap: 12px;">
-                                    ${goals.map(g => {
-                                        const pct = Math.min(100, Math.round((g.current || 0) / (g.target || 1) * 100));
-                                        const iconUrl = g.icon ? (g.icon.startsWith('http') ? g.icon : `${this.apiBase}${g.icon}`) : '';
-                                        return `
-                                            <div class="gmd-goal-list-row" style="display:flex; flex-direction:column; gap: 8px; background:rgba(255,255,255,0.02); padding: 12px 16px; border-radius: 12px;">
-                                                <div class="gmd-goal-list-text-row" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                                    <div style="display:flex; align-items:center; gap:8px;">
-                                                        ${iconUrl ? `<img class="gmd-goal-list-icon" src="${iconUrl}" style="width: 28px; height: 28px; border-radius:50%;" alt="">` : `<div style="font-size:20px;">🎁</div>`}
-                                                        ${item.showGiftName !== false ? `<span class="gmd-goal-list-label" style="font-size: ${rowSize}px; font-weight:800; color:${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : '#e2e8f0'};">${g.giftName || 'Gift'}</span>` : ''}
-                                                    </div>
-                                                    <span class="gmd-goal-list-counts" style="font-size: ${rowSize}px; font-weight:800; color: ${item.barColor || '#38bdf8'}; text-shadow: 0 0 10px ${item.barColor || '#38bdf8'}80;">${g.current}/${g.target} (${pct}%)</span>
-                                                </div>
-                                                <div class="gmd-goal-list-bar-outer" style="width:100%; height: ${item.barHeight !== undefined ? item.barHeight : 12}px; background:rgba(0,0,0,0.35); border-radius:99px; overflow:hidden; border: none; position:relative;">
-                                                    <div class="gmd-goal-list-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width:${pct}%; height:100%; --bar-color: ${item.barColor || '#38bdf8'}; --bar-glow: ${item.barColor || '#38bdf8'}; background:${item.barColor || '#38bdf8'}; border-radius:99px; box-shadow: 0 0 12px ${item.barColor || '#38bdf8'};"></div>
-                                                </div>
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                                ${footerText ? `<div class="gmd-goal-list-footer" style="text-align:center; font-size: ${footerSize}px; color:#cbd5e1; font-weight:bold; margin-top: 6px;">${footerText}</div>` : ''}
-                            </div>
-                        </div>
-                    `;
-                } else if (item.type === 'text') {
-                    widgetHTML = `
-                        <div class="gmd-text-widget" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:${item.color || '#ffffff'}; font-size:${Math.round((item.fontSize || 36) * s)}px; font-weight:${item.fontWeight || 'bold'}; text-shadow:${item.textShadow || 'none'}; text-align:${item.textAlign || 'center'}; font-family:inherit; line-height:1.2; word-break:break-word; pointer-events:none;">
-                            ${item.text || 'Nhập văn bản'}
-                        </div>
-                    `;
-                }
-                
-                let finalVisualHTML = '';
-                if (isWidget) {
-                    if (item.lockRatio) {
-                        const scaleX = (item.w * s) / refW;
-                        const scaleY = (item.h * s) / refH;
-                        finalVisualHTML = `
-                            <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${scaleX}, ${scaleY}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
-                                ${widgetHTML}
-                            </div>
-                        `;
-                    } else {
-                        finalVisualHTML = `
-                            <div class="gmd-visual-scaled-wrapper" style="width: ${item.w}px; height: ${item.h}px; transform: scale(${s}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
-                                ${widgetHTML}
-                            </div>
-                        `;
-                    }
-                } else {
-                    finalVisualHTML = widgetHTML;
-                }
-                
-                if (!skipHTMLUpdate) {
-                    el.innerHTML = `
-                        <div class="gmd-visual" style="width:100%; height:100%; position: relative; overflow: visible;">
-                            ${finalVisualHTML}
-                        </div>
-                    `;
-                }
-
-                // Add or remove selection handles dynamically without wiping innerHTML
-                const hasHandle = !!el.querySelector('.gmd-resize-handle');
-                const needsHandle = selected && !item.locked && this.goalBoard.selectedId === item.id && this.goalBoard.selectedIds.length <= 1;
-                if (needsHandle && !hasHandle) {
-                    const handleSpan = document.createElement('span');
-                    handleSpan.className = 'gmd-handle gmd-resize-handle';
-                    handleSpan.dataset.handle = 'resize';
-                    el.appendChild(handleSpan);
-                } else if (!needsHandle && hasHandle) {
-                    const handleSpan = el.querySelector('.gmd-resize-handle');
-                    if (handleSpan) handleSpan.remove();
-                }
-            });
-            
-            this.applyZoom();
-        }
-
-        renderGoalBoardInspector() {
-            const inspector = this.mount.querySelector('#gmd-inspector');
-            if (!inspector) return;
-            
-            const selected = this.goalBoard.items.find((x) => x.id === this.goalBoard.selectedId);
-            const giftTabBtn = this.mount.querySelector('.gmd-inspector-tabs [data-tab="gift"]');
-            const layersTabBtn = this.mount.querySelector('.gmd-inspector-tabs [data-tab="layers"]');
-            
-            if (giftTabBtn) {
-                giftTabBtn.innerHTML = '<i class="fas fa-sliders-h"></i> Thuộc tính';
-                giftTabBtn.classList.toggle('active', this.inspectorTab === 'gift');
-            }
-            if (layersTabBtn) {
-                layersTabBtn.classList.toggle('active', this.inspectorTab === 'layers');
-            }
-            
-            if (this.inspectorTab === 'layers') {
-                inspector.innerHTML = this.renderGoalBoardLayerPanel();
-                return;
-            }
-            
-            if (!selected) {
-                inspector.innerHTML = '<div class="gmd-inspector-empty"><i class="fas fa-mouse-pointer"></i><p>Chọn một layer<br>trên canvas để tùy chỉnh</p></div>';
-                return;
-            }
-            
-            let testButtonHTML = '';
-            if (['goal-bar', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'combo'].includes(selected.type)) {
-                testButtonHTML = `
-                    <div class="gmd-section" style="border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
-                        <h4 style="color: #a855f7; margin-bottom: 6px;"><i class="fas fa-flask"></i> CHẠY THỬ / TEST GOAL</h4>
-                        <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Gửi quà thử nghiệm ảo để xem hiệu ứng tiến trình trên canvas và OBS Overlay.</p>
-                        <button class="gmd-btn primary" style="width: 100%; font-size: 11px; background: #8b5cf6; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.sendSimulatedGift('${selected.id}')"><i class="fas fa-play"></i> Gửi quà Test</button>
-                    </div>
-                `;
-            }
-            
-            const makeCompactFontSizeField = (label, key, defaultValue, min = 10, max = 120) => `
-                <div class="gmd-field" style="margin-bottom: 6px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                        <label style="margin: 0; font-size: 11px; font-weight: 700; color: #cbd5e1;">${label}</label>
-                        <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 62px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="${key}" value="${selected[key] !== undefined ? selected[key] : defaultValue}"><span>px</span></div>
-                    </div>
-                    <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="${min}" max="${max}" data-goal-key="${key}" value="${selected[key] !== undefined ? selected[key] : defaultValue}">
-                </div>
-            `;
-
-            const makeCustomGiftSelect = (label, currentId) => {
-                const currentGift = this.gifts.find(g => String(g.id) === String(currentId)) || this.gifts[0] || { id: '', name: 'Chọn quà', icon: '' };
-                const currentIcon = currentGift.icon ? (currentGift.icon.startsWith('http') ? currentGift.icon : this.apiBase + currentGift.icon) : '';
-                return `
-                    <div class="gmd-field">
-                        <label>${label}</label>
-                        <div class="gmd-custom-select">
-                            <div class="gmd-custom-select-header" onclick="this.nextElementSibling.classList.toggle('show')">
-                                ${currentIcon ? `<img src="${currentIcon}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain; margin-right: 8px;">` : '<div style="width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.1); margin-right: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px;">🎁</div>'}
-                                <span>${currentGift.name || currentGift.id}</span>
-                                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 10px; opacity: 0.7;"></i>
-                            </div>
-                            <div class="gmd-custom-select-options">
-                                ${this.gifts.map(g => {
-                                    const gIcon = g.icon ? (g.icon.startsWith('http') ? g.icon : this.apiBase + g.icon) : '';
-                                    return `
-                                        <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" onclick="window.giftMenuDesigner.updateGoalBoardSelectedItem('giftId', '${g.id}'); window.giftMenuDesigner.renderInspector();">
-                                            ${gIcon ? `<img src="${gIcon}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain;">` : '<div style="width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 10px;">🎁</div>'}
-                                            <span>${g.name || g.id}</span>
-                                            <span style="margin-left: auto; font-size: 9px; color: #a855f7;">${g.coins || 1}💎</span>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            };
-
-            let specificConfigHTML = '';
-            
-            if (selected.type === 'goal-bar') {
-                specificConfigHTML = `
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-cog"></i> CẤU HÌNH TIẾN TRÌNH</h4>
-                        ${makeCustomGiftSelect('Chọn quà mục tiêu', selected.giftId)}
-                        <div class="gmd-field">
-                            <label>Mục tiêu (Target Count)</label>
-                            <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 100}">
-                        </div>
-                        <div class="gmd-field">
-                            <label>Hiện tại (Current Count)</label>
-                            <input class="gmd-input" type="number" data-goal-key="currentCount" value="${selected.currentCount || 0}">
-                        </div>
-                        <div class="gmd-field gmd-toggle-row">
-                            <label>Hiển thị phần trăm</label>
-                            <label class="gmd-switch">
-                                <input type="checkbox" data-goal-key="showPercentage" ${selected.showPercentage ? 'checked' : ''}>
-                                <span></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
-                        <div class="gmd-field">
-                            <label>Dòng phụ đề (Subtitle)</label>
-                            <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}" placeholder="Ví dụ: Gửi Rose để hoàn thành mục tiêu">
-                        </div>
-                        ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 38)}
-                        ${makeCompactFontSizeField('Cỡ chữ Phụ đề', 'subtitleFontSize', 24)}
-                    </div>
-                    
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-palette"></i> PHONG CÁCH WIDGET</h4>
-                        <div class="gmd-field">
-                            <label>Giao diện (Theme)</label>
-                            <select class="gmd-select" data-goal-key="themeStyle">
-                                <option value="neon" ${selected.themeStyle === 'neon' ? 'selected' : ''}>Neon Glow</option>
-                                <option value="simple" ${selected.themeStyle === 'simple' ? 'selected' : ''}>Simple Clean</option>
-                            </select>
-                        </div>
-                        <div class="gmd-field">
-                            <label>Màu tiến trình</label>
-                            <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#ff007f'}">
-                        </div>
-                        <div class="gmd-field">
-                            <label>Màu bóng tỏa (Glow)</label>
-                            <input class="gmd-color" type="color" data-goal-key="glowColor" value="${selected.glowColor || '#ff007f'}">
-                        </div>
-                        <div class="gmd-field">
-                            <label>Bo góc (Radius)</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="borderRadius" value="${selected.borderRadius || 12}"><span>px</span></div>
-                        </div>
-                        <input class="gmd-range" type="range" min="0" max="30" data-goal-key="borderRadius" value="${selected.borderRadius || 12}">
-                        <div class="gmd-field">
-                            <label>Độ dày thanh (Bar Height)</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 54}"><span>px</span></div>
-                        </div>
-                        <input class="gmd-range" type="range" min="10" max="100" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 54}">
-                        <div class="gmd-field">
-                            <label>Hiệu ứng thanh (Bar Style)</label>
-                            <select class="gmd-select" data-goal-key="barStyle">
-                                <option value="solid" ${selected.barStyle === 'solid' ? 'selected' : ''}>Classic Solid/Gradient</option>
-                                <option value="glow-pulse" ${selected.barStyle === 'glow-pulse' ? 'selected' : ''}>Neon Glow Pulse</option>
-                                <option value="gradient-sweep" ${selected.barStyle === 'gradient-sweep' ? 'selected' : ''}>Gradient Sweep</option>
-                                <option value="candy-stripe" ${selected.barStyle === 'candy-stripe' ? 'selected' : ''}>Candy Stripe Shimmer</option>
-                            </select>
-                        </div>
-                    </div>
-                `;
-            } else if (selected.type === 'boss-bar') {
-                specificConfigHTML = `
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-dragon"></i> THUỘC TÍNH BOSS</h4>
-                        <div class="gmd-field">
-                            <label>Tên quái vật (Boss Title)</label>
-                            <input class="gmd-input" type="text" data-goal-key="bossName" value="${selected.bossName || 'Hỏa Long Bất Diệt'}">
-                        </div>
-                        <div class="gmd-field">
-                            <label>Dòng phụ (Subtitle)</label>
-                            <input class="gmd-input" type="text" data-goal-key="bossSub" value="${selected.bossSub || 'Gửi quà để sát thương Boss'}">
-                        </div>
-                        ${makeCustomGiftSelect('Liên kết Quà tặng', selected.giftId)}
-                        <div class="gmd-field">
-                            <label>Máu Boss tối đa (Target HP)</label>
-                            <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 100}">
-                        </div>
-                        <div class="gmd-field">
-                            <label>Máu Boss hiện tại (Current HP)</label>
-                            <input class="gmd-input" type="number" data-goal-key="currentCount" value="${selected.currentCount || 0}">
-                        </div>
-                        <div class="gmd-field">
-                            <label>Độ dày thanh (Bar Height)</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 24}"><span>px</span></div>
-                        </div>
-                        <input class="gmd-range" type="range" min="6" max="60" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 24}">
-                        <div class="gmd-field">
-                            <label>Hiệu ứng thanh (Bar Style)</label>
-                            <select class="gmd-select" data-goal-key="barStyle">
-                                <option value="solid" ${selected.barStyle === 'solid' ? 'selected' : ''}>Classic Solid/Gradient</option>
-                                <option value="glow-pulse" ${selected.barStyle === 'glow-pulse' ? 'selected' : ''}>Neon Glow Pulse</option>
-                                <option value="gradient-sweep" ${selected.barStyle === 'gradient-sweep' ? 'selected' : ''}>Gradient Sweep</option>
-                                <option value="candy-stripe" ${selected.barStyle === 'candy-stripe' ? 'selected' : ''}>Candy Stripe Shimmer</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
-                        ${makeCompactFontSizeField('Cỡ chữ Boss HP', 'fontSize', 38)}
-                        ${makeCompactFontSizeField('Cỡ chữ Thông số phụ', 'subtitleFontSize', 26)}
-                    </div>
-                `;
-            } else if (selected.type === 'top-contributors') {
-                specificConfigHTML = `
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-list-ol"></i> BẢNG XẾP HẠNG</h4>
-                        <div class="gmd-field">
-                            <label>Số lượng người hiển thị</label>
-                            <input class="gmd-input" type="number" data-goal-key="limitCount" value="${selected.limitCount || 5}">
-                        </div>
-                        <div class="gmd-field gmd-toggle-row">
-                            <label>Hiển thị Avatar</label>
-                            <label class="gmd-switch">
-                                <input type="checkbox" data-goal-key="showAvatar" ${selected.showAvatar !== false ? 'checked' : ''}>
-                                <span></span>
-                            </label>
-                        </div>
-                        <div class="gmd-field gmd-toggle-row">
-                            <label>Hiển thị điểm số (Diamond)</label>
-                            <label class="gmd-switch">
-                                <input type="checkbox" data-goal-key="showValue" ${selected.showValue !== false ? 'checked' : ''}>
-                                <span></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
-                        ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 34)}
-                        ${makeCompactFontSizeField('Cỡ chữ Dòng BXH', 'rowFontSize', 30)}
-                    </div>
-                `;
-            } else if (selected.type === 'podium-contributors') {
-                specificConfigHTML = `
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-crown"></i> CẤU HÌNH PODIUM</h4>
-                        <p class="gmd-subline" style="margin:0 0 8px 0; font-size:10px;">Podium Vương Miện Hoàng Gia hiển thị vinh danh top 3 nhà tài trợ lớn nhất theo mô hình bục nhận giải danh giá để thúc đẩy donate!</p>
-                        <div class="gmd-field gmd-toggle-row">
-                            <label>Hiển thị Avatar</label>
-                            <label class="gmd-switch">
-                                <input type="checkbox" data-goal-key="showAvatar" ${selected.showAvatar !== false ? 'checked' : ''}>
-                                <span></span>
-                            </label>
-                        </div>
-                        <div class="gmd-field gmd-toggle-row">
-                            <label>Hiển thị điểm số (Diamond)</label>
-                            <label class="gmd-switch">
-                                <input type="checkbox" data-goal-key="showValue" ${selected.showValue !== false ? 'checked' : ''}>
-                                <span></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
-                        ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 34)}
-                        ${makeCompactFontSizeField('Cỡ chữ Tên user', 'rowFontSize', 22)}
-                        ${makeCompactFontSizeField('Cỡ chữ Điểm số', 'valueFontSize', 22)}
-                    </div>
-                `;
-            } else if (selected.type === 'mystery-chests') {
-                specificConfigHTML = `
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-gift"></i> TIẾN TRÌNH HỘP QUÀ</h4>
-                        ${makeCustomGiftSelect('Chọn quà mục tiêu', selected.giftId)}
-                        <div class="gmd-field">
-                            <label>Mục tiêu (Target Count)</label>
-                            <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 500}">
-                        </div>
-                        <div class="gmd-field">
-                            <label>Hiện tại (Current Count)</label>
-                            <input class="gmd-input" type="number" data-goal-key="currentCount" value="${selected.currentCount || 0}">
-                        </div>
-                        <div class="gmd-field">
-                            <label>Độ dày thanh (Bar Height)</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 24}"><span>px</span></div>
-                        </div>
-                        <input class="gmd-range" type="range" min="6" max="60" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 24}">
-                        <div class="gmd-field">
-                            <label>Hiệu ứng thanh (Bar Style)</label>
-                            <select class="gmd-select" data-goal-key="barStyle">
-                                <option value="solid" ${selected.barStyle === 'solid' ? 'selected' : ''}>Classic Solid/Gradient</option>
-                                <option value="glow-pulse" ${selected.barStyle === 'glow-pulse' ? 'selected' : ''}>Neon Glow Pulse</option>
-                                <option value="gradient-sweep" ${selected.barStyle === 'gradient-sweep' ? 'selected' : ''}>Gradient Sweep</option>
-                                <option value="candy-stripe" ${selected.barStyle === 'candy-stripe' ? 'selected' : ''}>Candy Stripe Shimmer</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
-                        <div class="gmd-field">
-                            <label>Dòng phụ đề (Subtitle)</label>
-                            <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}" placeholder="Ví dụ: Gửi quà để mở khóa rương">
-                        </div>
-                        ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 32)}
-                        ${makeCompactFontSizeField('Cỡ chữ Phụ đề', 'subtitleFontSize', 20)}
-                    </div>
-                `;
-            } else if (selected.type === 'combo') {
-                specificConfigHTML = `
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-bolt"></i> COMBO WIDGET</h4>
-                        <p class="gmd-subline" style="margin:0 0 10px 0;">Combo Widget hiển thị các chuỗi quà tặng combo được streamer nhận real-time trên stream TikTok Live.</p>
-                        <div class="gmd-field">
-                            <label>Số Combo hiện tại (Để test)</label>
-                            <input class="gmd-input" type="number" data-goal-key="comboCount" value="${selected.comboCount || 88}">
-                        </div>
-                        <div class="gmd-field">
-                            <label>Dòng phụ đề (Subtitle)</label>
-                            <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}" placeholder="Ví dụ: Đang chạy chuỗi combo">
-                        </div>
-                    </div>
-
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
-                        ${makeCompactFontSizeField('Cỡ chữ Tên combo', 'fontSize', 40)}
-                        ${makeCompactFontSizeField('Cỡ chữ Số combo', 'numberFontSize', 64)}
-                        ${makeCompactFontSizeField('Cỡ chữ Phụ đề', 'subtitleFontSize', 20)}
-                    </div>
-                `;
-            } else if (selected.type === 'media-asset') {
-                specificConfigHTML = `
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-image"></i> THUỘC TÍNH TÀI NGUYÊN</h4>
-                        <div class="gmd-field">
-                            <label>Độ trong suốt (Opacity)</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" step="0.1" min="0" max="1" data-goal-key="opacity" value="${selected.opacity !== undefined ? selected.opacity : 1}"><span>x</span></div>
-                        </div>
-                        <input class="gmd-range" type="range" min="0" max="1" step="0.05" data-goal-key="opacity" value="${selected.opacity !== undefined ? selected.opacity : 1}">
-                        
-                        <div class="gmd-field">
-                            <label>Chế độ hiển thị (Fit Mode)</label>
-                            <select class="gmd-select" data-goal-key="fitMode">
-                                <option value="contain" ${selected.fitMode === 'contain' ? 'selected' : ''}>Chứa gọn (Contain)</option>
-                                <option value="cover" ${selected.fitMode === 'cover' ? 'selected' : ''}>Bao phủ (Cover)</option>
-                                <option value="fill" ${selected.fitMode === 'fill' ? 'selected' : ''}>Giãn đầy (Stretch)</option>
-                            </select>
-                        </div>
-                    </div>
-                `;
-            } else if (selected.type === 'goal-list') {
-                const makeCustomGiftSelectForGoal = (idx, currentId) => {
-                    const currentGift = this.gifts.find(g => String(g.id) === String(currentId)) || this.gifts.find(g => String(g.name).toLowerCase() === String(currentId).toLowerCase()) || this.gifts[0] || { id: '', name: 'Chọn quà', icon: '' };
-                    const currentIcon = currentGift.icon ? (currentGift.icon.startsWith('http') ? currentGift.icon : this.apiBase + currentGift.icon) : '';
-                    return `
-                        <div class="gmd-custom-select" style="margin: 0;">
-                            <div class="gmd-custom-select-header" style="height: 32px; padding: 4px 8px; font-size: 11px; background: #1e293b; border: 1px solid rgba(255,255,255,0.08);" onclick="this.nextElementSibling.classList.toggle('show')">
-                                ${currentIcon ? `<img src="${currentIcon}" style="width: 16px; height: 16px; border-radius: 50%; object-fit: contain; margin-right: 6px;">` : '<div style="width: 16px; height: 16px; border-radius: 50%; background: rgba(255,255,255,0.1); margin-right: 6px; display: flex; align-items: center; justify-content: center; font-size: 8px;">🎁</div>'}
-                                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;">${currentGift.name || currentGift.id}</span>
-                                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 8px; opacity: 0.7;"></i>
-                            </div>
-                            <div class="gmd-custom-select-options" style="top: 32px; z-index: 100;">
-                                ${this.gifts.map(g => {
-                                    const gIcon = g.icon ? (g.icon.startsWith('http') ? g.icon : this.apiBase + g.icon) : '';
-                                    return `
-                                        <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" style="padding: 6px 8px; font-size: 11px;" onclick="window.giftMenuDesigner.updateGoalListItem(${idx}, 'giftId', '${g.id}'); window.giftMenuDesigner.renderInspector();">
-                                            ${gIcon ? `<img src="${gIcon}" style="width: 16px; height: 16px; border-radius: 50%; object-fit: contain;">` : '<div style="width: 16px; height: 16px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 8px;">🎁</div>'}
-                                            <span>${g.name || g.id}</span>
-                                            <span style="margin-left: auto; font-size: 8px; color: #a855f7;">${g.coins || 1}💎</span>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
-                };
-
-                specificConfigHTML = `
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-list-ul"></i> MULTI GOAL LIST</h4>
-                        <div class="gmd-field">
-                            <label>Dòng chân trang (Footer Text)</label>
-                            <input class="gmd-input" type="text" data-goal-key="footerText" value="${selected.footerText || ''}">
-                        </div>
-                        <div class="gmd-field">
-                            <label>Màu tiến trình chung</label>
-                            <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#ff007f'}">
-                        </div>
-                        <div class="gmd-field gmd-toggle-row">
-                            <label>Hiển thị tên quà</label>
-                            <label class="gmd-switch">
-                                <input type="checkbox" data-goal-key="showGiftName" ${selected.showGiftName !== false ? 'checked' : ''}>
-                                <span></span>
-                            </label>
-                        </div>
-                        <div class="gmd-field">
-                            <label>Độ dày thanh (Bar Height)</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 12}"><span>px</span></div>
-                        </div>
-                        <input class="gmd-range" type="range" min="4" max="32" data-goal-key="barHeight" value="${selected.barHeight !== undefined ? selected.barHeight : 12}">
-                        <div class="gmd-field">
-                            <label>Hiệu ứng thanh (Bar Style)</label>
-                            <select class="gmd-select" data-goal-key="barStyle">
-                                <option value="solid" ${selected.barStyle === 'solid' ? 'selected' : ''}>Classic Solid/Gradient</option>
-                                <option value="glow-pulse" ${selected.barStyle === 'glow-pulse' ? 'selected' : ''}>Neon Glow Pulse</option>
-                                <option value="gradient-sweep" ${selected.barStyle === 'gradient-sweep' ? 'selected' : ''}>Gradient Sweep</option>
-                                <option value="candy-stripe" ${selected.barStyle === 'candy-stripe' ? 'selected' : ''}>Candy Stripe Shimmer</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
-                        ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 32)}
-                        ${makeCompactFontSizeField('Cỡ chữ Dòng quà', 'rowFontSize', 22)}
-                        ${makeCompactFontSizeField('Cỡ chữ Chân trang', 'footerFontSize', 20)}
-                    </div>
-                        
-                    <div class="gmd-section">
-                        <div class="gmd-field" style="margin-top: 10px;">
-                            <label style="font-weight: 800; color: #a855f7;">Danh sách mục tiêu</label>
-                            <div class="gmd-subline" style="margin-bottom:8px; font-size:10px;">Các mục tiêu quà tặng hiển thị trong bảng:</div>
-                            <div class="gmd-goal-list-items-editor" style="display:flex; flex-direction:column; gap:8px;">
-                                ${(selected.goals || []).map((g, idx) => `
-                                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:6px; border-radius:6px; display:flex; flex-direction:column; gap:4px;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; font-weight:bold; color:#cbd5e1;">
-                                            <span>Mục tiêu #${idx + 1}: ${g.giftName || g.giftId}</span>
-                                            <button class="gmd-btn" style="background:none; border:none; color:#ef4444; padding:0; cursor:pointer;" onclick="window.giftMenuDesigner.removeGoalListItem('${selected.id}', ${idx})"><i class="fas fa-trash-alt"></i></button>
-                                        </div>
-                                        <div style="display:grid; grid-template-columns: 1.2fr 1fr 1fr; gap:6px; align-items:center;">
-                                            ${makeCustomGiftSelectForGoal(idx, g.giftId)}
-                                            <input class="gmd-input gmd-input-compact" style="font-size:10px; background:#1e293b; color:#fff; height: 32px;" type="number" placeholder="Mục tiêu" value="${g.target}" oninput="window.giftMenuDesigner.updateGoalListItem(${idx}, 'target', this.value)">
-                                            <input class="gmd-input gmd-input-compact" style="font-size:10px; background:#1e293b; color:#fff; height: 32px;" type="number" placeholder="Hiện tại" value="${g.current}" oninput="window.giftMenuDesigner.updateGoalListItem(${idx}, 'current', this.value)">
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <button class="gmd-btn" style="margin-top:8px; width:100%; font-size:11px; background:rgba(139,92,246,0.1); border:1px dashed rgba(139,92,246,0.4); color:#c084fc; padding:6px; border-radius:6px; cursor:pointer;" onclick="window.giftMenuDesigner.addGoalListItem('${selected.id}')"><i class="fas fa-plus"></i> Thêm mục tiêu</button>
-                        </div>
-                    </div>
-                `;
-            } else if (selected.type === 'text') {
-                specificConfigHTML = `
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-font"></i> THUỘC TÍNH VĂN BẢN</h4>
-                        <div class="gmd-field">
-                            <label>Nội dung văn bản</label>
-                            <textarea class="gmd-input" style="height:60px; font-family:inherit; font-size:12px; resize:none; background:#1e293b; color:#fff;" data-goal-key="text">${selected.text || 'Nhập văn bản'}</textarea>
-                        </div>
-                        <div class="gmd-field">
-                            <label>Màu chữ</label>
-                            <input class="gmd-color" type="color" data-goal-key="color" value="${selected.color || '#ffffff'}">
-                        </div>
-                        ${makeCompactFontSizeField('Cỡ chữ (Font Size)', 'fontSize', 36, 12, 120)}
-                        <div class="gmd-field">
-                            <label>Độ đậm (Font Weight)</label>
-                            <select class="gmd-select" data-goal-key="fontWeight">
-                                <option value="normal" ${selected.fontWeight === 'normal' ? 'selected' : ''}>Bình thường</option>
-                                <option value="bold" ${selected.fontWeight === 'bold' ? 'selected' : ''}>In đậm (Bold)</option>
-                                <option value="900" ${selected.fontWeight === '900' ? 'selected' : ''}>Siêu đậm (Black)</option>
-                            </select>
-                        </div>
-                        <div class="gmd-field">
-                            <label>Bóng chữ (Text Shadow)</label>
-                            <select class="gmd-select" data-goal-key="textShadow">
-                                <option value="none" ${selected.textShadow === 'none' ? 'selected' : ''}>Không bóng</option>
-                                <option value="0 0 8px rgba(168,85,247,0.8)" ${selected.textShadow === '0 0 8px rgba(168,85,247,0.8)' ? 'selected' : ''}>Tím Neon Glow</option>
-                                <option value="0 0 8px rgba(245,158,11,0.8)" ${selected.textShadow === '0 0 8px rgba(245,158,11,0.8)' ? 'selected' : ''}>Vàng Neon Glow</option>
-                                <option value="0 0 8px rgba(236,72,153,0.8)" ${selected.textShadow === '0 0 8px rgba(236,72,153,0.8)' ? 'selected' : ''}>Hồng Neon Glow</option>
-                                <option value="2px 2px 4px rgba(0,0,0,0.8)" ${selected.textShadow === '2px 2px 4px rgba(0,0,0,0.8)' ? 'selected' : ''}>Bóng đổ đen dịu</option>
-                            </select>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            inspector.innerHTML = `
-                <div class="gmd-selected-card">
-                    <div style="font-size: 20px;">${selected.type === 'media-asset' ? '🖼️' : '📊'}</div>
-                    <input class="gmd-title-input" data-goal-key="name" value="${selected.name}">
-                    <button class="gmd-delete-btn" data-action="goal-delete"><i class="fas fa-trash"></i></button>
-                </div>
-                
-                <div class="gmd-section">
-                    <h4><i class="fas fa-ruler-combined"></i> KÍCH THƯỚC & VỊ TRÍ</h4>
-                    <div class="gmd-field"><label>Vị trí X / Y (Logical)</label></div>
-                    <div class="gmd-row">
-                        <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="x" value="${selected.x}"><span>px</span></div>
-                        <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="y" value="${selected.y}"><span>px</span></div>
-                    </div>
-                    <div class="gmd-row" style="margin-top: 8px;">
-                        <div class="gmd-field" style="margin-bottom: 4px;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                                <label style="margin: 0; font-size: 11px;">Rộng (W)</label>
-                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="w" value="${selected.w}"><span>px</span></div>
-                            </div>
-                            <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="100" max="1080" data-goal-key="w" value="${selected.w}">
-                        </div>
-                        <div class="gmd-field" style="margin-bottom: 4px;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                                <label style="margin: 0; font-size: 11px;">Cao (H)</label>
-                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="h" value="${selected.h}"><span>px</span></div>
-                            </div>
-                            <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="30" max="1920" data-goal-key="h" value="${selected.h}">
-                        </div>
-                    </div>
-                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
-                        <label style="font-size: 11px;">Khóa tỷ lệ (Aspect Ratio)</label>
-                        <label class="gmd-switch">
-                            <input type="checkbox" data-goal-key="lockRatio" ${selected.lockRatio ? 'checked' : ''}>
-                            <span></span>
-                        </label>
-                    </div>
-                    <div class="gmd-field" style="margin-top: 8px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                            <label style="margin: 0; font-size: 11px;">Vị trí nội dung (Dọc)</label>
-                            <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="contentOffsetY" value="${selected.contentOffsetY !== undefined ? selected.contentOffsetY : 0}"><span>px</span></div>
-                        </div>
-                        <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="-300" max="300" data-goal-key="contentOffsetY" value="${selected.contentOffsetY !== undefined ? selected.contentOffsetY : 0}">
-                    </div>
-
-                    <!-- Hide Background -->
-                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
-                        <label style="font-size: 11px;">Ẩn viền và nền bảng</label>
-                        <label class="gmd-switch">
-                            <input type="checkbox" data-goal-key="hideBg" ${selected.hideBg ? 'checked' : ''}>
-                            <span></span>
-                        </label>
-                    </div>
-
-                    <!-- Custom BG Color -->
-                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
-                        <label style="font-size: 11px;">Tự chọn màu nền bảng</label>
-                        <label class="gmd-switch">
-                            <input type="checkbox" data-goal-key="useCustomBg" ${selected.useCustomBg ? 'checked' : ''}>
-                            <span></span>
-                        </label>
-                    </div>
-                    ${selected.useCustomBg ? `
-                    <div class="gmd-field" style="margin-top: 4px;">
-                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu nền bảng</label>
-                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="bgColor" value="${selected.bgColor || '#0a0a14'}">
-                    </div>
-                    ` : ''}
-
-                    <!-- Custom Text Color -->
-                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
-                        <label style="font-size: 11px;">Tự chọn màu chữ</label>
-                        <label class="gmd-switch">
-                            <input type="checkbox" data-goal-key="useCustomTextColor" ${selected.useCustomTextColor ? 'checked' : ''}>
-                            <span></span>
-                        </label>
-                    </div>
-                    ${selected.useCustomTextColor ? `
-                    <div class="gmd-field" style="margin-top: 4px;">
-                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu chữ</label>
-                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}">
-                    </div>
-                    ` : ''}
-                    <div class="gmd-field" style="margin-top: 10px;">
-                        <div style="display:flex; gap:10px;">
-                            <button class="gmd-btn" data-action="goal-duplicate"><i class="far fa-clone"></i> Nhân bản</button>
-                            <button class="gmd-btn" data-action="goal-delete"><i class="far fa-trash-alt"></i> Xóa</button>
-                        </div>
-                    </div>
-                </div>
-                
-                ${testButtonHTML}
-                ${specificConfigHTML}
-            `;
-        }
-
-        renderGoalBoardLayerPanel() {
-            const sorted = [...this.goalBoard.items].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
-            return `
-                <div class="gmd-section gmd-layer-panel">
-                    <h4><i class="fas fa-layer-group"></i> LAYERS BẢNG MỤC TIÊU</h4>
-                    <div class="gmd-layer-list">
-                        ${sorted.length ? sorted.map((item) => `
-                            <div class="gmd-layer-item ${item.id === this.goalBoard.selectedId ? 'active' : ''}">
-                                <button class="gmd-layer-main" data-action="goal-layer-select" data-layer-id="${item.id}">
-                                    <div style="font-size: 14px;">${item.type === 'media-asset' ? '🖼️' : '📊'}</div>
-                                    <div class="gmd-layer-name">${item.name || item.type}</div>
-                                </button>
-                                <div class="gmd-layer-actions">
-                                    <button class="gmd-layer-btn" data-action="goal-layer-toggle-lock" data-layer-id="${item.id}" title="${item.locked ? 'Mở khóa' : 'Khóa'}">
-                                        <i class="fas ${item.locked ? 'fa-lock' : 'fa-lock-open'}"></i>
-                                    </button>
-                                    <button class="gmd-layer-btn" data-action="goal-layer-toggle-visible" data-layer-id="${item.id}" title="${item.visible !== false ? 'Ẩn' : 'Hiện'}">
-                                        <i class="fas ${item.visible !== false ? 'fa-eye' : 'fa-eye-slash'}"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('') : '<div style="text-align:center; padding:10px; color:#64748b; font-size:11px;">Chưa có layer nào</div>'}
-                    </div>
-                </div>
-            `;
-        }
-
-        updateGoalBoardSelectedItem(key, value) {
-            const item = this.goalBoard.items.find((x) => x.id === this.goalBoard.selectedId);
-            if (!item) return;
-
-            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY'].includes(key)) {
-                const numVal = Number(value);
-                if (item.lockRatio) {
-                    if (key === 'w' && item.w) {
-                        const ratio = item.h / item.w;
-                        item.w = numVal;
-                        item.h = Math.round(numVal * ratio);
-                    } else if (key === 'h' && item.h) {
-                        const ratio = item.w / item.h;
-                        item.h = numVal;
-                        item.w = Math.round(numVal * ratio);
-                    } else {
-                        item[key] = numVal;
-                    }
-                } else {
-                    item[key] = numVal;
-                }
-            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg') {
-                item[key] = Boolean(value);
-                if (key === 'lockRatio') {
-                    if (item.lockRatio) {
-                        item.lockedW = item.w;
-                        item.lockedH = item.h;
-                    } else {
-                        delete item.lockedW;
-                        delete item.lockedH;
-                    }
-                }
-            } else {
-                item[key] = value;
-                if (key === 'giftId') {
-                    const cleanVal = String(value).trim();
-                    const gift = this.gifts.find(g => String(g.id).toLowerCase() === cleanVal.toLowerCase());
-                    if (gift) {
-                        item.giftName = gift.name || cleanVal;
-                    }
-                }
-            }
-            
-            // Sync all inputs with the same data-goal-key in the inspector
-            const inputs = this.mount.querySelectorAll(`#gmd-inspector [data-goal-key="${key}"]`);
-            inputs.forEach(input => {
-                if (document.activeElement === input) return;
-                if (input.type === 'checkbox') {
-                    input.checked = Boolean(value);
-                } else {
-                    input.value = value;
-                }
-            });
-            
-            this.renderCanvas();
-            this.pushHistory('update-goal-item');
-        }
-
-        handleGoalBoardMouseDown(e) {
-            const itemNode = e.target.closest('.gmd-item');
-            const safe = this.mount.querySelector('#gmd-safe-area');
-            if (!itemNode) {
-                if (safe && safe.contains(e.target)) {
-                    this.goalBoard.selectedId = null;
-                    this.goalBoard.selectedIds = [];
-                    this.renderCanvas();
-                    this.renderInspector();
-                }
-                return;
-            }
-            
-            const itemId = itemNode.dataset.itemId;
-            const item = this.goalBoard.items.find(x => x.id === itemId);
-            if (!item) return;
-            
-            if (e.shiftKey) {
-                if (this.goalBoard.selectedIds.includes(itemId)) {
-                    this.goalBoard.selectedIds = this.goalBoard.selectedIds.filter(id => id !== itemId);
-                    if (this.goalBoard.selectedId === itemId) {
-                        this.goalBoard.selectedId = this.goalBoard.selectedIds[0] || null;
-                    }
-                } else {
-                    this.goalBoard.selectedIds.push(itemId);
-                    this.goalBoard.selectedId = itemId;
-                }
-            } else {
-                this.goalBoard.selectedId = itemId;
-                this.goalBoard.selectedIds = [itemId];
-            }
-            this.renderCanvas();
-            this.renderInspector();
-            
-            if (item.locked) return;
-            
-            const handle = e.target.closest('[data-handle]');
-            const s = safe.clientWidth / 1080;
-            
-            if (handle && handle.dataset.handle === 'resize') {
-                const groupStarts = {};
-                let minX = Infinity, minY = Infinity;
-                let maxX = -Infinity, maxY = -Infinity;
-                
-                if (item.groupId) {
-                    this.goalBoard.items.forEach(x => {
-                        if (x.groupId === item.groupId) {
-                            groupStarts[x.id] = { x: x.x, y: x.y, w: x.w, h: x.h, fontSize: x.fontSize || 36 };
-                            if (x.x < minX) minX = x.x;
-                            if (x.y < minY) minY = x.y;
-                            if (x.x + x.w > maxX) maxX = x.x + x.w;
-                            if (x.y + x.h > maxY) maxY = x.y + x.h;
-                        }
-                    });
-                }
-                
-                this.dragState = {
-                    mode: 'goal-resize',
-                    id: item.id,
-                    sx: e.clientX,
-                    sy: e.clientY,
-                    w: item.w,
-                    h: item.h,
-                    scale: s,
-                    groupStarts,
-                    minX,
-                    minY,
-                    maxX,
-                    maxY
-                };
-            } else {
-                // For goal-move, record start coordinates of all layers in the same group
-                const groupStarts = {};
-                if (item.groupId) {
-                    this.goalBoard.items.forEach(x => {
-                        if (x.groupId === item.groupId) {
-                            groupStarts[x.id] = { x: x.x, y: x.y };
-                        }
-                    });
-                }
-                this.dragState = {
-                    mode: 'goal-move',
-                    id: item.id,
-                    sx: e.clientX,
-                    sy: e.clientY,
-                    x: item.x,
-                    y: item.y,
-                    scale: s,
-                    groupStarts
-                };
-            }
-        }
-
-        async loadGoalBoardLayout() {
-            let payload = null;
-            try {
-                const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
-                const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/layout`, { headers });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data && data.success && data.layout) payload = data.layout;
-                }
-            } catch (_e) {}
-            if (!payload) {
-                try { payload = JSON.parse(localStorage.getItem('goalBoardLayoutV1') || 'null'); } catch (_e) { payload = null; }
-            }
-            if (!payload || !Array.isArray(payload.layers)) {
-                this.goalBoard.items = [];
-            } else {
-                this.goalBoard.items = payload.layers.map((layer, idx) => ({
-                    ...layer,
-                    visible: layer.visible !== false,
-                    locked: Boolean(layer.locked),
-                    zIndex: layer.zIndex || idx + 1
-                }));
-            }
-            
-            const first = this.goalBoard.items[0];
-            this.goalBoard.selectedId = first ? first.id : null;
-            this.goalBoard.selectedIds = first ? [first.id] : [];
-            
-            this.renderCanvas();
-            this.renderInspector();
-            this.pushHistory('load-goal-layout');
-        }
-
-        async saveGoalBoardLayout(showToast = true) {
-            const payload = {
-                version: 1,
-                savedAt: new Date().toISOString(),
-                aspectRatio: '9:16',
-                canvas: {
-                    width: 1080,
-                    height: 1920,
-                    aspectRatio: '9:16'
-                },
-                layers: this.goalBoard.items.map(i => ({ ...i }))
-            };
-            localStorage.setItem('goalBoardLayoutV1', JSON.stringify(payload));
-            try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (this.token) headers.Authorization = `Bearer ${this.token}`;
-                await fetch(`${this.apiBase}/api/tiktok/goal-board/layout`, { method: 'POST', headers, body: JSON.stringify(payload) });
-            } catch (_e) {}
-            if (showToast && window.app && typeof window.app.showNotification === 'function') {
-                window.app.showNotification('success', 'Đã lưu layout bảng mục tiêu');
-            }
-        }
-        
-        async loadGoalTemplates() {
-            try {
-                const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
-                const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/templates`, { headers });
-                const data = await res.json();
-                this.customTemplates = Array.isArray(data.customTemplates) ? data.customTemplates : [];
-            } catch (e) {
-                console.error('Failed to load custom goal templates:', e);
-                this.customTemplates = [];
-            }
-            if (this.mode === 'goal-board' && this.leftPanelTab === 'templates') {
-                this.renderLeftPanel();
-            }
-        }
-
-        showSaveTemplateModal() {
-            const modalId = 'gmd-save-template-modal';
+        showPublishStoreModal() {
+            const modalId = 'gmd-publish-store-modal';
             let modal = document.getElementById(modalId);
             if (modal) modal.remove();
-            
+
             modal = document.createElement('div');
             modal.id = modalId;
             modal.className = 'gmd-modal-overlay';
             modal.innerHTML = `
                 <div class="gmd-modal-content" style="background:#0f172a; border:1px solid #334155; border-radius:16px; padding:20px; width:450px; max-width:90%; box-shadow:0 20px 50px rgba(0,0,0,0.5); font-family:inherit; color:#fff; position:relative; box-sizing:border-box;">
                     <div class="gmd-modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:10px; margin-bottom:14px;">
-                        <h3 style="margin:0; font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px;"><i class="fas fa-star" style="color:#a855f7;"></i> Lưu thành bảng mục tiêu mới</h3>
+                        <h3 style="margin:0; font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px;"><i class="fas fa-store" style="color:#10b981;"></i> Đăng thiết kế lên Cửa hàng</h3>
                         <button class="gmd-modal-close" style="background:none; border:none; color:#94a3b8; font-size:22px; cursor:pointer;" onclick="document.getElementById('${modalId}').remove()">&times;</button>
                     </div>
                     <div class="gmd-modal-body" style="display:flex; flex-direction:column; gap:12px;">
                         <div class="gmd-modal-field" style="display:flex; flex-direction:column; gap:4px;">
-                            <label style="font-size:12px; font-weight:700; color:#94a3b8;">Tên Template *</label>
-                            <input type="text" id="gmd-tmpl-name" class="gmd-input" placeholder="Ví dụ: Thử Thách Boss Hoàng Kim" style="background:#1e293b; border:1px solid #334155; color:#fff; padding:8px 12px; border-radius:8px; font-size:12px;" value="${this.goalBoard.selectedId ? (this.goalBoard.items.find(x=>x.id===this.goalBoard.selectedId)?.name || '') : ''}">
+                            <label style="font-size:12px; font-weight:700; color:#94a3b8;">Tên Mẫu Thiết Kế *</label>
+                            <input type="text" id="gmd-pub-name" class="gmd-input" placeholder="Ví dụ: Menu Quà Thách Đấu Cute" style="background:#1e293b; border:1px solid #334155; color:#fff; padding:8px 12px; border-radius:8px; font-size:12px;" value="${this.currentLayoutName || 'Mẫu menu mới'}">
                         </div>
                         <div class="gmd-modal-field" style="display:flex; flex-direction:column; gap:4px;">
-                            <label style="font-size:12px; font-weight:700; color:#94a3b8;">Chuyên mục (Category)</label>
-                            <select id="gmd-tmpl-category" class="gmd-select" style="background:#1e293b; border:1px solid #334155; color:#fff; padding:8px 12px; border-radius:8px; font-size:12px; cursor:pointer;">
-                                <option value="goal-board">Mục tiêu quà tặng (Goal Board)</option>
-                                <option value="boss-goal">Thách đấu Boss (Boss Challenge)</option>
-                                <option value="unlock-reward">Mở khóa hộp quà (Unlock Reward)</option>
-                                <option value="idol-goal">Idol/Beauty Live</option>
-                                <option value="vip-goal">Luxury VIP Goal</option>
-                                <option value="multi-goal">Nhiều mục tiêu (Multi Goal)</option>
-                                <option value="contributors">Top Contributors</option>
-                                <option value="combo">Combo Boost Effect</option>
-                                <option value="unlock">Unlock Milestone</option>
-                                <option value="mission">Event Mission Board</option>
-                            </select>
+                            <label style="font-size:12px; font-weight:700; color:#94a3b8;">Giá bán (VNĐ) *</label>
+                            <input type="number" id="gmd-pub-price" class="gmd-input" placeholder="Nhập 0 nếu miễn phí" style="background:#1e293b; border:1px solid #334155; color:#fff; padding:8px 12px; border-radius:8px; font-size:12px;" value="0">
                         </div>
                         <div class="gmd-modal-field" style="display:flex; flex-direction:column; gap:4px;">
-                            <label style="font-size:12px; font-weight:700; color:#94a3b8;">Tags (Phân tách bằng dấu phẩy)</label>
-                            <input type="text" id="gmd-tmpl-tags" class="gmd-input" placeholder="Ví dụ: gaming, boss, vip, gold" style="background:#1e293b; border:1px solid #334155; color:#fff; padding:8px 12px; border-radius:8px; font-size:12px;">
+                            <label style="font-size:12px; font-weight:700; color:#94a3b8;">Giá gốc (VNĐ)</label>
+                            <input type="number" id="gmd-pub-original-price" class="gmd-input" placeholder="Nhập 0 nếu không giảm" style="background:#1e293b; border:1px solid #334155; color:#fff; padding:8px 12px; border-radius:8px; font-size:12px;" value="0">
                         </div>
-                        <div class="gmd-modal-field gmd-toggle-row" style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-                            <label style="font-size:12px; font-weight:700; color:#94a3b8;">Đây là mẫu Premium (Trả phí)</label>
-                            <label class="gmd-switch" style="position:relative; display:inline-block; width:40px; height:20px;">
-                                <input type="checkbox" id="gmd-tmpl-premium" style="opacity:0; width:0; height:0;" onchange="document.getElementById('gmd-tmpl-price-row').style.display = this.checked ? 'block' : 'none'">
-                                <span style="position:absolute; cursor:pointer; inset:0; background:#334155; transition:0.3s; border-radius:34px;"></span>
-                            </label>
+                        <div class="gmd-modal-field" style="display:flex; flex-direction:column; gap:4px;">
+                            <label style="font-size:12px; font-weight:700; color:#94a3b8;">Mô tả sản phẩm</label>
+                            <textarea id="gmd-pub-desc" class="gmd-input" placeholder="Mẫu thiết kế menu quà tặng đẹp mắt..." style="background:#1e293b; border:1px solid #334155; color:#fff; padding:8px 12px; border-radius:8px; font-size:12px; height:60px; resize:none;">Mẫu thiết kế menu quà tặng đẹp mắt</textarea>
                         </div>
-                        <div class="gmd-modal-field" id="gmd-tmpl-price-row" style="display:none; margin-top:4px; display:flex; flex-direction:column; gap:4px;">
-                            <label style="font-size:12px; font-weight:700; color:#94a3b8;">Giá bán (VNĐ)</label>
-                            <input type="number" id="gmd-tmpl-price" class="gmd-input" placeholder="Ví dụ: 99000" style="background:#1e293b; border:1px solid #334155; color:#fff; padding:8px 12px; border-radius:8px; font-size:12px;" value="79000">
+                        <div class="gmd-modal-field" style="display:flex; flex-direction:column; gap:4px;">
+                            <label style="font-size:12px; font-weight:700; color:#94a3b8;">Emoji Đại Diện (Icon)</label>
+                            <input type="text" id="gmd-pub-icon" class="gmd-input" placeholder="Ví dụ: 📋, 🎁, ⭐" style="background:#1e293b; border:1px solid #334155; color:#fff; padding:8px 12px; border-radius:8px; font-size:12px;" value="📋">
                         </div>
                     </div>
                     <div class="gmd-modal-footer" style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #1e293b; padding-top:14px; margin-top:18px;">
                         <button class="gmd-btn" style="background:#334155; border:none; color:#fff; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold;" onclick="document.getElementById('${modalId}').remove()">Hủy</button>
-                        <button class="gmd-btn primary" id="gmd-tmpl-save-btn" style="background:#8b5cf6; border:none; color:#fff; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold; box-shadow:0 0 10px rgba(139,92,246,0.3);">Lưu template</button>
+                        <button class="gmd-btn primary" id="gmd-pub-save-btn" style="background:#10b981; border:none; color:#fff; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold; box-shadow:0 0 10px rgba(16,185,207,0.3);">Đăng bán</button>
                     </div>
                 </div>
             `;
-            
-            // Background overlay styles
+
             modal.style.position = 'fixed';
             modal.style.inset = '0';
             modal.style.background = 'rgba(0,0,0,0.7)';
@@ -3566,198 +4090,107 @@
             modal.style.alignItems = 'center';
             modal.style.justifyContent = 'center';
             modal.style.zIndex = '99999';
-            
-            // Style inner switch styling elements
-            const switchEl = modal.querySelector('.gmd-switch');
-            const switchSpan = switchEl.querySelector('span');
-            const switchInput = switchEl.querySelector('input');
-            switchInput.addEventListener('change', () => {
-                switchSpan.style.background = switchInput.checked ? '#8b5cf6' : '#334155';
-            });
-            
+
             this.mount.appendChild(modal);
-            
-            const saveBtn = modal.querySelector('#gmd-tmpl-save-btn');
+
+            const saveBtn = modal.querySelector('#gmd-pub-save-btn');
             saveBtn.addEventListener('click', async () => {
-                const name = String(modal.querySelector('#gmd-tmpl-name').value).trim();
-                const category = modal.querySelector('#gmd-tmpl-category').value;
-                const tagsRaw = modal.querySelector('#gmd-tmpl-tags').value;
-                const isPremium = modal.querySelector('#gmd-tmpl-premium').checked;
-                const price = Number(modal.querySelector('#gmd-tmpl-price').value) || 0;
-                
+                const name = String(modal.querySelector('#gmd-pub-name').value).trim();
+                const price = Number(modal.querySelector('#gmd-pub-price').value) || 0;
+                const originalPrice = Number(modal.querySelector('#gmd-pub-original-price').value) || 0;
+                const description = String(modal.querySelector('#gmd-pub-desc').value).trim();
+                const icon = String(modal.querySelector('#gmd-pub-icon').value).trim() || '📋';
+
                 if (!name) {
                     if (window.app && typeof window.app.showNotification === 'function') {
-                        window.app.showNotification('error', 'Vui lòng nhập tên template!');
+                        window.app.showNotification('error', 'Vui lòng nhập tên mẫu!');
                     } else {
-                        alert('Vui lòng nhập tên template!');
+                        alert('Vui lòng nhập tên mẫu!');
                     }
                     return;
                 }
-                
-                const tags = tagsRaw.split(',').map(x => x.trim()).filter(Boolean);
-                if (tags.length === 0) tags.push(category);
-                
-                const payload = {
-                    name,
-                    category,
-                    tags,
-                    isPremium,
-                    price,
-                    canvas: {
-                        width: 1080,
-                        height: 1920,
-                        aspectRatio: '9:16'
-                    },
-                    layers: (this.goalBoard.selectedIds && this.goalBoard.selectedIds.length > 0)
-                        ? this.goalBoard.items.filter(i => this.goalBoard.selectedIds.includes(i.id)).map(i => ({ ...i }))
-                        : this.goalBoard.items.map(i => ({ ...i }))
+
+                const map = {
+                    '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
+                    '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
+                    '1:1': { width: 480, height: 480, canvasW: 900, canvasH: 900 }
                 };
-                
+                const cfg = map[this.aspectRatio] || map['9:16'];
+                const liveCanvasSize = { width: cfg.canvasW, height: cfg.canvasH };
+                const safeSize = { width: cfg.width, height: cfg.height };
+                const safeOffset = {
+                    x: Math.round((liveCanvasSize.width - safeSize.width) / 2),
+                    y: Math.round((liveCanvasSize.height - safeSize.height) / 2)
+                };
+                const exportSize = this.aspectRatio === '9:16'
+                    ? { width: 1080, height: 1920 }
+                    : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
+                const sx = exportSize.width / safeSize.width;
+                const sy = exportSize.height / safeSize.height;
+                const exportedItems = this.items.map((i) => ({
+                    ...i,
+                    x: Math.round((i.x - safeOffset.x) * sx),
+                    y: Math.round((i.y - safeOffset.y) * sy),
+                    width: Math.round(i.width * sx),
+                    height: Math.round(i.height * sy),
+                    textSize: Number(i.textSize || 13) * ((sx + sy) / 2),
+                    textGap: Number(i.textGap || 4) * sy
+                }));
+
+                const layoutData = {
+                    version: 2,
+                    aspectRatio: this.aspectRatio,
+                    canvasSize: liveCanvasSize,
+                    safeArea: { ...safeSize, ...safeOffset },
+                    exportSize,
+                    items: this.items.map((i) => ({ ...i })),
+                    exportedItems
+                };
+
                 saveBtn.disabled = true;
-                saveBtn.innerText = 'Đang lưu...';
-                
+                saveBtn.innerText = 'Đang đăng...';
+
                 try {
                     const headers = { 'Content-Type': 'application/json' };
                     if (this.token) headers.Authorization = `Bearer ${this.token}`;
-                    
-                    const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/templates`, {
+
+                    const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout/publish`, {
                         method: 'POST',
                         headers,
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify({
+                            name,
+                            price,
+                            originalPrice,
+                            description,
+                            icon,
+                            layoutData
+                        })
                     });
                     const data = await res.json();
-                    
+
                     if (data.success) {
                         if (window.app && typeof window.app.showNotification === 'function') {
-                            window.app.showNotification('success', 'Đã lưu template mới thành công!');
+                            window.app.showNotification('success', 'Đã đăng mẫu menu lên Cửa hàng thành công!');
                         }
                         modal.remove();
-                        await this.loadGoalTemplates();
+                        if (window.app && typeof window.app.loadEffects === 'function') {
+                            await window.app.loadEffects();
+                        }
                     } else {
                         throw new Error(data.error || 'Lỗi server');
                     }
                 } catch (e) {
                     saveBtn.disabled = false;
-                    saveBtn.innerText = 'Lưu template';
+                    saveBtn.innerText = 'Đăng bán';
                     if (window.app && typeof window.app.showNotification === 'function') {
-                        window.app.showNotification('error', `Không thể lưu template: ${e.message}`);
+                        window.app.showNotification('error', `Không thể đăng bán: ${e.message}`);
                     } else {
-                        alert(`Không thể lưu template: ${e.message}`);
+                        alert(`Không thể đăng bán: ${e.message}`);
                     }
                 }
             });
         }
 
-        updateGoalListItem(idx, field, value) {
-            const selected = this.goalBoard.items.find((x) => x.id === this.goalBoard.selectedId);
-            if (selected && selected.type === 'goal-list' && Array.isArray(selected.goals) && selected.goals[idx]) {
-                const goal = selected.goals[idx];
-                if (field === 'target' || field === 'current') {
-                    goal[field] = Number(value) || 0;
-                } else if (field === 'giftId') {
-                    const cleanVal = String(value).trim();
-                    goal.giftId = cleanVal;
-                    // Auto-sync nickname/giftName
-                    const gift = this.gifts.find(g => String(g.id).toLowerCase() === cleanVal.toLowerCase());
-                    if (gift) {
-                        goal.giftName = gift.name || cleanVal;
-                        goal.icon = gift.icon || '';
-                    } else {
-                        goal.giftName = cleanVal;
-                    }
-                }
-                this.renderCanvas();
-                this.pushHistory('update-goal-list-item');
-            }
-        }
-
-        addGoalListItem(itemId) {
-            const item = this.goalBoard.items.find((x) => x.id === itemId);
-            if (item && item.type === 'goal-list') {
-                if (!Array.isArray(item.goals)) {
-                    item.goals = [];
-                }
-                const firstGift = this.gifts[0] || { id: 'rose', name: 'Rose', icon: '/assets/gift-icons/Rose.png' };
-                item.goals.push({
-                    giftId: firstGift.id,
-                    giftName: firstGift.name || firstGift.id,
-                    current: 0,
-                    target: 100,
-                    icon: firstGift.icon || ''
-                });
-                this.renderCanvas();
-                this.renderInspector();
-                this.pushHistory('add-goal-list-item');
-            }
-        }
-
-        removeGoalListItem(itemId, idx) {
-            const item = this.goalBoard.items.find((x) => x.id === itemId);
-            if (item && item.type === 'goal-list' && Array.isArray(item.goals)) {
-                item.goals.splice(idx, 1);
-                this.renderCanvas();
-                this.renderInspector();
-                this.pushHistory('remove-goal-list-item');
-            }
-        }
-        
-        async sendSimulatedGift(itemId) {
-            const item = this.goalBoard.items.find(x => x.id === itemId);
-            if (!item) return;
-
-            let giftId = 'rose';
-            let giftName = 'Rose';
-            let repeatCount = 1;
-
-            if (item.type === 'goal-bar' || item.type === 'boss-bar' || item.type === 'mystery-chests') {
-                giftId = item.giftId || 'rose';
-                giftName = item.giftName || 'Rose';
-                repeatCount = item.type === 'boss-bar' ? Math.ceil((item.targetCount || 100) / 10) : 10;
-                
-                item.currentCount = (Number(item.currentCount) || 0) + repeatCount;
-            } else if (item.type === 'goal-list' && Array.isArray(item.goals) && item.goals.length > 0) {
-                const randomGoal = item.goals[Math.floor(Math.random() * item.goals.length)];
-                giftId = randomGoal.giftId || 'rose';
-                giftName = randomGoal.giftName || 'Rose';
-                repeatCount = Math.ceil((randomGoal.target || 100) / 5);
-                
-                randomGoal.current = (Number(randomGoal.current) || 0) + repeatCount;
-            } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
-                const testNames = ['Vua Tặng Quà 👑', 'Minh Anh idol', 'Thần Donate ⚡', 'Khánh Huyền Cute', 'Anh Hai Sài Gòn'];
-                const nickname = testNames[Math.floor(Math.random() * testNames.length)];
-                giftId = 'galaxy';
-                giftName = 'Galaxy';
-                repeatCount = 1;
-                const value = Math.floor(Math.random() * 500) + 100;
-                
-                if (!Array.isArray(item.contributors)) item.contributors = [];
-                const existing = item.contributors.find(c => c.nickname === nickname);
-                if (existing) {
-                    existing.value = (Number(existing.value) || 0) + value;
-                } else {
-                    item.contributors.push({ nickname, value, avatar: '' });
-                }
-                item.contributors.sort((a, b) => b.value - a.value);
-                item.contributors = item.contributors.slice(0, 20);
-            } else if (item.type === 'combo') {
-                giftId = 'corgi';
-                giftName = 'Corgi';
-                repeatCount = (item.comboCount || 0) + 5;
-                item.comboCount = repeatCount;
-            }
-
-            // Immediately render on canvas
-            this.renderCanvas();
-            this.renderInspector();
-
-            // Save layout to backend which automatically saves file and broadcasts the update to OBS Overlay
-            await this.saveGoalBoardLayout(false);
-
-            if (window.app && typeof window.app.showNotification === 'function') {
-                window.app.showNotification('success', `Đã test gửi ${repeatCount}x ${giftName}!`);
-            }
-        }
-        
         onModeChange() {
             // Placeholder compatible wrapper
         }
