@@ -256,6 +256,116 @@
             transition: .4s;
             border-radius: 50%;
         }
+
+        /* PREMIUM CTA CARD STYLES */
+         .pro-card-premium {
+            position: relative;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(236, 72, 153, 0.03) 100%);
+            border: 1px solid rgba(124, 58, 237, 0.25);
+            border-radius: 16px;
+            padding: 24px 18px;
+            text-align: center;
+            overflow: hidden;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            animation: borderGlow 4s infinite ease-in-out;
+            transition: all 0.3s ease;
+        }
+        .pro-card-premium::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -150%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                to right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.15) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: skewX(-25deg);
+            animation: lightSweep 4s infinite ease-in-out;
+            pointer-events: none;
+        }
+        .pro-card-premium:hover {
+            transform: translateY(-2px);
+            border-color: rgba(236, 72, 153, 0.6);
+            box-shadow: 0 12px 40px rgba(124, 58, 237, 0.2);
+        }
+        .premium-cta-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #ff8c00 100%);
+            background-size: 200% auto;
+            color: white;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+            transition: all 0.3s ease;
+            animation: shimmer 3s infinite linear;
+        }
+        .premium-cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(236, 72, 153, 0.6), 0 0 15px rgba(124, 58, 237, 0.4);
+            filter: brightness(1.15);
+        }
+        @keyframes borderGlow {
+            0%, 100% { border-color: rgba(124, 58, 237, 0.25); box-shadow: 0 0 15px rgba(124, 58, 237, 0.1), inset 0 0 15px rgba(124, 58, 237, 0.05); }
+            50% { border-color: rgba(236, 72, 153, 0.5); box-shadow: 0 0 25px rgba(236, 72, 153, 0.25), inset 0 0 25px rgba(236, 72, 153, 0.08); }
+        }
+        .cta-badge-text {
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+            display: inline-block;
+            animation: badgeScale 2.5s infinite ease-in-out;
+            background: linear-gradient(135deg, #ff0055 0%, #ff5500 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        @keyframes badgeScale {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(255, 85, 0, 0.4)); }
+            50% { transform: scale(1.06); filter: drop-shadow(0 0 10px rgba(255, 85, 0, 0.7)); }
+        }
+        @keyframes textGlowPulse {
+            0%, 100% { filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.4)) brightness(1); }
+            50% { filter: drop-shadow(0 0 18px rgba(0, 242, 254, 0.8)) brightness(1.2); }
+        }
+        @keyframes lightSweep {
+            0% { left: -150%; }
+            50% { left: 150%; }
+            100% { left: 150%; }
+        }
+        @keyframes shimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        #plan-pro-card.featured {
+            background: rgba(15, 23, 42, 0.75) !important;
+            border: 2px solid #3b82f6 !important;
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.45) !important;
+            transform: scale(1.04) !important;
+            z-index: 5;
+        }
+        #plan-pro-card.featured:hover {
+            transform: scale(1.05) translateY(-5px) !important;
+            box-shadow: 0 0 35px rgba(59, 130, 246, 0.65) !important;
+        }
+        #plan-pro-card .featured-badge {
+            background: #3b82f6 !important;
+            color: #fff !important;
+            font-weight: 800;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
     </style>
 </head>
 
@@ -371,11 +481,11 @@
                 </div>
             </div>
 
-            <div class="pro-card premium-shine">
-                <div class="pro-badge">HOT DEAL</div>
-                <h4>💎 Nâng Cấp PRO</h4>
-                <div class="pro-price"><span>99K</span></div>
-                <button class="pro-btn" onclick="app.showPricing()">NÂNG CẤP NGAY</button>
+            <div class="pro-card-premium" style="text-align: center; padding: 22px 14px; margin-bottom: 16px;">
+                <div class="cta-badge-text" style="font-size: 15px; margin-bottom: 2px;">🔥 TĂNG TƯƠNG TÁC</div>
+                <h4 style="font-size: 27px; font-weight: 900; color: #fff; margin: 0 0 10px 0; letter-spacing: 0.5px; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: textGlowPulse 2.5s infinite ease-in-out;">LIVESTREAM</h4>
+                <div style="font-size: 11px; color: #94a3b8; line-height: 1.4; margin-bottom: 16px; font-weight: 500;">Nâng cấp để livestream chuyên nghiệp hơn</div>
+                <button class="premium-cta-btn" onclick="app.showPricing()">Xem các gói</button>
             </div>
 
             <!-- User Profile Card -->
@@ -1268,8 +1378,15 @@
 
     <!-- Pricing Modal -->
     <div id="pricing-modal" class="modal-overlay hidden" style="z-index: 999999 !important;">
+        <style>
+            @media (min-width: 901px) {
+                #pricing-modal .pricing-grid {
+                    grid-template-columns: repeat(4, 1fr) !important;
+                }
+            }
+        </style>
         <div class="modal-content pricing-content"
-            style="max-width: 1000px; padding: 40px; border-radius: 24px; background: rgba(11, 15, 26, 0.95); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.05);">
+            style="max-width: 1100px; padding: 40px; border-radius: 24px; background: rgba(11, 15, 26, 0.95); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.05); max-height: 90vh; overflow-y: auto; overflow-x: hidden;">
             <span class="close" onclick="app.closePricing()"
                 style="font-size: 32px; top: 20px; right: 25px;">&times;</span>
 
@@ -1287,62 +1404,86 @@
                 <!-- Free Plan -->
                 <div class="pricing-card" id="plan-free-card">
                     <div class="plan-header">
-                        <span class="plan-icon">🆓</span>
+                        <div style="background: #3b82f6; color: white; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">FREE</div>
                         <h3>Free</h3>
                         <div class="plan-price">0₫ <span>/tháng</span></div>
                     </div>
                     <div class="plan-features">
-                        <div class="feature"><i class="fas fa-check-circle"></i> 1 thiết bị</div>
-                        <div class="feature"><i class="fas fa-check-circle"></i> 5 effect mappings</div>
-                        <div class="feature"><i class="fas fa-check-circle"></i> Kết nối OBS cơ bản</div>
-                        <div class="feature"><i class="fas fa-check-circle"></i> Auto-reconnect</div>
-                        <div class="feature muted"><i class="fas fa-times-circle"></i> Support chậm</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 1 thiết bị</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 5 hiệu ứng gắn quà</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 5 hiệu ứng cá nhân</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Menu cơ bản: kéo thả, đổi chữ</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Bình luận & TTS dùng thử</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 1 bảng mục tiêu</div>
                     </div>
                     <button class="plan-btn" id="plan-btn-free">Gói hiện tại</button>
                 </div>
 
-                <!-- Pro Plan -->
+                <!-- Basic Plan -->
                 <div class="pricing-card featured" id="plan-pro-card">
-                    <div class="featured-badge">PHỔ BIẾN NHẤT</div>
+                    <div class="featured-badge">⭐ ĐƯỢC CHỌN NHIỀU NHẤT</div>
                     <div class="plan-header">
-                        <span class="plan-icon">🔥</span>
+                        <span class="plan-icon" style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(251,191,36,0.5));">⭐</span>
+                        <h3>Basic</h3>
+                        <div class="plan-price">
+                            <del style="font-size: 14px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px;">250.000₫</del>
+                            <div style="color: #3b82f6; font-size: 28px; font-weight: 900;">199.000₫ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tháng</span></div>
+                        </div>
+                        <div style="font-size: 11px; color: #3b82f6; margin-top: 8px; font-weight: 700;">Phù hợp với 90% streamer TikTok Live</div>
+                    </div>
+                    <div class="plan-features">
+                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 30 hiệu ứng gắn quà</div>
+                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 100 hiệu ứng cá nhân</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Menu quà tặng chuyên nghiệp</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hiệu ứng động đẹp mắt</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tải ảnh/video riêng vào menu</div>
+                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn bình luận</div>
+                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn đọc tên/TTS</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 10 bảng mục tiêu livestream</div>
+                    </div>
+                    <button class="plan-btn active" id="plan-btn-pro" onclick="app.buySubscription('pro')">🚀 NÂNG CẤP BASIC</button>
+                </div>
+
+                <!-- Pro Plan -->
+                <div class="pricing-card" id="plan-business-card">
+                    <div class="featured-badge" style="background: rgba(255, 62, 62, 0.15); color: #ff3e3e; border: 1px solid rgba(255, 62, 62, 0.3); font-size: 9px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap;">🔥 CHO STREAMER CHUYÊN NGHIỆP</div>
+                    <div class="plan-header">
+                        <span class="plan-icon" style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(255,107,0,0.5));">🔥</span>
                         <h3>Pro</h3>
                         <div class="plan-price">
-                            <del style="font-size: 14px; opacity: 0.5; font-weight: 400;">119.000₫</del>
-                            <div style="color: var(--secondary);">99.000₫ <span>/tháng</span></div>
+                            <del style="font-size: 14px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px;">450.000₫</del>
+                            <div style="color: #a78bfa; font-size: 28px; font-weight: 900;">399.000₫ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tháng</span></div>
                         </div>
                     </div>
                     <div class="plan-features">
-                        <div class="feature highlight"><i class="fas fa-check-circle"></i> 2 thiết bị</div>
-                        <div class="feature highlight"><i class="fas fa-check-circle"></i> 20 effect mappings</div>
-                        <div class="feature"><i class="fas fa-check-circle"></i> Auto-connect OBS</div>
-                        <div class="feature"><i class="fas fa-check-circle"></i> Auto-reconnect</div>
-                        <div class="feature highlight"><i class="fas fa-check-circle"></i> Priority support (2h)</div>
-                        <div class="feature"><i class="fas fa-check-circle"></i> Thống kê chi tiết</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn hiệu ứng</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn menu & layout</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tùy chỉnh menu nâng cao</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hiệu ứng chuyển động cao cấp</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tự động hóa livestream nâng cao</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Sử dụng trên 3 thiết bị</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hỗ trợ ưu tiên</div>
                     </div>
-                    <button class="plan-btn active" id="plan-btn-pro" onclick="app.buySubscription('pro')">🚀 NÂNG CẤP
-                        PRO</button>
+                    <button class="plan-btn" id="plan-btn-business" onclick="app.buySubscription('business')">💎 NÂNG CẤP PRO</button>
                 </div>
 
-                <!-- Business Plan -->
-                <div class="pricing-card" id="plan-business-card">
-                    <div class="featured-badge business">CAO CẤP</div>
+                <!-- Studio Plan -->
+                <div class="pricing-card" id="plan-studio-card">
+                    <div class="featured-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 9px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap;">📘 GIẢI PHÁP DOANH NGHIỆP</div>
                     <div class="plan-header">
-                        <span class="plan-icon">💎</span>
-                        <h3>Business</h3>
-                        <div class="plan-price">249.000₫ <span>/tháng</span></div>
+                        <span class="plan-icon" style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(0, 242, 254, 0.5));">💎</span>
+                        <h3>Studio</h3>
+                        <div style="color: #10b981; font-size: 28px; font-weight: 800; margin-top: 10px; height: 58px; display: flex; align-items: center; justify-content: center; gap: 4px;">Liên hệ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tùy chỉnh</span></div>
                     </div>
                     <div class="plan-features">
-                        <div class="feature"><i class="fas fa-check-circle"></i> 5 thiết bị</div>
-                        <div class="feature"><i class="fas fa-check-circle"></i> 100 effect mappings</div>
-                        <div class="feature highlight"><i class="fas fa-check-circle"></i> Mọi tính năng Pro</div>
-                        <div class="feature"><i class="fas fa-check-circle"></i> API Access</div>
-                        <div class="feature"><i class="fas fa-check-circle"></i> White-label</div>
-                        <div class="feature highlight"><i class="fas fa-check-circle"></i> Revenue Share 70%</div>
-                        <div class="feature highlight"><i class="fas fa-check-circle"></i> Support 15 phút</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn thiết bị</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Dành cho team vận hành</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hỗ trợ kỹ thuật riêng</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tùy chỉnh theo nhu cầu</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> API tích hợp riêng</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Giải pháp doanh nghiệp</div>
                     </div>
-                    <button class="plan-btn" id="plan-btn-business" onclick="app.buySubscription('business')">💎 ĐỐI
-                        TÁC</button>
+                    <button class="plan-btn" id="plan-btn-studio" onclick="app.closePricing(); app.openCustomEffectModal();" style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white;">LIÊN HỆ NGAY</button>
                 </div>
             </div>
 

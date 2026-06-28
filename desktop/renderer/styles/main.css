@@ -9,7 +9,7 @@
 @font-face { font-family: 'Inter'; src: url('../../assets/fonts/Inter_18pt-ExtraBold.ttf') format('truetype'); font-weight: 800; }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { 
+html, body { overflow-y: auto !important; }\nbody { 
     font-family: 'Inter', sans-serif; 
     background: radial-gradient(circle at 20% 20%, rgba(255,0,150,0.08), transparent 40%),
                 radial-gradient(circle at 80% 80%, rgba(0,200,255,0.08), transparent 40%),
@@ -2204,7 +2204,7 @@ input:focus { outline: none; }
 }
 
 
-/* S?a l?i canvas b? bóp méo */
+/* S?a l?i canvas b? bï¿½p mï¿½o */
 #designer-canvas {
     width: 360px !important;
     height: 640px !important;

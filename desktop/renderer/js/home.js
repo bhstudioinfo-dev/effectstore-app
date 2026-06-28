@@ -222,8 +222,8 @@ class EffectStoreApp {
         // Badge + màu theo cấp độ
         const planInfo = {
             admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
-            business: { label: '💼 Business', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
-            pro: { label: '⭐ Pro', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
+            business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
+            pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
             free: { label: '🆓 Free', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
         };
         const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
@@ -1993,8 +1993,8 @@ class EffectStoreApp {
             const planBadge = (sub, isAdmin) => {
                 if (isAdmin) return '<span style="padding:2px 10px;border-radius:12px;background:rgba(255,107,53,0.15);color:#ff6b35;border:1px solid rgba(255,107,53,0.3);font-size:11px;font-weight:700;">👑 Admin</span>';
                 const map = {
-                    business: '<span style="padding:2px 10px;border-radius:12px;background:rgba(167,139,250,0.15);color:#a78bfa;border:1px solid rgba(167,139,250,0.3);font-size:11px;font-weight:700;">💼 Business</span>',
-                    pro: '<span style="padding:2px 10px;border-radius:12px;background:rgba(212,175,55,0.15);color:#d4af37;border:1px solid rgba(212,175,55,0.3);font-size:11px;font-weight:700;">⭐ Pro</span>',
+                    business: '<span style="padding:2px 10px;border-radius:12px;background:rgba(167,139,250,0.15);color:#a78bfa;border:1px solid rgba(167,139,250,0.3);font-size:11px;font-weight:700;">⭐ Pro</span>',
+                    pro: '<span style="padding:2px 10px;border-radius:12px;background:rgba(212,175,55,0.15);color:#d4af37;border:1px solid rgba(212,175,55,0.3);font-size:11px;font-weight:700;">⚡ Basic</span>',
                     free: '<span style="padding:2px 10px;border-radius:12px;background:rgba(107,114,128,0.12);color:#6b7280;border:1px solid rgba(107,114,128,0.2);font-size:11px;font-weight:700;">🆓 Free</span>'
                 };
                 return map[sub] || map.free;
@@ -2142,12 +2142,12 @@ class EffectStoreApp {
                 btnFree.className = currentPlan === 'free' ? 'plan-btn disabled' : 'plan-btn';
             }
             if (btnPro) {
-                btnPro.innerText = currentPlan === 'pro' ? 'Gói hiện tại' : '🚀 NÂNG CẤP PRO';
+                btnPro.innerText = currentPlan === 'pro' ? 'Gói hiện tại' : '🚀 NÂNG CẤP BASIC';
                 btnPro.className = currentPlan === 'pro' ? 'plan-btn disabled' : 'plan-btn active';
                 btnPro.onclick = currentPlan === 'pro' ? null : () => this.buySubscription('pro');
             }
             if (btnBusiness) {
-                btnBusiness.innerText = currentPlan === 'business' ? 'Gói hiện tại' : '💎 ĐỐI TÁC';
+                btnBusiness.innerText = currentPlan === 'business' ? 'Gói hiện tại' : '💎 NÂNG CẤP PRO';
                 btnBusiness.className = currentPlan === 'business' ? 'plan-btn disabled' : 'plan-btn';
                 btnBusiness.onclick = currentPlan === 'business' ? null : () => this.buySubscription('business');
             }
@@ -2165,9 +2165,9 @@ class EffectStoreApp {
     }
 
     async buySubscription(plan) {
-        const price = plan === 'pro' ? 99000 : 249000;
+        const price = plan === 'pro' ? 199000 : 399000;
         const subCode = plan === 'pro' ? 'SUBSCRIPTION_PRO' : 'SUBSCRIPTION_BUSINESS';
-        const planName = plan === 'pro' ? 'Pro' : 'Business';
+        const planName = plan === 'pro' ? 'Basic' : 'Pro';
 
         // CRITICAL FIX: Set pendingEffects so confirmPaymentWithProof sends the correct code
         this.pendingEffects = [{ effectId: subCode, effectName: `Gói ${planName}` }];
@@ -2868,8 +2868,8 @@ class EffectStoreApp {
         if (badgeEl) {
             const planInfo = {
                 admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
-                business: { label: '💼 Business', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
-                pro: { label: '⭐ Pro', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
+                business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
+                pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
                 free: { label: '🆓 Free', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
             };
             const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
@@ -3075,8 +3075,8 @@ function showAccount() {
     const u = app.currentUser;
     const planInfo = {
         admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.12)', border: 'rgba(255,107,53,0.25)' },
-        business: { label: '💼 Business', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.25)' },
-        pro: { label: '⭐ Pro', color: '#d4af37', bg: 'rgba(212,175,55,0.12)', border: 'rgba(212,175,55,0.25)' },
+        business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.25)' },
+        pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.12)', border: 'rgba(212,175,55,0.25)' },
         free: { label: '🆓 Free', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.18)' }
     };
     const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
