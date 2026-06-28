@@ -26,6 +26,10 @@
             this.isRestoringHistory = false;
             this.snapEnabled = true;
             this.activeGuides = { x: null, y: null };
+            this.itemRegistry = window.MenuDesignerItemRegistry || null;
+            this.coordinateEngine = window.MenuDesignerCoordinateEngine || null;
+            this.sharedRenderEngine = window.MenuDesignerSharedRenderEngine || null;
+            this.inspectorEngine = window.MenuDesignerInspectorEngine || null;
             this.auraOptions = [
                 { value: 'None', label: 'Không có' },
                 { value: 'Glow', label: 'Glow (Tỏa sáng)' },
@@ -341,6 +345,7 @@
                                         <button class="gmd-btn icon" data-action="distribute-y" title="Căn đều dọc"><i class="fas fa-arrows-alt-v"></i></button>
                                     </div>
                                     <div class="gmd-tool-group">
+                                        <button class="gmd-btn" data-action="create-stack-group" title="Gop qua"><i class="fas fa-layer-group"></i> Gop qua</button>
                                         <button class="gmd-btn icon" data-action="duplicate"><i class="far fa-clone"></i></button>
                                         <button class="gmd-btn icon" data-action="delete"><i class="far fa-trash-alt"></i></button>
                                     </div>
@@ -598,6 +603,249 @@
             this.pushHistory('add-gift');
         }
 
+        getItemsBounds(items) {
+            if (!items || !items.length) return null;
+            const minX = Math.min(...items.map((item) => Number(item.x) || 0));
+            const minY = Math.min(...items.map((item) => Number(item.y) || 0));
+            const maxX = Math.max(...items.map((item) => (Number(item.x) || 0) + (Number(item.width) || 0)));
+            const maxY = Math.max(...items.map((item) => (Number(item.y) || 0) + (Number(item.height) || 0)));
+            return {
+                x: Math.round(minX),
+                y: Math.round(minY),
+                width: Math.max(30, Math.round(maxX - minX)),
+                height: Math.max(30, Math.round(maxY - minY))
+            };
+        }
+
+        getStackGroupLayoutChildren(group) {
+            const children = Array.isArray(group && group.children) ? group.children : [];
+            if (!group || !children.length) return [];
+            const direction = group.layoutDirection === 'horizontal' ? 'horizontal' : 'vertical';
+            const gap = Math.max(0, Number(group.gap) || 0);
+            const groupW = Math.max(10, Number(group.width) || 10);
+            const groupH = Math.max(10, Number(group.height) || 10);
+            const iconSize = Math.max(10, Number(group.iconSize) || 64);
+            const textSize = Math.max(1, Number(group.textSize) || 14);
+            const textGap = Math.max(0, Number(group.textGap) || 0);
+            const textPosition = group.textPosition || 'bottom';
+            const showName = group.showName !== false;
+            const padding = 8;
+            const contentW = Math.max(1, groupW - padding * 2);
+            const contentH = Math.max(1, groupH - padding * 2);
+            const ordered = [...children];
+
+            const estimateTextWidth = (child) => {
+                if (!showName) return 0;
+                const label = String(child.name || child.giftName || '');
+                return Math.max(textSize, Math.round(label.length * textSize * 0.62));
+            };
+            const measureChild = (child) => {
+                const labelW = estimateTextWidth(child);
+                const labelH = showName ? Math.round(textSize * 1.15) : 0;
+                if (!showName) return { width: iconSize, height: iconSize, labelW, labelH };
+                if (textPosition === 'left' || textPosition === 'right') {
+                    return {
+                        width: iconSize + textGap + labelW,
+                        height: Math.max(iconSize, labelH),
+                        labelW,
+                        labelH
+                    };
+                }
+                return {
+                    width: Math.max(iconSize, labelW),
+                    height: iconSize + textGap + labelH,
+                    labelW,
+                    labelH
+                };
+            };
+            const measured = ordered.map((child) => ({ child, ...measureChild(child) }));
+            const totalW = direction === 'horizontal'
+                ? measured.reduce((sum, item) => sum + item.width, 0) + gap * Math.max(0, measured.length - 1)
+                : Math.max(...measured.map((item) => item.width), iconSize);
+            const totalH = direction === 'vertical'
+                ? measured.reduce((sum, item) => sum + item.height, 0) + gap * Math.max(0, measured.length - 1)
+                : Math.max(...measured.map((item) => item.height), iconSize);
+            let cursor = direction === 'vertical'
+                ? group.y + padding + Math.max(0, (contentH - totalH) / 2)
+                : group.x + padding + Math.max(0, (contentW - totalW) / 2);
+
+            return measured.map((entry) => {
+                const child = entry.child;
+                const childX = direction === 'vertical'
+                    ? group.x + padding + Math.max(0, (contentW - entry.width) / 2)
+                    : cursor;
+                const childY = direction === 'vertical'
+                    ? cursor
+                    : group.y + padding + Math.max(0, (contentH - entry.height) / 2);
+                let iconX = childX;
+                let iconY = childY;
+                if (showName) {
+                    if (textPosition === 'left') {
+                        iconX = childX + entry.labelW + textGap;
+                        iconY = childY + Math.max(0, (entry.height - iconSize) / 2);
+                    } else if (textPosition === 'right') {
+                        iconX = childX;
+                        iconY = childY + Math.max(0, (entry.height - iconSize) / 2);
+                    } else if (textPosition === 'top') {
+                        iconX = childX + Math.max(0, (entry.width - iconSize) / 2);
+                        iconY = childY + entry.labelH + textGap;
+                    } else {
+                        iconX = childX + Math.max(0, (entry.width - iconSize) / 2);
+                        iconY = childY;
+                    }
+                }
+                const visual = {
+                    ...child,
+                    width: Math.round(iconSize),
+                    height: Math.round(iconSize),
+                    showName: group.showName !== false,
+                    textSize: group.textSize,
+                    textPosition: group.textPosition || 'bottom',
+                    textGap: group.textGap,
+                    textColor: group.textColor
+                };
+                if (direction === 'vertical') {
+                    cursor += entry.height + gap;
+                } else {
+                    cursor += entry.width + gap;
+                }
+                visual.x = Math.round(iconX);
+                visual.y = Math.round(iconY);
+                visual.relativeX = visual.x - group.x;
+                visual.relativeY = visual.y - group.y;
+                return visual;
+            });
+        }
+
+        createStackGroupFromSelection() {
+            const selectedGifts = this.getSelectedItems().filter((item) => !item.locked && item.visible !== false && (!item.type || item.type === 'gift'));
+            if (selectedGifts.length < 2) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('warning', 'Chon it nhat 2 gift de tao Stack Group.');
+                }
+                return;
+            }
+            const bounds = this.getItemsBounds(selectedGifts);
+            if (!bounds) return;
+            const maxZ = Math.max(...this.items.map((item) => Number(item.zIndex) || 0), 0);
+            const orderedChildren = [...selectedGifts]
+                .sort((a, b) => ((a.y || 0) - (b.y || 0)) || ((a.x || 0) - (b.x || 0)))
+                .map((item) => ({
+                    ...item,
+                    relativeX: Math.round((Number(item.x) || 0) - bounds.x),
+                    relativeY: Math.round((Number(item.y) || 0) - bounds.y)
+                }));
+            const group = {
+                id: `stack_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+                type: 'gift-stack-group',
+                name: 'Nhom qua',
+                iconUrl: '',
+                layoutDirection: 'vertical',
+                gap: 10,
+                iconSize: Math.max(10, Math.round(selectedGifts.reduce((sum, item) => sum + (Number(item.width) || 64), 0) / selectedGifts.length)),
+                textSize: 14,
+                textPosition: 'bottom',
+                textGap: 4,
+                textColor: '#ffffff',
+                showName: true,
+                showPanel: true,
+                showBorder: true,
+                panelColor: '#0a0a14',
+                panelFillType: 'solid',
+                panelGradientFrom: '#3b1f48',
+                panelGradientTo: '#0a0a14',
+                panelGradientAngle: 135,
+                panelEffect: 'none',
+                panelEffectSpeed: 3,
+                panelGlowIntensity: 0.35,
+                borderColor: '#22d3ee',
+                borderFillType: 'solid',
+                borderGradientFrom: '#22d3ee',
+                borderGradientTo: '#a855f7',
+                borderGradientAngle: 135,
+                borderEffect: 'none',
+                borderEffectSpeed: 2,
+                borderGlowIntensity: 0.55,
+                loopEnabled: false,
+                loopDirection: 'vertical',
+                loopSpeed: 15,
+                children: orderedChildren,
+                x: bounds.x,
+                y: bounds.y,
+                width: bounds.width,
+                height: bounds.height,
+                rotation: 0,
+                zIndex: maxZ + 1,
+                visible: true,
+                locked: false
+            };
+            const selectedIds = new Set(selectedGifts.map((item) => item.id));
+            this.items = this.items.filter((item) => !selectedIds.has(item.id));
+            this.items.push(group);
+            this.setSelection([group.id], group.id);
+            this.renderCanvas();
+            this.renderInspector();
+            this.renderMyLibrary();
+            this.pushHistory('create-stack-group');
+        }
+
+        ungroupStackGroup(groupId = this.selectedId) {
+            const group = this.items.find((item) => item.id === groupId && item.type === 'gift-stack-group');
+            if (!group || !Array.isArray(group.children) || !group.children.length) return;
+            const visualChildren = this.getStackGroupLayoutChildren(group);
+            const restored = visualChildren.map((child, idx) => {
+                const restoredItem = {
+                    ...child,
+                    id: child.id || `itm_${Date.now()}_${idx}`,
+                    x: child.x,
+                    y: child.y,
+                    width: child.width,
+                    height: child.height,
+                    zIndex: (Number(group.zIndex) || this.items.length) + idx,
+                    visible: child.visible !== false,
+                    locked: Boolean(child.locked)
+                };
+                delete restoredItem.relativeX;
+                delete restoredItem.relativeY;
+                return restoredItem;
+            });
+            this.items = this.items.filter((item) => item.id !== group.id);
+            this.items.push(...restored);
+            this.normalizeZIndexOrder();
+            this.setSelection(restored.map((item) => item.id), restored[0] ? restored[0].id : null);
+            this.renderCanvas();
+            this.renderInspector();
+            this.renderMyLibrary();
+            this.pushHistory('ungroup-stack-group');
+        }
+
+        migrateLegacyStackGroups() {
+            const removeIds = new Set();
+            this.items.forEach((group) => {
+                if (!group || group.type !== 'gift-stack-group') return;
+                if (Array.isArray(group.children) && group.children.length) return;
+                const refs = Array.isArray(group.itemRefs) ? group.itemRefs : [];
+                if (!refs.length) return;
+                const children = refs
+                    .map((id) => this.items.find((item) => item.id === id && (!item.type || item.type === 'gift')))
+                    .filter(Boolean)
+                    .map((item) => {
+                        removeIds.add(item.id);
+                        return {
+                            ...item,
+                            relativeX: Math.round((Number(item.x) || 0) - (Number(group.x) || 0)),
+                            relativeY: Math.round((Number(item.y) || 0) - (Number(group.y) || 0))
+                        };
+                    });
+                if (children.length) {
+                    group.children = children;
+                }
+            });
+            if (removeIds.size) {
+                this.items = this.items.filter((item) => !removeIds.has(item.id));
+            }
+        }
+
         getAuraClass(type) {
             const map = { Glow: 'aura-glow', Bubble: 'aura-bubble', 'Magic Ring': 'aura-ring', 'Neon Frame': 'aura-frame', 'Light Sweep': 'aura-sweep', 'Fire Aura': 'aura-fire', 'Electric Aura': 'aura-electric' };
             return map[type] || '';
@@ -631,6 +879,28 @@
                 el.style.height = `${item.height}px`;
                 el.style.transform = `rotate(${item.rotation || 0}deg)`;
                 el.style.zIndex = String(item.zIndex || 1);
+
+                if (item.type === 'gift-stack-group') {
+                    const groupLabel = String(item.name || 'Nhom qua');
+                    el.classList.add('gmd-stack-group');
+                    el.style.border = '1px solid transparent';
+                    el.style.outline = selected ? '1px dashed rgba(34, 211, 238, 0.75)' : 'none';
+                    el.style.outlineOffset = '3px';
+                    el.style.background = 'transparent';
+                    el.style.boxSizing = 'border-box';
+                    el.style.overflow = 'visible';
+                    el.style.pointerEvents = 'auto';
+                    const groupHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderGiftStackGroup === 'function'
+                        ? this.sharedRenderEngine.renderGiftStackGroup(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: false })
+                        : '';
+                    el.innerHTML = `
+                        ${groupHTML}
+                        ${selected ? `<div style="position:absolute; left:8px; top:-24px; max-width:calc(100% - 16px); padding:3px 8px; border-radius:6px; background:rgba(8, 16, 34, 0.96); border:1px solid rgba(34,211,238,.45); color:#bae6fd; font-size:10px; font-weight:800; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:0 4px 12px rgba(0,0,0,.32);">${groupLabel}</div>` : ''}
+                        ${selected && !item.locked && this.selectedId === item.id ? '<span class="gmd-handle gmd-resize-handle" data-handle="resize"></span>' : ''}
+                    `;
+                    stage.appendChild(el);
+                    return;
+                }
 
                 const isWidget = item.type && item.type !== 'gift';
                 if (isWidget) {
@@ -1584,6 +1854,16 @@
                     itemExport.w = itemExport.width;
                     itemExport.h = itemExport.height;
                 }
+                if (i.type === 'gift-stack-group') {
+                    const avgScale = (sx + sy) / 2;
+                    itemExport.renderScale = avgScale;
+                    itemExport.children = Array.isArray(i.children) ? i.children.map((child) => ({ ...child })) : [];
+                    itemExport.iconSize = Number(i.iconSize || 64) * avgScale;
+                    itemExport.textSize = Number(i.textSize || 14) * avgScale;
+                    itemExport.textGap = Number(i.textGap || 4) * avgScale;
+                    itemExport.gap = Number(i.gap || 10) * avgScale;
+                    itemExport.loopEnabled = false;
+                }
                 return itemExport;
             });
             const payload = {
@@ -1709,16 +1989,53 @@
             this.currentLayoutId = payload._id || null;
             this.currentLayoutName = payload.name || 'Menu mặc định';
             this.aspectRatio = payload.aspectRatio || '9:16';
-            this.items = Array.isArray(payload.items) ? payload.items.map((item, idx) => ({
-                ...item,
-                animationSpeed: Number(item.animationSpeed || 1),
-                auraSpeed: Number(item.auraSpeed || 1),
-                auraScale: Number(item.auraScale || 1),
-                textPosition: item.textPosition || 'bottom',
-                visible: item.visible !== false,
-                locked: Boolean(item.locked),
-                zIndex: item.zIndex || idx + 1
-            })) : [];
+            this.items = Array.isArray(payload.items) ? payload.items.map((item, idx) => {
+                const normalized = {
+                    ...item,
+                    animationSpeed: Number(item.animationSpeed || 1),
+                    auraSpeed: Number(item.auraSpeed || 1),
+                    auraScale: Number(item.auraScale || 1),
+                    textPosition: item.textPosition || 'bottom',
+                    visible: item.visible !== false,
+                    locked: Boolean(item.locked),
+                    zIndex: item.zIndex || idx + 1
+                };
+                if (item.type === 'gift-stack-group') {
+                    normalized.children = Array.isArray(item.children) ? item.children.map((child) => ({ ...child })) : [];
+                    normalized.itemRefs = Array.isArray(item.itemRefs) ? item.itemRefs : [];
+                    normalized.layoutDirection = item.layoutDirection === 'horizontal' ? 'horizontal' : 'vertical';
+                    normalized.gap = item.gap !== undefined ? Number(item.gap) : 10;
+                    normalized.iconSize = item.iconSize !== undefined ? Number(item.iconSize) : 64;
+                    normalized.textSize = item.textSize !== undefined ? Number(item.textSize) : 14;
+                    normalized.textPosition = item.textPosition || 'bottom';
+                    normalized.textGap = item.textGap !== undefined ? Number(item.textGap) : 4;
+                    normalized.textColor = item.textColor || '#ffffff';
+                    normalized.showName = item.showName !== false;
+                    normalized.showPanel = item.showPanel !== undefined ? Boolean(item.showPanel) : !item.hideBg;
+                    normalized.showBorder = item.showBorder !== undefined ? Boolean(item.showBorder) : !item.hideBg;
+                    normalized.panelColor = item.panelColor || item.bgColor || '#0a0a14';
+                    normalized.panelFillType = item.panelFillType === 'gradient' ? 'gradient' : 'solid';
+                    normalized.panelGradientFrom = item.panelGradientFrom || item.panelColor || item.bgColor || '#3b1f48';
+                    normalized.panelGradientTo = item.panelGradientTo || '#0a0a14';
+                    normalized.panelGradientAngle = item.panelGradientAngle !== undefined ? Number(item.panelGradientAngle) : 135;
+                    normalized.panelEffect = item.panelEffect || 'none';
+                    normalized.panelEffectSpeed = item.panelEffectSpeed !== undefined ? Number(item.panelEffectSpeed) : 3;
+                    normalized.panelGlowIntensity = item.panelGlowIntensity !== undefined ? Number(item.panelGlowIntensity) : 0.35;
+                    normalized.borderColor = item.borderColor || '#22d3ee';
+                    normalized.borderFillType = item.borderFillType === 'gradient' ? 'gradient' : 'solid';
+                    normalized.borderGradientFrom = item.borderGradientFrom || item.borderColor || '#22d3ee';
+                    normalized.borderGradientTo = item.borderGradientTo || '#a855f7';
+                    normalized.borderGradientAngle = item.borderGradientAngle !== undefined ? Number(item.borderGradientAngle) : 135;
+                    normalized.borderEffect = item.borderEffect || 'none';
+                    normalized.borderEffectSpeed = item.borderEffectSpeed !== undefined ? Number(item.borderEffectSpeed) : 2;
+                    normalized.borderGlowIntensity = item.borderGlowIntensity !== undefined ? Number(item.borderGlowIntensity) : 0.55;
+                    normalized.loopEnabled = Boolean(item.loopEnabled);
+                    normalized.loopDirection = item.loopDirection === 'horizontal' ? 'horizontal' : 'vertical';
+                    normalized.loopSpeed = item.loopSpeed !== undefined ? Number(item.loopSpeed) : 15;
+                }
+                return normalized;
+            }) : [];
+            this.migrateLegacyStackGroups();
             this.setSelection(this.items[0] ? [this.items[0].id] : [], this.items[0] ? this.items[0].id : null);
             this.setAspectRatio(this.aspectRatio);
             this.renderCanvas();
@@ -2036,6 +2353,14 @@
                 if (action === 'align-bottom') this.applyAlign('bottom');
                 if (action === 'distribute-x') this.applyDistribute('x');
                 if (action === 'distribute-y') this.applyDistribute('y');
+                if (action === 'create-stack-group') {
+                    this.createStackGroupFromSelection();
+                    return;
+                }
+                if (action === 'ungroup-stack') {
+                    this.ungroupStackGroup();
+                    return;
+                }
                 if (action === 'duplicate') this.duplicateSelected();
                 if (action === 'delete') this.deleteSelected();
                 if (action === 'undo') this.undo();
@@ -2216,6 +2541,21 @@
                 const handle = e.target.closest('[data-handle]');
                 if (!this.isSelected(item.id)) this.setSelection([item.id], item.id);
                 if (handle && handle.dataset.handle === 'resize') {
+                    if (item.type === 'gift-stack-group') {
+                        this.dragState = {
+                            mode: 'stack-resize',
+                            id: item.id,
+                            sx: e.clientX,
+                            sy: e.clientY,
+                            x: item.x,
+                            y: item.y,
+                            width: item.width,
+                            height: item.height
+                        };
+                        this.renderCanvas();
+                        this.renderInspector();
+                        return;
+                    }
                     let moving = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
                     const groupIds = new Set(moving.map(m => m.groupId).filter(Boolean));
                     if (groupIds.size > 0) {
@@ -2278,6 +2618,13 @@
                         this.clampInsideCanvas(movingItem);
                     });
                     this.updateGuides(snapped.guideX, snapped.guideY);
+                } else if (this.dragState.mode === 'stack-resize') {
+                    const finalScale = this.getFitScale() * this.zoomLevel;
+                    const dx = (e.clientX - this.dragState.sx) / finalScale;
+                    const dy = (e.clientY - this.dragState.sy) / finalScale;
+                    item.width = Math.max(30, Math.round(this.dragState.width + dx));
+                    item.height = Math.max(30, Math.round(this.dragState.height + dy));
+                    this.clampInsideCanvas(item);
                 } else if (this.dragState.mode === 'resize') {
                     const finalScale = this.getFitScale() * this.zoomLevel;
                     const dx = (e.clientX - this.dragState.sx) / finalScale;
@@ -2336,7 +2683,9 @@
             });
 
             window.addEventListener('mouseup', () => {
-                if (this.dragState && this.dragState.mode !== 'pan') this.pushHistory('drag-finish');
+                if (this.dragState && this.dragState.mode !== 'pan') {
+                    this.pushHistory('drag-finish');
+                }
                 this.updateGuides(null, null);
                 this.dragState = null;
             });
@@ -2412,6 +2761,9 @@
         // ==========================================
 
         logicalToStage(item) {
+            if (this.coordinateEngine && typeof this.coordinateEngine.logicalToStage === 'function') {
+                return this.coordinateEngine.logicalToStage(item, this.aspectRatio);
+            }
             const map = {
                 '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
                 '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
@@ -2449,6 +2801,9 @@
         }
 
         stageToLogical(item) {
+            if (this.coordinateEngine && typeof this.coordinateEngine.stageToLogical === 'function') {
+                return this.coordinateEngine.stageToLogical(item, this.aspectRatio);
+            }
             const map = {
                 '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
                 '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
@@ -3042,7 +3397,72 @@
 
             let specificConfigHTML = '';
 
-            if (selected.type === 'goal-bar') {
+            if (selected.type === 'gift-stack-group') {
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-layer-group"></i> NHOM QUA</h4>
+                        <div class="gmd-field">
+                            <label>Huong sap xep</label>
+                            <select class="gmd-select" data-goal-key="layoutDirection">
+                                <option value="vertical" ${selected.layoutDirection !== 'horizontal' ? 'selected' : ''}>Doc</option>
+                                <option value="horizontal" ${selected.layoutDirection === 'horizontal' ? 'selected' : ''}>Ngang</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Khoang cach qua</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="120" data-goal-key="gap" value="${selected.gap !== undefined ? selected.gap : 10}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="0" max="80" data-goal-key="gap" value="${selected.gap !== undefined ? selected.gap : 10}">
+                        <div class="gmd-field">
+                            <label>Kich thuoc icon</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="10" max="240" data-goal-key="iconSize" value="${selected.iconSize !== undefined ? selected.iconSize : 64}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="10" max="180" data-goal-key="iconSize" value="${selected.iconSize !== undefined ? selected.iconSize : 64}">
+                        <div class="gmd-field">
+                            <label>Kich thuoc chu</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="8" max="72" data-goal-key="textSize" value="${selected.textSize !== undefined ? selected.textSize : 14}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="8" max="72" data-goal-key="textSize" value="${selected.textSize !== undefined ? selected.textSize : 14}">
+                        <div class="gmd-field">
+                            <label>Vi tri chu</label>
+                            <select class="gmd-select" data-goal-key="textPosition">
+                                <option value="bottom" ${(selected.textPosition || 'bottom') === 'bottom' ? 'selected' : ''}>Duoi</option>
+                                <option value="top" ${selected.textPosition === 'top' ? 'selected' : ''}>Tren</option>
+                                <option value="left" ${selected.textPosition === 'left' ? 'selected' : ''}>Trai</option>
+                                <option value="right" ${selected.textPosition === 'right' ? 'selected' : ''}>Phai</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Khoang cach chu</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="80" data-goal-key="textGap" value="${selected.textGap !== undefined ? selected.textGap : 4}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="0" max="60" data-goal-key="textGap" value="${selected.textGap !== undefined ? selected.textGap : 4}">
+                        <div class="gmd-field"><label>Mau chu</label><input class="gmd-color" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}"></div>
+                        <div class="gmd-field gmd-toggle-row">
+                            <label>Hien ten qua</label>
+                            <label class="gmd-switch"><input type="checkbox" data-goal-key="showName" ${selected.showName !== false ? 'checked' : ''}><span></span></label>
+                        </div>
+                        <div class="gmd-field gmd-toggle-row">
+                            <label>Bat cuon</label>
+                            <label class="gmd-switch"><input type="checkbox" data-goal-key="loopEnabled" ${selected.loopEnabled ? 'checked' : ''}><span></span></label>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Huong cuon</label>
+                            <select class="gmd-select" data-goal-key="loopDirection">
+                                <option value="vertical" ${(selected.loopDirection || 'vertical') === 'vertical' ? 'selected' : ''}>Doc</option>
+                                <option value="horizontal" ${selected.loopDirection === 'horizontal' ? 'selected' : ''}>Ngang</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Toc do cuon</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="1" max="60" data-goal-key="loopSpeed" value="${selected.loopSpeed !== undefined ? selected.loopSpeed : 15}"><span>s</span></div>
+                        </div>
+                        <div style="font-size:11px;color:#94a3b8;line-height:1.4;margin:8px 0;">Tinh nang cuon se hoan thien o phase tiep theo.</div>
+                        <button class="gmd-btn" data-action="ungroup-stack" style="width:100%; border-color: rgba(239,68,68,.4); color:#fca5a5;"><i class="fas fa-object-ungroup"></i> Bo gop</button>
+                        <div style="font-size:11px;color:#94a3b8;line-height:1.4;margin-top:8px;">${Array.isArray(selected.children) ? selected.children.length : 0} gift trong nhom.</div>
+                    </div>
+                `;
+            } else if (selected.type === 'goal-bar') {
                 specificConfigHTML = `
                     <div class="gmd-section">
                         <h4><i class="fas fa-cog"></i> CẤU HÌNH TIẾN TRÌNH</h4>
@@ -3458,6 +3878,112 @@
                 `;
             }
 
+            const panelStyleControlsHTML = selected.type === 'gift-stack-group' ? `
+                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                        <label style="font-size: 11px;">Bật viền</label>
+                        <label class="gmd-switch">
+                            <input type="checkbox" data-goal-key="showBorder" ${selected.showBorder !== false ? 'checked' : ''}>
+                            <span></span>
+                        </label>
+                    </div>
+                    ${selected.showBorder !== false ? `
+                    <div class="gmd-field" style="margin-top: 4px;">
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu viền</label>
+                        <select class="gmd-select" data-goal-key="borderFillType" style="margin-bottom:8px;">
+                            <option value="solid" ${(selected.borderFillType || 'solid') !== 'gradient' ? 'selected' : ''}>Mau don</option>
+                            <option value="gradient" ${selected.borderFillType === 'gradient' ? 'selected' : ''}>Gradient</option>
+                        </select>
+                        ${(selected.borderFillType || 'solid') === 'gradient' ? `
+                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer; margin-bottom:6px;" type="color" data-goal-key="borderGradientFrom" value="${selected.borderGradientFrom || selected.borderColor || '#22d3ee'}">
+                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer; margin-bottom:6px;" type="color" data-goal-key="borderGradientTo" value="${selected.borderGradientTo || '#a855f7'}">
+                        <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="360" data-goal-key="borderGradientAngle" value="${selected.borderGradientAngle !== undefined ? selected.borderGradientAngle : 135}"><span>deg</span></div>
+                        ` : `<input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="borderColor" value="${selected.borderColor || '#22d3ee'}">`}
+                        <select class="gmd-select" data-goal-key="borderEffect" style="margin-top:8px;">
+                            <option value="none" ${(selected.borderEffect || 'none') === 'none' ? 'selected' : ''}>Khong hieu ung</option>
+                            <option value="glow" ${selected.borderEffect === 'glow' ? 'selected' : ''}>Glow</option>
+                            <option value="pulse" ${selected.borderEffect === 'pulse' ? 'selected' : ''}>Pulse</option>
+                            <option value="running-light" ${selected.borderEffect === 'running-light' ? 'selected' : ''}>Running Light</option>
+                            <option value="dashed-march" ${selected.borderEffect === 'dashed-march' ? 'selected' : ''}>Dashed March</option>
+                        </select>
+                        ${(selected.borderEffect || 'none') !== 'none' ? `
+                        <div class="gmd-inline-input gmd-inline-input-single" style="margin-top:6px;"><input class="gmd-input gmd-input-compact" type="number" min="0.5" max="10" step="0.1" data-goal-key="borderEffectSpeed" value="${selected.borderEffectSpeed !== undefined ? selected.borderEffectSpeed : 2}"><span>s</span></div>
+                        <div class="gmd-inline-input gmd-inline-input-single" style="margin-top:6px;"><input class="gmd-input gmd-input-compact" type="number" min="0" max="1" step="0.05" data-goal-key="borderGlowIntensity" value="${selected.borderGlowIntensity !== undefined ? selected.borderGlowIntensity : 0.55}"><span>x</span></div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                        <label style="font-size: 11px;">Bật bảng</label>
+                        <label class="gmd-switch">
+                            <input type="checkbox" data-goal-key="showPanel" ${selected.showPanel !== false ? 'checked' : ''}>
+                            <span></span>
+                        </label>
+                    </div>
+                    ${selected.showPanel !== false ? `
+                    <div class="gmd-field" style="margin-top: 4px;">
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Kiểu bảng</label>
+                        <select class="gmd-select" data-goal-key="panelFillType">
+                            <option value="solid" ${(selected.panelFillType || 'solid') !== 'gradient' ? 'selected' : ''}>Màu đơn</option>
+                            <option value="gradient" ${selected.panelFillType === 'gradient' ? 'selected' : ''}>Gradient</option>
+                        </select>
+                    </div>
+                    ${(selected.panelFillType || 'solid') === 'gradient' ? `
+                    <div class="gmd-field" style="margin-top: 4px;">
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu gradient 1</label>
+                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="panelGradientFrom" value="${selected.panelGradientFrom || selected.panelColor || '#3b1f48'}">
+                    </div>
+                    <div class="gmd-field" style="margin-top: 4px;">
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu gradient 2</label>
+                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="panelGradientTo" value="${selected.panelGradientTo || '#0a0a14'}">
+                    </div>
+                    <div class="gmd-field" style="margin-top: 4px;">
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Góc gradient</label>
+                        <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="360" data-goal-key="panelGradientAngle" value="${selected.panelGradientAngle !== undefined ? selected.panelGradientAngle : 135}"><span>deg</span></div>
+                    </div>
+                    ` : `
+                    <div class="gmd-field" style="margin-top: 4px;">
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu bảng</label>
+                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="panelColor" value="${selected.panelColor || '#0a0a14'}">
+                    </div>
+                    `}
+                    <select class="gmd-select" data-goal-key="panelEffect" style="margin-top:8px;">
+                        <option value="none" ${(selected.panelEffect || 'none') === 'none' ? 'selected' : ''}>Khong hieu ung</option>
+                        <option value="light-sweep" ${selected.panelEffect === 'light-sweep' ? 'selected' : ''}>Light Sweep</option>
+                        <option value="breathing" ${selected.panelEffect === 'breathing' ? 'selected' : ''}>Breathing</option>
+                        <option value="energy-flow" ${selected.panelEffect === 'energy-flow' ? 'selected' : ''}>Energy Flow</option>
+                        <option value="glass-shine" ${selected.panelEffect === 'glass-shine' ? 'selected' : ''}>Glass Shine</option>
+                    </select>
+                    ${(selected.panelEffect || 'none') !== 'none' ? `
+                    <div class="gmd-inline-input gmd-inline-input-single" style="margin-top:6px;"><input class="gmd-input gmd-input-compact" type="number" min="0.5" max="10" step="0.1" data-goal-key="panelEffectSpeed" value="${selected.panelEffectSpeed !== undefined ? selected.panelEffectSpeed : 3}"><span>s</span></div>
+                    <div class="gmd-inline-input gmd-inline-input-single" style="margin-top:6px;"><input class="gmd-input gmd-input-compact" type="number" min="0" max="1" step="0.05" data-goal-key="panelGlowIntensity" value="${selected.panelGlowIntensity !== undefined ? selected.panelGlowIntensity : 0.35}"><span>x</span></div>
+                    ` : ''}
+                    ` : ''}
+            ` : '';
+
+            const customTextColorControlsHTML = `
+                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                        <label style="font-size: 11px;">Tá»± chá»n mÃ u chá»¯</label>
+                        <label class="gmd-switch">
+                            <input type="checkbox" data-goal-key="useCustomTextColor" ${selected.useCustomTextColor ? 'checked' : ''}>
+                            <span></span>
+                        </label>
+                    </div>
+                    ${selected.useCustomTextColor ? `
+                    <div class="gmd-field" style="margin-top: 4px;">
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">MÃ u chá»¯</label>
+                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}">
+                    </div>
+                    ` : ''}
+            `;
+
+            const stackAdvancedControlsHTML = selected.type === 'gift-stack-group' ? `
+                <div class="gmd-section">
+                    <h4><i class="fas fa-crown"></i> TINH NANG NANG CAO</h4>
+                    ${panelStyleControlsHTML}
+                    ${customTextColorControlsHTML}
+                    ${specificConfigHTML}
+                </div>
+            ` : '';
+
             inspector.innerHTML = `
                 <div class="gmd-selected-card">
                     <div style="font-size: 20px;">${selected.type === 'media-asset' ? '🖼️' : '📊'}</div>
@@ -3469,7 +3995,7 @@
                     <h4><i class="fas fa-ruler-combined"></i> KÍCH THƯỚC & VỊ TRÍ</h4>
                     <div class="gmd-field"><label>Vị trí X / Y (Logical)</label></div>
                     <div class="gmd-row">
-                        <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="x" value="&yen;${logical.x}"><span>px</span></div>
+                        <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="x" value="${logical.x}"><span>px</span></div>
                         <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="y" value="${logical.y}"><span>px</span></div>
                     </div>
                     <div class="gmd-row" style="margin-top: 8px;">
@@ -3488,6 +4014,7 @@
                             <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="30" max="1920" data-goal-key="h" value="${logical.h}">
                         </div>
                     </div>
+                    ${selected.type !== 'gift-stack-group' ? `
                     <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
                         <label style="font-size: 11px;">Khóa tỷ lệ (Aspect Ratio)</label>
                         <label class="gmd-switch">
@@ -3502,7 +4029,9 @@
                         </div>
                         <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="-300" max="300" data-goal-key="contentOffsetY" value="${selected.contentOffsetY !== undefined ? selected.contentOffsetY : 0}">
                     </div>
+                    ` : ''}
 
+                    ${selected.type !== 'gift-stack-group' ? `
                     <!-- Hide Background -->
                     <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
                         <label style="font-size: 11px;">Ẩn viền và nền bảng</label>
@@ -3526,7 +4055,9 @@
                         <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="bgColor" value="${selected.bgColor || '#0a0a14'}">
                     </div>
                     ` : ''}
+                    ` : ''}
 
+                    ${selected.type !== 'gift-stack-group' ? `
                     <!-- Custom Text Color -->
                     <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
                         <label style="font-size: 11px;">Tự chọn màu chữ</label>
@@ -3541,6 +4072,7 @@
                         <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}">
                     </div>
                     ` : ''}
+                    ` : ''}
                     <div class="gmd-field" style="margin-top: 10px;">
                         <div style="display:flex; gap:10px;">
                             <button class="gmd-btn" data-action="duplicate"><i class="far fa-clone"></i> Nhân bản</button>
@@ -3549,8 +4081,7 @@
                     </div>
                 </div>
                 
-                ${testButtonHTML}
-                ${specificConfigHTML}
+                ${selected.type === 'gift-stack-group' ? stackAdvancedControlsHTML : `${testButtonHTML}${specificConfigHTML}`}
             `;
         }
 
@@ -3558,7 +4089,7 @@
             const item = this.items.find((x) => x.id === this.selectedId);
             if (!item) return;
 
-            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'iconSize'].includes(key)) {
+            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'iconSize', 'gap', 'textSize', 'textGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
                     const map = {
@@ -3601,7 +4132,7 @@
                 } else {
                     item[key] = numVal;
                 }
-            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg') {
+            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg' || key === 'showName' || key === 'loopEnabled' || key === 'showPanel' || key === 'showBorder') {
                 item[key] = Boolean(value);
                 if (key === 'lockRatio') {
                     if (item.lockRatio) {
@@ -3635,6 +4166,9 @@
             });
 
             this.renderCanvas();
+            if (key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect') {
+                this.renderInspector();
+            }
             this.pushHistory('update-goal-item');
         }
 
@@ -4197,15 +4731,28 @@
                     : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
                 const sx = exportSize.width / safeSize.width;
                 const sy = exportSize.height / safeSize.height;
-                const exportedItems = this.items.map((i) => ({
-                    ...i,
-                    x: Math.round((i.x - safeOffset.x) * sx),
-                    y: Math.round((i.y - safeOffset.y) * sy),
-                    width: Math.round(i.width * sx),
-                    height: Math.round(i.height * sy),
-                    textSize: Number(i.textSize || 13) * ((sx + sy) / 2),
-                    textGap: Number(i.textGap || 4) * sy
-                }));
+                const exportedItems = this.items.map((i) => {
+                    const itemExport = {
+                        ...i,
+                        x: Math.round((i.x - safeOffset.x) * sx),
+                        y: Math.round((i.y - safeOffset.y) * sy),
+                        width: Math.round(i.width * sx),
+                        height: Math.round(i.height * sy),
+                        textSize: Number(i.textSize || 13) * ((sx + sy) / 2),
+                        textGap: Number(i.textGap || 4) * sy
+                    };
+                    if (i.type === 'gift-stack-group') {
+                        const avgScale = (sx + sy) / 2;
+                        itemExport.renderScale = avgScale;
+                        itemExport.children = Array.isArray(i.children) ? i.children.map((child) => ({ ...child })) : [];
+                        itemExport.iconSize = Number(i.iconSize || 64) * avgScale;
+                        itemExport.textSize = Number(i.textSize || 14) * avgScale;
+                        itemExport.textGap = Number(i.textGap || 4) * avgScale;
+                        itemExport.gap = Number(i.gap || 10) * avgScale;
+                        itemExport.loopEnabled = false;
+                    }
+                    return itemExport;
+                });
 
                 const layoutData = {
                     version: 2,

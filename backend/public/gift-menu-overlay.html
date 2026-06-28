@@ -37,6 +37,7 @@
 
   </style>
   <link rel="stylesheet" href="/gift-menu-renderer.css?v=11" />
+  <script src="/shared-render-engine.js?v=1.0.3"></script>
   <style id="gmd-inline-renderer">
 #gift-menu-designer-view {
     height: calc(100vh - 150px);
@@ -1510,6 +1511,24 @@
         .forEach((item) => {
           const el = document.createElement('div');
           el.className = 'gmd-item gmd-export-item';
+
+          if (item.type === 'gift-stack-group') {
+            const overlayItem = {
+              ...item,
+              renderScale: Number(item.renderScale) || Math.max(1, Math.min(4, exportW / ((layout.safeArea && layout.safeArea.width) || exportW || 1)))
+            };
+            el.style.left = `${Math.round(offsetX + (item.x || 0) * s)}px`;
+            el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
+            el.style.width = `${Math.round((item.width || 120) * s)}px`;
+            el.style.height = `${Math.round((item.height || 180) * s)}px`;
+            el.style.zIndex = String(Number(item.zIndex) || 1);
+            el.style.overflow = 'hidden';
+            el.innerHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderGiftStackGroup === 'function'
+              ? window.MenuDesignerSharedRenderEngine.renderGiftStackGroup(overlayItem, { mode: 'overlay', scale: s, apiBase: '', escapeText: true })
+              : '';
+            root.appendChild(el);
+            return;
+          }
           
           if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
             // GOAL BOARD WIDGET RENDERING
