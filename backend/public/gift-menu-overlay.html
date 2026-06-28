@@ -1884,7 +1884,7 @@
         }
         const layoutId = params.get('layoutId') || '';
         const userId = params.get('userId') || '';
-        let url = `/api/tiktok/gift-menu-layout?t=${Date.now()}`;
+        let url = `/api/tiktok/gift-menu-overlay-layout?t=${Date.now()}`;
         if (layoutId) url += `&layoutId=${layoutId}`;
         if (userId) url += `&userId=${userId}`;
         const res = await fetch(url, { cache: 'no-store' });

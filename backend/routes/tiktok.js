@@ -280,6 +280,37 @@ router.get('/gift-menu-templates', async (_req, res) => {
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+router.get('/gift-menu-overlay-layout', async (_req, res) => {
+    try {
+        if (!fs.existsSync(giftMenuLayoutPath)) {
+            return res.json({
+                success: true,
+                layout: {
+                    name: 'Gift Menu Overlay',
+                    aspectRatio: '9:16',
+                    items: [],
+                    exportedItems: []
+                }
+            });
+        }
+
+        const rawLayout = JSON.parse(fs.readFileSync(giftMenuLayoutPath, 'utf8'));
+        const layout = {
+            name: rawLayout.name || 'Gift Menu Overlay',
+            aspectRatio: rawLayout.aspectRatio || '9:16',
+            canvasSize: rawLayout.canvasSize || undefined,
+            safeArea: rawLayout.safeArea || undefined,
+            exportSize: rawLayout.exportSize || undefined,
+            savedAt: rawLayout.savedAt || rawLayout.updatedAt || undefined,
+            items: Array.isArray(rawLayout.items) ? rawLayout.items : [],
+            exportedItems: Array.isArray(rawLayout.exportedItems) ? rawLayout.exportedItems : []
+        };
+
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.json({ success: true, layout });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
 router.get('/gift-menu-layout', authMiddleware, async (req, res) => {
     try {
         let layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
@@ -309,9 +340,23 @@ router.get('/gift-menu-layout', authMiddleware, async (req, res) => {
 router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
     try {
         const payload = req.body || {};
+        const isRenameOnly = payload.id && payload.name && !payload.aspectRatio && !payload.items && !payload.exportedItems;
+        if (isRenameOnly) {
+            const renamedLayout = await GiftMenuLayout.findOneAndUpdate(
+                { _id: payload.id, userId: req.userId, isTemplate: false },
+                { name: String(payload.name).trim() || 'Thiết kế mới' },
+                { new: true }
+            );
+            if (!renamedLayout) return res.status(404).json({ success: false, error: 'Layout not found' });
+            if (renamedLayout.isActive) {
+                fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(renamedLayout, null, 2), 'utf8');
+            }
+            return res.json({ success: true, layout: renamedLayout });
+        }
+
         let layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
-        if (!layout && payload._id) {
-            layout = await GiftMenuLayout.findById(payload._id);
+        if (!layout && (payload._id || payload.id)) {
+            layout = await GiftMenuLayout.findOne({ _id: payload._id || payload.id, userId: req.userId });
         }
         if (!layout) {
             layout = new GiftMenuLayout({
@@ -320,6 +365,7 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
                 isActive: true
             });
         }
+        layout.name = payload.name || layout.name || 'Menu mặc định';
         layout.aspectRatio = payload.aspectRatio || '9:16';
         layout.items = Array.isArray(payload.items) ? payload.items : [];
         layout.exportedItems = Array.isArray(payload.exportedItems) ? payload.exportedItems : [];
@@ -411,7 +457,7 @@ router.get('/goal-board/templates', authMiddleware, async (req, res) => {
 });
 
 router.post('/goal-board/upload-asset', authMiddleware, async (req, res) => {
-    res.json({ success: true, asset: null });
+    res.status(501).json({ success: false, error: 'Asset upload chưa được hỗ trợ ở phiên bản hiện tại.' });
 });
 
 module.exports = router;

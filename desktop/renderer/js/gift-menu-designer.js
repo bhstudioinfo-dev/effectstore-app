@@ -37,13 +37,6 @@
                 { value: 'Electric Aura', label: 'Electric Aura (Điện)' }
             ];
 
-            // GOAL BOARD STATE
-            this.goalBoard = {
-                items: [],
-                selectedId: null,
-                selectedIds: [],
-                aspectRatio: '9:16'
-            };
             this.goalAssets = [];
             this.customTemplates = [];
 
@@ -530,12 +523,24 @@
             }
         }
 
-        async buyOrUseTemplateFromSidebar(templateId) {
+        async legacyBuyOrUseTemplateFromSidebar(templateId) {
             if (window.app && typeof window.app.buyOrUseMenuTemplate === 'function') {
                 window.app.buyOrUseMenuTemplate(templateId);
             } else {
                 alert('Không tìm thấy chức năng thanh toán chính.');
             }
+        }
+
+        async buyOrUseTemplateFromSidebar(templateId) {
+            if (window.app && typeof window.app.buyOrUseMenuTemplate === 'function') {
+                window.app.buyOrUseMenuTemplate(templateId);
+                return;
+            }
+            if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('info', 'Chức năng mua mẫu đang được hoàn thiện.');
+                return;
+            }
+            alert('Chức năng mua mẫu đang được hoàn thiện.');
         }
 
         normalizeIcon(icon) {
@@ -1087,7 +1092,7 @@
                             <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-key="y" value="${selected.y}"><span>px</span></div>
                         </div>
                         <div class="gmd-field"><label>Kích thước</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="width" value="${selected.width}"><span>px</span></div></div>
-                        <input class="gmd-range" type="range" min="30" max="300" data-key="width" value="${selected.width}">
+                        <input class="gmd-range" type="range" min="10" max="300" data-key="width" value="${selected.width}">
                     </div>
 
                     <div class="gmd-section">
@@ -1398,7 +1403,7 @@
         }
 
         setZoom(nextZoom) {
-            this.zoomLevel = Math.max(0.5, Math.min(2, nextZoom));
+            this.zoomLevel = Math.max(0.5, Math.min(5, nextZoom));
             if (this.zoomLevel <= 1) {
                 this.panX = 0;
                 this.panY = 0;
@@ -1819,6 +1824,9 @@
                     })
                 });
                 const data = await res.json();
+                if (!res.ok || !(data && data.success)) {
+                    throw new Error((data && (data.message || data.error)) || 'Rename layout is not supported');
+                }
                 if (data && data.success) {
                     if (window.app && typeof window.app.showNotification === 'function') {
                         window.app.showNotification('success', 'Đã đổi tên thiết kế');
@@ -1865,8 +1873,9 @@
         clampInsideCanvas(item) {
             const w = this.canvasSize.width;
             const h = this.canvasSize.height;
-            item.width = Math.max(30, Math.min(item.width, w));
-            item.height = Math.max(30, Math.min(item.height, h));
+            const minSize = item.type && item.type !== 'gift' ? 30 : 10;
+            item.width = Math.max(minSize, Math.min(item.width, w));
+            item.height = Math.max(minSize, Math.min(item.height, h));
             item.x = Math.max(0, Math.min(item.x, w - item.width));
             item.y = Math.max(0, Math.min(item.y, h - item.height));
         }
@@ -2236,129 +2245,10 @@
             window.addEventListener('mousemove', (e) => {
                 if (!this.dragState) return;
 
-                if (this.dragState.mode === 'goal-move') {
-                    const dx = e.clientX - this.dragState.sx;
-                    const dy = e.clientY - this.dragState.sy;
-                    const s = this.dragState.scale;
-
-                    const primaryItem = this.goalBoard.items.find(x => x.id === this.dragState.id);
-                    if (primaryItem) {
-                        const logicalDx = Math.round(dx / s);
-                        const logicalDy = Math.round(dy / s);
-
-                        if (primaryItem.groupId) {
-                            // Find all layers in this group and apply displacement based on original start coordinates
-                            const groupItems = this.goalBoard.items.filter(x => x.groupId === primaryItem.groupId && !x.locked);
-
-                            // Compute overall group bounding box based on start coordinates to clamp group as a rigid unit
-                            let minX = Infinity, minY = Infinity;
-                            let maxX = -Infinity, maxY = -Infinity;
-                            groupItems.forEach(item => {
-                                const startPos = this.dragState.groupStarts[item.id];
-                                if (startPos) {
-                                    if (startPos.x < minX) minX = startPos.x;
-                                    if (startPos.y < minY) minY = startPos.y;
-                                    if (startPos.x + item.w > maxX) maxX = startPos.x + item.w;
-                                    if (startPos.y + item.h > maxY) maxY = startPos.y + item.h;
-                                }
-                            });
-
-                            let allowedDx = logicalDx;
-                            let allowedDy = logicalDy;
-                            if (minX !== Infinity) {
-                                allowedDx = Math.max(-minX, Math.min(allowedDx, 1080 - maxX));
-                            }
-                            if (minY !== Infinity) {
-                                allowedDy = Math.max(-minY, Math.min(allowedDy, 1920 - maxY));
-                            }
-
-                            groupItems.forEach(item => {
-                                const startPos = this.dragState.groupStarts[item.id];
-                                if (startPos) {
-                                    item.x = startPos.x + allowedDx;
-                                    item.y = startPos.y + allowedDy;
-
-                                    // Update DOM directly to avoid restarting videos/WebMs
-                                    const el = this.mount.querySelector(`[data-item-id="${item.id}"]`);
-                                    if (el) {
-                                        el.style.left = `${Math.round(item.x * s)}px`;
-                                        el.style.top = `${Math.round(item.y * s)}px`;
-                                    }
-                                }
-                            });
-                        } else {
-                            primaryItem.x = Math.round(this.dragState.x + logicalDx);
-                            primaryItem.y = Math.round(this.dragState.y + logicalDy);
-
-                            primaryItem.x = Math.max(0, Math.min(primaryItem.x, 1080 - primaryItem.w));
-                            primaryItem.y = Math.max(0, Math.min(primaryItem.y, 1920 - primaryItem.h));
-
-                            // Update DOM directly to avoid restarting videos/WebMs
-                            const el = this.mount.querySelector(`[data-item-id="${primaryItem.id}"]`);
-                            if (el) {
-                                el.style.left = `${Math.round(primaryItem.x * s)}px`;
-                                el.style.top = `${Math.round(primaryItem.y * s)}px`;
-                            }
-                        }
-
-                        this.renderInspector();
-                    }
-                    return;
-                }
-
-                if (this.dragState.mode === 'goal-resize') {
-                    const dx = e.clientX - this.dragState.sx;
-                    const dy = e.clientY - this.dragState.sy;
-                    const s = this.dragState.scale;
-
-                    const item = this.goalBoard.items.find(x => x.id === this.dragState.id);
-                    if (item) {
-                        const logicalDx = dx / s;
-                        const logicalDy = dy / s;
-
-                        const groupItems = item.groupId
-                            ? this.goalBoard.items.filter(x => x.groupId === item.groupId && !x.locked)
-                            : [];
-
-                        if (item.groupId && groupItems.length > 1 && this.dragState.groupStarts[item.id]) {
-                            const primaryStart = this.dragState.groupStarts[item.id];
-                            // Scale factor of the primary resized item
-                            const scaleW = Math.max(0.1, (primaryStart.w + logicalDx) / primaryStart.w);
-
-                            const minX = this.dragState.minX;
-                            const minY = this.dragState.minY;
-
-                            groupItems.forEach(gItem => {
-                                const start = this.dragState.groupStarts[gItem.id];
-                                if (start) {
-                                    gItem.w = Math.max(20, Math.round(start.w * scaleW));
-                                    gItem.h = Math.max(10, Math.round(start.h * scaleW));
-                                    gItem.x = Math.round(minX + (start.x - minX) * scaleW);
-                                    gItem.y = Math.round(minY + (start.y - minY) * scaleW);
-
-                                    // Scale text font size if it is a text layer
-                                    if (gItem.type === 'text') {
-                                        gItem.fontSize = Math.max(10, Math.round(start.fontSize * scaleW));
-                                    }
-                                }
-                            });
-                        } else {
-                            if (item.lockRatio) {
-                                const ratio = this.dragState.h / this.dragState.w;
-                                item.w = Math.round(this.dragState.w + logicalDx);
-                                item.w = Math.max(100, Math.min(item.w, 1080));
-                                item.h = Math.round(item.w * ratio);
-                            } else {
-                                item.w = Math.round(this.dragState.w + logicalDx);
-                                item.w = Math.max(100, Math.min(item.w, 1080));
-                                item.h = Math.round(this.dragState.h + logicalDy);
-                                item.h = Math.max(30, Math.min(item.h, 1920));
-                            }
-                        }
-
-                        this.renderCanvas();
-                        this.renderInspector();
-                    }
+                if (this.dragState.mode === 'goal-move' || this.dragState.mode === 'goal-resize') {
+                    // Legacy goalBoard drag modes are intentionally disabled.
+                    // The active Menu Designer canvas uses this.items with move/resize modes below.
+                    this.dragState = null;
                     return;
                 }
 
@@ -2446,12 +2336,6 @@
             });
 
             window.addEventListener('mouseup', () => {
-                if (this.dragState && this.dragState.mode && this.dragState.mode.startsWith('goal-')) {
-                    this.renderCanvas(); // Final render to sync DOM structure
-                    this.pushHistory('goal-drag-finish');
-                    this.dragState = null;
-                    return;
-                }
                 if (this.dragState && this.dragState.mode !== 'pan') this.pushHistory('drag-finish');
                 this.updateGuides(null, null);
                 this.dragState = null;
@@ -2912,6 +2796,80 @@
             this.renderCanvas();
             this.renderInspector();
             this.pushHistory('add-text');
+        }
+
+        async showSaveTemplateModal() {
+            if (!this.items.length) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('warning', 'Khong co layer nao de luu thanh mau.');
+                }
+                return;
+            }
+
+            const name = await this.showPromptModal('Nhap ten mau thiet ke:', this.currentLayoutName || 'Gift Menu Template');
+            if (name === null) return;
+
+            const safeName = String(name || '').trim() || 'Gift Menu Template';
+            const templateId = `custom_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+            const layers = this.items.map((item, idx) => {
+                const logical = this.stageToLogical(item);
+                const layer = {
+                    ...item,
+                    id: `${templateId}_layer_${idx}`,
+                    x: logical.x,
+                    y: logical.y,
+                    w: logical.w,
+                    h: logical.h,
+                    width: logical.w,
+                    height: logical.h,
+                    zIndex: idx + 1
+                };
+                delete layer.groupId;
+                return layer;
+            });
+
+            this.customTemplates = Array.isArray(this.customTemplates) ? this.customTemplates : [];
+            this.customTemplates.unshift({
+                id: templateId,
+                name: safeName,
+                tag: 'Custom',
+                category: 'custom',
+                tags: ['custom'],
+                isPremium: false,
+                layers
+            });
+
+            if (this.leftPanelTab === 'widgets') {
+                this.renderWidgetsList();
+            }
+
+            if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('info', 'Mẫu đã lưu tạm trong phiên hiện tại. Chức năng lưu vĩnh viễn sẽ được hoàn thiện sau.');
+            }
+        }
+
+        async clearGoalBoard() {
+            if (!this.items.length) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('info', 'Canvas hien dang trong.');
+                }
+                return;
+            }
+
+            const confirmed = await this.showConfirmModal('Xoa tat ca layer tren canvas hien tai? Thao tac nay chi ap dung cho ban thiet ke dang mo va chi duoc luu vao database neu ban bam Luu.');
+            if (!confirmed) return;
+
+            this.pushHistory('before-clear-board');
+            this.items = [];
+            this.clearSelection();
+            this.renderCanvas();
+            this.renderInspector();
+            this.renderMyLibrary();
+            this.pushHistory('clear-board');
+
+            if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('success', 'Da xoa canvas hien tai. Bam Luu neu muon ghi thay doi nay.');
+            }
         }
 
         async loadGoalAssets() {
