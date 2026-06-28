@@ -1056,7 +1056,41 @@ class EffectStoreApp {
             this.showNotification('error', '❌ Lỗi: ' + error.message);
         }
     }
-    renderEffects(filter = 'all', search = '') {
+    handleThumbError(imgEl) {
+        imgEl.style.display = 'none';
+        const video = imgEl.nextElementSibling;
+        if (video) {
+            video.style.opacity = '1';
+            video.play().catch(e => {});
+        }
+    }
+    handlePreviewError(videoEl, fallbackIcon) {
+        videoEl.style.display = 'none';
+        const parent = videoEl.parentElement;
+        if (parent) {
+            parent.style.display = 'flex';
+            parent.style.alignItems = 'center';
+            parent.style.justifyContent = 'center';
+            parent.style.height = '100%';
+            parent.style.fontSize = '64px';
+            parent.style.cursor = 'pointer';
+            parent.innerHTML = fallbackIcon;
+        }
+    }
+    renderEffects(filter = null, search = '') {
+        if (!filter) {
+            if (this.currentView === 'library') {
+                filter = 'all';
+            } else {
+                const active = document.querySelector('.filter-btn-new.active');
+                if (active) {
+                    const match = active.getAttribute('onclick')?.match(/'([^']+)'/);
+                    filter = match ? match[1] : 'free';
+                } else {
+                    filter = 'free';
+                }
+            }
+        }
         const storeGrid = document.getElementById('effects-grid');
         const libraryGrid = document.getElementById('library-grid');
         const flashSaleGrid = document.getElementById('flash-sale-effects');
@@ -1140,7 +1174,11 @@ class EffectStoreApp {
     _renderGrid(grid, effects, filter, search, viewName) {
         let filtered = effects || [];
         if (filter && filter !== 'all') {
-            filtered = filtered.filter(e => e.category === filter);
+            if (filter === 'free') {
+                filtered = filtered.filter(e => Number(e.price) === 0);
+            } else {
+                filtered = filtered.filter(e => e.category === filter);
+            }
         }
         if (search) {
             filtered = filtered.filter(e => e.name.toLowerCase().includes(search.toLowerCase()));
@@ -1179,27 +1217,25 @@ class EffectStoreApp {
             let previewHTML = '';
             const thumbUrl = effect.thumbUrl ? `${this.API_URL}${effect.thumbUrl}` : '';
             const videoUrl = effect.previewUrl ? `${this.API_URL}${effect.previewUrl}` : '';
+            const fallbackIcon = effect.icon || '🎬';
 
             if (thumbUrl && videoUrl) {
-                // Có cả Thumb và Video
                 previewHTML = `
                             <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')"
                                 onmouseenter="const v=this.querySelector('video'); if(v) { v.play().catch(e=>{}); }" 
                                 onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
-                                <img src="${thumbUrl}" class="effect-thumb-img">
-                                <video src="${videoUrl}" class="effect-video" muted loop playsinline></video>
+                                <img src="${thumbUrl}" class="effect-thumb-img" onerror="app.handleThumbError(this)">
+                                <video src="${videoUrl}" class="effect-video" muted loop playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
                             </div>
                         `;
             } else if (videoUrl) {
-                // Chỉ có Video (Hiện ngay vì ko có Thumb)
                 previewHTML = `
                             <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')">
-                                <video src="${videoUrl}" class="effect-video" style="opacity:1;" muted loop autoplay playsinline></video>
+                                <video src="${videoUrl}" class="effect-video" style="opacity:1;" muted loop autoplay playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
                             </div>
                         `;
             } else {
-                // Chỉ có Icon
-                previewHTML = `<div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="display:flex;align-items:center;justify-content:center;height:100%;font-size:64px;cursor:pointer;">${effect.icon || '🎬'}</div>`;
+                previewHTML = `<div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="display:flex;align-items:center;justify-content:center;height:100%;font-size:64px;cursor:pointer;">${fallbackIcon}</div>`;
             }
 
             // Xác định trạng thái và nội dung nút
@@ -1990,12 +2026,13 @@ class EffectStoreApp {
             const data = await res.json();
             if (!data.success) throw new Error(data.error);
 
-            const planBadge = (sub, isAdmin) => {
-                if (isAdmin) return '<span style="padding:2px 10px;border-radius:12px;background:rgba(255,107,53,0.15);color:#ff6b35;border:1px solid rgba(255,107,53,0.3);font-size:11px;font-weight:700;">👑 Admin</span>';
+                        const planBadge = (sub, isAdmin) => {
+                if (isAdmin || sub === 'admin') return '<span style="padding:2px 10px;border-radius:12px;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:11px;font-weight:700;">👑 Admin</span>';
                 const map = {
-                    business: '<span style="padding:2px 10px;border-radius:12px;background:rgba(167,139,250,0.15);color:#a78bfa;border:1px solid rgba(167,139,250,0.3);font-size:11px;font-weight:700;">⭐ Pro</span>',
-                    pro: '<span style="padding:2px 10px;border-radius:12px;background:rgba(212,175,55,0.15);color:#d4af37;border:1px solid rgba(212,175,55,0.3);font-size:11px;font-weight:700;">⚡ Basic</span>',
-                    free: '<span style="padding:2px 10px;border-radius:12px;background:rgba(107,114,128,0.12);color:#6b7280;border:1px solid rgba(107,114,128,0.2);font-size:11px;font-weight:700;">🆓 Free</span>'
+                    studio: '<span style="padding:2px 10px;border-radius:12px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-size:11px;font-weight:700;">💎 Studio</span>',
+                    business: '<span style="padding:2px 10px;border-radius:12px;background:rgba(236,72,153,0.15);color:#ec4899;border:1px solid rgba(236,72,153,0.3);font-size:11px;font-weight:700;">⭐ Pro</span>',
+                    pro: '<span style="padding:2px 10px;border-radius:12px;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);font-size:11px;font-weight:700;">⚡ Basic</span>',
+                    free: '<span style="padding:2px 10px;border-radius:12px;background:rgba(107,114,128,0.12);color:#9ca3af;border:1px solid rgba(107,114,128,0.2);font-size:11px;font-weight:700;">🆓 Miễn phí</span>'
                 };
                 return map[sub] || map.free;
             };
@@ -2034,7 +2071,7 @@ class EffectStoreApp {
                                         <tr style="border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background=''">
                                             <td style="padding:12px 16px;">
                                                 <div style="display:flex;align-items:center;gap:10px;">
-                                                    <div style="width:36px;height:36px;border-radius:50%;background:${u.isAdmin ? 'linear-gradient(135deg,#ff6b35,#ff9a3c)' : (u.subscription === 'business' ? 'linear-gradient(135deg,#a78bfa,#7c3aed)' : (u.subscription === 'pro' ? 'linear-gradient(135deg,#d4af37,#f4e4ba)' : 'linear-gradient(135deg,#374151,#4b5563)'))};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:${u.subscription === 'pro' && !u.isAdmin ? '#000' : '#fff'};flex-shrink:0;">
+                                                    <div style="width:36px;height:36px;border-radius:50%;background:${u.isAdmin || u.subscription === 'admin' ? 'linear-gradient(135deg,#ef4444,#ff6b6b)' : (u.subscription === 'studio' ? 'linear-gradient(135deg,#10b981,#34d399)' : (u.subscription === 'business' ? 'linear-gradient(135deg,#ec4899,#f472b6)' : (u.subscription === 'pro' ? 'linear-gradient(135deg,#f59e0b,#fbbf24)' : 'linear-gradient(135deg,#374151,#4b5563)')))};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:${u.subscription === 'pro' && !u.isAdmin ? '#000' : '#fff'};flex-shrink:0;">
                                                         ${(u.name || u.email || '?')[0].toUpperCase()}
                                                     </div>
                                                     <div>
@@ -2051,13 +2088,15 @@ class EffectStoreApp {
                                                 <div style="font-size:10px;color:#4b5563;">Ngày đk: ${new Date(u.createdAt).toLocaleDateString('vi-VN')}</div>
                                             </td>
                                             <td style="padding:12px 16px;text-align:center;">
-                                                ${u.isAdmin ? '<span style="color:#6b7280;font-size:12px;">—</span>' : `
-                                                <div style="display:flex;gap:6px;justify-content:center;">
-                                                    <button onclick="app.upgradeSubscription('${u._id}','pro',30)" style="padding:5px 10px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.3);border-radius:6px;color:#d4af37;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">⭐ 30 ngày</button>
-                                                    <button onclick="app.upgradeSubscription('${u._id}','business',30)" style="padding:5px 10px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);border-radius:6px;color:#a78bfa;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">💼 30 ngày</button>
-                                                    <button onclick="app.upgradeSubscription('${u._id}','free',0)" style="padding:5px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;">Hạ Free</button>
-                                                </div>`}
-                                            </td>
+                                                 ${u.isAdmin ? '<span style="color:#6b7280;font-size:12px;">—</span>' : `
+                                                 <div style="display:flex;gap:6px;justify-content:center;align-items:center;">
+                                                     <button onclick="app.upgradeSubscription('${u._id}','pro',30)" style="padding:5px 10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#f59e0b;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Basic 30 ngày</button>
+                                                     <button onclick="app.upgradeSubscription('${u._id}','business',30)" style="padding:5px 10px;background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.3);border-radius:6px;color:#ec4899;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Pro 30 ngày</button>
+                                                     <button onclick="app.upgradeSubscription('${u._id}','studio',3650)" style="padding:5px 10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:6px;color:#10b981;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Studio</button>
+                                                     ${u.subscription && u.subscription !== 'free' ? `<button onclick="app.upgradeSubscription('${u._id}','${u.subscription}',30,true)" style="padding:5px 10px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:6px;color:#3b82f6;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Gia hạn 30 ngày</button>` : ''}
+                                                     <button onclick="app.upgradeSubscription('${u._id}','free',0)" style="padding:5px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;">Hạ Free</button>
+                                                 </div>`}
+                                             </td>
                                             <td style="padding:12px 16px;text-align:center;">
                                                 ${u.isAdmin ? '' : `<button onclick="app.deleteUser('${u._id}','${u.email}')" style="background:none;border:none;color:#4b5563;cursor:pointer;transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#4b5563'"><i class="fas fa-trash-alt"></i></button>`}
                                             </td>
@@ -2075,27 +2114,27 @@ class EffectStoreApp {
         }
     }
 
-    async upgradeSubscription(userId, plan, durationDays) {
-        const planLabel = { pro: '⭐ Pro', business: '💼 Business', free: '🆓 Free' }[plan];
+        async upgradeSubscription(userId, plan, durationDays, extend = false) {
+        const planLabel = { pro: 'Basic', business: 'Pro', studio: 'Studio', free: 'Miễn phí' }[plan] || plan;
         const msg = plan === 'free'
             ? `Hạ tài khoản về Free?`
-            : `Nâng cấp lên ${planLabel} trong ${durationDays} ngày?`;
+            : (extend ? `Gia hạn thêm gói ${planLabel} thêm ${durationDays} ngày?` : `Đặt gói ${planLabel} trong ${durationDays} ngày?`);
         if (!confirm(msg)) return;
         try {
             const res = await fetch(`${this.API_URL}/api/admin/users/${userId}/subscription`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` },
-                body: JSON.stringify({ plan, durationDays })
+                body: JSON.stringify({ plan, durationDays, extend })
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', `✅ Đã cập nhật gói ${planLabel}!`);
+                this.showNotification('success', extend ? `✅ Đã gia hạn thành công!` : `✅ Đã đặt gói ${planLabel}!`);
                 this.loadAdminUsers();
             } else {
-                this.showNotification('error', '❌ ' + data.error);
+                this.showNotification('error', '❌ Lỗi: ' + data.error);
             }
-        } catch (err) {
-            this.showNotification('error', '❌ Lỗi kết nối: ' + err.message);
+        } catch (e) {
+            this.showNotification('error', '❌ Lỗi kết nối: ' + e.message);
         }
     }
     async deleteUser(userId, email) {

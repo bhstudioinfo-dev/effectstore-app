@@ -60,7 +60,7 @@ router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
 
 router.put('/users/:userId/subscription', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const { plan, durationDays } = req.body;
+        const { plan, durationDays, extend } = req.body;
         const user = await User.findById(req.params.userId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 

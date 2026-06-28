@@ -18,6 +18,7 @@
             this.zoomLevel = 1;
             this.panX = 0;
             this.panY = 0;
+            this.advancedExpanded = false;
             this.isSpacePressed = false;
             this.inspectorTab = 'gift';
             this.history = [];
@@ -267,6 +268,7 @@
                             <button class="gmd-btn icon" data-action="undo" disabled><i class="fas fa-undo"></i></button>
                             <button class="gmd-btn icon" data-action="redo" disabled><i class="fas fa-redo"></i></button>
                             <button class="gmd-btn" data-action="help"><i class="far fa-question-circle"></i> Hướng dẫn</button>
+                            <button class="gmd-btn" id="gmd-add-text-btn"><i class="fas fa-font"></i> Thêm chữ</button>
                         </div>
                         <div class="gmd-group">
                             <button class="gmd-btn" data-action="publish-store" style="display:none; background:#10b981; color:#fff; border:none; font-weight:700;"><i class="fas fa-store"></i> Đưa lên Cửa hàng</button>
@@ -1071,59 +1073,83 @@
             inspector.innerHTML = `
                 ${selectedHeaderHTML}
 
-                <div class="gmd-section">
-                    <h4><i class="fas fa-ruler-combined"></i> KÍCH THƯỚC & VỊ TRÍ</h4>
-                    <div class="gmd-field"><label>Vị trí</label></div>
-                    <div class="gmd-row">
-                        <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-key="x" value="${selected.x}"><span>px</span></div>
-                        <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-key="y" value="${selected.y}"><span>px</span></div>
+                <!-- ✨ TÙY CHỈNH CƠ BẢN -->
+                <div class="gmd-section-group basic-features">
+                    <div style="border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 12px; margin-top: 4px;">
+                        <span style="font-weight: 800; font-size: 11px; color: var(--accent); letter-spacing: 0.5px; text-transform: uppercase;">✨ Tùy chỉnh cơ bản</span>
                     </div>
-                    <div class="gmd-field"><label>Kích thước</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="width" value="${selected.width}"><span>px</span></div></div>
-                    <input class="gmd-range" type="range" min="30" max="300" data-key="width" value="${selected.width}">
+
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-ruler-combined"></i> KÍCH THƯỚC & VỊ TRÍ</h4>
+                        <div class="gmd-field"><label>Vị trí</label></div>
+                        <div class="gmd-row">
+                            <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-key="x" value="${selected.x}"><span>px</span></div>
+                            <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-key="y" value="${selected.y}"><span>px</span></div>
+                        </div>
+                        <div class="gmd-field"><label>Kích thước</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="width" value="${selected.width}"><span>px</span></div></div>
+                        <input class="gmd-range" type="range" min="30" max="300" data-key="width" value="${selected.width}">
+                    </div>
+
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-signature"></i> CÀI ĐẶT CHỮ</h4>
+                        <div class="gmd-field gmd-toggle-row">
+                            <label>Hiển thị tên</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-key="showName" ${selected.showName ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        <div class="gmd-field"><label>Vị trí chữ</label>${this.renderSelect('textPosition', selected.textPosition || 'bottom', [
+                    { value: 'bottom', label: 'Dưới' },
+                    { value: 'top', label: 'Trên' },
+                    { value: 'left', label: 'Trái' },
+                    { value: 'right', label: 'Phải' }
+                ])}</div>
+                        <div class="gmd-field"><label>Cỡ chữ</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textSize" value="${selected.textSize}"><span>px</span></div></div>
+                        <input class="gmd-range" type="range" min="10" max="48" data-key="textSize" value="${selected.textSize}">
+                        <div class="gmd-field"><label>Khoảng cách (Gap)</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textGap" value="${selected.textGap}"><span>px</span></div></div>
+                        <input class="gmd-range" type="range" min="0" max="30" data-key="textGap" value="${selected.textGap}">
+                        <div class="gmd-field"><label>Màu chữ</label><input class="gmd-color" type="color" data-key="textColor" value="${selected.textColor}"></div>
+                    </div>
                 </div>
 
-                <div class="gmd-section">
-                    <h4><i class="fas fa-signature"></i> CÀI ĐẶT CHỮ</h4>
-                    <div class="gmd-field gmd-toggle-row">
-                        <label>Hiển thị tên</label>
-                        <label class="gmd-switch">
-                            <input type="checkbox" data-key="showName" ${selected.showName ? 'checked' : ''}>
-                            <span></span>
-                        </label>
+                <!-- 👑 TÍNH NĂNG NÂNG CAO -->
+                <div class="gmd-section-group advanced-features" style="background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.04); border-radius: 12px; padding: 12px; margin-top: 16px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.15);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;" onclick="window.giftMenuDesigner.toggleAdvancedFeatures()">
+                        <span style="font-weight: 800; font-size: 11px; color: #a78bfa; letter-spacing: 0.5px; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-crown" style="color: #fbbf24;"></i> Tính năng nâng cao
+                        </span>
+                        <i class="fas ${this.advancedExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
                     </div>
-                    <div class="gmd-field"><label>Vị trí chữ</label>${this.renderSelect('textPosition', selected.textPosition || 'bottom', [
-                { value: 'bottom', label: 'Dưới' },
-                { value: 'top', label: 'Trên' },
-                { value: 'left', label: 'Trái' },
-                { value: 'right', label: 'Phải' }
-            ])}</div>
-                    <div class="gmd-field"><label>Cỡ chữ</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textSize" value="${selected.textSize}"><span>px</span></div></div>
-                    <input class="gmd-range" type="range" min="10" max="48" data-key="textSize" value="${selected.textSize}">
-                    <div class="gmd-field"><label>Khoảng cách (Gap)</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textGap" value="${selected.textGap}"><span>px</span></div></div>
-                    <input class="gmd-range" type="range" min="0" max="30" data-key="textGap" value="${selected.textGap}">
-                    <div class="gmd-field"><label>Màu chữ</label><input class="gmd-color" type="color" data-key="textColor" value="${selected.textColor}"></div>
-                </div>
 
-                <div class="gmd-section">
-                    <h4><i class="fas fa-sparkles"></i> HIỆU ỨNG</h4>
-                    <div class="gmd-field"><label>Hiệu ứng loop</label>${this.renderSelect('animationType', selected.animationType, ['None', 'Pulse', 'Bounce', 'Float', 'Zoom', 'Shake'])}</div>
-                    <div class="gmd-field"><label>Tốc độ loop</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0.2" max="8" step="0.1" data-key="animationSpeed" value="${selected.animationSpeed || 1}"><span>s</span></div></div>
-                    <input class="gmd-range" type="range" min="0.2" max="8" step="0.1" data-key="animationSpeed" value="${selected.animationSpeed || 1}">
-                    <div class="gmd-field"><label>Hiệu ứng nền (Aura)</label>${this.renderSelect('auraType', selected.auraType, this.auraOptions)}</div>
-                    <div class="gmd-field"><label>Tốc độ Aura</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0.2" max="8" step="0.1" data-key="auraSpeed" value="${selected.auraSpeed || 1}"><span>s</span></div></div>
-                    <input class="gmd-range" type="range" min="0.2" max="8" step="0.1" data-key="auraSpeed" value="${selected.auraSpeed || 1}">
-                    <div class="gmd-field"><label>Kích thước Aura</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0.6" max="1.8" step="0.05" data-key="auraScale" value="${selected.auraScale || 1}"><span>x</span></div></div>
-                    <input class="gmd-range" type="range" min="0.6" max="1.8" step="0.05" data-key="auraScale" value="${selected.auraScale || 1}">
-                    <div class="gmd-field"><label>Màu Aura</label><div class="gmd-inline-color"><input class="gmd-input gmd-input-compact" data-key="auraColor" value="${selected.auraColor}"><input class="gmd-color" type="color" data-key="auraColor" value="${selected.auraColor}"></div></div>
-                    <div class="gmd-field"><label>Hình dáng Aura</label>${this.renderSelect('auraShape', selected.auraShape, [
-                { value: 'Circle', label: 'Tròn' },
-                { value: 'Square', label: 'Vuông' },
-                { value: 'Hexagon', label: 'Lục giác' },
-                { value: 'Star', label: 'Ngôi sao' },
-                { value: 'Oval', label: 'Oval' }
-            ])}</div>
+                    <div id="gmd-advanced-content" style="display: ${this.advancedExpanded ? 'block' : 'none'}; margin-top: 12px;">
+                        <div class="gmd-section" style="margin-bottom: 0; padding-bottom: 0; border: none; background: none;">
+                            <h4><i class="fas fa-sparkles"></i> HIỆU ỨNG</h4>
+                            <div class="gmd-field"><label>Hiệu ứng loop</label>${this.renderSelect('animationType', selected.animationType, ['None', 'Pulse', 'Bounce', 'Float', 'Zoom', 'Shake'])}</div>
+                            <div class="gmd-field"><label>Tốc độ loop</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0.2" max="8" step="0.1" data-key="animationSpeed" value="${selected.animationSpeed || 1}"><span>s</span></div></div>
+                            <input class="gmd-range" type="range" min="0.2" max="8" step="0.1" data-key="animationSpeed" value="${selected.animationSpeed || 1}">
+                            <div class="gmd-field"><label>Hiệu ứng nền (Aura)</label>${this.renderSelect('auraType', selected.auraType, this.auraOptions)}</div>
+                            <div class="gmd-field"><label>Tốc độ Aura</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0.2" max="8" step="0.1" data-key="auraSpeed" value="${selected.auraSpeed || 1}"><span>s</span></div></div>
+                            <input class="gmd-range" type="range" min="0.2" max="8" step="0.1" data-key="auraSpeed" value="${selected.auraSpeed || 1}">
+                            <div class="gmd-field"><label>Kích thước Aura</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0.6" max="1.8" step="0.05" data-key="auraScale" value="${selected.auraScale || 1}"><span>x</span></div></div>
+                            <input class="gmd-range" type="range" min="0.6" max="1.8" step="0.05" data-key="auraScale" value="${selected.auraScale || 1}">
+                            <div class="gmd-field"><label>Màu Aura</label><div class="gmd-inline-color"><input class="gmd-input gmd-input-compact" data-key="auraColor" value="${selected.auraColor}"><input class="gmd-color" type="color" data-key="auraColor" value="${selected.auraColor}"></div></div>
+                            <div class="gmd-field"><label>Hình dáng Aura</label>${this.renderSelect('auraShape', selected.auraShape, [
+                        { value: 'Circle', label: 'Tròn' },
+                        { value: 'Square', label: 'Vuông' },
+                        { value: 'Hexagon', label: 'Lục giác' },
+                        { value: 'Star', label: 'Ngôi sao' },
+                        { value: 'Oval', label: 'Oval' }
+                    ])}</div>
+                        </div>
+                    </div>
                 </div>
             `;
+        }
+
+        toggleAdvancedFeatures() {
+            this.advancedExpanded = !this.advancedExpanded;
+            this.renderInspector();
         }
 
         updateSelectedItem(key, value, refreshInspector = true) {
@@ -2473,6 +2499,26 @@
                         canvas.classList.remove('is-pan-mode');
                         canvas.classList.remove('is-panning');
                     }
+                }
+            });
+
+            // Keyboard hotkeys for canvas operations
+            window.addEventListener('keydown', (e) => {
+                const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+                if (activeTag === 'input' || activeTag === 'textarea') return;
+
+                if (e.code === 'Delete' || e.code === 'Backspace') {
+                    e.preventDefault();
+                    this.deleteSelected();
+                } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyD') {
+                    e.preventDefault();
+                    this.duplicateSelected();
+                } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
+                    e.preventDefault();
+                    this.undo();
+                } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') {
+                    e.preventDefault();
+                    this.redo();
                 }
             });
         }
@@ -4035,6 +4081,72 @@
                             footerText: 'Cảm ơn mọi người đã ủng hộ! 💖'
                         }
                     ]
+                },
+                {
+                    id: 'tmpl_boss_challenge_gaming',
+                    name: 'Thách đấu Boss 🐉',
+                    tag: 'Boss HP',
+                    category: 'boss-challenge',
+                    tags: ['boss', 'challenge', 'gaming'],
+                    isPremium: false,
+                    layers: [
+                        {
+                            id: 'boss_challenge_widget',
+                            name: '🐉 BOSS HP CHALLENGE',
+                            type: 'boss-bar',
+                            x: 90,
+                            y: 800,
+                            w: 900,
+                            h: 160,
+                            zIndex: 1,
+                            visible: true,
+                            locked: false,
+                            giftId: 'rose',
+                            giftName: 'Rose',
+                            bossName: 'Hỏa Long Vương 🐉',
+                            bossSub: 'Rose tấn công Boss!',
+                            targetCount: 1000,
+                            currentCount: 1000,
+                            barColor: '#ef4444',
+                            barHeight: 24,
+                            barStyle: 'candy-stripe',
+                            fontSize: 38,
+                            subtitleFontSize: 26
+                        }
+                    ]
+                },
+                {
+                    id: 'tmpl_lucky_mystery_box',
+                    name: 'Lucky Mystery Box 🎁',
+                    tag: 'Mystery Box',
+                    category: 'mystery-box',
+                    tags: ['lucky', 'mystery', 'box'],
+                    isPremium: false,
+                    layers: [
+                        {
+                            id: 'lucky_mystery_box_widget',
+                            name: '🎁 MỞ KHÓA HỘP QUÀ KỲ BÍ',
+                            type: 'mystery-chests',
+                            x: 90,
+                            y: 800,
+                            w: 900,
+                            h: 240,
+                            zIndex: 1,
+                            visible: true,
+                            locked: false,
+                            giftId: 'rose',
+                            giftName: 'Rose',
+                            targetCount: 500,
+                            currentCount: 350,
+                            subtitleText: 'Tích lũy Rose mở khóa hộp quà',
+                            barColor: '#a855f7',
+                            glowColor: '#fb7185',
+                            barHeight: 24,
+                            barStyle: 'glow-pulse',
+                            fontSize: 32,
+                            subtitleFontSize: 20
+                        }
+                    ]
                 }
             ];
         }
@@ -4196,9 +4308,15 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    const initDesigner = () => {
         const designer = new GiftMenuDesigner();
         designer.init();
         window.giftMenuDesigner = designer;
-    });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDesigner);
+    } else {
+        initDesigner();
+    }
 })();

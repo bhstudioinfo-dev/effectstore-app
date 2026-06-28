@@ -94,7 +94,7 @@ router.post('/login', async (req, res) => {
         // DEVICE LIMIT
         if (!isAdmin && machineId) {
             const plan = user.subscription || 'free';
-            const deviceLimits = { 'free': 1, 'pro': 2, 'business': 5 };
+            const deviceLimits = { 'free': 1, 'pro': 2, 'business': 5, 'studio': 999 };
             const maxDevices = deviceLimits[plan] || 1;
 
             if (!user.activeDevices) user.activeDevices = [];
