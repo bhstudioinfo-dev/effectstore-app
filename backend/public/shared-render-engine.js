@@ -350,6 +350,10 @@
     function renderGiftStackGroup(item, options) {
         const ctx = createContext(options);
         const children = Array.isArray(item.children) ? item.children : [];
+        const isLoop = item.loopEnabled === true;
+        const loopDir = item.loopDirection || 'vertical';
+        const loopSpeed = item.loopSpeed !== undefined ? item.loopSpeed : 15;
+        const childrenToRender = isLoop && children.length > 0 ? Array(6).fill(children).flat() : children;
         const direction = item.layoutDirection === 'horizontal' ? 'horizontal' : 'vertical';
         const textPosition = item.textPosition || 'bottom';
         const iconSize = length(ctx, item.iconSize, 64);
@@ -377,7 +381,8 @@
         const effectPx = (value) => Math.round(Number(value || 0) * effectScale);
         const renderedW = Math.max(1, Number(item.width || item.w || 100) * ctx.scale);
         const renderedH = Math.max(1, Number(item.height || item.h || 100) * ctx.scale);
-        const radiusPx = effectPx(item.borderRadius || 8);
+        const radiusPx = Math.round(Number(item.borderRadius || 8) * ctx.scale);
+        const paddingPx = Math.round(Number(item.padding !== undefined ? item.padding : 8) * ctx.scale);
         const borderId = `gmd_stack_border_${String(item.id || 'group').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
         const borderStroke = item.borderFillType === 'gradient' ? `url(#${borderId})` : (item.borderColor || '#22d3ee');
         const borderWidth = Math.max(1, effectPx(2));
@@ -392,11 +397,12 @@
         const borderInsetY = Math.max(0.2, (borderWidth / 2 / renderedH) * 100);
         const borderRectW = 100 - borderInsetX * 2;
         const borderRectH = 100 - borderInsetY * 2;
-        const borderPerimeter = Math.max(1, 2 * (borderRectW + borderRectH));
-        const runningDash = 34;
-        const runningGap = Math.max(1, borderPerimeter - runningDash);
+        const perimeter = 2 * (renderedW + renderedH);
+        const runningDash = Math.round(perimeter * 0.35);
+        const runningGap = perimeter - runningDash;
         const borderRx = Math.max(0, Math.min(50, (radiusPx / renderedW) * 100));
         const borderRy = Math.max(0, Math.min(50, (radiusPx / renderedH) * 100));
+        const pathD = `M ${borderInsetX + borderRx} ${borderInsetY} h ${borderRectW - 2 * borderRx} a ${borderRx} ${borderRy} 0 0 1 ${borderRx} ${borderRy} v ${borderRectH - 2 * borderRy} a ${borderRx} ${borderRy} 0 0 1 -${borderRx} ${borderRy} h -${borderRectW - 2 * borderRx} a ${borderRx} ${borderRy} 0 0 1 -${borderRx} -${borderRy} v -${borderRectH - 2 * borderRy} a ${borderRx} ${borderRy} 0 0 1 ${borderRx} -${borderRy} Z`;
         const borderDash = borderEffect === 'running-light'
             ? `${runningDash} ${runningGap}`
             : (borderEffect === 'dashed-march' ? '4 4' : '');
@@ -423,8 +429,45 @@
                 @keyframes gmdStackLightSweep { 0%{transform:translateX(0) skewX(-18deg)} 100%{transform:translateX(360%) skewX(-18deg)} }
                 @keyframes gmdStackBreathing { 0%,100%{opacity:.2} 50%{opacity:.75} }
                 @keyframes gmdStackEnergyFlow { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+                @keyframes gmdTextLightSweep { 0% { background-position: 150% 0; } 100% { background-position: -50% 0; } }
+                @keyframes gmdTextHoloShift {
+                    0% { background-position: 0% 50%; filter: hue-rotate(0deg); }
+                    50% { background-position: 100% 50%; filter: hue-rotate(180deg); }
+                    100% { background-position: 0% 50%; filter: hue-rotate(360deg); }
+                }
+                @keyframes gmdGlassBreath {
+                    0%, 100% { background-color: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.12); box-shadow: 0 ${Math.max(2, Math.round(2 * ctx.scale))}px ${Math.max(6, Math.round(6 * ctx.scale))}px rgba(0,0,0,0.2); }
+                    50% { background-color: rgba(255,255,255,0.11); border-color: rgba(255,255,255,0.22); box-shadow: 0 ${Math.max(4, Math.round(4 * ctx.scale))}px ${Math.max(12, Math.round(12 * ctx.scale))}px rgba(0,0,0,0.28), 0 0 ${Math.max(4, Math.round(4 * ctx.scale))}px rgba(255,255,255,0.08); }
+                }
+                @keyframes gmdMysticGlow {
+                    0%, 100% { box-shadow: 0 0 ${effectPx(6)}px var(--glow-soft); }
+                    50% { box-shadow: 0 0 ${effectPx(14)}px var(--glow-bright); }
+                }
+                @keyframes gmdMagicLiquidMorph {
+                    0%, 100% { border-radius: ${effectPx(16)}px ${effectPx(4)}px ${effectPx(18)}px ${effectPx(6)}px / ${effectPx(6)}px ${effectPx(16)}px ${effectPx(4)}px ${effectPx(18)}px; }
+                    50% { border-radius: ${effectPx(4)}px ${effectPx(18)}px ${effectPx(6)}px ${effectPx(16)}px / ${effectPx(18)}px ${effectPx(4)}px ${effectPx(16)}px ${effectPx(6)}px; }
+                }
+                @keyframes gmdMagicLiquidMorph2 {
+                    0%, 100% { border-radius: ${effectPx(4)}px ${effectPx(18)}px ${effectPx(6)}px ${effectPx(16)}px / ${effectPx(18)}px ${effectPx(4)}px ${effectPx(16)}px ${effectPx(6)}px; }
+                    50% { border-radius: ${effectPx(16)}px ${effectPx(4)}px ${effectPx(18)}px ${effectPx(6)}px / ${effectPx(6)}px ${effectPx(16)}px ${effectPx(4)}px ${effectPx(18)}px; }
+                }
+                .gmd-stack-group-text-wrap {
+                    position: relative !important;
+                    overflow: visible !important;
+                }
+                .gmd-stack-group-text-wrap::before {
+                    content: '' !important;
+                    position: absolute !important;
+                    inset: -${effectPx(2.5)}px !important;
+                    border: 0.8px solid var(--inner-border-color, transparent) !important;
+                    pointer-events: none !important;
+                    animation: gmdMagicLiquidMorph2 8s ease-in-out infinite !important;
+                    z-index: 1 !important;
+                }
+                @keyframes gmdStackMarqueeHorizontal_${item.id || 'group'} { 0% { transform: translateX(0); } 100% { transform: translateX(-16.6667%); } }
+                @keyframes gmdStackMarqueeVertical_${item.id || 'group'} { 0% { transform: translateY(0); } 100% { transform: translateY(-16.6667%); } }
             </style>
-            <div class="gmd-stack-group-viewport gmd-stack-panel-${panelEffect}" style="--stack-panel-speed:${panelSpeed}s;--stack-panel-glow:${panelGlow};width:100%;height:100%;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:${panelBg};border:1px solid transparent;border-radius:${radiusPx}px;box-shadow:${shadow};box-sizing:border-box;padding:${effectPx(8)}px;">
+            <div class="gmd-stack-group-viewport gmd-stack-panel-${panelEffect}" style="--stack-panel-speed:${panelSpeed}s;--stack-panel-glow:${panelGlow};width:100%;height:100%;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:${panelBg};border:1px solid transparent;border-radius:${radiusPx}px;box-shadow:${shadow};box-sizing:border-box;padding:${paddingPx}px;">
                 ${item.showPanel !== false && panelEffect !== 'none' ? `<span class="gmd-stack-panel-effect" style="position:absolute;pointer-events:none;z-index:1;border-radius:inherit;${panelEffect === 'light-sweep' ? `top:0;bottom:0;left:-55%;width:55%;background:linear-gradient(105deg, transparent 22%, rgba(255,255,255,${0.15 + panelGlow * 0.55}) 50%, transparent 78%);animation:gmdStackLightSweep var(--stack-panel-speed) ease-in-out infinite;` : ''}${panelEffect === 'breathing' ? `inset:0;background:radial-gradient(circle at 50% 45%, rgba(255,255,255,${0.08 + panelGlow * 0.28}), transparent 68%);animation:gmdStackBreathing var(--stack-panel-speed) ease-in-out infinite;` : ''}${panelEffect === 'energy-flow' ? `inset:0;background:linear-gradient(90deg, transparent, rgba(255,255,255,${0.06 + panelGlow * 0.18}), transparent, rgba(168,85,247,${0.08 + panelGlow * 0.22}), transparent);background-size:200% 100%;animation:gmdStackEnergyFlow var(--stack-panel-speed) linear infinite;` : ''}${panelEffect === 'glass-shine' ? `inset:0;background:linear-gradient(145deg, rgba(255,255,255,${0.12 + panelGlow * 0.22}), transparent 34%, transparent 68%, rgba(255,255,255,${0.05 + panelGlow * 0.12}));` : ''}"></span>` : ''}
                 ${item.showBorder !== false ? `
                     <svg class="gmd-stack-border-effect gmd-stack-border-${borderEffect}" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;overflow:visible;filter:drop-shadow(0 0 ${effectPx(8)}px rgba(34,211,238,${borderGlow}));">
@@ -435,13 +478,13 @@
                             </linearGradient>
                         </defs>
                         ${borderEffect === 'running-light' ? `
-                            <rect pathLength="100" x="${borderInsetX}" y="${borderInsetY}" width="${borderRectW}" height="${borderRectH}" rx="${borderRx}" ry="${borderRy}" fill="none" stroke="${borderStroke}" stroke-width="${Math.max(1, borderWidth * 0.72)}" opacity="${0.18 + borderGlow * 0.18}" vector-effect="non-scaling-stroke"></rect>
-                            <rect pathLength="100" x="${borderInsetX}" y="${borderInsetY}" width="${borderRectW}" height="${borderRectH}" rx="${borderRx}" ry="${borderRy}" fill="none" stroke="${borderStroke}" stroke-width="${Math.max(4, borderWidth * 2.55)}" stroke-dasharray="${Math.round(runningDash * 1.22)} ${Math.max(1, 100 - Math.round(runningDash * 1.22))}" stroke-dashoffset="0" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity="${Math.min(0.82, 0.22 + borderGlow * 0.52)}" style="filter:blur(${effectPx(1.7)}px);">
-                                <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="${borderSpeed}s" repeatCount="indefinite"></animate>
-                            </rect>
-                            <rect pathLength="100" x="${borderInsetX}" y="${borderInsetY}" width="${borderRectW}" height="${borderRectH}" rx="${borderRx}" ry="${borderRy}" fill="none" stroke="${borderStroke}" stroke-width="${Math.max(2, borderWidth * 1.22)}" stroke-dasharray="${runningDash} ${100 - runningDash}" stroke-dashoffset="0" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity="1">
-                                <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="${borderSpeed}s" repeatCount="indefinite"></animate>
-                            </rect>
+                            <path d="${pathD}" fill="none" stroke="${borderStroke}" stroke-width="${Math.max(1, borderWidth * 0.72)}" opacity="${0.18 + borderGlow * 0.18}" vector-effect="non-scaling-stroke"></path>
+                            <path d="${pathD}" fill="none" stroke="${borderStroke}" stroke-width="${Math.max(4, borderWidth * 2.55)}" stroke-dasharray="${Math.round(runningDash * 1.2)} ${Math.max(1, perimeter - Math.round(runningDash * 1.2))}" stroke-dashoffset="0" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity="${Math.min(0.82, 0.22 + borderGlow * 0.52)}" style="filter:blur(${effectPx(1.7)}px);">
+                                <animate attributeName="stroke-dashoffset" from="0" to="-${perimeter}" dur="${borderSpeed}s" begin="run_anim_${borderId}.begin" repeatCount="indefinite"></animate>
+                            </path>
+                            <path id="run_anim_core_${borderId}" d="${pathD}" fill="none" stroke="${borderStroke}" stroke-width="${Math.max(2, borderWidth * 1.22)}" stroke-dasharray="${runningDash} ${runningGap}" stroke-dashoffset="0" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity="1">
+                                <animate id="run_anim_${borderId}" attributeName="stroke-dashoffset" from="0" to="-${perimeter}" dur="${borderSpeed}s" repeatCount="indefinite"></animate>
+                            </path>
                         ` : borderEffect === 'pulse' ? `
                             <rect x="${borderInsetX}" y="${borderInsetY}" width="${borderRectW}" height="${borderRectH}" rx="${borderRx}" ry="${borderRy}" fill="none" stroke="${borderStroke}" stroke-width="${Math.max(2.5, borderWidth * 1.8)}" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity="${0.18 + borderGlow * 0.28}" style="filter:blur(${effectPx(1.5)}px);">
                                 <animate attributeName="opacity" values="${0.18 + borderGlow * 0.22};${0.42 + borderGlow * 0.46};${0.18 + borderGlow * 0.22}" dur="${borderSpeed}s" repeatCount="indefinite"></animate>
@@ -462,14 +505,83 @@
                         `}
                     </svg>
                 ` : ''}
-                <div class="gmd-stack-group-track" style="display:flex;flex-direction:${flexDirection};align-items:center;justify-content:center;gap:${gap}px;width:100%;height:100%;position:relative;z-index:2;">
-                    ${children.map((child) => {
+                <div class="gmd-stack-group-track" style="display:flex;flex-direction:${flexDirection};align-items:${item.childAlign === 'left' ? 'flex-start' : (item.childAlign === 'right' ? 'flex-end' : 'center')};gap:${isLoop ? 0 : gap}px;position:relative;z-index:2;${
+                    isLoop 
+                        ? (loopDir === 'horizontal' 
+                            ? `width:max-content;height:100%;animation:gmdStackMarqueeHorizontal_${item.id || 'group'} ${loopSpeed}s linear infinite;`
+                            : `width:100%;height:max-content;animation:gmdStackMarqueeVertical_${item.id || 'group'} ${loopSpeed}s linear infinite;`)
+                        : 'width:100%;height:100%;justify-content:center;'
+                }">
+                    ${childrenToRender.map((child) => {
                         const icon = assetUrl(child.iconUrl || child.icon || '', ctx.apiBase);
                         const name = text(ctx, child.name || child.giftName || '');
+                        const subtext = text(ctx, child.subtext || '');
+                        
+                        const auraMap = { Glow: 'aura-glow', Bubble: 'aura-bubble', 'Magic Ring': 'aura-ring', 'Neon Frame': 'aura-frame', 'Light Sweep': 'aura-sweep', 'Fire Aura': 'aura-fire', 'Electric Aura': 'aura-electric' };
+                        const motionMap = { Pulse: 'anim-pulse', Bounce: 'anim-bounce', Float: 'anim-float', Zoom: 'anim-zoom', Shake: 'anim-shake' };
+                        const auraClass = auraMap[child.auraType] || '';
+                        const motionClass = motionMap[child.animationType] || '';
+                        const shapeMap = {
+                            Square: { radius: '14%', clip: 'none' },
+                            Hexagon: { radius: '0', clip: 'polygon(25% 6%, 75% 6%, 96% 50%, 75% 94%, 25% 94%, 4% 50%)' },
+                            Star: { radius: '0', clip: 'polygon(50% 0%, 62% 35%, 98% 35%, 69% 57%, 79% 91%, 50% 70%, 21% 91%, 31% 57%, 2% 35%, 38% 35%)' },
+                            Oval: { radius: '50% / 38%', clip: 'none' },
+                            Circle: { radius: '50%', clip: 'none' }
+                        };
+                        const shape = shapeMap[child.auraShape] || shapeMap.Circle;
+                        const animSpeed = Math.max(0.2, Number(child.animationSpeed) || 1);
+                        const auraSpeed = Math.max(0.2, Number(child.auraSpeed) || 1);
+                        const auraScale = Number(child.auraScale || 1);
+
+                        const visualContent = (auraClass || motionClass)
+                            ? `
+                                <div class="gmd-visual ${motionClass} ${auraClass}"
+                                    style="width:${iconSize}px;height:${iconSize}px;--aura-color:${child.auraColor || '#d7b2ff'};--aura-radius:${shape.radius};--aura-clip:${shape.clip};--anim-speed:${animSpeed}s;--aura-speed:${auraSpeed}s;--aura-scale:${auraScale};--icon-url:url('${icon}');flex-shrink:0;">
+                                    <span class="gmd-aura gmd-aura-back ${auraClass}"></span>
+                                    <span class="gmd-icon-wrap" style="--icon-url:url('${icon}')">
+                                        <img src="${icon}" alt="${name}">
+                                    </span>
+                                    <span class="gmd-aura gmd-aura-front ${auraClass}"></span>
+                                </div>
+                            `
+                            : `<img src="${icon}" alt="${name}" style="width:${iconSize}px;height:${iconSize}px;object-fit:contain;display:block;filter:drop-shadow(0 6px 12px rgba(0,0,0,.45));flex-shrink:0;">`;
+
+                        const showTextBg = child.showTextBg === true;
+                        const textBgColor = child.textBgColor || 'rgba(0,0,0,0.5)';
+                        const textBgStyle = child.textBgStyle || 'classic';
+                        const auraColor = child.auraColor || '#d7b2ff';
+                        
+                        let labelBgStyle = '';
+                        if (showTextBg) {
+                            if (textBgStyle === 'glass') {
+                                labelBgStyle = `background:rgba(255,255,255,0.05);animation:gmdGlassBreath 4s ease-in-out infinite;backdrop-filter:blur(${effectPx(6)}px);-webkit-backdrop-filter:blur(${effectPx(6)}px);border:${effectPx(1)}px solid rgba(255,255,255,0.12);`;
+                            } else if (textBgStyle === 'neon') {
+                                labelBgStyle = `background-image:linear-gradient(rgba(8,8,12,0.94), rgba(8,8,12,0.94)), linear-gradient(135deg, ${auraColor}, color-mix(in srgb, ${auraColor} 30%, white 70%));background-origin:border-box;background-clip:padding-box, border-box;border:${effectPx(1)}px solid transparent;--frame-color:${auraColor};--glow-soft:color-mix(in srgb, ${auraColor} 8%, transparent);--glow-bright:color-mix(in srgb, ${auraColor} 22%, transparent);--inner-border-color:color-mix(in srgb, ${auraColor} 50%, white);animation:gmdMagicLiquidMorph 6s ease-in-out infinite, gmdMysticGlow 4s ease-in-out infinite;`;
+                            } else if (textBgStyle === 'holo') {
+                                labelBgStyle = `background:linear-gradient(120deg, rgba(236,72,153,0.18) 0%, rgba(56,189,248,0.18) 40%, rgba(168,85,247,0.18) 70%, rgba(236,72,153,0.18) 100%);background-size:250% 100%;animation:gmdTextHoloShift 5s ease infinite;backdrop-filter:blur(${effectPx(6)}px);-webkit-backdrop-filter:blur(${effectPx(6)}px);border:${effectPx(1)}px solid rgba(255,255,255,0.12);box-shadow:0 ${effectPx(4)}px ${effectPx(12)}px rgba(0,0,0,0.25);`;
+                            } else if (textBgStyle === 'dark-matte' || textBgStyle === 'light-sweep') {
+                                labelBgStyle = `background:linear-gradient(110deg, rgba(15,23,42,0.85) 30%, rgba(255,255,255,0.28) 50%, rgba(15,23,42,0.85) 70%);background-size:200% 100%;animation:gmdTextLightSweep 3s linear infinite;border:${effectPx(1)}px solid rgba(255,255,255,0.1);box-shadow:0 ${effectPx(4)}px ${effectPx(12)}px rgba(0,0,0,0.3);`;
+                            } else {
+                                labelBgStyle = `background:${textBgColor};box-shadow:0 ${effectPx(2)}px ${effectPx(6)}px rgba(0,0,0,0.25);`;
+                            }
+                            labelBgStyle += `padding:${effectPx(3)}px ${effectPx(8)}px;border-radius:${effectPx(6)}px;`;
+                        }
+
+                        const textAlign = item.textAlign || 'center';
+                        const alignVal = textAlign === 'left' ? 'flex-start' : (textAlign === 'right' ? 'flex-end' : 'center');
+
+                        const childMargin = isLoop
+                            ? (loopDir === 'horizontal' ? `margin-right:${gap}px;` : `margin-bottom:${gap}px;`)
+                            : '';
                         return `
-                            <div class="gmd-stack-group-child" style="display:flex;flex-direction:${childFlexDirection};align-items:center;justify-content:center;flex:0 0 auto;min-width:0;min-height:0;">
-                                <img src="${icon}" alt="${name}" style="width:${iconSize}px;height:${iconSize}px;object-fit:contain;display:block;filter:drop-shadow(0 6px 12px rgba(0,0,0,.45));">
-                                ${item.showName !== false ? `<div class="gmd-stack-group-label pos-${textPosition}" style="order:${labelOrder};${labelMargin}font-size:${textSize}px;color:${item.textColor || '#ffffff'};font-weight:800;line-height:1.15;text-align:center;white-space:nowrap;text-shadow:0 2px 8px rgba(0,0,0,.62);">${name}</div>` : ''}
+                            <div class="gmd-stack-group-child" style="display:flex;flex-direction:${childFlexDirection};align-items:center;justify-content:center;flex:0 0 auto;min-width:0;min-height:0;${childMargin}">
+                                ${visualContent}
+                                ${item.showName !== false ? `
+                                    <div class="gmd-stack-group-text-wrap pos-${textPosition}" style="order:${labelOrder};${labelMargin}display:flex;flex-direction:column;align-items:${alignVal};justify-content:center;${labelBgStyle}">
+                                        <div class="gmd-stack-group-label" style="font-size:${textSize}px;color:${item.textColor || '#ffffff'};font-weight:800;line-height:1.15;text-align:${textAlign};white-space:nowrap;text-shadow:0 2px 8px rgba(0,0,0,.62);">${name}</div>
+                                        ${subtext ? `<div class="gmd-stack-group-subtext" style="font-size:${Math.max(8, Math.round(textSize * 0.78))}px;color:${item.textColor || '#ffffff'};opacity:0.8;font-weight:600;line-height:1.15;text-align:${textAlign};white-space:nowrap;margin-top:${effectPx(2)}px;text-shadow:0 1px 4px rgba(0,0,0,.5);">${subtext}</div>` : ''}
+                                    </div>
+                                ` : ''}
                             </div>
                         `;
                     }).join('')}

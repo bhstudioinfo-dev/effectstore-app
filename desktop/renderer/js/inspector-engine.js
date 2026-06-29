@@ -378,6 +378,7 @@
                 ]))}
                 ${field('Toc do bang', numberInput('panelEffectSpeed', item.panelEffectSpeed ?? 3, 's'))}
                 ${field('Do sang bang', numberInput('panelGlowIntensity', item.panelGlowIntensity ?? 0.35, 'x'))}
+                ${field('Khoảng cách viền (Padding)', numberInput('padding', item.padding ?? 8, 'px'))}
                 <div class="gmd-field gmd-toggle-row">
                     <label>Show Gift Name</label>
                     ${toggleInput('showName', item.showName !== false)}

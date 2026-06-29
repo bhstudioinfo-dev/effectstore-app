@@ -26,6 +26,8 @@
             this.isRestoringHistory = false;
             this.snapEnabled = true;
             this.activeGuides = { x: null, y: null };
+            this.inspectorChildrenExpanded = true;
+            this.inspectorAdvancedExpanded = true;
             this.itemRegistry = window.MenuDesignerItemRegistry || null;
             this.coordinateEngine = window.MenuDesignerCoordinateEngine || null;
             this.sharedRenderEngine = window.MenuDesignerSharedRenderEngine || null;
@@ -866,13 +868,26 @@
                 return (hex.startsWith('#') && hex.length === 7) ? hex + '40' : hex;
             };
 
-            Array.from(stage.querySelectorAll('.gmd-item')).forEach((n) => n.remove());
+            const activeIds = new Set();
+
             this.items.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).forEach((item) => {
                 if (item.visible === false) return;
+                const domId = `gmd-item-${item.id}`;
+                activeIds.add(domId);
+
                 const selected = this.isSelected(item.id);
-                const el = document.createElement('div');
-                el.className = `gmd-item ${selected ? 'selected' : ''}`;
-                el.dataset.itemId = item.id;
+
+                let el = stage.querySelector(`#${domId}`);
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = domId;
+                    el.dataset.itemId = item.id;
+                    el.innerHTML = `<div class="gmd-visual-container" style="width:100%; height:100%; position:relative; overflow:visible;"></div><div class="gmd-selection-overlay" style="position:absolute; inset:0; pointer-events:none; z-index:99999;"></div>`;
+                    stage.appendChild(el);
+                }
+
+                // Update outer wrapper coordinates and styles instantly (no layout flickering)
+                el.className = `gmd-item ${selected ? 'selected' : ''} ${item.type === 'gift-stack-group' ? 'gmd-stack-group' : ''}`;
                 el.style.left = `${item.x}px`;
                 el.style.top = `${item.y}px`;
                 el.style.width = `${item.width}px`;
@@ -881,8 +896,6 @@
                 el.style.zIndex = String(item.zIndex || 1);
 
                 if (item.type === 'gift-stack-group') {
-                    const groupLabel = String(item.name || 'Nhom qua');
-                    el.classList.add('gmd-stack-group');
                     el.style.border = '1px solid transparent';
                     el.style.outline = selected ? '1px dashed rgba(34, 211, 238, 0.75)' : 'none';
                     el.style.outlineOffset = '3px';
@@ -890,355 +903,111 @@
                     el.style.boxSizing = 'border-box';
                     el.style.overflow = 'visible';
                     el.style.pointerEvents = 'auto';
-                    const groupHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderGiftStackGroup === 'function'
-                        ? this.sharedRenderEngine.renderGiftStackGroup(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: false })
-                        : '';
-                    el.innerHTML = `
-                        ${groupHTML}
-                        ${selected ? `<div style="position:absolute; left:8px; top:-24px; max-width:calc(100% - 16px); padding:3px 8px; border-radius:6px; background:rgba(8, 16, 34, 0.96); border:1px solid rgba(34,211,238,.45); color:#bae6fd; font-size:10px; font-weight:800; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:0 4px 12px rgba(0,0,0,.32);">${groupLabel}</div>` : ''}
-                        ${selected && !item.locked && this.selectedId === item.id ? '<span class="gmd-handle gmd-resize-handle" data-handle="resize"></span>' : ''}
-                    `;
-                    stage.appendChild(el);
-                    return;
+                } else {
+                    el.style.border = '';
+                    el.style.outline = '';
+                    el.style.outlineOffset = '';
+                    el.style.background = '';
+                    el.style.boxSizing = '';
+                    el.style.overflow = '';
+                    el.style.pointerEvents = '';
                 }
 
-                const isWidget = item.type && item.type !== 'gift';
-                if (isWidget) {
-                    let refW = item.lockedW || item.w || 900;
-                    let refH = item.lockedH || item.h || 160;
-                    if (!item.lockRatio) {
-                        if (item.type === 'boss-bar') { refW = 840; refH = 180; }
-                        else if (item.type === 'combo') { refW = 800; refH = 220; }
-                        else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
-                        else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
-                        else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
-                        else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
-                        else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
-                    }
+                // Decouple content changes from selection changes using signatures
+                const visualContainer = el.querySelector('.gmd-visual-container');
+                const selectionOverlay = el.querySelector('.gmd-selection-overlay');
 
-                    let widgetHTML = '';
-                    if (item.type === 'goal-bar') {
-                        const current = Number(item.currentCount || 0);
-                        const target = Number(item.targetCount || 100);
-                        const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
-                        const color = item.barColor || '#ff007f';
-                        const glow = item.glowColor || 'rgba(255,0,127,0.5)';
-                        const titleSize = item.fontSize || 38;
-                        const subSize = item.subtitleFontSize || 24;
-                        widgetHTML = `
-                            <div class="gmd-goal-bar-widget ${item.themeStyle === 'neon' ? 'theme-neon' : ''}" style="border-radius: ${item.borderRadius || 12}px; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `${color}80`)}; box-shadow: ${item.hideBg ? 'none' : `0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 15px ${color}26`}; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at top left, ${color}12, #0f172a)`)}; padding: 16px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
-                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; gap: 8px; width: 100%;">
-                                    <div class="gmd-goal-bar-title-row" style="font-size: ${titleSize}px;">
-                                        <span style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')}; text-shadow: 0 0 10px ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')}80; font-size: ${titleSize}px;">${item.name || (item.giftName + ' Goal') || 'Rose Goal'}</span>
-                                        <span style="color: ${color}; text-shadow: 0 0 10px ${color}80; font-size: ${titleSize}px;">${current}/${target}</span>
-                                    </div>
-                                    <div class="gmd-goal-bar-outer" style="height: ${item.barHeight !== undefined ? item.barHeight : 54}px;">
-                                        <div class="gmd-goal-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width: ${pct}%; --bar-color: ${color}; --bar-glow: ${glow}; background: linear-gradient(90deg, ${color}, ${glow}); box-shadow: 0 0 24px ${glow};"></div>
-                                    </div>
-                                    ${item.subtitleText ? `<div class="gmd-goal-bar-subtitle" style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : (item.subtitleColor || '#cbd5e1')}; text-align: left; margin-top: 2px; line-height: 1.2; opacity: 0.9;">${item.subtitleText}</div>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    } else if (item.type === 'goal-circle') {
-                        const current = Number(item.currentCount || 0);
-                        const target = Number(item.targetCount || 100);
-                        const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
-                        const color = item.barColor || '#ff007f';
-                        const titleSize = item.fontSize || 24;
-                        const subSize = item.subtitleFontSize || 16;
-                        const numSize = item.numberFontSize || 16;
-                        const centerIcon = item.centerIcon || '❤️';
+                // Content Signature determines when to regenerate the widget inner DOM
+                const contentSignature = JSON.stringify({
+                    id: item.id,
+                    width: item.width,
+                    height: item.height,
+                    item: item
+                });
 
-                        const r = 50;
-                        const circ = 2 * Math.PI * r;
-                        const strokeOffset = circ - (pct / 100) * circ;
+                if (visualContainer && visualContainer.dataset.contentSignature !== contentSignature) {
+                    visualContainer.dataset.contentSignature = contentSignature;
 
-                        let innerIconHTML = `<span style="font-size: 32px; filter: drop-shadow(0 0 6px ${color});">${centerIcon}</span>`;
-                        if (centerIcon === 'gift-icon' && item.giftId) {
-                            const gift = this.gifts.find(g => String(g.id) === String(item.giftId));
-                            const gIcon = gift && gift.icon ? (gift.icon.startsWith('http') ? gift.icon : this.apiBase + gift.icon) : '';
-                            if (gIcon) {
-                                innerIconHTML = `<img src="${gIcon}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 6px ${color});">`;
-                            }
+                    if (item.type === 'gift-stack-group') {
+                        const groupHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderGiftStackGroup === 'function'
+                            ? this.sharedRenderEngine.renderGiftStackGroup(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: false })
+                            : '';
+                        visualContainer.innerHTML = groupHTML;
+                    } else if (item.type && item.type !== 'gift') {
+                        let refW = item.lockedW || item.w || 900;
+                        let refH = item.lockedH || item.h || 160;
+                        if (!item.lockRatio) {
+                            if (item.type === 'boss-bar') { refW = 840; refH = 180; }
+                            else if (item.type === 'combo') { refW = 800; refH = 220; }
+                            else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
+                            else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
+                            else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
+                            else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
+                            else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
                         }
 
-                        widgetHTML = `
-                            <div class="gmd-goal-circle-widget" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; background:${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : 'radial-gradient(circle at center, rgba(10,15,30,0.5) 0%, #0a0a14 100%)')}; border:${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : 'rgba(255,255,255,0.08)'}`}; border-radius: 24px; padding: 16px; box-shadow:${item.hideBg ? 'none' : '0 8px 32px rgba(0,0,0,0.37)'};">
-                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display:flex; flex-direction:column; align-items:center; width:100%; position:relative;">
-                                    <div style="font-size: ${titleSize}px; font-weight: 900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 10px ${color}80; margin-bottom: 8px;">${pct}%</div>
-                                    <div style="position: relative; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center;">
-                                        <svg width="120" height="120" viewBox="0 0 120 120" style="transform: rotate(-90deg);">
-                                            <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" />
-                                            <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${color}" stroke-width="8"
-                                                    stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}"
-                                                    stroke-linecap="round" style="transition: stroke-dashoffset 0.3s ease; filter: drop-shadow(0 0 8px ${color});" />
-                                        </svg>
-                                        <div style="position: absolute; display: flex; align-items: center; justify-content: center;">
-                                            ${innerIconHTML}
-                                        </div>
-                                    </div>
-                                    <div style="font-size: ${titleSize}px; font-weight: 800; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; margin-top: 12px; text-align: center;">${item.name || (item.giftName || 'Goal')}</div>
-                                    <div style="font-size: ${numSize}px; font-weight: 800; color: ${color}; text-shadow: 0 0 8px ${color}60; margin-top: 4px;">${current}/${target}</div>
-                                    ${item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#94a3b8') : '#94a3b8'}; margin-top: 4px; text-align: center; font-weight: 600;">${item.subtitleText}</div>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    } else if (item.type === 'boss-bar') {
-                        const current = Number(item.currentCount || 0);
-                        const target = Number(item.targetCount || 100);
-                        const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
-                        const color = item.barColor || '#ef4444';
-                        const titleSize = item.fontSize || 38;
-                        const subSize = item.subtitleFontSize || 26;
-                        const formatNum = (num) => {
-                            if (num >= 1000) return (num / 1000).toFixed(1).replace('.0', '') + 'k';
-                            return num;
-                        };
-                        widgetHTML = `
-                            <div class="gmd-boss-bar-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 30px ${color}4d, 0 8px 32px rgba(0,0,0,0.6)`}; display: flex; flex-direction: column; justify-content: center; padding: 16px; box-sizing: border-box; width: 100%; height: 100%;">
-                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; gap: 14px; width: 100%;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: ${titleSize}px; font-weight: 900; color: #fff; line-height: 1;">
-                                        <span style="display: flex; align-items: center; gap: 6px; text-shadow: 0 0 10px ${color}; font-size: ${titleSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'};">🐉 ${item.bossName || 'BOSS HP'}</span>
-                                        <span style="color: ${color}; text-shadow: 0 0 10px ${color}; font-size: ${titleSize}px;">${pct}%</span>
-                                    </div>
-                                    <div class="gmd-boss-bar-outer" style="height: ${item.barHeight !== undefined ? item.barHeight : 24}px; background: rgba(0, 0, 0, 0.6); border-radius: 4px; overflow: hidden; border: 1px solid ${color}40; position: relative; box-sizing: border-box; width: 100%;">
-                                        <div class="gmd-boss-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="height: 100%; width: ${pct}%; --bar-color: ${color}; --bar-glow: ${color}; background: linear-gradient(90deg, #b91c1c, ${color}); box-shadow: 0 0 12px ${color};"></div>
-                                    </div>
-                                    <div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#9ca3af') : '#9ca3af'}; text-align: left; display: flex; justify-content: space-between; line-height: 1;">
-                                        <span>⚔️ ${item.bossSub || 'Corgi tấn công'}</span>
-                                        <span style="color: ${color}; font-weight: bold;">${formatNum(current)}/${formatNum(target)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    } else if (item.type === 'top-contributors') {
-                        const contributors = Array.isArray(item.contributors) ? item.contributors : [
-                            { nickname: 'BH Studio', value: 520, avatar: '' },
-                            { nickname: 'Minh Anh', value: 120, avatar: '' },
-                            { nickname: 'Khánh Huyền', value: 99, avatar: '' }
-                        ];
-                        const limit = Number(item.limitCount || 3);
-                        const sliced = contributors.slice(0, limit);
-                        const color = item.barColor || '#eab308';
-                        const headerSize = item.fontSize || 34;
-                        const rowSize = item.rowFontSize || 30;
-                        widgetHTML = `
-                            <div class="gmd-contributors-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 20px ${color}33, 0 8px 32px rgba(0,0,0,0.6)`}; padding: 12px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
-                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; gap: 6px; width: 100%;">
-                                    <div class="gmd-contrib-header" style="font-size: ${headerSize}px; padding-bottom: 14px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; border-bottom-color: ${color}4d;">🏆 BẢNG VINH DANH</div>
-                                    <div class="gmd-contrib-list" style="display: flex; flex-direction: column; gap: 6px;">
-                                        ${sliced.map((c, idx) => `
-                                            <div class="gmd-contrib-item" style="font-size: ${rowSize}px; padding: 10px 14px; gap: 18px; border-radius: 14px;">
-                                                <span class="gmd-contrib-rank" style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">#${idx + 1}</span>
-                                                ${item.showAvatar !== false ? `<div class="gmd-contrib-avatar" style="width: 48px; height: 48px; border-radius: 50%; background: #2e3b5e; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0; background-image: url('${c.avatar || ''}'); background-size: cover;"></div>` : ''}
-                                                <span class="gmd-contrib-name" style="color: ${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : ''};">${c.nickname || 'BH Studio'}</span>
-                                                ${item.showValue !== false ? `<span class="gmd-contrib-val">${c.value}💎</span>` : ''}
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    } else if (item.type === 'podium-contributors') {
-                        const contributors = Array.isArray(item.contributors) ? item.contributors : [
-                            { nickname: 'Vua Donate', value: 520, avatar: '' },
-                            { nickname: 'Minh Anh', value: 120, avatar: '' },
-                            { nickname: 'Khánh Huyền', value: 99, avatar: '' }
-                        ];
-                        const headerSize = item.fontSize || 34;
-                        const nameSize = item.rowFontSize || 22;
-                        const valSize = item.valueFontSize || 22;
-                        widgetHTML = `
-                            <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : '#eab308'}`}; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; box-shadow: ${item.hideBg ? 'none' : ''};">
-                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; width: 100%;">
-                                    <div class="gmd-podium-header" style="font-size: ${headerSize}px; padding-bottom: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#eab308') : ''};">👑 VƯƠNG MIỆN HOÀNG GIA</div>
-                                    <div class="gmd-podium-podium" style="gap: 14px;">
-                                        <div class="gmd-podium-spot rank-2">
-                                            <div class="gmd-podium-avatar-wrap">
-                                                <div class="gmd-podium-crown" style="font-size: 32px; top: -20px;">🥈</div>
-                                                <div class="gmd-podium-avatar" style="width: 64px; height: 64px; display:flex; align-items:center; justify-content:center; font-size:28px; background-image: url('${contributors[1]?.avatar || ''}'); background-size: cover;">${contributors[1]?.avatar ? '' : '👤'}</div>
-                                            </div>
-                                            <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${contributors[1]?.nickname || 'Trống'}</div>
-                                            ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[1]?.value || 0}💎</div>` : ''}
-                                        </div>
-                                        <div class="gmd-podium-spot rank-1">
-                                            <div class="gmd-podium-avatar-wrap">
-                                                <div class="gmd-podium-crown" style="font-size: 44px; top: -28px;">👑</div>
-                                                <div class="gmd-podium-glow-ring" style="inset: -6px; border-width: 3px;"></div>
-                                                <div class="gmd-podium-avatar" style="width: 88px; height: 88px; display:flex; align-items:center; justify-content:center; font-size:38px; background-image: url('${contributors[0]?.avatar || ''}'); background-size: cover;">${contributors[0]?.avatar ? '' : '👤'}</div>
-                                            </div>
-                                            <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${contributors[0]?.nickname || 'Vua Donate'}</div>
-                                            ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[0]?.value || 0}💎</div>` : ''}
-                                        </div>
-                                        <div class="gmd-podium-spot rank-3">
-                                            <div class="gmd-podium-avatar-wrap">
-                                                <div class="gmd-podium-crown" style="font-size: 32px; top: -20px;">🥉</div>
-                                                <div class="gmd-podium-avatar" style="width: 64px; height: 64px; display:flex; align-items:center; justify-content:center; font-size:28px; background-image: url('${contributors[2]?.avatar || ''}'); background-size: cover;">${contributors[2]?.avatar ? '' : '👤'}</div>
-                                            </div>
-                                            <div class="gmd-podium-name" style="font-size: ${nameSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${contributors[2]?.nickname || 'Trống'}</div>
-                                            ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${valSize}px;">${contributors[2]?.value || 0}💎</div>` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    } else if (item.type === 'mystery-chests') {
-                        const current = Number(item.currentCount || 0);
-                        const target = Number(item.targetCount || 100);
-                        const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
-                        const titleText = item.name || '🎁 MỞ KHÓA HỘP QUÀ KỲ BÍ';
-                        const titleSize = item.fontSize || 32;
-                        const subSize = item.subtitleFontSize || 20;
-                        widgetHTML = `
-                            <div class="gmd-mystery-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(168, 85, 247, 0.1) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : (item.barColor || '#a855f7')}`}; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; box-shadow: ${item.hideBg ? 'none' : ''};">
-                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; width: 100%;">
-                                    <div class="gmd-mystery-header" style="font-size: ${titleSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')};">${titleText}</div>
-                                    <div class="gmd-mystery-title-row" style="font-size: 26px; margin-top: 6px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">
-                                        <span>${item.giftName || 'Hộp Quà'} Goal</span>
-                                        <span>${current}/${target}</span>
-                                    </div>
-                                    <div class="gmd-mystery-track-wrap" style="margin-top: 16px;">
-                                        <div class="gmd-mystery-bar-outer" style="height: ${item.barHeight !== undefined ? item.barHeight : 24}px; border-radius: 24px;">
-                                            <div class="gmd-mystery-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width: ${pct}%; border-radius: 24px; --bar-color: ${item.barColor || '#a855f7'}; --bar-glow: ${item.glowColor || '#fb7185'};"></div>
-                                        </div>
-                                        <div class="gmd-mystery-milestones">
-                                            <div class="gmd-mystery-node ${pct >= 25 ? 'unlocked' : ''}" style="left: 25%;">
-                                                <span class="gmd-mystery-chest" style="font-size: ${pct >= 25 ? 44 : 32}px; top: -8px;">📦</span>
-                                                <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">25%</span>
-                                            </div>
-                                            <div class="gmd-mystery-node ${pct >= 50 ? 'unlocked' : ''}" style="left: 50%;">
-                                                <span class="gmd-mystery-chest" style="font-size: ${pct >= 50 ? 44 : 32}px; top: -8px;">🧰</span>
-                                                <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">50%</span>
-                                            </div>
-                                            <div class="gmd-mystery-node ${pct >= 75 ? 'unlocked' : ''}" style="left: 75%;">
-                                                <span class="gmd-mystery-chest" style="font-size: ${pct >= 75 ? 44 : 32}px; top: -8px;">🪙</span>
-                                                <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">75%</span>
-                                            </div>
-                                            <div class="gmd-mystery-node ${pct >= 100 ? 'unlocked' : ''}" style="left: 100%;">
-                                                <span class="gmd-mystery-chest" style="font-size: ${pct >= 100 ? 44 : 32}px; top: -8px;">💎</span>
-                                                <span class="gmd-mystery-pct" style="font-size: 20px; margin-top: 8px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">100%</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    ${item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#fda4af') : (item.subtitleColor || '#fda4af')}; text-align: center; margin-top: 6px; font-weight: bold; line-height: 1.2;">${item.subtitleText}</div>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    } else if (item.type === 'combo') {
-                        const count = item.comboCount || 88;
-                        const titleSize = item.fontSize || 40;
-                        const numSize = item.numberFontSize || 64;
-                        const subSize = item.subtitleFontSize || 20;
-                        const subtitle = item.subtitleText ? `<div style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#fca5a5') : (item.subtitleColor || '#fca5a5')}; font-weight: bold; margin-top: 4px; line-height: 1.2;">${item.subtitleText}</div>` : '';
-                        widgetHTML = `
-                            <div class="gmd-combo-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, rgba(239, 68, 68, 0.15) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? 'none' : `1.5px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : (item.barColor || '#ef4444')}`}; font-size: ${titleSize}px; border-radius: 24px; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; padding: 12px; gap: 8px; display: flex; align-items: center; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; box-shadow: ${item.hideBg ? 'none' : '0 0 12px rgba(239, 68, 68, 0.2)'};">
-                                <div style="transform: translateY(${item.contentOffsetY || 0}px); display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%;">
-                                    <div class="gmd-combo-num" style="font-size: ${numSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">x${count}</div>
-                                    <div style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${item.name || 'COMBO ĐANG CHẠY!'}</div>
-                                    ${subtitle}
-                                </div>
-                            </div>
-                        `;
-                    } else if (item.type === 'media-asset') {
-                        const isVideo = item.isWebM || (item.assetUrl && item.assetUrl.endsWith('.webm'));
-                        const opacity = item.opacity !== undefined ? item.opacity : 1;
-                        const fitMode = item.fitMode || 'contain';
-                        const assetSrc = item.assetUrl ? (item.assetUrl.startsWith('http') ? item.assetUrl : `${this.apiBase}${item.assetUrl}`) : '';
-                        widgetHTML = `
-                            <div class="gmd-asset-container" style="width:100%; height:100%; position:relative;">
-                                <div class="gmd-asset-fallback-box" style="position:absolute; inset:0; display: ${assetSrc ? 'none' : 'flex'}; flex-direction: column; align-items: center; justify-content: center; background: rgba(168, 85, 247, 0.03); border: 1px dashed rgba(168, 85, 247, 0.25); border-radius: 16px; box-sizing: border-box; text-align: center; padding: 12px; pointer-events: none; z-index: 1;">
-                                    <div style="font-size: 36px; opacity: 0.6;">🖼️</div>
-                                    <div style="font-size: 20px; font-weight: bold; color: rgba(192, 132, 252, 0.8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 90%; margin-top: 1px;" title="${item.name || 'Tài nguyên'}">${item.name || 'Tài nguyên'}</div>
-                                </div>
-                                ${assetSrc ? (isVideo
-                                ? `<video src="${assetSrc}" style="position:relative; z-index:2; width:100%; height:100%; object-fit:${fitMode}; opacity:${opacity}; background:transparent;" autoplay loop muted playsinline></video>`
-                                : `<img src="${assetSrc}" style="position:relative; z-index:2; width:100%; height:100%; object-fit:${fitMode}; opacity:${opacity}; background:transparent;" alt="">`
-                            ) : ''}
-                            </div>
-                        `;
-                    } else if (item.type === 'goal-list') {
-                        const title = item.name || 'MỤC TIÊU HÔM NAY 🎯';
-                        const goals = Array.isArray(item.goals) ? item.goals : [];
-                        const footerText = item.footerText || '';
-                        const color = item.barColor || '#ff007f';
-                        const headerSize = item.fontSize || 32;
-                        const rowSize = item.rowFontSize || 22;
-                        const footerSize = item.footerFontSize || 20;
+                        const scaleX = item.width / refW;
+                        const scaleY = item.height / refH;
 
-                        const isAutoScroll = item.autoScroll === true;
-                        const scrollDuration = item.autoScrollSpeed !== undefined ? item.autoScrollSpeed : 15;
-                        const enableShimmer = item.shimmerEffect !== false;
+                        const widgetHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                            ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: false, gifts: this.gifts, includeDesignerFallback: true })
+                            : '';
 
-                        // Create duplicate list if auto scroll is enabled for seamless vertical marquee looping
-                        const goalsListToRender = isAutoScroll && goals.length > 0 ? [...goals, ...goals] : goals;
-
-                        widgetHTML = `
-                            <div class="gmd-goal-list-widget" style="width:100%; height:100%; padding: 24px; box-sizing: border-box; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? getTranslucentBg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? getTranslucentBg(item.bgColor) : color}`}; border-radius: 24px; display:flex; flex-direction:column; justify-content:flex-start; overflow:hidden; box-shadow: ${item.hideBg ? 'none' : `0 0 30px ${color}26, 0 8px 32px rgba(0,0,0,0.6)`};">
-                                <div class="gmd-goal-list-header" style="font-weight:900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 10px ${color}80; text-align:center; font-size: ${headerSize}px; margin-bottom: 12px; flex-shrink: 0; transform: translateY(${item.contentOffsetY || 0}px);">${title}</div>
-                                
-                                <div class="gmd-goal-list-scroll-container" style="flex: 1; overflow: hidden; position: relative; width: 100%; transform: translateY(${item.contentOffsetY || 0}px);">
-                                    <div class="${isAutoScroll ? 'gmd-goal-list-marquee-track' : 'gmd-goal-list-static-track'}" style="${isAutoScroll ? `animation: gmdMarqueeVertical ${scrollDuration}s linear infinite;` : 'display:flex; flex-direction:column; gap: 12px;'}">
-                                        ${goalsListToRender.map(g => {
-                                            const pct = Math.min(100, Math.round((g.current || 0) / (g.target || 1) * 100));
-                                            const iconUrl = g.icon ? (g.icon.startsWith('http') ? g.icon : `${this.apiBase}${g.icon}`) : '';
-                                            return `
-                                                <div class="gmd-goal-list-row ${enableShimmer ? 'gmd-shimmer-row' : ''}" style="display:flex; flex-direction:column; gap: 8px; background:rgba(255,255,255,0.02); padding: 12px 16px; border-radius: 12px; margin-bottom: ${isAutoScroll ? '12px' : '0'}; position: relative; overflow: hidden;">
-                                                    <div class="gmd-goal-list-text-row" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                                        <div style="display:flex; align-items:center; gap:8px;">
-                                                            ${iconUrl ? `<img class="gmd-goal-list-icon" src="${iconUrl}" style="width: ${item.iconSize !== undefined ? item.iconSize : 28}px; height: ${item.iconSize !== undefined ? item.iconSize : 28}px; border-radius:50%;" alt="">` : `<div style="font-size:${item.iconSize !== undefined ? Math.round(item.iconSize * 0.7) : 20}px;">🎁</div>`}
-                                                            ${item.showGiftName !== false ? `<span class="gmd-goal-list-label" style="font-size: ${rowSize}px; font-weight:800; color:${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : '#e2e8f0'};">${g.giftName || 'Gift'}</span>` : ''}
-                                                        </div>
-                                                        <span class="gmd-goal-list-counts" style="font-size: ${rowSize}px; font-weight:800; color: ${item.barColor || '#38bdf8'}; text-shadow: 0 0 10px ${item.barColor || '#38bdf8'}80;">${g.current}/${g.target} (${pct}%)</span>
-                                                    </div>
-                                                    <div class="gmd-goal-list-bar-outer" style="width:100%; height: ${item.barHeight !== undefined ? item.barHeight : 12}px; background:rgba(0,0,0,0.35); border-radius:99px; overflow:hidden; border: none; position:relative;">
-                                                        <div class="gmd-goal-list-bar-inner gmd-bar-style-${item.barStyle || 'solid'}" style="width:${pct}%; height:100%; --bar-color: ${item.barColor || '#38bdf8'}; --bar-glow: ${item.barColor || '#38bdf8'}; background:${item.barColor || '#38bdf8'}; border-radius:99px; box-shadow: 0 0 12px ${item.barColor || '#38bdf8'};"></div>
-                                                    </div>
-                                                </div>
-                                            `;
-                                        }).join('')}
-                                    </div>
+                        visualContainer.innerHTML = `
+                            <div class="gmd-visual" style="width:100%; height:100%; position: relative; overflow: visible;">
+                                <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${scaleX}, ${scaleY}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
+                                    ${widgetHTML}
                                 </div>
-                                
-                                ${footerText ? `<div class="gmd-goal-list-footer" style="text-align:center; font-size: ${footerSize}px; color:#cbd5e1; font-weight:bold; margin-top: 12px; flex-shrink: 0; transform: translateY(${item.contentOffsetY || 0}px);">${footerText}</div>` : ''}
                             </div>
                         `;
-                    } else if (item.type === 'text') {
-                        widgetHTML = `
-                            <div class="gmd-text-widget" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:${item.color || '#ffffff'}; font-size:${item.fontSize || 36}px; font-weight:${item.fontWeight || 'bold'}; text-shadow:${item.textShadow || 'none'}; text-align:${item.textAlign || 'center'}; font-family:inherit; line-height:1.2; word-break:break-word; pointer-events:none;">
-                                ${item.text || 'Nhập văn bản'}
+                    } else {
+                        const auraShapeVars = this.getAuraShapeVars(item.auraShape);
+                        const lightSweepOverlay = '';
+                        visualContainer.innerHTML = `
+                            <div class="gmd-visual ${this.getMotionClass(item.animationType)} ${this.getAuraClass(item.auraType)}" style="--aura-color:${item.auraColor};${auraShapeVars};--anim-speed:${item.animationSpeed}s;--aura-speed:${item.auraSpeed || 1}s;--aura-scale:${item.auraScale || 1};--icon-url:url('${item.iconUrl}');">
+                                <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-back"></span>
+                                <span class="gmd-icon-wrap" style="--icon-url:url('${item.iconUrl}')">
+                                    <img src="${item.iconUrl}" alt="${item.name}">
+                                    ${lightSweepOverlay}
+                                </span>
+                                <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-front"></span>
                             </div>
+                            ${item.showName ? `<div class="gmd-item-label pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;">${item.name}</div>` : ''}
                         `;
                     }
-
-                    const scaleX = item.width / refW;
-                    const scaleY = item.height / refH;
-                    el.innerHTML = `
-                        <div class="gmd-visual" style="width:100%; height:100%; position: relative; overflow: visible;">
-                            <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${scaleX}, ${scaleY}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
-                                ${widgetHTML}
-                            </div>
-                        </div>
-                        ${selected && !item.locked && this.selectedId === item.id ? '<span class="gmd-handle gmd-resize-handle" data-handle="resize"></span>' : ''}
-                    `;
-                } else {
-                    const auraShapeVars = this.getAuraShapeVars(item.auraShape);
-                    const lightSweepOverlay = '';
-                    el.innerHTML = `
-                        <div class="gmd-visual ${this.getMotionClass(item.animationType)} ${this.getAuraClass(item.auraType)}" style="--aura-color:${item.auraColor};${auraShapeVars};--anim-speed:${item.animationSpeed}s;--aura-speed:${item.auraSpeed || 1}s;--aura-scale:${item.auraScale || 1};--icon-url:url('${item.iconUrl}');">
-                            <span class="gmd-aura gmd-aura-back ${this.getAuraClass(item.auraType)}"></span>
-                            <span class="gmd-icon-wrap" style="--icon-url:url('${item.iconUrl}')">
-                                <img src="${item.iconUrl}" alt="${item.name}">
-                                ${lightSweepOverlay}
-                            </span>
-                            <span class="gmd-aura gmd-aura-front ${this.getAuraClass(item.auraType)}"></span>
-                        </div>
-                        ${item.showName ? `<div class="gmd-item-label pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;">${item.name}</div>` : ''}
-                        ${selected && !item.locked && this.selectedId === item.id ? '<span class="gmd-handle gmd-rotate-handle" data-handle="rotate">⟳</span><span class="gmd-handle gmd-resize-handle" data-handle="resize"></span>' : ''}
-                    `;
                 }
 
-                stage.appendChild(el);
+                // Selection overlay updates independently (no visual container redraw, no animation reset!)
+                const selectionSignature = JSON.stringify({
+                    selected: selected,
+                    name: item.name || item.giftName || '',
+                    locked: Boolean(item.locked),
+                    isPrimary: this.selectedId === item.id,
+                    type: item.type
+                });
+
+                if (selectionOverlay && selectionOverlay.dataset.selectionSignature !== selectionSignature) {
+                    selectionOverlay.dataset.selectionSignature = selectionSignature;
+                    if (selected) {
+                        const label = String(item.name || (item.type === 'gift-stack-group' ? 'Nhóm quà' : 'Phần quà'));
+                        const showRotate = !item.locked && this.selectedId === item.id && item.type !== 'gift-stack-group' && item.type !== 'media-asset';
+                        const showResize = !item.locked && this.selectedId === item.id;
+                        selectionOverlay.innerHTML = `
+                            <div style="position:absolute; left:8px; top:-24px; max-width:calc(100% - 16px); padding:3px 8px; border-radius:6px; background:rgba(8, 16, 34, 0.96); border:1px solid rgba(34,211,238,.45); color:#bae6fd; font-size:10px; font-weight:800; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:0 4px 12px rgba(0,0,0,.32);">${label}</div>
+                            ${showRotate ? '<span class="gmd-handle gmd-rotate-handle" data-handle="rotate" style="pointer-events:auto;">⟳</span>' : ''}
+                            ${showResize ? '<span class="gmd-handle gmd-resize-handle" data-handle="resize" style="pointer-events:auto;"></span>' : ''}
+                        `;
+                    } else {
+                        selectionOverlay.innerHTML = '';
+                    }
+                }
             });
+
+            // Remove inactive nodes
+            Array.from(stage.querySelectorAll('.gmd-item')).forEach((n) => {
+                if (!activeIds.has(n.id)) n.remove();
+            });
+
             this.applyZoom();
         }
 
@@ -1427,7 +1196,38 @@
             this.renderInspector();
         }
 
-        updateSelectedItem(key, value, refreshInspector = true) {
+        toggleInspectorChildren() {
+            this.inspectorChildrenExpanded = !this.inspectorChildrenExpanded;
+            this.renderInspector();
+        }
+
+        toggleInspectorAdvanced() {
+            this.inspectorAdvancedExpanded = !this.inspectorAdvancedExpanded;
+            this.renderInspector();
+        }
+
+        updateGoalBoardChildItem(index, key, value, pushHist = true) {
+            const item = this.items.find((x) => x.id === this.selectedId);
+            if (!item || !Array.isArray(item.children)) return;
+            const child = item.children[index];
+            if (!child) return;
+
+            if (key === 'showTextBg') {
+                child[key] = Boolean(value);
+            } else {
+                child[key] = value;
+            }
+            this.renderCanvas();
+            
+            if (pushHist) {
+                this.pushHistory('update-goal-child-item');
+                this.renderInspector();
+            } else if (key === 'auraType' || key === 'animationType' || key === 'showTextBg' || key === 'textBgStyle') {
+                this.renderInspector();
+            }
+        }
+
+        updateSelectedItem(key, value, refreshInspector = true, pushHist = true) {
             const primaryItem = this.items.find((x) => x.id === this.selectedId);
             if (!primaryItem) return;
             const selectedItems = this.getSelectedItems().filter((x) => !x.locked);
@@ -1462,7 +1262,7 @@
 
             this.renderCanvas();
             if (refreshInspector) this.renderInspector();
-            this.pushHistory('update-item');
+            if (pushHist) this.pushHistory('update-item');
         }
 
         syncInspectorLinkedControls(sourceEl, key, value) {
@@ -1841,8 +1641,31 @@
             const sx = exportSize.width / safeSize.width;
             const sy = exportSize.height / safeSize.height;
             const exportedItems = this.items.map((i) => {
-                const itemExport = {
+                const currentCount = i._originalCurrentCount !== undefined ? i._originalCurrentCount : i.currentCount;
+                const goals = Array.isArray(i.goals) ? i.goals.map(g => {
+                    const cleanGoal = { ...g };
+                    if (g._originalCurrent !== undefined) {
+                        cleanGoal.current = g._originalCurrent;
+                    }
+                    delete cleanGoal._originalCurrent;
+                    return cleanGoal;
+                }) : i.goals;
+                const contributors = i._originalContributors !== undefined ? i._originalContributors : i.contributors;
+                const comboCount = i._originalComboCount !== undefined ? i._originalComboCount : i.comboCount;
+
+                const cleanItem = {
                     ...i,
+                    currentCount,
+                    goals,
+                    contributors,
+                    comboCount
+                };
+                delete cleanItem._originalCurrentCount;
+                delete cleanItem._originalContributors;
+                delete cleanItem._originalComboCount;
+
+                const itemExport = {
+                    ...cleanItem,
                     x: Math.round((i.x - safeOffset.x) * sx),
                     y: Math.round((i.y - safeOffset.y) * sy),
                     width: Math.round(i.width * sx),
@@ -1862,7 +1685,7 @@
                     itemExport.textSize = Number(i.textSize || 14) * avgScale;
                     itemExport.textGap = Number(i.textGap || 4) * avgScale;
                     itemExport.gap = Number(i.gap || 10) * avgScale;
-                    itemExport.loopEnabled = false;
+                    itemExport.loopEnabled = Boolean(i.loopEnabled);
                 }
                 return itemExport;
             });
@@ -2432,6 +2255,7 @@
 
             const handleInputChange = (e) => {
                 const el = e.target;
+                const isTemp = e.type === 'input';
 
                 if (el.id === 'gmd-search') {
                     const q = String(el.value || '').trim().toLowerCase();
@@ -2439,16 +2263,23 @@
                     this.renderGiftLibrary();
                     return;
                 }
+                if (el.dataset && el.dataset.childIndex !== undefined) {
+                    const index = Number(el.dataset.childIndex);
+                    const key = el.dataset.childKey;
+                    const value = el.type === 'checkbox' ? el.checked : el.value;
+                    this.updateGoalBoardChildItem(index, key, value, !isTemp);
+                    return;
+                }
                 if (el.dataset && el.dataset.goalKey) {
                     const key = el.dataset.goalKey;
                     const value = el.type === 'checkbox' ? el.checked : el.value;
-                    this.updateGoalBoardSelectedItem(key, value);
+                    this.updateGoalBoardSelectedItem(key, value, !isTemp);
                     return;
                 }
                 if (el.dataset && el.dataset.key) {
                     const key = el.dataset.key;
                     const value = el.type === 'checkbox' ? el.checked : el.value;
-                    this.updateSelectedItem(key, value, false);
+                    this.updateSelectedItem(key, value, false, !isTemp);
                     this.syncInspectorLinkedControls(el, key, value);
                 }
             };
@@ -2625,6 +2456,20 @@
                     item.width = Math.max(30, Math.round(this.dragState.width + dx));
                     item.height = Math.max(30, Math.round(this.dragState.height + dy));
                     this.clampInsideCanvas(item);
+                    
+                    const map = {
+                        '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
+                        '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
+                        '1:1': { width: 480, height: 480, canvasW: 900, canvasH: 900 }
+                    };
+                    const cfg = map[this.aspectRatio] || map['9:16'];
+                    const exportSize = this.aspectRatio === '9:16'
+                        ? { width: 1080, height: 1920 }
+                        : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
+                    const sx = exportSize.width / cfg.width;
+                    const sy = exportSize.height / cfg.height;
+                    item.w = Math.round(item.width * sx);
+                    item.h = Math.round(item.height * sy);
                 } else if (this.dragState.mode === 'resize') {
                     const finalScale = this.getFitScale() * this.zoomLevel;
                     const dx = (e.clientX - this.dragState.sx) / finalScale;
@@ -3317,6 +3162,7 @@
             }
 
             const logical = this.stageToLogical(selected);
+            
 
             let testButtonHTML = '';
             if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'combo'].includes(selected.type)) {
@@ -3437,6 +3283,11 @@
                             <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="80" data-goal-key="textGap" value="${selected.textGap !== undefined ? selected.textGap : 4}"><span>px</span></div>
                         </div>
                         <input class="gmd-range" type="range" min="0" max="60" data-goal-key="textGap" value="${selected.textGap !== undefined ? selected.textGap : 4}">
+                        <div class="gmd-field">
+                            <label>Khoảng cách viền (Padding)</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="80" data-goal-key="padding" value="${selected.padding !== undefined ? selected.padding : 8}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="0" max="80" data-goal-key="padding" value="${selected.padding !== undefined ? selected.padding : 8}">
                         <div class="gmd-field"><label>Mau chu</label><input class="gmd-color" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}"></div>
                         <div class="gmd-field gmd-toggle-row">
                             <label>Hien ten qua</label>
@@ -3975,12 +3826,145 @@
                     ` : ''}
             `;
 
+                        const stackChildrenControlsHTML = selected.type === 'gift-stack-group' ? `
+                <div class="gmd-section">
+                    <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorChildren()">
+                        <span><i class="fas fa-gifts"></i> CÁC QUÀ TẶNG ĐÃ GỘP</span>
+                        <i class="fas ${this.inspectorChildrenExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                    </h4>
+                    <div style="display: ${this.inspectorChildrenExpanded ? 'block' : 'none'};">
+                        ${(selected.children || []).map((child, index) => {
+                            const iconPath = child.iconUrl || child.icon || '';
+                            const childIcon = iconPath ? (iconPath.startsWith('http') ? iconPath : this.apiBase + iconPath) : '';
+                            const childName = child.name || child.giftName || `Quà ${index + 1}`;
+                            return `
+                                <div class="gmd-child-config-item" style="border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; margin-bottom: 8px; background: rgba(255,255,255,0.015);">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                        <img src="${childIcon}" style="width: 24px; height: 24px; object-fit: contain;">
+                                        <span style="font-weight: bold; font-size: 12px; color: #fbbf24;">${childName}</span>
+                                    </div>
+                                    
+                                    <div class="gmd-field" style="margin-top: 4px;">
+                                        <label style="font-size: 11px;">Tên chính (Main Text)</label>
+                                        <input class="gmd-input gmd-input-compact" style="width:100%; font-size:11px; height:24px; padding:2px 4px;" data-child-index="${index}" data-child-key="name" value="${child.name || child.giftName || ''}">
+                                    </div>
+
+                                    <div class="gmd-field" style="margin-top: 4px;">
+                                        <label style="font-size: 11px;">Tên phụ / Ghi chú (Subtext)</label>
+                                        <input class="gmd-input gmd-input-compact" style="width:100%; font-size:11px; height:24px; padding:2px 4px;" data-child-index="${index}" data-child-key="subtext" value="${child.subtext || ''}">
+                                    </div>
+
+
+
+                                    <div class="gmd-field gmd-toggle-row" style="margin-top: 6px;">
+                                        <label style="font-size: 11px;">Bật nền chữ</label>
+                                        <label class="gmd-switch">
+                                            <input type="checkbox" data-child-index="${index}" data-child-key="showTextBg" ${child.showTextBg ? 'checked' : ''}>
+                                            <span></span>
+                                        </label>
+                                    </div>
+
+                                    ${child.showTextBg ? `
+                                    <div class="gmd-field" style="margin-top: 4px;">
+                                        <label style="font-size: 11px;">Kiểu nền chữ</label>
+                                        <select class="gmd-select" data-child-index="${index}" data-child-key="textBgStyle" style="width:100%; font-size:11px; padding:4px;">
+                                            <option value="classic" ${(child.textBgStyle || 'classic') === 'classic' ? 'selected' : ''}>Cổ điển (Classic)</option>
+                                            <option value="glass" ${child.textBgStyle === 'glass' ? 'selected' : ''}>Gương kính (Glassmorphism)</option>
+                                            <option value="neon" ${child.textBgStyle === 'neon' ? 'selected' : ''}>Khung cổ thuật (Mystic Frame)</option>
+                                            <option value="holo" ${child.textBgStyle === 'holo' ? 'selected' : ''}>Hologram (Holographic)</option>
+                                            <option value="light-sweep" ${child.textBgStyle === 'light-sweep' || child.textBgStyle === 'dark-matte' ? 'selected' : ''}>Quét sáng (Light Sweep)</option>
+                                        </select>
+                                    </div>
+
+                                    ${(child.textBgStyle || 'classic') === 'classic' ? `
+                                    <div class="gmd-field" style="margin-top: 4px;">
+                                        <label style="font-size: 11px;">Màu nền chữ</label>
+                                        <div class="gmd-inline-color" style="display:flex; gap:4px; align-items:center;">
+                                            <input class="gmd-input gmd-input-compact" style="flex:1; font-size:11px; height:24px; padding:2px 4px;" data-child-index="${index}" data-child-key="textBgColor" value="${child.textBgColor || 'rgba(0,0,0,0.5)'}">
+                                            <input class="gmd-color" type="color" style="width:24px; height:24px; padding:0; border:0; background:none; cursor:pointer;" data-child-index="${index}" data-child-key="textBgColor" value="${child.textBgColor && child.textBgColor.startsWith('#') ? child.textBgColor.slice(0, 7) : '#000000'}">
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                    ` : ''}
+
+                                    <div class="gmd-field" style="margin-top: 4px;">
+                                        <label style="font-size: 11px;">Hiệu ứng Loop</label>
+                                        <select class="gmd-select" data-child-index="${index}" data-child-key="animationType" style="width:100%; font-size:11px; padding:4px;">
+                                            <option value="">Không có</option>
+                                            <option value="Pulse" ${child.animationType === 'Pulse' ? 'selected' : ''}>Pulse (Đập)</option>
+                                            <option value="Bounce" ${child.animationType === 'Bounce' ? 'selected' : ''}>Bounce (Nẩy)</option>
+                                            <option value="Float" ${child.animationType === 'Float' ? 'selected' : ''}>Float (Bay)</option>
+                                            <option value="Zoom" ${child.animationType === 'Zoom' ? 'selected' : ''}>Zoom (Phóng)</option>
+                                            <option value="Shake" ${child.animationType === 'Shake' ? 'selected' : ''}>Shake (Rung)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="gmd-field" style="margin-top: 4px;">
+                                        <label style="font-size: 11px;">Hiệu ứng Nền</label>
+                                        <select class="gmd-select" data-child-index="${index}" data-child-key="auraType" style="width:100%; font-size:11px; padding:4px;">
+                                            <option value="">Không có</option>
+                                            <option value="Glow" ${child.auraType === 'Glow' ? 'selected' : ''}>Glow (Phát sáng)</option>
+                                            <option value="Bubble" ${child.auraType === 'Bubble' ? 'selected' : ''}>Bubble (Bong bóng)</option>
+                                            <option value="Magic Ring" ${child.auraType === 'Magic Ring' ? 'selected' : ''}>Magic Ring (Vòng ma thuật)</option>
+                                            <option value="Neon Frame" ${child.auraType === 'Neon Frame' ? 'selected' : ''}>Neon Frame (Khung Neon)</option>
+                                            <option value="Light Sweep" ${child.auraType === 'Light Sweep' ? 'selected' : ''}>Light Sweep (Quét sáng)</option>
+                                            <option value="Fire Aura" ${child.auraType === 'Fire Aura' ? 'selected' : ''}>Fire Aura (Lửa)</option>
+                                            <option value="Electric Aura" ${child.auraType === 'Electric Aura' ? 'selected' : ''}>Electric Aura (Điện)</option>
+                                        </select>
+                                    </div>
+
+                                    ${child.auraType ? `
+                                    <div class="gmd-field" style="margin-top: 4px;">
+                                        <label style="font-size: 11px;">Màu nền</label>
+                                        <div class="gmd-inline-color" style="display:flex; gap:4px; align-items:center;">
+                                            <input class="gmd-input gmd-input-compact" style="flex:1; font-size:11px; height:24px; padding:2px 4px;" data-child-index="${index}" data-child-key="auraColor" value="${child.auraColor || '#d7b2ff'}">
+                                            <input class="gmd-color" type="color" style="width:24px; height:24px; padding:0; border:0; background:none; cursor:pointer;" data-child-index="${index}" data-child-key="auraColor" value="${child.auraColor || '#d7b2ff'}">
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : '';
+
             const stackAdvancedControlsHTML = selected.type === 'gift-stack-group' ? `
                 <div class="gmd-section">
-                    <h4><i class="fas fa-crown"></i> TINH NANG NANG CAO</h4>
-                    ${panelStyleControlsHTML}
-                    ${customTextColorControlsHTML}
-                    ${specificConfigHTML}
+                    <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorAdvanced()">
+                        <span><i class="fas fa-crown"></i> TÍNH NĂNG NÂNG CAO</span>
+                        <i class="fas ${this.inspectorAdvancedExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                    </h4>
+                    <div style="display: ${this.inspectorAdvancedExpanded ? 'block' : 'none'};">
+                        ${panelStyleControlsHTML}
+                        ${customTextColorControlsHTML}
+                        ${selected.type === 'gift-stack-group' ? `
+                        <div class="gmd-field" style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Căn lề quà tặng</label>
+                            <select class="gmd-select" data-goal-key="childAlign" style="width:100%; font-size:11px; padding:4px;">
+                                <option value="center" ${(selected.childAlign || 'center') === 'center' ? 'selected' : ''}>Căn giữa (Center)</option>
+                                <option value="left" ${selected.childAlign === 'left' ? 'selected' : ''}>Căn trái (Left)</option>
+                                <option value="right" ${selected.childAlign === 'right' ? 'selected' : ''}>Căn phải (Right)</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field" style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Căn lề chữ (Tất cả)</label>
+                            <select class="gmd-select" data-goal-key="textAlign" style="width:100%; font-size:11px; padding:4px;">
+                                <option value="center" ${(selected.textAlign || 'center') === 'center' ? 'selected' : ''}>Căn giữa (Center)</option>
+                                <option value="left" ${selected.textAlign === 'left' ? 'selected' : ''}>Căn trái (Left)</option>
+                                <option value="right" ${selected.textAlign === 'right' ? 'selected' : ''}>Căn phải (Right)</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field" style="margin-top: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <label style="font-size: 11px; margin: 0;">Đệm lề viền (Padding)</label>
+                                <span class="gmd-slider-value-display" style="font-size: 11px; color: #bae6fd; font-weight: 700;">${selected.padding !== undefined ? selected.padding : 8}px</span>
+                            </div>
+                            <input class="gmd-range" type="range" min="0" max="60" data-goal-key="padding" value="${selected.padding !== undefined ? selected.padding : 8}" oninput="this.previousElementSibling.querySelector('.gmd-slider-value-display').innerText = this.value + 'px'">
+                        </div>
+                        ` : ''}
+                        ${specificConfigHTML}
+                    </div>
                 </div>
             ` : '';
 
@@ -4002,14 +3986,14 @@
                         <div class="gmd-field" style="margin-bottom: 4px;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
                                 <label style="margin: 0; font-size: 11px;">Rộng (W)</label>
-                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="w" value="${logical.w}"><span>px</span></div>
+                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 80px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="w" value="${logical.w}"><span>px</span></div>
                             </div>
                             <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="100" max="1080" data-goal-key="w" value="${logical.w}">
                         </div>
                         <div class="gmd-field" style="margin-bottom: 4px;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
                                 <label style="margin: 0; font-size: 11px;">Cao (H)</label>
-                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="h" value="${logical.h}"><span>px</span></div>
+                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 80px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="h" value="${logical.h}"><span>px</span></div>
                             </div>
                             <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="30" max="1920" data-goal-key="h" value="${logical.h}">
                         </div>
@@ -4081,15 +4065,15 @@
                     </div>
                 </div>
                 
-                ${selected.type === 'gift-stack-group' ? stackAdvancedControlsHTML : `${testButtonHTML}${specificConfigHTML}`}
+                ${selected.type === 'gift-stack-group' ? `${stackChildrenControlsHTML}${stackAdvancedControlsHTML}` : `${testButtonHTML}${specificConfigHTML}`}
             `;
         }
 
-        updateGoalBoardSelectedItem(key, value) {
+        updateGoalBoardSelectedItem(key, value, pushHist = true) {
             const item = this.items.find((x) => x.id === this.selectedId);
             if (!item) return;
 
-            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'iconSize', 'gap', 'textSize', 'textGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity'].includes(key)) {
+            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'iconSize', 'gap', 'textSize', 'textGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
                     const map = {
@@ -4166,10 +4150,12 @@
             });
 
             this.renderCanvas();
-            if (key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect') {
+            if (key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor') {
                 this.renderInspector();
             }
-            this.pushHistory('update-goal-item');
+            if (pushHist) {
+                this.pushHistory('update-goal-item');
+            }
         }
 
         updateGoalListItem(idx, field, value) {
@@ -4237,6 +4223,67 @@
                 giftName = item.giftName || 'Rose';
                 repeatCount = item.type === 'boss-bar' ? Math.ceil((item.targetCount || 100) / 10) : 10;
 
+                if (item._originalCurrentCount === undefined) {
+                    item._originalCurrentCount = item.currentCount || 0;
+                }
+                item.currentCount = (Number(item.currentCount) || 0) + repeatCount;
+            } else if (item.type === 'goal-list' && Array.isArray(item.goals) && item.goals.length > 0) {
+                const randomGoal = item.goals[Math.floor(Math.random() * item.goals.length)];
+                giftId = randomGoal.giftId || 'rose';
+                giftName = randomGoal.giftName || 'Rose';
+                repeatCount = Math.ceil((randomGoal.target || 100) / 5);
+
+                if (randomGoal._originalCurrent === undefined) {
+                    randomGoal._originalCurrent = randomGoal.current || 0;
+                }
+                randomGoal.current = (Number(randomGoal.current) || 0) + repeatCount;
+            } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
+                const testNames = ['Vua Tặng Quà 👑', 'Minh Anh idol', 'Thần Donate ⚡', 'Khánh Huyền Cute', 'Anh Hai Sài Gòn'];
+                const nickname = testNames[Math.floor(Math.random() * testNames.length)];
+                giftId = 'galaxy';
+                giftName = 'Galaxy';
+                repeatCount = 1;
+                const value = Math.floor(Math.random() * 500) + 100;
+
+                if (item._originalContributors === undefined) {
+                    item._originalContributors = Array.isArray(item.contributors) ? item.contributors.map(c => ({ ...c })) : [];
+                }
+                if (!Array.isArray(item.contributors)) item.contributors = [];
+                const existing = item.contributors.find(c => c.nickname === nickname);
+                if (existing) {
+                    existing.value = (Number(existing.value) || 0) + value;
+                } else {
+                    item.contributors.push({ nickname, value, avatar: '' });
+                }
+                item.contributors.sort((a, b) => b.value - a.value);
+                item.contributors = item.contributors.slice(0, 20);
+            } else if (item.type === 'combo') {
+                giftId = 'corgi';
+                giftName = 'Corgi';
+                repeatCount = (item.comboCount || 0) + 5;
+                if (item._originalComboCount === undefined) {
+                    item._originalComboCount = item.comboCount || 0;
+                }
+                item.comboCount = repeatCount;
+            }
+
+            this.renderCanvas();
+            this.renderInspector();
+        }
+
+        async _oldSendSimulatedGift_disabled(itemId) {
+            const item = this.items.find(x => x.id === itemId);
+            if (!item) return;
+
+            let giftId = 'rose';
+            let giftName = 'Rose';
+            let repeatCount = 1;
+
+            if (item.type === 'goal-bar' || item.type === 'boss-bar' || item.type === 'mystery-chests' || item.type === 'goal-circle') {
+                giftId = item.giftId || 'rose';
+                giftName = item.giftName || 'Rose';
+                repeatCount = item.type === 'boss-bar' ? Math.ceil((item.targetCount || 100) / 10) : 10;
+
                 item.currentCount = (Number(item.currentCount) || 0) + repeatCount;
             } else if (item.type === 'goal-list' && Array.isArray(item.goals) && item.goals.length > 0) {
                 const randomGoal = item.goals[Math.floor(Math.random() * item.goals.length)];
@@ -4277,6 +4324,32 @@
         }
 
         async resetGoalBoardItem(itemId) {
+            const item = this.items.find(x => x.id === itemId);
+            if (!item) return;
+
+            if (item.type === 'goal-bar' || item.type === 'boss-bar' || item.type === 'mystery-chests' || item.type === 'goal-circle') {
+                item.currentCount = 0;
+                delete item._originalCurrentCount;
+            } else if (item.type === 'goal-list' && Array.isArray(item.goals)) {
+                item.goals.forEach(g => {
+                    g.current = 0;
+                    delete g._originalCurrent;
+                });
+            } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
+                item.contributors = [];
+                delete item._originalContributors;
+            } else if (item.type === 'combo') {
+                item.comboCount = 0;
+                delete item._originalComboCount;
+            }
+
+            this.renderCanvas();
+            this.renderInspector();
+
+            await this.saveLayout(false, false);
+        }
+
+        async _oldResetGoalBoardItem_disabled(itemId) {
             const item = this.items.find(x => x.id === itemId);
             if (!item) return;
 
@@ -4749,7 +4822,7 @@
                         itemExport.textSize = Number(i.textSize || 14) * avgScale;
                         itemExport.textGap = Number(i.textGap || 4) * avgScale;
                         itemExport.gap = Number(i.gap || 10) * avgScale;
-                        itemExport.loopEnabled = false;
+                        itemExport.loopEnabled = Boolean(i.loopEnabled);
                     }
                     return itemExport;
                 });
