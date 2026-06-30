@@ -1453,6 +1453,20 @@
       }
     }
 
+    function giftLabelBackground(item, scale) {
+      if (item.showTextBg !== true) return '';
+      const px = (value) => `${Math.max(1, Math.round(value * scale))}px`;
+      const style = item.textBgStyle || 'classic';
+      const aura = item.auraColor || '#d7b2ff';
+      let css = '';
+      if (style === 'glass') css = `background:rgba(255,255,255,.05);animation:gmdGlassBreath 4s ease-in-out infinite;backdrop-filter:blur(${px(6)});border:${px(1)} solid rgba(255,255,255,.12);`;
+      else if (style === 'neon') css = `background-image:linear-gradient(rgba(8,8,12,.94),rgba(8,8,12,.94)),linear-gradient(135deg,${aura},color-mix(in srgb,${aura} 30%,white 70%));background-origin:border-box;background-clip:padding-box,border-box;border:${px(1)} solid transparent;--frame-color:${aura};animation:gmdMagicLiquidMorph 6s ease-in-out infinite,gmdMysticGlow 4s ease-in-out infinite;`;
+      else if (style === 'holo') css = `background:linear-gradient(120deg,rgba(236,72,153,.18),rgba(56,189,248,.18),rgba(168,85,247,.18),rgba(236,72,153,.18));background-size:250% 100%;animation:gmdTextHoloShift 5s ease infinite;backdrop-filter:blur(${px(6)});border:${px(1)} solid rgba(255,255,255,.12);`;
+      else if (style === 'light-sweep' || style === 'dark-matte') css = `background:linear-gradient(110deg,rgba(15,23,42,.85) 30%,rgba(255,255,255,.28) 50%,rgba(15,23,42,.85) 70%);background-size:200% 100%;animation:gmdTextLightSweep 3s linear infinite;border:${px(1)} solid rgba(255,255,255,.1);`;
+      else css = `background:${item.textBgColor || '#000000'};box-shadow:0 ${px(2)} ${px(6)} rgba(0,0,0,.25);`;
+      return `${css}padding:${px(3)} ${px(8)};border-radius:${px(6)};`;
+    }
+
     function safeText(value) {
       return String(value || '').replace(/[&<>"']/g, (char) => ({
         '&': '&amp;',
@@ -1606,7 +1620,9 @@
               const strokeOffset = circ - (pct / 100) * circ;
 
               let innerIconHTML = `<span style="font-size: ${Math.round(32 * s)}px; filter: drop-shadow(0 0 ${Math.round(6 * s)}px ${color});">${centerIcon}</span>`;
-              if (centerIcon === 'gift-icon' && item.iconUrl) {
+              if (item.iconDisplayMode === 'text') {
+                innerIconHTML = `<span class="gmd-text-gift-icon" style="width:${Math.round(52 * s)}px;height:${Math.round(52 * s)}px;color:${item.iconTextColor || '#ffffff'};font-size:${Math.round((item.iconTextSize || 20) * s)}px;">${safeText(item.iconText || item.giftName || item.name)}</span>`;
+              } else if (centerIcon === 'gift-icon' && item.iconUrl) {
                 const gIcon = item.iconUrl.startsWith('http') ? item.iconUrl : `${item.iconUrl.startsWith('/') ? '' : '/'}${item.iconUrl}`;
                 const isVideoIcon = /^data:video\/webm/i.test(gIcon) || /\.webm(?:$|[?#])/i.test(gIcon);
                 innerIconHTML = isVideoIcon
@@ -1811,11 +1827,17 @@
                       ${goalsListToRender.map(g => {
                         const pct = Math.min(100, Math.round((g.current || 0) / (g.target || 1) * 100));
                         const iconUrl = g.icon ? (g.icon.startsWith('http') ? g.icon : `${g.icon.startsWith('/') ? '' : '/'}${g.icon}`) : '';
+                        const iconSize = Math.round((item.iconSize !== undefined ? item.iconSize : 28) * s);
+                        const goalIcon = g.iconDisplayMode === 'text'
+                          ? `<span class="gmd-text-gift-icon" style="width:${iconSize}px;height:${iconSize}px;color:${g.iconTextColor || '#ffffff'};font-size:${Math.round((g.iconTextSize || 16) * s)}px;">${safeText(g.iconText || g.giftName)}</span>`
+                          : (iconUrl ? (/\.webm(?:$|[?#])/i.test(iconUrl)
+                            ? `<video class="gmd-goal-list-icon" src="${iconUrl}" autoplay loop muted playsinline style="width:${iconSize}px;height:${iconSize}px;border-radius:50%;object-fit:contain;"></video>`
+                            : `<img class="gmd-goal-list-icon" src="${iconUrl}" style="width:${iconSize}px;height:${iconSize}px;border-radius:50%;" alt="">`) : '');
                         return `
                           <div class="gmd-goal-list-row ${enableShimmer ? 'gmd-shimmer-row' : ''}" style="display:flex; flex-direction:column; gap: ${Math.round(8 * s)}px; background:rgba(255,255,255,0.02); padding: ${Math.round(12 * s)}px ${Math.round(16 * s)}px; border-radius: ${Math.round(12 * s)}px; margin-bottom: ${isAutoScroll ? `${Math.round(12 * s)}px` : '0'}; position: relative; overflow: hidden;">
                             <div class="gmd-goal-list-text-row" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                               <div style="display:flex; align-items:center; gap:${Math.round(8 * s)}px;">
-                                ${iconUrl ? `<img class="gmd-goal-list-icon" src="${iconUrl}" style="width: ${Math.round((item.iconSize !== undefined ? item.iconSize : 28) * s)}px; height: ${Math.round((item.iconSize !== undefined ? item.iconSize : 28) * s)}px; border-radius:50%;" alt="">` : `<div style="font-size:${Math.round((item.iconSize !== undefined ? Math.round(item.iconSize * 0.7) : 20) * s)}px;">🎁</div>`}
+                                ${goalIcon}
                                 ${item.showGiftName !== false ? `<span class="gmd-goal-list-label" style="font-size: ${rowSize}px; font-weight:800; color:${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : '#e2e8f0'};">${safeText(g.giftName || 'Gift')}</span>` : ''}
                               </div>
                               <span class="gmd-goal-list-counts" style="font-size: ${rowSize}px; font-weight:800; color: ${item.barColor || '#38bdf8'}; text-shadow: 0 0 ${Math.round(10 * s)}px ${item.barColor || '#38bdf8'}80;">${g.current}/${g.target} (${pct}%)</span>
@@ -1868,9 +1890,13 @@
             const auraScale = Number(item.auraScale || 1);
             const iconUrl = item.iconUrl || '';
             const name = safeText(item.name || '');
-            const iconMedia = /^data:video\/webm/i.test(iconUrl) || /\.webm(?:$|[?#])/i.test(iconUrl)
-              ? `<video src="${iconUrl}" autoplay loop muted playsinline></video>`
-              : `<img src="${iconUrl}" alt="${name}">`;
+            const iconMedia = item.iconDisplayMode === 'text'
+              ? `<span class="gmd-text-gift-icon" style="color:${item.iconTextColor || '#ffffff'};font-size:${(Number(item.iconTextSize) || 20) * scale}px;">${safeText(item.iconText || item.name)}</span>`
+              : (/^data:video\/webm/i.test(iconUrl) || /\.webm(?:$|[?#])/i.test(iconUrl)
+                ? `<video src="${iconUrl}" autoplay loop muted playsinline></video>`
+                : `<img src="${iconUrl}" alt="${name}">`);
+            const labelBgStyle = giftLabelBackground(item, scale);
+            const subtext = safeText(item.subtext || '');
 
             el.style.left = `${left}px`;
             el.style.top = `${top}px`;
@@ -1888,7 +1914,7 @@
                 </span>
                 <span class="gmd-aura gmd-aura-front ${auraClass}"></span>
               </div>
-              ${item.showName ? `<div class="gmd-item-label pos-${item.textPosition || 'bottom'}" style="font-size:${textSize}px;color:${item.textColor || '#f7cb64'};--label-gap:${textGap}px;">${name}</div>` : ''}
+              ${item.showName ? `<div class="gmd-item-label pos-${item.textPosition || 'bottom'}" style="font-size:${textSize}px;color:${item.textColor || '#f7cb64'};--label-gap:${textGap}px;text-align:${item.textAlign || 'center'};${labelBgStyle}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;">${name}</div>${subtext ? `<div style="font-size:${Math.max(5, Math.round(textSize * .78))}px;opacity:.8;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:${Math.max(1, Math.round(2 * scale))}px;">${subtext}</div>` : ''}</div>` : ''}
             `;
           }
           root.appendChild(el);

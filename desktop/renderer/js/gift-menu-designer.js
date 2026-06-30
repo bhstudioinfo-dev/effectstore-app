@@ -501,6 +501,7 @@
                 let customGifts = [];
                 try { customGifts = JSON.parse(localStorage.getItem('es_custom_gifts') || '[]'); } catch (_e) {}
                 if (!Array.isArray(customGifts)) customGifts = [];
+                customGifts = customGifts.map((gift) => ({ ...gift, isCustom: true }));
                 this.gifts = [...customGifts, ...remoteGifts];
                 this.filteredGifts = [...this.gifts];
                 this.renderGiftLibrary();
@@ -508,7 +509,7 @@
                 let customGifts = [];
                 try { customGifts = JSON.parse(localStorage.getItem('es_custom_gifts') || '[]'); } catch (_parseError) {}
                 if (!Array.isArray(customGifts)) customGifts = [];
-                this.gifts = [...customGifts];
+                this.gifts = customGifts.map((gift) => ({ ...gift, isCustom: true }));
                 this.filteredGifts = [...this.gifts];
                 this.renderGiftLibrary();
             }
@@ -613,16 +614,41 @@
             }
             list.innerHTML = this.filteredGifts.map((gift) => {
                 const iconUrl = this.normalizeIcon(gift.icon);
-                const media = this.isVideoAsset(iconUrl)
-                    ? `<video src="${this.escapeHtml(iconUrl)}" autoplay loop muted playsinline></video>`
-                    : `<img src="${this.escapeHtml(iconUrl)}" alt="${this.escapeHtml(gift.name)}">`;
+                const media = gift.displayMode === 'text'
+                    ? `<span class="gmd-text-gift-icon" style="color:${gift.textColor || '#ffffff'};font-size:${Number(gift.textSize) || 20}px;">${this.escapeHtml(gift.displayText || gift.name || gift.id)}</span>`
+                    : (this.isVideoAsset(iconUrl)
+                        ? `<video src="${this.escapeHtml(iconUrl)}" autoplay loop muted playsinline></video>`
+                        : `<img src="${this.escapeHtml(iconUrl)}" alt="${this.escapeHtml(gift.name)}">`);
                 return `
-                    <button class="gmd-gift-card" draggable="true" data-gift-id="${this.escapeHtml(gift.id)}">
+                    <div class="gmd-gift-card" role="button" tabindex="0" draggable="true" data-gift-id="${this.escapeHtml(gift.id)}">
+                        ${gift.isCustom ? `<button type="button" class="gmd-custom-gift-delete" data-custom-gift-id="${this.escapeHtml(gift.id)}" title="Xóa quà custom"><i class="fas fa-times"></i></button>` : ''}
                         ${media}
                         <div class="gmd-gift-name">${this.escapeHtml(gift.name || gift.id)}</div>
-                    </button>
+                    </div>
                 `;
             }).join('');
+        }
+
+        async deleteCustomGift(giftId) {
+            let customGifts = [];
+            try { customGifts = JSON.parse(localStorage.getItem('es_custom_gifts') || '[]'); } catch (_e) {}
+            if (!Array.isArray(customGifts)) customGifts = [];
+            const gift = customGifts.find((item) => String(item.id) === String(giftId));
+            if (!gift) return;
+
+            const confirmed = await this.showConfirmModal(`Xóa quà custom "${gift.name || gift.id}" khỏi thư viện? Các layer đã đặt trên canvas sẽ được giữ nguyên.`);
+            if (!confirmed) return;
+
+            customGifts = customGifts.filter((item) => String(item.id) !== String(giftId));
+            localStorage.setItem('es_custom_gifts', JSON.stringify(customGifts));
+            this.gifts = this.gifts.filter((item) => !(item.isCustom && String(item.id) === String(giftId)));
+            const search = this.mount.querySelector('#gmd-search');
+            const query = String(search?.value || '').trim().toLowerCase();
+            this.filteredGifts = this.gifts.filter((item) => !query || String(item.name || '').toLowerCase().includes(query) || String(item.id || '').toLowerCase().includes(query));
+            this.renderGiftLibrary();
+            if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('success', 'Đã xóa quà custom khỏi thư viện.');
+            }
         }
 
         createItemFromGift(giftId, x = 100, y = 100) {
@@ -633,13 +659,19 @@
                 giftId: gift.id,
                 name: gift.name || gift.id,
                 iconUrl: this.normalizeIcon(gift.icon),
+                iconDisplayMode: gift.displayMode === 'text' ? 'text' : 'media',
+                iconText: gift.displayText || gift.name || gift.id,
+                iconTextColor: gift.textColor || '#ffffff',
+                iconTextSize: Number(gift.textSize) || 20,
                 isVideoIcon: Boolean(gift.isVideo) || this.isVideoAsset(gift.icon),
                 x, y, width: 84, height: 84, rotation: 0,
-                showName: true, textSize: 13, textColor: '#f7cb64', textGap: 4,
+                showName: true, textSize: 13, textColor: '#f7cb64', textGap: 4, textAlign: 'center',
                 textPosition: 'bottom',
+                subtext: '', showTextBg: false, textBgStyle: 'classic', textBgColor: '#000000',
+                textBgGradientFrom: '#a855f7', textBgGradientTo: '#22d3ee',
                 auraType: 'None', auraColor: '#d7b2ff', auraShape: 'Circle',
                 animationType: 'None', animationSpeed: 1, auraSpeed: 1, auraScale: 1, zIndex: this.items.length + 1,
-                visible: true, locked: false
+                visible: true, locked: false, lockRatio: true
             };
         }
 
@@ -1033,18 +1065,21 @@
                     } else {
                         const auraShapeVars = this.getAuraShapeVars(item.auraShape);
                         const lightSweepOverlay = '';
+                        const labelBgStyle = this.getGiftLabelBackgroundStyle(item);
                         visualContainer.innerHTML = `
                             <div class="gmd-visual ${this.getMotionClass(item.animationType)} ${this.getAuraClass(item.auraType)}" style="--aura-color:${item.auraColor};${auraShapeVars};--anim-speed:${item.animationSpeed}s;--aura-speed:${item.auraSpeed || 1}s;--aura-scale:${item.auraScale || 1};--icon-url:url('${item.iconUrl}');">
                                 <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-back"></span>
                                 <span class="gmd-icon-wrap" style="--icon-url:url('${item.iconUrl}')">
-                                    ${item.isVideoIcon || this.isVideoAsset(item.iconUrl)
-                                        ? `<video src="${this.escapeHtml(item.iconUrl)}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>`
-                                        : `<img src="${this.escapeHtml(item.iconUrl)}" alt="${this.escapeHtml(item.name)}">`}
+                                    ${item.iconDisplayMode === 'text'
+                                        ? `<span class="gmd-text-gift-icon" style="color:${item.iconTextColor || '#ffffff'};font-size:${Number(item.iconTextSize) || 20}px;">${this.escapeHtml(item.iconText || item.name)}</span>`
+                                        : (item.isVideoIcon || this.isVideoAsset(item.iconUrl)
+                                            ? `<video src="${this.escapeHtml(item.iconUrl)}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>`
+                                            : `<img src="${this.escapeHtml(item.iconUrl)}" alt="${this.escapeHtml(item.name)}">`)}
                                     ${lightSweepOverlay}
                                 </span>
                                 <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-front"></span>
                             </div>
-                            ${item.showName ? `<div class="gmd-item-label pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;">${this.escapeHtml(item.name)}</div>` : ''}
+                            ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;text-align:${item.textAlign || 'center'};${labelBgStyle}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;">${this.escapeHtml(item.name)}</div>${item.subtext ? `<div style="font-size:${Math.max(5, Math.round((Number(item.textSize) || 13) * .78))}px;opacity:.8;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:2px;">${this.escapeHtml(item.subtext)}</div>` : ''}</div>` : ''}
                         `;
                     }
                 }
@@ -1180,9 +1215,11 @@
             } else {
                 selectedHeaderHTML = `
                     <div class="gmd-selected-card">
-                        ${selected.isVideoIcon || this.isVideoAsset(iconPreview)
-                            ? `<video src="${this.escapeHtml(iconPreview)}" autoplay loop muted playsinline style="width:42px;height:42px;object-fit:contain;"></video>`
-                            : `<img src="${this.escapeHtml(iconPreview)}" alt="${this.escapeHtml(selected.name)}">`}
+                        ${selected.iconDisplayMode === 'text'
+                            ? `<span class="gmd-text-gift-icon" style="width:42px;height:42px;color:${selected.iconTextColor || '#ffffff'};font-size:${Number(selected.iconTextSize) || 20}px;">${this.escapeHtml(selected.iconText || selected.name)}</span>`
+                            : (selected.isVideoIcon || this.isVideoAsset(iconPreview)
+                                ? `<video src="${this.escapeHtml(iconPreview)}" autoplay loop muted playsinline style="width:42px;height:42px;object-fit:contain;"></video>`
+                                : `<img src="${this.escapeHtml(iconPreview)}" alt="${this.escapeHtml(selected.name)}">`)}
                         <input class="gmd-title-input" data-key="name" value="${this.escapeHtml(selected.name)}">
                         <button class="gmd-delete-btn" data-action="delete"><i class="fas fa-trash"></i></button>
                     </div>
@@ -1204,12 +1241,30 @@
                             <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-key="x" value="${selected.x}"><span>px</span></div>
                             <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-key="y" value="${selected.y}"><span>px</span></div>
                         </div>
-                        <div class="gmd-field"><label>Kích thước</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="width" value="${selected.width}"><span>px</span></div></div>
-                        <input class="gmd-range" type="range" min="10" max="300" data-key="width" value="${selected.width}">
+                        <div class="gmd-field"><label>Rộng (W)</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="10" data-key="width" value="${selected.width}"><span>px</span></div></div>
+                        <input class="gmd-range" type="range" min="10" max="600" data-key="width" value="${selected.width}">
+                        <div class="gmd-field"><label>Cao (H)</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="10" data-key="height" value="${selected.height}"><span>px</span></div></div>
+                        <input class="gmd-range" type="range" min="10" max="600" data-key="height" value="${selected.height}">
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:8px;">
+                            <label>Khóa tỷ lệ</label>
+                            <label class="gmd-switch"><input type="checkbox" data-key="lockRatio" ${selected.lockRatio !== false ? 'checked' : ''}><span></span></label>
+                        </div>
                     </div>
 
+                    ${selected.iconDisplayMode === 'text' ? `
                     <div class="gmd-section">
+                        <h4><i class="fas fa-font"></i> CHỮ THAY ICON</h4>
+                        <div class="gmd-field"><label>Nội dung</label><input class="gmd-input" maxlength="12" data-key="iconText" value="${this.escapeHtml(selected.iconText || selected.name)}"></div>
+                        <div class="gmd-field"><label>Màu chữ</label><input class="gmd-color" type="color" data-key="iconTextColor" value="${selected.iconTextColor || '#ffffff'}"></div>
+                        <div class="gmd-field"><label>Cỡ chữ</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="10" max="40" data-key="iconTextSize" value="${Number(selected.iconTextSize) || 20}"><span>px</span></div></div>
+                        <input class="gmd-range" type="range" min="10" max="40" data-key="iconTextSize" value="${Number(selected.iconTextSize) || 20}">
+                    </div>
+                    ` : ''}
+
+                    <template>
                         <h4><i class="fas fa-signature"></i> CÀI ĐẶT CHỮ</h4>
+                        <div class="gmd-field"><label>Tên chính</label><input class="gmd-input" data-key="name" value="${this.escapeHtml(selected.name || '')}"></div>
+                        <div class="gmd-field"><label>Tên phụ / Ghi chú</label><input class="gmd-input" data-key="subtext" value="${this.escapeHtml(selected.subtext || '')}"></div>
                         <div class="gmd-field gmd-toggle-row">
                             <label>Hiển thị tên</label>
                             <label class="gmd-switch">
@@ -1223,12 +1278,31 @@
                     { value: 'left', label: 'Trái' },
                     { value: 'right', label: 'Phải' }
                 ])}</div>
-                        <div class="gmd-field"><label>Cỡ chữ</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textSize" value="${selected.textSize}"><span>px</span></div></div>
-                        <input class="gmd-range" type="range" min="10" max="48" data-key="textSize" value="${selected.textSize}">
+                        <div class="gmd-field"><label>Cỡ chữ</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="6" max="48" data-key="textSize" value="${selected.textSize}"><span>px</span></div></div>
+                        <input class="gmd-range" type="range" min="6" max="48" data-key="textSize" value="${selected.textSize}">
+                        <div class="gmd-field"><label>Căn lề chữ</label>${this.renderSelect('textAlign', selected.textAlign || 'center', [
+                            { value: 'left', label: 'Căn trái' },
+                            { value: 'center', label: 'Căn giữa' },
+                            { value: 'right', label: 'Căn phải' }
+                        ])}</div>
                         <div class="gmd-field"><label>Khoảng cách (Gap)</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textGap" value="${selected.textGap}"><span>px</span></div></div>
                         <input class="gmd-range" type="range" min="0" max="30" data-key="textGap" value="${selected.textGap}">
                         <div class="gmd-field"><label>Màu chữ</label><input class="gmd-color" type="color" data-key="textColor" value="${selected.textColor}"></div>
-                    </div>
+                        <div class="gmd-field gmd-toggle-row">
+                            <label>Bật nền chữ</label>
+                            <label class="gmd-switch"><input type="checkbox" data-key="showTextBg" ${selected.showTextBg ? 'checked' : ''}><span></span></label>
+                        </div>
+                        ${selected.showTextBg ? `
+                        <div class="gmd-field"><label>Kiểu nền chữ</label>${this.renderSelect('textBgStyle', selected.textBgStyle || 'classic', [
+                            { value: 'classic', label: 'Cổ điển (Classic)' },
+                            { value: 'glass', label: 'Gương kính (Glass)' },
+                            { value: 'neon', label: 'Khung cổ thuật (Mystic)' },
+                            { value: 'holo', label: 'Hologram' },
+                            { value: 'light-sweep', label: 'Quét sáng' }
+                        ])}</div>
+                        ${(selected.textBgStyle || 'classic') === 'classic' ? `<div class="gmd-field"><label>Màu nền chữ</label><input class="gmd-color" type="color" data-key="textBgColor" value="${selected.textBgColor && selected.textBgColor.startsWith('#') ? selected.textBgColor.slice(0, 7) : '#000000'}"></div>` : ''}
+                        ` : ''}
+                    </template>
                 </div>
 
                 <!-- 👑 TÍNH NĂNG NÂNG CAO -->
@@ -1241,6 +1315,53 @@
                     </div>
 
                     <div id="gmd-advanced-content" style="display: ${this.advancedExpanded ? 'block' : 'none'}; margin-top: 12px;">
+                        <div class="gmd-section">
+                            <h4><i class="fas fa-signature"></i> C&#192;I &#272;&#7862;T CH&#7918;</h4>
+                            <div class="gmd-field"><label>T&#234;n ch&#237;nh</label><input class="gmd-input" data-key="name" value="${this.escapeHtml(selected.name || '')}"></div>
+                            <div class="gmd-field"><label>T&#234;n ph&#7909; / Ghi ch&#250;</label><input class="gmd-input" data-key="subtext" value="${this.escapeHtml(selected.subtext || '')}"></div>
+                            <div class="gmd-field gmd-toggle-row">
+                                <label>Hi&#7875;n th&#7883; t&#234;n</label>
+                                <label class="gmd-switch">
+                                    <input type="checkbox" data-key="showName" ${selected.showName ? 'checked' : ''}>
+                                    <span></span>
+                                </label>
+                            </div>
+                            <div class="gmd-field"><label>V&#7883; tr&#237; ch&#7919;</label>${this.renderSelect('textPosition', selected.textPosition || 'bottom', [
+                        { value: 'bottom', label: 'Dưới' },
+                        { value: 'top', label: 'Trên' },
+                        { value: 'left', label: 'Trái' },
+                        { value: 'right', label: 'Phải' }
+                    ])}</div>
+                            <div class="gmd-field"><label>C&#7905; ch&#7919;</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="6" max="48" data-key="textSize" value="${selected.textSize}"><span>px</span></div></div>
+                            <input class="gmd-range" type="range" min="6" max="48" data-key="textSize" value="${selected.textSize}">
+                            <div class="gmd-field"><label>C&#259;n l&#7873; ch&#7919;</label>${this.renderSelect('textAlign', selected.textAlign || 'center', [
+                                { value: 'left', label: 'Căn trái' },
+                                { value: 'center', label: 'Căn giữa' },
+                                { value: 'right', label: 'Căn phải' }
+                            ])}</div>
+                            <div class="gmd-field"><label>Kho&#7843;ng c&#225;ch (Gap)</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textGap" value="${selected.textGap}"><span>px</span></div></div>
+                            <input class="gmd-range" type="range" min="0" max="30" data-key="textGap" value="${selected.textGap}">
+                            <div class="gmd-field"><label>M&#224;u ch&#7919;</label><input class="gmd-color" type="color" data-key="textColor" value="${selected.textColor}"></div>
+                            <div class="gmd-field gmd-toggle-row">
+                                <label>B&#7853;t n&#7873;n ch&#7919;</label>
+                                <label class="gmd-switch"><input type="checkbox" data-key="showTextBg" ${selected.showTextBg ? 'checked' : ''}><span></span></label>
+                            </div>
+                            ${selected.showTextBg ? `
+                            <div class="gmd-field"><label>Ki&#7875;u n&#7873;n ch&#7919;</label>${this.renderSelect('textBgStyle', selected.textBgStyle || 'classic', [
+                                { value: 'classic', label: 'Cổ điển (Classic)' },
+                                { value: 'glass', label: 'Gương kính (Glass)' },
+                                { value: 'neon', label: 'Khung cổ thuật (Mystic)' },
+                                { value: 'holo', label: 'Hologram' },
+                                { value: 'light-sweep', label: 'Quét sáng' }
+                            ])}</div>
+                            ${(selected.textBgStyle || 'classic') === 'classic' ? `<div class="gmd-field"><label>M&#224;u n&#7873;n ch&#7919;</label><input class="gmd-color" type="color" data-key="textBgColor" value="${selected.textBgColor && selected.textBgColor.startsWith('#') ? selected.textBgColor.slice(0, 7) : '#000000'}"></div>` : ''}
+                            ${selected.textBgStyle === 'neon' ? `
+                            <div class="gmd-row">
+                                <div class="gmd-field"><label>M&#224;u gradient 1</label><input class="gmd-color" type="color" data-key="textBgGradientFrom" value="${selected.textBgGradientFrom || '#a855f7'}"></div>
+                                <div class="gmd-field"><label>M&#224;u gradient 2</label><input class="gmd-color" type="color" data-key="textBgGradientTo" value="${selected.textBgGradientTo || '#22d3ee'}"></div>
+                            </div>` : ''}
+                            ` : ''}
+                        </div>
                         <div class="gmd-section" style="margin-bottom: 0; padding-bottom: 0; border: none; background: none;">
                             <h4><i class="fas fa-sparkles"></i> HIỆU ỨNG</h4>
                             <div class="gmd-field"><label>Hiệu ứng loop</label>${this.renderSelect('animationType', selected.animationType, ['None', 'Pulse', 'Bounce', 'Float', 'Zoom', 'Shake'])}</div>
@@ -1307,17 +1428,29 @@
             const selectedItems = this.getSelectedItems().filter((x) => !x.locked);
 
             selectedItems.forEach((item) => {
-                if (key === 'showName') {
+                if (key === 'showName' || key === 'showTextBg' || key === 'lockRatio') {
                     item[key] = Boolean(value);
-                } else if (['x', 'y', 'width', 'height', 'rotation', 'textSize', 'textGap', 'animationSpeed', 'auraSpeed', 'auraScale'].includes(key)) {
+                } else if (['x', 'y', 'width', 'height', 'rotation', 'textSize', 'textGap', 'iconTextSize', 'animationSpeed', 'auraSpeed', 'auraScale'].includes(key)) {
+                    const previousWidth = Math.max(1, Number(item.width) || 1);
+                    const previousHeight = Math.max(1, Number(item.height) || 1);
                     item[key] = Number(value);
-                    if (key === 'width') item.height = item.width;
-                    if (key === 'height') item.width = item.height;
+                    if (item.lockRatio !== false && key === 'width') {
+                        item.height = Math.max(10, Math.round(item.width * (previousHeight / previousWidth)));
+                    }
+                    if (item.lockRatio !== false && key === 'height') {
+                        item.width = Math.max(10, Math.round(item.height * (previousWidth / previousHeight)));
+                    }
                     if (key === 'animationSpeed' || key === 'auraSpeed') {
                         item[key] = Math.max(0.2, Math.min(8, item[key] || 1));
                     }
                     if (key === 'auraScale') {
                         item[key] = Math.max(0.6, Math.min(1.8, item[key] || 1));
+                    }
+                    if (key === 'iconTextSize') {
+                        item[key] = Math.max(10, Math.min(40, item[key] || 20));
+                    }
+                    if (key === 'textSize') {
+                        item[key] = Math.max(6, Math.min(48, item[key] || 13));
                     }
                     this.clampInsideCanvas(item);
                 } else if (key === 'auraColor') {
@@ -1335,7 +1468,7 @@
             });
 
             this.renderCanvas();
-            if (refreshInspector) this.renderInspector();
+            if (refreshInspector || key === 'showTextBg' || key === 'textBgStyle') this.renderInspector();
             if (pushHist) this.pushHistory('update-item');
         }
 
@@ -1681,7 +1814,7 @@
 
                 modal.innerHTML = `
                     <div style="background: linear-gradient(180deg, #0f172a 0%, #090d16 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; width: 360px; padding: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); font-family: system-ui, sans-serif;">
-                        <h4 style="margin: 0 0 16px; color: #f8fafc; font-size: 15px; font-weight: 800; line-height: 1.4;">${title}</h4>
+                        <h4 style="margin: 0 0 16px; color: #f8fafc; font-size: 15px; font-weight: 800; line-height: 1.4;">${this.escapeHtml(title)}</h4>
                         <div style="display: flex; justify-content: flex-end; gap: 8px;">
                             <button id="gmd-confirm-cancel" class="gmd-btn" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1;">Hủy</button>
                             <button id="gmd-confirm-submit" class="gmd-btn primary" style="background: linear-gradient(135deg, #ef4444, #b91c1c); border: none; color: #fff;">Xóa</button>
@@ -1773,16 +1906,27 @@
                     width: Math.round(i.width * sx),
                     height: Math.round(i.height * sy),
                     textSize: Number(i.textSize || 13) * ((sx + sy) / 2),
-                    textGap: Number(i.textGap || 4) * sy
+                    textGap: Number(i.textGap || 4) * sy,
+                    iconTextSize: Number(i.iconTextSize || 20) * ((sx + sy) / 2)
                 };
                 if (i.type && i.type !== 'gift') {
                     itemExport.w = itemExport.width;
                     itemExport.h = itemExport.height;
                 }
+                if (i.type === 'goal-list' && Array.isArray(cleanItem.goals)) {
+                    const avgScale = (sx + sy) / 2;
+                    itemExport.goals = cleanItem.goals.map((goal) => ({
+                        ...goal,
+                        iconTextSize: Number(goal.iconTextSize || 16) * avgScale
+                    }));
+                }
                 if (i.type === 'gift-stack-group') {
                     const avgScale = (sx + sy) / 2;
                     itemExport.renderScale = avgScale;
-                    itemExport.children = Array.isArray(i.children) ? i.children.map((child) => ({ ...child })) : [];
+                    itemExport.children = Array.isArray(i.children) ? i.children.map((child) => ({
+                        ...child,
+                        iconTextSize: Number(child.iconTextSize || 20) * avgScale
+                    })) : [];
                     itemExport.iconSize = Number(i.iconSize || 64) * avgScale;
                     itemExport.textSize = Number(i.textSize || 14) * avgScale;
                     itemExport.textGap = Number(i.textGap || 4) * avgScale;
@@ -2160,6 +2304,14 @@
                 const addGiftBtn = e.target.closest('.gmd-add-btn');
                 if (addGiftBtn) {
                     this.showAddCustomGiftModal();
+                    return;
+                }
+
+                const deleteCustomGiftBtn = e.target.closest('.gmd-custom-gift-delete');
+                if (deleteCustomGiftBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.deleteCustomGift(deleteCustomGiftBtn.dataset.customGiftId);
                     return;
                 }
 
@@ -2574,7 +2726,9 @@
                     const dx = (e.clientX - this.dragState.sx) / finalScale;
                     const dy = (e.clientY - this.dragState.sy) / finalScale;
                     item.width = Math.max(30, Math.round(this.dragState.width + dx));
-                    item.height = Math.max(30, Math.round(this.dragState.height + dy));
+                    item.height = item.lockRatio
+                        ? Math.max(30, Math.round(item.width * (this.dragState.height / this.dragState.width)))
+                        : Math.max(30, Math.round(this.dragState.height + dy));
                     this.clampInsideCanvas(item);
                     
                     const map = {
@@ -2628,10 +2782,13 @@
                                 const scaleW = target.width / start.width;
                                 target.fontSize = Math.max(10, Math.round((start.fontSize || 36) * scaleW));
                             }
+                        } else if (target.lockRatio !== false) {
+                            const nextWidth = Math.max(10, Math.round(start.width + delta));
+                            target.width = nextWidth;
+                            target.height = Math.max(10, Math.round(nextWidth * (start.height / start.width)));
                         } else {
-                            const nextSize = Math.round(start.width + delta);
-                            target.width = nextSize;
-                            target.height = nextSize;
+                            target.width = Math.max(10, Math.round(start.width + dx));
+                            target.height = Math.max(10, Math.round(start.height + dy));
                         }
                         this.clampInsideCanvas(target);
                     });
@@ -3223,6 +3380,20 @@
             }
         }
 
+        getGiftLabelBackgroundStyle(item) {
+            if (item.showTextBg !== true) return '';
+            const style = item.textBgStyle || 'classic';
+            const gradientFrom = item.textBgGradientFrom || '#a855f7';
+            const gradientTo = item.textBgGradientTo || '#22d3ee';
+            let css = '';
+            if (style === 'glass') css = 'background:rgba(255,255,255,.05);animation:gmdGlassBreath 4s ease-in-out infinite;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);';
+            else if (style === 'neon') css = `background-image:linear-gradient(rgba(8,8,12,.94),rgba(8,8,12,.94)),linear-gradient(135deg,${gradientFrom},${gradientTo});background-origin:border-box;background-clip:padding-box,border-box;border:1px solid transparent;--frame-color:${gradientFrom};--glow-soft:color-mix(in srgb,${gradientFrom} 8%,transparent);--glow-bright:color-mix(in srgb,${gradientTo} 22%,transparent);--inner-border-color:color-mix(in srgb,${gradientTo} 50%,white);animation:gmdMagicLiquidMorph 6s ease-in-out infinite,gmdMysticGlow 4s ease-in-out infinite;`;
+            else if (style === 'holo') css = 'background:linear-gradient(120deg,rgba(236,72,153,.18) 0%,rgba(56,189,248,.18) 40%,rgba(168,85,247,.18) 70%,rgba(236,72,153,.18) 100%);background-size:250% 100%;animation:gmdTextHoloShift 5s ease infinite;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);box-shadow:0 4px 12px rgba(0,0,0,.25);';
+            else if (style === 'light-sweep' || style === 'dark-matte') css = 'background:linear-gradient(110deg,rgba(15,23,42,.85) 30%,rgba(255,255,255,.28) 50%,rgba(15,23,42,.85) 70%);background-size:200% 100%;animation:gmdTextLightSweep 3s linear infinite;border:1px solid rgba(255,255,255,.1);box-shadow:0 4px 12px rgba(0,0,0,.3);';
+            else css = `background:${item.textBgColor || '#000000'};box-shadow:0 2px 6px rgba(0,0,0,.25);`;
+            return `${css}padding:3px 8px;border-radius:6px;`;
+        }
+
         async optimizePngUpload(file, maxDimension = 1600) {
             if (!file || !/\.png$/i.test(file.name || '')) return file;
             try {
@@ -3378,9 +3549,12 @@
                 </div>
             `;
 
-            const renderGiftOptionMedia = (url, size, marginRight = 0) => {
-                if (!url) return '🎁';
+            const renderGiftOptionMedia = (gift, url, size, marginRight = 0) => {
                 const style = `width:${size}px;height:${size}px;border-radius:50%;object-fit:contain;${marginRight ? `margin-right:${marginRight}px;` : ''}`;
+                if (gift?.displayMode === 'text') {
+                    return `<span class="gmd-text-gift-icon" style="${style}color:${gift.textColor || '#ffffff'};font-size:${Math.max(8, Math.min(size, Number(gift.textSize) || 16))}px;">${this.escapeHtml(gift.displayText || gift.name || gift.id)}</span>`;
+                }
+                if (!url) return '🎁';
                 return this.isVideoAsset(url)
                     ? `<video src="${this.escapeHtml(url)}" style="${style}" autoplay loop muted playsinline></video>`
                     : `<img src="${this.escapeHtml(url)}" style="${style}">`;
@@ -3388,22 +3562,22 @@
 
             const makeCustomGiftSelect = (label, currentId) => {
                 const currentGift = this.gifts.find(g => String(g.id) === String(currentId)) || this.gifts[0] || { id: '', name: 'Chọn quà', icon: '' };
-                const currentIcon = currentGift.icon ? (currentGift.icon.startsWith('http') ? currentGift.icon : this.apiBase + currentGift.icon) : '';
+                const currentIcon = this.normalizeIcon(currentGift.icon || '');
                 return `
                     <div class="gmd-field">
                         <label>${label}</label>
                         <div class="gmd-custom-select">
                             <div class="gmd-custom-select-header" onclick="this.nextElementSibling.classList.toggle('show')">
-                                ${renderGiftOptionMedia(currentIcon, 20, 8)}
+                                ${renderGiftOptionMedia(currentGift, currentIcon, 20, 8)}
                                 <span>${currentGift.name || currentGift.id}</span>
                                 <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 10px; opacity: 0.7;"></i>
                             </div>
                             <div class="gmd-custom-select-options">
                                 ${this.gifts.map(g => {
-                                    const gIcon = g.icon ? (g.icon.startsWith('http') ? g.icon : this.apiBase + g.icon) : '';
+                                    const gIcon = this.normalizeIcon(g.icon || '');
                                     return `
                                         <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" onclick="window.giftMenuDesigner.updateGoalBoardSelectedItem('giftId', '${g.id}'); window.giftMenuDesigner.renderInspector();">
-                                            ${renderGiftOptionMedia(gIcon, 20)}
+                                            ${renderGiftOptionMedia(g, gIcon, 20)}
                                             <span>${g.name || g.id}</span>
                                             <span style="margin-left: auto; font-size: 9px; color: #a855f7;">${g.coins || 1}💎</span>
                                         </div>
@@ -3417,19 +3591,19 @@
 
             const makeCustomGiftSelectForGoal = (goalIdx, currentId) => {
                 const currentGift = this.gifts.find(g => String(g.id) === String(currentId)) || this.gifts[0] || { id: '', name: 'Chọn quà', icon: '' };
-                const currentIcon = currentGift.icon ? (currentGift.icon.startsWith('http') ? currentGift.icon : this.apiBase + currentGift.icon) : '';
+                const currentIcon = this.normalizeIcon(currentGift.icon || '');
                 return `
                     <div class="gmd-custom-select" style="grid-column: 1;">
                         <div class="gmd-custom-select-header" style="height: 32px; padding: 4px 8px;" onclick="this.nextElementSibling.classList.toggle('show')">
-                            ${renderGiftOptionMedia(currentIcon, 16, 4)}
+                            ${renderGiftOptionMedia(currentGift, currentIcon, 16, 4)}
                             <span style="font-size: 10px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:55px;">${currentGift.name || currentGift.id}</span>
                         </div>
                         <div class="gmd-custom-select-options">
                             ${this.gifts.map(g => {
-                                const gIcon = g.icon ? (g.icon.startsWith('http') ? g.icon : this.apiBase + g.icon) : '';
+                                const gIcon = this.normalizeIcon(g.icon || '');
                                 return `
                                     <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" style="padding: 4px 6px; font-size: 11px;" onclick="window.giftMenuDesigner.updateGoalListItem(${goalIdx}, 'giftId', '${g.id}'); this.parentElement.classList.remove('show'); window.giftMenuDesigner.renderInspector();">
-                                        ${renderGiftOptionMedia(gIcon, 16)}
+                                        ${renderGiftOptionMedia(g, gIcon, 16)}
                                         <span>${g.name || g.id}</span>
                                     </div>
                                 `;
@@ -4083,6 +4257,15 @@
                                         </div>
                                     </div>
                                     ` : ''}
+                                    ${child.textBgStyle === 'neon' ? `
+                                    <div class="gmd-field" style="margin-top: 4px;">
+                                        <label style="font-size: 11px;">Màu gradient</label>
+                                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                                            <input class="gmd-color" type="color" data-child-index="${index}" data-child-key="textBgGradientFrom" value="${child.textBgGradientFrom || '#a855f7'}">
+                                            <input class="gmd-color" type="color" data-child-index="${index}" data-child-key="textBgGradientTo" value="${child.textBgGradientTo || '#22d3ee'}">
+                                        </div>
+                                    </div>
+                                    ` : ''}
                                     ` : ''}
 
                                     <div class="gmd-field" style="margin-top: 4px;">
@@ -4196,6 +4379,15 @@
                             <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="30" max="1920" data-goal-key="h" value="${logical.h}">
                         </div>
                     </div>
+                    ${selected.type === 'gift-stack-group' ? `
+                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                        <label style="font-size: 11px;">Khóa tỷ lệ (Aspect Ratio)</label>
+                        <label class="gmd-switch">
+                            <input type="checkbox" data-goal-key="lockRatio" ${selected.lockRatio ? 'checked' : ''}>
+                            <span></span>
+                        </label>
+                    </div>
+                    ` : ''}
                     ${selected.type !== 'gift-stack-group' ? `
                     <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
                         <label style="font-size: 11px;">Khóa tỷ lệ (Aspect Ratio)</label>
@@ -4274,6 +4466,8 @@
             if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'iconSize', 'gap', 'textSize', 'textGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
+                    const previousW = Math.max(1, Number(item.w) || Number(item.width) || 1);
+                    const previousH = Math.max(1, Number(item.h) || Number(item.height) || 1);
                     const map = {
                         '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
                         '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
@@ -4297,16 +4491,16 @@
                     } else if (key === 'w') {
                         item.w = numVal;
                         item.width = Math.round(numVal * stageSx);
-                        if (item.lockRatio && item.h) {
-                            const ratio = item.h / numVal;
+                        if (item.lockRatio) {
+                            const ratio = previousH / previousW;
                             item.height = Math.round(item.width * ratio);
                             item.h = Math.round(item.w * ratio);
                         }
                     } else if (key === 'h') {
                         item.h = numVal;
                         item.height = Math.round(numVal * stageSy);
-                        if (item.lockRatio && item.w) {
-                            const ratio = item.w / numVal;
+                        if (item.lockRatio) {
+                            const ratio = previousW / previousH;
                             item.width = Math.round(item.height * ratio);
                             item.w = Math.round(item.h * ratio);
                         }
@@ -4333,6 +4527,10 @@
                     if (gift) {
                         item.giftName = gift.name || cleanVal;
                         item.iconUrl = gift.icon || '';
+                        item.iconDisplayMode = gift.displayMode === 'text' ? 'text' : 'media';
+                        item.iconText = gift.displayText || gift.name || cleanVal;
+                        item.iconTextColor = gift.textColor || '#ffffff';
+                        item.iconTextSize = Number(gift.textSize) || 20;
                     }
                 }
             }
@@ -4369,6 +4567,10 @@
                     if (gift) {
                         goal.giftName = gift.name || cleanVal;
                         goal.icon = gift.icon || '';
+                        goal.iconDisplayMode = gift.displayMode === 'text' ? 'text' : 'media';
+                        goal.iconText = gift.displayText || gift.name || cleanVal;
+                        goal.iconTextColor = gift.textColor || '#ffffff';
+                        goal.iconTextSize = Number(gift.textSize) || 20;
                     } else {
                         goal.giftName = cleanVal;
                     }
@@ -4390,7 +4592,11 @@
                     giftName: firstGift.name || firstGift.id,
                     current: 0,
                     target: 100,
-                    icon: firstGift.icon || ''
+                    icon: firstGift.icon || '',
+                    iconDisplayMode: firstGift.displayMode === 'text' ? 'text' : 'media',
+                    iconText: firstGift.displayText || firstGift.name || firstGift.id,
+                    iconTextColor: firstGift.textColor || '#ffffff',
+                    iconTextSize: Number(firstGift.textSize) || 20
                 });
                 this.renderCanvas();
                 this.renderInspector();
@@ -5009,17 +5215,28 @@
                         width: Math.round(i.width * sx),
                         height: Math.round(i.height * sy),
                         textSize: Number(i.textSize || 13) * ((sx + sy) / 2),
-                        textGap: Number(i.textGap || 4) * sy
+                        textGap: Number(i.textGap || 4) * sy,
+                        iconTextSize: Number(i.iconTextSize || 20) * ((sx + sy) / 2)
                     };
                     if (i.type === 'gift-stack-group') {
                         const avgScale = (sx + sy) / 2;
                         itemExport.renderScale = avgScale;
-                        itemExport.children = Array.isArray(i.children) ? i.children.map((child) => ({ ...child })) : [];
+                        itemExport.children = Array.isArray(i.children) ? i.children.map((child) => ({
+                            ...child,
+                            iconTextSize: Number(child.iconTextSize || 20) * avgScale
+                        })) : [];
                         itemExport.iconSize = Number(i.iconSize || 64) * avgScale;
                         itemExport.textSize = Number(i.textSize || 14) * avgScale;
                         itemExport.textGap = Number(i.textGap || 4) * avgScale;
                         itemExport.gap = Number(i.gap || 10) * avgScale;
                         itemExport.loopEnabled = Boolean(i.loopEnabled);
+                    }
+                    if (i.type === 'goal-list' && Array.isArray(i.goals)) {
+                        const avgScale = (sx + sy) / 2;
+                        itemExport.goals = i.goals.map((goal) => ({
+                            ...goal,
+                            iconTextSize: Number(goal.iconTextSize || 16) * avgScale
+                        }));
                     }
                     return itemExport;
                 });
@@ -5116,6 +5333,13 @@
                             <input id="gmd-custom-gift-name" class="gmd-input" placeholder="Nhập tên hiển thị..." style="background:#1e293b; color:#fff; border:1px solid #334155; padding:8px; border-radius:6px; font-size:13px;" />
                         </div>
                         <div class="gmd-modal-field" style="display:flex; flex-direction:column; gap:4px;">
+                            <label style="font-size:11px; color:#94a3b8; font-weight:600;">Kiểu hiển thị thay icon</label>
+                            <select id="gmd-custom-gift-display-mode" class="gmd-input" style="background:#1e293b; color:#fff; border:1px solid #334155; padding:8px; border-radius:6px; font-size:13px;">
+                                <option value="media">PNG / GIF / WebM</option>
+                                <option value="text">Chữ</option>
+                            </select>
+                        </div>
+                        <div id="gmd-custom-gift-media-fields" class="gmd-modal-field" style="display:flex; flex-direction:column; gap:4px;">
                             <label style="font-size:11px; color:#94a3b8; font-weight:600;">Icon Quà Tặng</label>
                             <div style="display:flex; gap:8px; align-items:center;">
                                 <button class="gmd-btn primary" id="gmd-custom-gift-upload-btn" style="flex:1; font-size:12px; padding:8px; background:#8b5cf6; border:none; color:#fff; border-radius:6px; cursor:pointer; font-weight:bold;"><i class="fas fa-upload"></i> Chọn PNG/GIF/WebM</button>
@@ -5124,6 +5348,15 @@
                                     <span style="font-size:9px; color:#475569; text-align:center;">No Icon</span>
                                 </div>
                             </div>
+                        </div>
+                        <div id="gmd-custom-gift-text-fields" class="gmd-modal-field" style="display:none; flex-direction:column; gap:8px; padding:10px; border:1px solid rgba(168,85,247,.28); border-radius:8px; background:rgba(168,85,247,.06);">
+                            <label style="font-size:11px; color:#c4b5fd; font-weight:700;">Chữ thay cho icon</label>
+                            <input id="gmd-custom-gift-display-text" class="gmd-input" maxlength="12" placeholder="Ví dụ: 1K, FOLLOW, VIP..." style="background:#1e293b; color:#fff; border:1px solid #334155; padding:8px; border-radius:6px; font-size:13px;" />
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                <label style="font-size:11px;color:#94a3b8;display:flex;flex-direction:column;gap:4px;">Màu chữ<input id="gmd-custom-gift-text-color" type="color" value="#ffffff" style="width:100%;height:34px;border:0;background:transparent;"></label>
+                                <label style="font-size:11px;color:#94a3b8;display:flex;flex-direction:column;gap:4px;">Cỡ chữ<input id="gmd-custom-gift-text-size" type="number" min="10" max="40" value="20" class="gmd-input" style="height:34px;background:#1e293b;color:#fff;border:1px solid #334155;border-radius:6px;padding:5px;"></label>
+                            </div>
+                            <div id="gmd-custom-gift-text-preview" class="gmd-text-gift-icon" style="width:64px;height:64px;align-self:center;color:#fff;font-size:20px;border:1px dashed rgba(255,255,255,.18);">TEXT</div>
                         </div>
                     </div>
                     <div class="gmd-modal-footer" style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #1e293b; padding-top:14px; margin-top:18px;">
@@ -5139,9 +5372,33 @@
             const uploadBtn = modal.querySelector('#gmd-custom-gift-upload-btn');
             const previewContainer = modal.querySelector('#gmd-custom-gift-preview-container');
             const saveBtn = modal.querySelector('#gmd-custom-gift-save-btn');
+            const modeSelect = modal.querySelector('#gmd-custom-gift-display-mode');
+            const mediaFields = modal.querySelector('#gmd-custom-gift-media-fields');
+            const textFields = modal.querySelector('#gmd-custom-gift-text-fields');
+            const displayTextInput = modal.querySelector('#gmd-custom-gift-display-text');
+            const textColorInput = modal.querySelector('#gmd-custom-gift-text-color');
+            const textSizeInput = modal.querySelector('#gmd-custom-gift-text-size');
+            const textPreview = modal.querySelector('#gmd-custom-gift-text-preview');
 
             let selectedFile = null;
             let previewUrl = '';
+
+            const updateTextPreview = () => {
+                const textValue = displayTextInput.value.trim() || 'TEXT';
+                const size = Math.max(10, Math.min(40, Number(textSizeInput.value) || 20));
+                textPreview.textContent = textValue;
+                textPreview.style.color = textColorInput.value || '#ffffff';
+                textPreview.style.fontSize = `${size}px`;
+            };
+            modeSelect.onchange = () => {
+                const textMode = modeSelect.value === 'text';
+                mediaFields.style.display = textMode ? 'none' : 'flex';
+                textFields.style.display = textMode ? 'flex' : 'none';
+                if (textMode) displayTextInput.focus();
+            };
+            displayTextInput.oninput = updateTextPreview;
+            textColorInput.oninput = updateTextPreview;
+            textSizeInput.oninput = updateTextPreview;
 
             uploadBtn.onclick = () => fileInput.click();
 
@@ -5171,6 +5428,10 @@
             saveBtn.onclick = async () => {
                 const id = modal.querySelector('#gmd-custom-gift-id').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
                 const name = modal.querySelector('#gmd-custom-gift-name').value.trim();
+                const displayMode = modeSelect.value === 'text' ? 'text' : 'media';
+                const displayText = displayTextInput.value.trim().slice(0, 12);
+                const textColor = textColorInput.value || '#ffffff';
+                const textSize = Math.max(10, Math.min(40, Number(textSizeInput.value) || 20));
 
                 if (!id) {
                     alert('Vui lòng nhập ID quà tặng hợp lệ (chỉ chữ thường, số, dấu gạch dưới).');
@@ -5180,8 +5441,12 @@
                     alert('Vui lòng nhập tên quà tặng.');
                     return;
                 }
-                if (!selectedFile) {
+                if (displayMode === 'media' && !selectedFile) {
                     alert('Vui lòng chọn file PNG, GIF hoặc WebM cho quà tặng.');
+                    return;
+                }
+                if (displayMode === 'text' && !displayText) {
+                    alert('Vui lòng nhập chữ sẽ hiển thị thay icon.');
                     return;
                 }
 
@@ -5191,30 +5456,37 @@
                 }
 
                 saveBtn.disabled = true;
-                saveBtn.textContent = 'Đang tối ưu...';
+                saveBtn.textContent = displayMode === 'media' ? 'Đang tối ưu...' : 'Đang lưu...';
                 let uploadedAsset = null;
-                try {
-                    const uploadIconFile = await this.optimizePngUpload(selectedFile, 512);
-                    const formData = new FormData();
-                    formData.append('assetFile', uploadIconFile);
-                    const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
-                    const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/upload-asset`, { method: 'POST', headers, body: formData });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok || !data.success || !data.asset) throw new Error(data.error || `HTTP ${res.status}`);
-                    uploadedAsset = data.asset;
-                } catch (error) {
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = 'Thêm Quà';
-                    alert(`Không thể tải icon: ${error.message}`);
-                    return;
+                if (displayMode === 'media') {
+                    try {
+                        const uploadIconFile = await this.optimizePngUpload(selectedFile, 512);
+                        const formData = new FormData();
+                        formData.append('assetFile', uploadIconFile);
+                        const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+                        const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/upload-asset`, { method: 'POST', headers, body: formData });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data.success || !data.asset) throw new Error(data.error || `HTTP ${res.status}`);
+                        uploadedAsset = data.asset;
+                    } catch (error) {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'Thêm Quà';
+                        alert(`Không thể tải icon: ${error.message}`);
+                        return;
+                    }
                 }
 
                 const newGift = {
                     id,
                     name,
-                    icon: uploadedAsset.url,
-                    format: uploadedAsset.format,
-                    isVideo: uploadedAsset.format === 'webm',
+                    icon: uploadedAsset?.url || '',
+                    format: uploadedAsset?.format || (displayMode === 'text' ? 'text' : ''),
+                    isVideo: uploadedAsset?.format === 'webm',
+                    displayMode,
+                    displayText: displayMode === 'text' ? displayText : '',
+                    textColor,
+                    textSize,
+                    isCustom: true,
                     coins: 1
                 };
 
@@ -5225,16 +5497,16 @@
                 try {
                     localStorage.setItem('es_custom_gifts', JSON.stringify(customGifts));
                 } catch (_e) {
-                    alert('Không đủ dung lượng lưu icon. Hãy dùng ảnh nhỏ hơn.');
+                    alert('Không đủ dung lượng lưu quà custom trên máy.');
                     return;
                 }
 
                 this.gifts.unshift(newGift);
                 this.filteredGifts = [...this.gifts];
                 this.renderGiftLibrary();
-                await this.loadGoalAssets();
+                if (uploadedAsset) await this.loadGoalAssets();
                 if (window.app && typeof window.app.showNotification === 'function') {
-                    const savedPercent = uploadedAsset.optimized && uploadedAsset.originalSize
+                    const savedPercent = uploadedAsset?.optimized && uploadedAsset.originalSize
                         ? Math.max(1, Math.round((1 - uploadedAsset.size / uploadedAsset.originalSize) * 100))
                         : 0;
                     window.app.showNotification('success', savedPercent > 0

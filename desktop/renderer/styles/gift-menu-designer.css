@@ -149,6 +149,7 @@
     padding-right: 4px;
 }
 .gmd-gift-card {
+    position: relative;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     min-height: 80px;
@@ -161,6 +162,26 @@
     cursor: pointer;
     transition: all .22s ease;
 }
+.gmd-custom-gift-delete {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    border-radius: 50%;
+    color: #fca5a5;
+    background: rgba(69, 10, 10, 0.82);
+    cursor: pointer;
+    z-index: 3;
+}
+.gmd-custom-gift-delete:hover {
+    color: #fff;
+    background: #dc2626;
+}
 .gmd-gift-card:hover {
     transform: translateY(-1px);
     border-color: rgba(167, 139, 250, 0.55);
@@ -172,6 +193,26 @@
     height: 40px;
     object-fit: contain;
     filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5));
+}
+.gmd-text-gift-icon {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 2px;
+    overflow: hidden;
+    color: #fff;
+    font-weight: 900;
+    line-height: 1;
+    text-align: center;
+    word-break: break-word;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, .75);
+}
+.gmd-gift-card > .gmd-text-gift-icon {
+    width: 40px;
+    height: 40px;
 }
 .gmd-gift-name {
     font-size: 11px;
@@ -1211,10 +1252,47 @@
 
 .gmd-item-label {
     position: absolute;
+    box-sizing: border-box;
     white-space: nowrap;
     font-weight: 800;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.62);
     pointer-events: none;
+}
+.gmd-gift-label-text-wrap {
+    overflow: visible;
+}
+.gmd-gift-label-text-wrap::before {
+    content: '';
+    position: absolute;
+    inset: -2.5px;
+    border: .8px solid var(--inner-border-color, transparent);
+    pointer-events: none;
+    animation: gmdMagicLiquidMorph2 8s ease-in-out infinite;
+    z-index: 1;
+}
+@keyframes gmdTextHoloShift {
+    0%, 100% { background-position: 0% 50%; filter: hue-rotate(0deg); }
+    50% { background-position: 100% 50%; filter: hue-rotate(180deg); }
+}
+@keyframes gmdTextLightSweep {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+@keyframes gmdGlassBreath {
+    0%, 100% { background-color: rgba(255,255,255,.05); border-color: rgba(255,255,255,.12); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+    50% { background-color: rgba(255,255,255,.11); border-color: rgba(255,255,255,.22); box-shadow: 0 4px 12px rgba(0,0,0,.28), 0 0 4px rgba(255,255,255,.08); }
+}
+@keyframes gmdMysticGlow {
+    0%, 100% { box-shadow: 0 0 6px var(--glow-soft); }
+    50% { box-shadow: 0 0 14px var(--glow-bright); }
+}
+@keyframes gmdMagicLiquidMorph {
+    0%, 100% { border-radius: 16px 4px 18px 6px / 6px 16px 4px 18px; }
+    50% { border-radius: 4px 18px 6px 16px / 18px 4px 16px 6px; }
+}
+@keyframes gmdMagicLiquidMorph2 {
+    0%, 100% { border-radius: 4px 18px 6px 16px / 18px 4px 16px 6px; }
+    50% { border-radius: 16px 4px 18px 6px / 6px 16px 4px 18px; }
 }
 .gmd-item-label.pos-bottom {
     top: calc(100% + var(--label-gap, 4px));
