@@ -27,7 +27,7 @@ const PORT = process.env.PORT || 9000;
 // MIDDLEWARE
 // ========================================
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/overlay', express.static(path.join(__dirname, '..', 'frontend', 'overlay'), {

@@ -3,6 +3,7 @@ const GiftMapping = require('../models/GiftMapping');
 const Effect = require('../models/Effect');
 const GiftLog = require('../models/GiftLog');
 const effectQueue = require('./effectQueue');
+const GiftMenuLayout = require('../models/GiftMenuLayout');
 const fs = require('fs');
 const path = require('path');
 
@@ -58,6 +59,7 @@ class TikTokService {
             userId: data.userId || data.user?.userId || '',
             uniqueId: data.uniqueId || data.user?.uniqueId || '',
             nickname: data.nickname || data.user?.nickname || '',
+            avatarUrl: data.profilePictureUrl || data.user?.profilePictureUrl || '',
             source: 'tiktok-live'
         };
     }
@@ -109,6 +111,9 @@ class TikTokService {
                 // Update Real-time Goal Board progress (Phase 2)
                 await this.processGoalBoardGift(data).catch(err => {
                     console.error('⚠️ Goal Board live progress sync error:', err.message);
+                });
+                await this.processGiftMenuGift(data).catch(err => {
+                    console.error('⚠️ Gift Menu live progress sync error:', err.message);
                 });
 
                 let mapping = null;
@@ -187,6 +192,7 @@ class TikTokService {
     }
 
     async processGoalBoardGift(giftEvent) {
+        if (giftEvent && giftEvent.giftType === 1 && giftEvent.repeatEnd === false) return;
         const layout = await this.getGoalBoardLayout();
         if (!layout || !Array.isArray(layout.layers) || !layout.layers.length) return;
 
@@ -286,6 +292,91 @@ class TikTokService {
                 layers: layout.layers
             });
         }
+    }
+
+    async processGiftMenuGift(giftEvent) {
+        if (giftEvent && giftEvent.giftType === 1 && giftEvent.repeatEnd === false) return;
+
+        const gift = this.normalizeGiftFromEvent(giftEvent);
+        if (!gift) return;
+
+        const giftMenuLayoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
+        let layout = null;
+        try {
+            if (fs.existsSync(giftMenuLayoutPath)) {
+                layout = JSON.parse(fs.readFileSync(giftMenuLayoutPath, 'utf8') || 'null');
+            }
+        } catch (_e) {
+            layout = null;
+        }
+
+        const fileUserId = layout && layout.userId ? String(layout.userId) : '';
+        if (this.currentLiveUserId && (!layout || fileUserId !== String(this.currentLiveUserId))) {
+            const activeLayout = await GiftMenuLayout.findOne({ userId: this.currentLiveUserId, isActive: true, isTemplate: false }).lean();
+            if (activeLayout) layout = activeLayout;
+        }
+        if (!layout) return;
+
+        const receivedGiftId = String(gift.giftId || '').toLowerCase();
+        const receivedGiftName = String(gift.giftName || '').toLowerCase();
+        const repeatCount = Math.max(1, Number(gift.repeatCount) || 1);
+        const totalDiamonds = Math.max(0, Number(gift.diamondCount) || 0) * repeatCount;
+        const senderNickname = gift.nickname || gift.uniqueId || 'TikTok user';
+        const senderAvatar = gift.avatarUrl || '';
+
+        const isGiftMatch = (target = {}) => {
+            const targetId = String(target.giftId || '').toLowerCase();
+            const targetName = String(target.giftName || '').toLowerCase();
+            return targetId === receivedGiftId || targetId === receivedGiftName || targetName === receivedGiftName;
+        };
+
+        const updateItems = (items) => {
+            let changed = false;
+            if (!Array.isArray(items)) return changed;
+            items.forEach((item) => {
+                if (!item || item.visible === false) return;
+                if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests'].includes(item.type) && isGiftMatch(item)) {
+                    item.currentCount = (Number(item.currentCount) || 0) + repeatCount;
+                    changed = true;
+                }
+                if (item.type === 'goal-list' && Array.isArray(item.goals)) {
+                    item.goals.forEach((goal) => {
+                        if (!isGiftMatch(goal)) return;
+                        goal.current = (Number(goal.current) || 0) + repeatCount;
+                        changed = true;
+                    });
+                }
+                if (totalDiamonds > 0 && ['top-contributors', 'podium-contributors'].includes(item.type)) {
+                    if (!Array.isArray(item.contributors)) item.contributors = [];
+                    const existing = item.contributors.find((entry) => entry.nickname === senderNickname);
+                    if (existing) {
+                        existing.value = (Number(existing.value) || 0) + totalDiamonds;
+                        if (senderAvatar) existing.avatar = senderAvatar;
+                    } else {
+                        item.contributors.push({ nickname: senderNickname, value: totalDiamonds, avatar: senderAvatar });
+                    }
+                    item.contributors.sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0));
+                    item.contributors = item.contributors.slice(0, 20);
+                    changed = true;
+                }
+                if (item.type === 'combo') {
+                    item.comboCount = (Number(item.comboCount) || 0) + repeatCount;
+                    changed = true;
+                }
+            });
+            return changed;
+        };
+
+        const itemsChanged = updateItems(layout.items);
+        const exportedChanged = updateItems(layout.exportedItems);
+        if (!itemsChanged && !exportedChanged) return;
+
+        layout.savedAt = new Date().toISOString();
+        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
+        this.broadcast('gift_menu_progress_update', {
+            type: 'gift_menu_progress_update',
+            items: Array.isArray(layout.items) ? layout.items : []
+        });
     }
 }
 

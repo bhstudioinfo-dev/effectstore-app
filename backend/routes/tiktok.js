@@ -10,7 +10,94 @@ const Effect = require('../models/Effect');
 const User = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
 const GiftMenuLayout = require('../models/GiftMenuLayout');
+const multer = require('multer');
+const { spawn } = require('child_process');
+let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
+try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) {}
 const giftMenuLayoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
+const goalAssetDir = path.join(__dirname, '..', 'uploads', 'goal-assets');
+fs.mkdirSync(goalAssetDir, { recursive: true });
+const goalAssetUpload = multer({
+    storage: multer.diskStorage({
+        destination: (req, _file, cb) => {
+            const userDir = path.join(goalAssetDir, String(req.userId));
+            fs.mkdirSync(userDir, { recursive: true });
+            cb(null, userDir);
+        },
+        filename: (_req, file, cb) => {
+            const ext = path.extname(file.originalname || '').toLowerCase();
+            const base = path.basename(file.originalname || 'asset', ext)
+                .replace(/[^a-zA-Z0-9_-]+/g, '_')
+                .slice(0, 80) || 'asset';
+            cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${base}${ext}`);
+        }
+    }),
+    limits: { fileSize: 50 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        const allowed = new Set(['.png', '.gif', '.webm']);
+        const isAllowed = allowed.has(path.extname(file.originalname || '').toLowerCase());
+        cb(isAllowed ? null : new Error('Chỉ hỗ trợ PNG, GIF và WebM'), isAllowed);
+    }
+});
+
+function detectGoalAssetType(filePath) {
+    const header = Buffer.alloc(12);
+    const fd = fs.openSync(filePath, 'r');
+    try { fs.readSync(fd, header, 0, header.length, 0); } finally { fs.closeSync(fd); }
+    if (header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return '.png';
+    if (header.subarray(0, 6).toString('ascii') === 'GIF87a' || header.subarray(0, 6).toString('ascii') === 'GIF89a') return '.gif';
+    if (header.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))) return '.webm';
+    return '';
+}
+
+function runFfmpeg(args, timeoutMs = 120000) {
+    return new Promise((resolve) => {
+        const child = spawn(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-y', ...args], { windowsHide: true });
+        let settled = false;
+        const finish = (success) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(success);
+        };
+        const timer = setTimeout(() => {
+            try { child.kill(); } catch (_e) {}
+            finish(false);
+        }, timeoutMs);
+        child.on('error', () => finish(false));
+        child.on('close', (code) => finish(code === 0));
+    });
+}
+
+async function optimizeGoalAsset(filePath, ext) {
+    const originalSize = fs.statSync(filePath).size;
+    const thresholds = { '.png': 1024 * 1024, '.gif': 4 * 1024 * 1024, '.webm': 8 * 1024 * 1024 };
+    if (originalSize <= thresholds[ext]) return { optimized: false, originalSize, finalSize: originalSize };
+
+    const tempPath = `${filePath}.optimized${ext}`;
+    let args = [];
+    if (ext === '.png') {
+        args = ['-i', filePath, '-vf', "scale='min(1600,iw)':-2:flags=lanczos", '-frames:v', '1', '-compression_level', '9', tempPath];
+    } else if (ext === '.gif') {
+        args = ['-i', filePath, '-vf', "fps=20,scale='min(960,iw)':-2:flags=lanczos", '-loop', '0', tempPath];
+    } else if (ext === '.webm') {
+        args = ['-i', filePath, '-vf', "scale='min(1920,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease:flags=lanczos", '-an', '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-crf', '36', '-b:v', '0', '-deadline', 'good', '-cpu-used', '4', tempPath];
+    }
+
+    const success = await runFfmpeg(args);
+    if (!success || !fs.existsSync(tempPath)) {
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+        return { optimized: false, originalSize, finalSize: originalSize };
+    }
+    const optimizedSize = fs.statSync(tempPath).size;
+    if (optimizedSize >= originalSize) {
+        fs.unlinkSync(tempPath);
+        return { optimized: false, originalSize, finalSize: originalSize };
+    }
+    fs.copyFileSync(tempPath, filePath);
+    fs.unlinkSync(tempPath);
+    return { optimized: true, originalSize, finalSize: optimizedSize };
+}
 
 // Connect
 router.post('/connect', authMiddleware, async (req, res) => {
@@ -366,7 +453,12 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             });
         }
         layout.name = payload.name || layout.name || 'Menu mặc định';
+        layout.version = Number(payload.version) || 2;
+        layout.savedAt = payload.savedAt ? new Date(payload.savedAt) : new Date();
         layout.aspectRatio = payload.aspectRatio || '9:16';
+        layout.canvasSize = payload.canvasSize || undefined;
+        layout.safeArea = payload.safeArea || undefined;
+        layout.exportSize = payload.exportSize || undefined;
         layout.items = Array.isArray(payload.items) ? payload.items : [];
         layout.exportedItems = Array.isArray(payload.exportedItems) ? payload.exportedItems : [];
         await layout.save();
@@ -378,7 +470,7 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
 router.post('/gift-menu-layout/create', authMiddleware, async (req, res) => {
     try {
         const { name } = req.body;
-        await GiftMenuLayout.updateMany({ userId: req.userId }, { isActive: false });
+        await GiftMenuLayout.updateMany({ userId: req.userId, isTemplate: false }, { isActive: false });
         const layout = new GiftMenuLayout({
             userId: req.userId,
             name: name || 'Thiết kế mới',
@@ -396,9 +488,9 @@ router.post('/gift-menu-layout/create', authMiddleware, async (req, res) => {
 router.put('/gift-menu-layout/:layoutId/activate', authMiddleware, async (req, res) => {
     try {
         const { layoutId } = req.params;
-        await GiftMenuLayout.updateMany({ userId: req.userId }, { isActive: false });
+        await GiftMenuLayout.updateMany({ userId: req.userId, isTemplate: false }, { isActive: false });
         const layout = await GiftMenuLayout.findOneAndUpdate(
-            { _id: layoutId, userId: req.userId },
+            { _id: layoutId, userId: req.userId, isTemplate: false },
             { isActive: true },
             { new: true }
         );
@@ -411,7 +503,7 @@ router.put('/gift-menu-layout/:layoutId/activate', authMiddleware, async (req, r
 router.delete('/gift-menu-layout/:layoutId', authMiddleware, async (req, res) => {
     try {
         const { layoutId } = req.params;
-        const layout = await GiftMenuLayout.findOneAndDelete({ _id: layoutId, userId: req.userId });
+        const layout = await GiftMenuLayout.findOneAndDelete({ _id: layoutId, userId: req.userId, isTemplate: false });
         if (!layout) return res.status(404).json({ success: false, error: 'Layout not found' });
         if (layout.isActive) {
             const nextLayout = await GiftMenuLayout.findOne({ userId: req.userId });
@@ -434,30 +526,123 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
         if (!isAdmin) return res.status(403).json({ success: false, error: 'Unauthorized' });
         const activeLayout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
         if (!activeLayout) return res.status(400).json({ success: false, error: 'No active layout to publish' });
+        const payload = req.body || {};
+        const price = Math.max(0, Number(payload.price) || 0);
+        const originalPrice = Math.max(price, Number(payload.originalPrice) || 0);
         const template = new GiftMenuLayout({
-            name: activeLayout.name + ' - Template',
+            userId: req.userId,
+            name: String(payload.name || activeLayout.name + ' - Template').trim(),
+            version: activeLayout.version || 2,
+            savedAt: new Date(),
             aspectRatio: activeLayout.aspectRatio,
+            canvasSize: activeLayout.canvasSize,
+            safeArea: activeLayout.safeArea,
+            exportSize: activeLayout.exportSize,
             items: activeLayout.items,
             exportedItems: activeLayout.exportedItems,
-            isTemplate: true
+            isTemplate: true,
+            category: String(payload.category || activeLayout.category || 'all'),
+            price,
+            originalPrice,
+            description: String(payload.description || '').trim(),
+            icon: String(payload.icon || '📋').trim() || '📋',
+            isPremium: price > 0
         });
         await template.save();
-        res.json({ success: true });
+        res.json({ success: true, template });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, res) => {
+    try {
+        const template = await GiftMenuLayout.findOne({ _id: req.params.templateId, isTemplate: true });
+        if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
+        if (Number(template.price) > 0) {
+            return res.status(402).json({ success: false, error: 'Paid template checkout is not available yet' });
+        }
+
+        await GiftMenuLayout.updateMany({ userId: req.userId, isTemplate: false }, { isActive: false });
+        const layout = new GiftMenuLayout({
+            userId: req.userId,
+            name: template.name,
+            version: template.version || 2,
+            savedAt: new Date(),
+            aspectRatio: template.aspectRatio,
+            canvasSize: template.canvasSize,
+            safeArea: template.safeArea,
+            exportSize: template.exportSize,
+            items: template.items,
+            exportedItems: template.exportedItems,
+            isActive: true,
+            isTemplate: false
+        });
+        await layout.save();
+        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
+        res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 
-// Goal Board mock/fallback routes to avoid frontend console crashes
 router.get('/goal-board/assets', authMiddleware, async (req, res) => {
-    res.json({ success: true, assets: [] });
+    try {
+        const userId = String(req.userId);
+        const userDir = path.join(goalAssetDir, userId);
+        fs.mkdirSync(userDir, { recursive: true });
+        const assets = fs.readdirSync(userDir, { withFileTypes: true })
+            .filter((entry) => entry.isFile())
+            .map((entry) => ({
+                name: entry.name.replace(/^\d+-\d+-/, ''),
+                url: `/uploads/goal-assets/${userId}/${entry.name}`,
+                type: path.extname(entry.name).toLowerCase() === '.webm' ? 'video' : 'image'
+            }));
+        res.json({ success: true, assets });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.get('/goal-board/templates', authMiddleware, async (req, res) => {
     res.json({ success: true, customTemplates: [] });
 });
 
-router.post('/goal-board/upload-asset', authMiddleware, async (req, res) => {
-    res.status(501).json({ success: false, error: 'Asset upload chưa được hỗ trợ ở phiên bản hiện tại.' });
+router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('assetFile'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, error: 'Missing asset file' });
+        const ext = path.extname(req.file.filename).toLowerCase();
+        const detectedExt = detectGoalAssetType(req.file.path);
+        if (!detectedExt || detectedExt !== ext) {
+            try { fs.unlinkSync(req.file.path); } catch (_e) {}
+            return res.status(400).json({ success: false, error: 'File không đúng định dạng PNG, GIF hoặc WebM' });
+        }
+        const optimization = await optimizeGoalAsset(req.file.path, ext);
+        const maxFinalSize = { '.png': 8 * 1024 * 1024, '.gif': 12 * 1024 * 1024, '.webm': 20 * 1024 * 1024 }[ext];
+        if (optimization.finalSize > maxFinalSize) {
+            try { fs.unlinkSync(req.file.path); } catch (_e) {}
+            return res.status(413).json({ success: false, error: 'File vẫn quá nặng sau tối ưu. Vui lòng giảm độ phân giải hoặc thời lượng.' });
+        }
+        res.json({
+            success: true,
+            asset: {
+                name: req.file.originalname,
+                url: `/uploads/goal-assets/${req.userId}/${req.file.filename}`,
+                type: ext === '.webm' ? 'video' : 'image',
+                format: ext.slice(1),
+                optimized: optimization.optimized,
+                originalSize: optimization.originalSize,
+                size: optimization.finalSize
+            }
+        });
+    } catch (error) {
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+            try { fs.unlinkSync(req.file.path); } catch (_e) {}
+        }
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.use((error, _req, res, next) => {
+    if (error instanceof multer.MulterError || error?.message === 'Chỉ hỗ trợ PNG, GIF và WebM') {
+        return res.status(400).json({ success: false, error: error.message });
+    }
+    return next(error);
 });
 
 module.exports = router;

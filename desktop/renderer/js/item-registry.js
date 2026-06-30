@@ -407,7 +407,7 @@
                 supportsResize: true,
                 usesScaledWrapper: false,
                 rendersNestedChildren: true,
-                supportsLoop: false
+                supportsLoop: true
             },
             exportContract: {
                 coordinateSource: 'stage',

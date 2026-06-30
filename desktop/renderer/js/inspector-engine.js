@@ -392,7 +392,7 @@
                     { value: 'horizontal', label: 'Horizontal' }
                 ]))}
                 ${field('Loop Speed', numberInput('loopSpeed', item.loopSpeed ?? 15, 's'))}
-                <div style="font-size:11px;color:#94a3b8;line-height:1.4;margin:8px 0;">Tinh nang cuon se hoan thien o phase tiep theo.</div>
+                <div style="font-size:11px;color:#94a3b8;line-height:1.4;margin:8px 0;">Khi bật cuộn, danh sách quà sẽ lặp liên tục theo hướng đã chọn.</div>
                 <button class="gmd-btn" data-action="ungroup-stack" style="width:100%; border-color: rgba(239,68,68,.4); color:#fca5a5;"><i class="fas fa-object-ungroup"></i> Bo gop</button>
             `, 'fas fa-layer-group'),
             data: section('Child Gifts', `

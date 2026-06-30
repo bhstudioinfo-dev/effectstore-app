@@ -105,15 +105,30 @@
                 ws.onmessage = (event) => {
                     try {
                         const packet = JSON.parse(event.data || '{}');
-                        if (packet.event === 'goal_board_progress_update' && packet.data?.layers) {
+                        if (packet.event === 'gift_menu_progress_update' && packet.data?.items) {
                             let updated = false;
-                            packet.data.layers.forEach(layer => {
+                            packet.data.items.forEach(layer => {
                                 const existing = this.items.find(x => x.id === layer.id);
                                 if (existing) {
-                                    if (layer.currentCount !== undefined) existing.currentCount = layer.currentCount;
-                                    if (layer.comboCount !== undefined) existing.comboCount = layer.comboCount;
-                                    if (layer.goals !== undefined) existing.goals = layer.goals;
-                                    if (layer.contributors !== undefined) existing.contributors = layer.contributors;
+                                    if (layer.currentCount !== undefined) {
+                                        if (existing._originalCurrentCount === undefined) existing._originalCurrentCount = existing.currentCount || 0;
+                                        existing.currentCount = layer.currentCount;
+                                    }
+                                    if (layer.comboCount !== undefined) {
+                                        if (existing._originalComboCount === undefined) existing._originalComboCount = existing.comboCount || 0;
+                                        existing.comboCount = layer.comboCount;
+                                    }
+                                    if (layer.goals !== undefined) {
+                                        const originalByGift = new Map((existing.goals || []).map(goal => [String(goal.giftId), Number(goal.current) || 0]));
+                                        existing.goals = layer.goals.map(goal => ({
+                                            ...goal,
+                                            _originalCurrent: goal._originalCurrent !== undefined ? goal._originalCurrent : (originalByGift.get(String(goal.giftId)) || 0)
+                                        }));
+                                    }
+                                    if (layer.contributors !== undefined) {
+                                        if (existing._originalContributors === undefined) existing._originalContributors = Array.isArray(existing.contributors) ? existing.contributors.map(c => ({ ...c })) : [];
+                                        existing.contributors = layer.contributors;
+                                    }
                                     updated = true;
                                 }
                             });
@@ -299,7 +314,7 @@
                                 <div id="gmd-assets-tab-content" style="display:none; flex: 1; flex-direction: column; min-height: 0; overflow-y: auto; gap: 8px;">
                                     <div class="gmd-asset-upload-row" style="display: flex; gap: 8px; margin-bottom: 8px; flex-shrink: 0;">
                                         <button class="gmd-btn primary" id="gmd-upload-asset-btn" style="flex: 1;"><i class="fas fa-upload"></i> Tải lên</button>
-                                        <input type="file" id="gmd-asset-file-input" style="display: none;" accept=".webm,.png,.gif,.jpg,.jpeg">
+                                        <input type="file" id="gmd-asset-file-input" style="display: none;" accept=".png,.gif,.webm,image/png,image/gif,video/webm">
                                         <button class="gmd-btn" id="gmd-add-text-btn" style="white-space: nowrap;"><i class="fas fa-font"></i> Thêm Chữ</button>
                                     </div>
                                     <div class="gmd-assets-grid" id="gmd-assets-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;"></div>
@@ -382,7 +397,7 @@
                     </div>
                 </div>
             `;
-            if (this.sidebarRight) this.sidebarRight.style.display = 'none';
+            if (this.sidebarRight && (!window.app || window.app.currentView === 'gift-menu-designer')) this.sidebarRight.style.display = 'none';
             const snapBtn = this.mount.querySelector('[data-action="snap-toggle"]');
             if (snapBtn) snapBtn.classList.toggle('active', this.snapEnabled);
             this.updateCanvasSizeByRatio();
@@ -482,12 +497,19 @@
                 const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
                 const res = await fetch(`${this.apiBase}/api/tiktok/gifts-library`, { headers });
                 const data = await res.json();
-                this.gifts = Array.isArray(data.gifts) ? data.gifts : [];
+                const remoteGifts = Array.isArray(data.gifts) ? data.gifts : [];
+                let customGifts = [];
+                try { customGifts = JSON.parse(localStorage.getItem('es_custom_gifts') || '[]'); } catch (_e) {}
+                if (!Array.isArray(customGifts)) customGifts = [];
+                this.gifts = [...customGifts, ...remoteGifts];
                 this.filteredGifts = [...this.gifts];
                 this.renderGiftLibrary();
             } catch (_e) {
-                this.gifts = [];
-                this.filteredGifts = [];
+                let customGifts = [];
+                try { customGifts = JSON.parse(localStorage.getItem('es_custom_gifts') || '[]'); } catch (_parseError) {}
+                if (!Array.isArray(customGifts)) customGifts = [];
+                this.gifts = [...customGifts];
+                this.filteredGifts = [...this.gifts];
                 this.renderGiftLibrary();
             }
         }
@@ -501,18 +523,20 @@
                 const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-templates`, { headers });
                 const data = await res.json();
                 if (data.success && Array.isArray(data.templates)) {
+                    this.serverTemplates = data.templates;
                     if (data.templates.length === 0) {
                         listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;">Không có mẫu thiết kế nào</div>';
                         return;
                     }
                     listEl.innerHTML = data.templates.map(t => {
-                        const isOwned = t.isPurchased || t.price === 0;
-                        const actionText = isOwned ? 'Sử dụng' : `Mua ${t.price.toLocaleString('vi-VN')}đ`;
+                        const price = Math.max(0, Number(t.price) || 0);
+                        const isOwned = Boolean(t.isPurchased) || price === 0;
+                        const actionText = isOwned ? 'Sử dụng' : `Mua ${price.toLocaleString('vi-VN')}đ`;
                         const bgStyle = isOwned ? 'background:#10b981;' : 'background:#8b5cf6;';
                         return `
                             <div class="gmd-tmpl-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px; gap:8px;">
                                 <div style="display:flex; flex-direction:column; gap:2px;">
-                                    <span style="font-size:12px; color:#fff; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:110px;" title="${t.name}">${t.name}</span>
+                                    <span style="font-size:12px; color:#fff; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:110px;" title="${this.escapeHtml(t.name)}">${this.escapeHtml(t.name)}</span>
                                     <span style="font-size:10px; color:#888;">Tỷ lệ: ${t.aspectRatio || '9:16'}</span>
                                 </div>
                                 <button class="gmd-btn-use-tmpl" data-template-id="${t._id}" style="font-size:10px; ${bgStyle} border:none; color:#fff; padding:4px 8px; border-radius:4px; cursor:pointer; font-weight:700; white-space:nowrap;">
@@ -539,20 +563,45 @@
         }
 
         async buyOrUseTemplateFromSidebar(templateId) {
-            if (window.app && typeof window.app.buyOrUseMenuTemplate === 'function') {
-                window.app.buyOrUseMenuTemplate(templateId);
+            const template = (this.serverTemplates || []).find((item) => String(item._id) === String(templateId));
+            if (template && Number(template.price || 0) > 0) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('info', 'Thanh toán mẫu trả phí đang được hoàn thiện.');
+                }
                 return;
             }
-            if (window.app && typeof window.app.showNotification === 'function') {
-                window.app.showNotification('info', 'Chức năng mua mẫu đang được hoàn thiện.');
-                return;
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (this.token) headers.Authorization = `Bearer ${this.token}`;
+                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-templates/${templateId}/use`, { method: 'POST', headers });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+                await this.loadLayoutsList();
+                await this.loadLayout();
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('success', 'Đã tạo thiết kế từ mẫu miễn phí.');
+                }
+            } catch (error) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', `Không thể sử dụng mẫu: ${error.message}`);
+                }
             }
-            alert('Chức năng mua mẫu đang được hoàn thiện.');
         }
 
         normalizeIcon(icon) {
             if (!icon) return '';
-            return icon.startsWith('http') ? icon : `${this.apiBase}${icon}`;
+            if (icon.startsWith('data:') || icon.startsWith('http')) return icon;
+            return `${this.apiBase}${icon}`;
+        }
+
+        isVideoAsset(url) {
+            return /^data:video\/webm/i.test(String(url || '')) || /\.webm(?:$|[?#])/i.test(String(url || ''));
+        }
+
+        escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[char]));
         }
 
         renderGiftLibrary() {
@@ -562,12 +611,18 @@
                 list.innerHTML = '<div class="gmd-inspector-empty">Không có dữ liệu gift.</div>';
                 return;
             }
-            list.innerHTML = this.filteredGifts.map((gift) => `
-                <button class="gmd-gift-card" draggable="true" data-gift-id="${gift.id}">
-                    <img src="${this.normalizeIcon(gift.icon)}" alt="${gift.name}">
-                    <div class="gmd-gift-name">${gift.name || gift.id}</div>
-                </button>
-            `).join('');
+            list.innerHTML = this.filteredGifts.map((gift) => {
+                const iconUrl = this.normalizeIcon(gift.icon);
+                const media = this.isVideoAsset(iconUrl)
+                    ? `<video src="${this.escapeHtml(iconUrl)}" autoplay loop muted playsinline></video>`
+                    : `<img src="${this.escapeHtml(iconUrl)}" alt="${this.escapeHtml(gift.name)}">`;
+                return `
+                    <button class="gmd-gift-card" draggable="true" data-gift-id="${this.escapeHtml(gift.id)}">
+                        ${media}
+                        <div class="gmd-gift-name">${this.escapeHtml(gift.name || gift.id)}</div>
+                    </button>
+                `;
+            }).join('');
         }
 
         createItemFromGift(giftId, x = 100, y = 100) {
@@ -578,6 +633,7 @@
                 giftId: gift.id,
                 name: gift.name || gift.id,
                 iconUrl: this.normalizeIcon(gift.icon),
+                isVideoIcon: Boolean(gift.isVideo) || this.isVideoAsset(gift.icon),
                 x, y, width: 84, height: 84, rotation: 0,
                 showName: true, textSize: 13, textColor: '#f7cb64', textGap: 4,
                 textPosition: 'bottom',
@@ -858,7 +914,20 @@
             return map[type] || '';
         }
 
-        renderCanvas() {
+        renderCanvas(sync = false) {
+            if (sync) {
+                this.renderCanvasActual();
+                return;
+            }
+            if (this._renderCanvasPending) return;
+            this._renderCanvasPending = true;
+            requestAnimationFrame(() => {
+                this._renderCanvasPending = false;
+                this.renderCanvasActual();
+            });
+        }
+
+        renderCanvasActual() {
             const canvas = this.mount.querySelector('#gmd-canvas');
             const stage = this.mount.querySelector('#gmd-stage');
             if (!canvas || !stage) return;
@@ -877,7 +946,8 @@
 
                 const selected = this.isSelected(item.id);
 
-                let el = stage.querySelector(`#${domId}`);
+                let el = document.getElementById(domId);
+                if (el && !stage.contains(el)) el = null;
                 if (!el) {
                     el = document.createElement('div');
                     el.id = domId;
@@ -930,7 +1000,7 @@
 
                     if (item.type === 'gift-stack-group') {
                         const groupHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderGiftStackGroup === 'function'
-                            ? this.sharedRenderEngine.renderGiftStackGroup(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: false })
+                            ? this.sharedRenderEngine.renderGiftStackGroup(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true })
                             : '';
                         visualContainer.innerHTML = groupHTML;
                     } else if (item.type && item.type !== 'gift') {
@@ -950,7 +1020,7 @@
                         const scaleY = item.height / refH;
 
                         const widgetHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
-                            ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: false, gifts: this.gifts, includeDesignerFallback: true })
+                            ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
                             : '';
 
                         visualContainer.innerHTML = `
@@ -967,12 +1037,14 @@
                             <div class="gmd-visual ${this.getMotionClass(item.animationType)} ${this.getAuraClass(item.auraType)}" style="--aura-color:${item.auraColor};${auraShapeVars};--anim-speed:${item.animationSpeed}s;--aura-speed:${item.auraSpeed || 1}s;--aura-scale:${item.auraScale || 1};--icon-url:url('${item.iconUrl}');">
                                 <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-back"></span>
                                 <span class="gmd-icon-wrap" style="--icon-url:url('${item.iconUrl}')">
-                                    <img src="${item.iconUrl}" alt="${item.name}">
+                                    ${item.isVideoIcon || this.isVideoAsset(item.iconUrl)
+                                        ? `<video src="${this.escapeHtml(item.iconUrl)}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>`
+                                        : `<img src="${this.escapeHtml(item.iconUrl)}" alt="${this.escapeHtml(item.name)}">`}
                                     ${lightSweepOverlay}
                                 </span>
                                 <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-front"></span>
                             </div>
-                            ${item.showName ? `<div class="gmd-item-label pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;">${item.name}</div>` : ''}
+                            ${item.showName ? `<div class="gmd-item-label pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;">${this.escapeHtml(item.name)}</div>` : ''}
                         `;
                     }
                 }
@@ -993,7 +1065,7 @@
                         const showRotate = !item.locked && this.selectedId === item.id && item.type !== 'gift-stack-group' && item.type !== 'media-asset';
                         const showResize = !item.locked && this.selectedId === item.id;
                         selectionOverlay.innerHTML = `
-                            <div style="position:absolute; left:8px; top:-24px; max-width:calc(100% - 16px); padding:3px 8px; border-radius:6px; background:rgba(8, 16, 34, 0.96); border:1px solid rgba(34,211,238,.45); color:#bae6fd; font-size:10px; font-weight:800; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:0 4px 12px rgba(0,0,0,.32);">${label}</div>
+                            <div style="position:absolute; left:8px; top:-24px; max-width:calc(100% - 16px); padding:3px 8px; border-radius:6px; background:rgba(8, 16, 34, 0.96); border:1px solid rgba(34,211,238,.45); color:#bae6fd; font-size:10px; font-weight:800; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:0 4px 12px rgba(0,0,0,.32);">${this.escapeHtml(label)}</div>
                             ${showRotate ? '<span class="gmd-handle gmd-rotate-handle" data-handle="rotate" style="pointer-events:auto;">⟳</span>' : ''}
                             ${showResize ? '<span class="gmd-handle gmd-resize-handle" data-handle="resize" style="pointer-events:auto;"></span>' : ''}
                         `;
@@ -1108,8 +1180,10 @@
             } else {
                 selectedHeaderHTML = `
                     <div class="gmd-selected-card">
-                        <img src="${iconPreview}" alt="${selected.name}">
-                        <input class="gmd-title-input" data-key="name" value="${selected.name}">
+                        ${selected.isVideoIcon || this.isVideoAsset(iconPreview)
+                            ? `<video src="${this.escapeHtml(iconPreview)}" autoplay loop muted playsinline style="width:42px;height:42px;object-fit:contain;"></video>`
+                            : `<img src="${this.escapeHtml(iconPreview)}" alt="${this.escapeHtml(selected.name)}">`}
+                        <input class="gmd-title-input" data-key="name" value="${this.escapeHtml(selected.name)}">
                         <button class="gmd-delete-btn" data-action="delete"><i class="fas fa-trash"></i></button>
                     </div>
                 `;
@@ -1278,13 +1352,14 @@
         duplicateSelected() {
             const selected = this.getSelectedItems();
             if (!selected.length) return;
-            const clones = selected.map((item, idx) => ({
-                ...item,
-                id: `itm_${Date.now()}_${Math.floor(Math.random() * 1000)}_${idx}`,
-                x: item.x + 20,
-                y: item.y + 20,
-                zIndex: this.items.length + idx + 1
-            }));
+            const clones = selected.map((item, idx) => {
+                const clone = JSON.parse(JSON.stringify(item));
+                clone.id = `itm_${Date.now()}_${Math.floor(Math.random() * 1000)}_${idx}`;
+                clone.x = item.x + 20;
+                clone.y = item.y + 20;
+                clone.zIndex = this.items.length + idx + 1;
+                return clone;
+            });
             this.items.push(...clones);
             this.setSelection(clones.map((c) => c.id), clones[0].id);
             this.renderCanvas();
@@ -1332,18 +1407,19 @@
             const safe = this.mount.querySelector('#gmd-safe-area');
             const selected = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
             if (!canvas || !safe || !selected.length) return;
-            const safeRect = safe.getBoundingClientRect();
-            const canvasRect = canvas.getBoundingClientRect();
-            const left = Math.round(safeRect.left - canvasRect.left);
-            const top = Math.round(safeRect.top - canvasRect.top);
-            const right = Math.round(left + safe.clientWidth);
-            const bottom = Math.round(top + safe.clientHeight);
+            const safeArea = this.coordinateEngine && typeof this.coordinateEngine.getSafeArea === 'function'
+                ? this.coordinateEngine.getSafeArea(this.aspectRatio)
+                : { x: 180, y: 160, width: safe.clientWidth, height: safe.clientHeight };
+            const left = safeArea.x;
+            const top = safeArea.y;
+            const right = left + safeArea.width;
+            const bottom = top + safeArea.height;
             selected.forEach((item) => {
                 if (mode === 'left') item.x = left;
-                if (mode === 'center-x') item.x = Math.round(left + ((safe.clientWidth - item.width) / 2));
+                if (mode === 'center-x') item.x = Math.round(left + ((safeArea.width - item.width) / 2));
                 if (mode === 'right') item.x = Math.round(right - item.width);
                 if (mode === 'top') item.y = top;
-                if (mode === 'center-y') item.y = Math.round(top + ((safe.clientHeight - item.height) / 2));
+                if (mode === 'center-y') item.y = Math.round(top + ((safeArea.height - item.height) / 2));
                 if (mode === 'bottom') item.y = Math.round(bottom - item.height);
                 item.x = Math.max(left, Math.min(item.x, right - item.width));
                 item.y = Math.max(top, Math.min(item.y, bottom - item.height));
@@ -1396,12 +1472,13 @@
         applySnapForItem(baseX, baseY, item) {
             if (!this.snapEnabled) return { x: baseX, y: baseY, guideX: null, guideY: null };
             const threshold = 8;
-            const w = this.canvasSize.width;
-            const h = this.canvasSize.height;
-            const cx = Math.round((w - item.width) / 2);
-            const cy = Math.round((h - item.height) / 2);
-            const candidatesX = [0, cx, w - item.width];
-            const candidatesY = [0, cy, h - item.height];
+            const safe = this.coordinateEngine && typeof this.coordinateEngine.getSafeArea === 'function'
+                ? this.coordinateEngine.getSafeArea(this.aspectRatio)
+                : { x: 0, y: 0, width: this.canvasSize.width, height: this.canvasSize.height };
+            const cx = Math.round(safe.x + (safe.width - item.width) / 2);
+            const cy = Math.round(safe.y + (safe.height - item.height) / 2);
+            const candidatesX = [safe.x, cx, safe.x + safe.width - item.width];
+            const candidatesY = [safe.y, cy, safe.y + safe.height - item.height];
             let x = baseX;
             let y = baseY;
             let guideX = null;
@@ -1429,9 +1506,37 @@
         }
 
         setAspectRatio(ratio) {
+            const oldRatio = this.aspectRatio;
+            if (ratio !== oldRatio && this.coordinateEngine) {
+                const oldSafe = this.coordinateEngine.getSafeArea(oldRatio);
+                const nextSafe = this.coordinateEngine.getSafeArea(ratio);
+                this.items.forEach((item) => {
+                    const nx = (Number(item.x) - oldSafe.x) / oldSafe.width;
+                    const ny = (Number(item.y) - oldSafe.y) / oldSafe.height;
+                    const nw = Number(item.width) / oldSafe.width;
+                    const nh = Number(item.height) / oldSafe.height;
+                    item.x = Math.round(nextSafe.x + nx * nextSafe.width);
+                    item.y = Math.round(nextSafe.y + ny * nextSafe.height);
+                    item.width = Math.max(10, Math.round(nw * nextSafe.width));
+                    item.height = Math.max(10, Math.round(nh * nextSafe.height));
+                });
+            }
             this.aspectRatio = ratio;
             this.mount.querySelectorAll('[data-ratio]').forEach((b) => b.classList.toggle('active', b.dataset.ratio === ratio));
             this.updateCanvasSizeByRatio();
+            if (ratio !== oldRatio) {
+                this.items.forEach((item) => {
+                    this.clampInsideCanvas(item);
+                    if (item.type && item.type !== 'gift') {
+                        const logical = this.stageToLogical(item);
+                        item.w = logical.w;
+                        item.h = logical.h;
+                    }
+                });
+                this.renderCanvas();
+                this.renderInspector();
+                this.pushHistory('change-aspect-ratio');
+            }
         }
 
         updateCanvasSizeByRatio() {
@@ -1518,7 +1623,7 @@
                 modal.innerHTML = `
                     <div style="background: linear-gradient(180deg, #0f172a 0%, #090d16 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; width: 380px; padding: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); font-family: system-ui, sans-serif;">
                         <h4 style="margin: 0 0 12px; color: #f8fafc; font-size: 16px; font-weight: 800;">${title}</h4>
-                        <input id="gmd-prompt-input" type="text" value="${defaultValue}" style="width: 100%; padding: 10px; background: rgba(3, 7, 18, 0.9); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; color: #f8fafc; font-size: 13px; margin-bottom: 16px; box-sizing: border-box; outline: none; transition: border-color 0.2s;" />
+                        <input id="gmd-prompt-input" type="text" value="${this.escapeHtml(defaultValue)}" style="width: 100%; padding: 10px; background: rgba(3, 7, 18, 0.9); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; color: #f8fafc; font-size: 13px; margin-bottom: 16px; box-sizing: border-box; outline: none; transition: border-color 0.2s;" />
                         <div style="display: flex; justify-content: flex-end; gap: 8px;">
                             <button id="gmd-prompt-cancel" class="gmd-btn" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1;">Hủy</button>
                             <button id="gmd-prompt-submit" class="gmd-btn primary" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); border: none; color: #fff;">Xác nhận</button>
@@ -1589,6 +1694,7 @@
                 const handleKey = (e) => {
                     if (e.key === 'Escape') {
                         modal.remove();
+                        window.removeEventListener('keydown', handleKey);
                         resolve(false);
                     }
                 };
@@ -1640,30 +1746,26 @@
                 : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
             const sx = exportSize.width / safeSize.width;
             const sy = exportSize.height / safeSize.height;
-            const exportedItems = this.items.map((i) => {
-                const currentCount = i._originalCurrentCount !== undefined ? i._originalCurrentCount : i.currentCount;
-                const goals = Array.isArray(i.goals) ? i.goals.map(g => {
-                    const cleanGoal = { ...g };
-                    if (g._originalCurrent !== undefined) {
-                        cleanGoal.current = g._originalCurrent;
-                    }
-                    delete cleanGoal._originalCurrent;
-                    return cleanGoal;
-                }) : i.goals;
-                const contributors = i._originalContributors !== undefined ? i._originalContributors : i.contributors;
-                const comboCount = i._originalComboCount !== undefined ? i._originalComboCount : i.comboCount;
-
-                const cleanItem = {
-                    ...i,
-                    currentCount,
-                    goals,
-                    contributors,
-                    comboCount
-                };
+            const cleanRuntimeItem = (item) => {
+                const cleanItem = JSON.parse(JSON.stringify(item));
+                if (cleanItem._originalCurrentCount !== undefined) cleanItem.currentCount = cleanItem._originalCurrentCount;
+                if (cleanItem._originalContributors !== undefined) cleanItem.contributors = cleanItem._originalContributors;
+                if (cleanItem._originalComboCount !== undefined) cleanItem.comboCount = cleanItem._originalComboCount;
+                if (Array.isArray(cleanItem.goals)) {
+                    cleanItem.goals = cleanItem.goals.map((goal) => {
+                        if (goal._originalCurrent !== undefined) goal.current = goal._originalCurrent;
+                        delete goal._originalCurrent;
+                        return goal;
+                    });
+                }
                 delete cleanItem._originalCurrentCount;
                 delete cleanItem._originalContributors;
                 delete cleanItem._originalComboCount;
-
+                return cleanItem;
+            };
+            const cleanItems = this.items.map(cleanRuntimeItem);
+            const exportedItems = cleanItems.map((cleanItem, index) => {
+                const i = this.items[index];
                 const itemExport = {
                     ...cleanItem,
                     x: Math.round((i.x - safeOffset.x) * sx),
@@ -1698,7 +1800,7 @@
                 canvasSize: liveCanvasSize,
                 safeArea: { ...safeSize, ...safeOffset },
                 exportSize,
-                items: this.items.map((i) => ({ ...i })),
+                items: cleanItems,
                 exportedItems
             };
             localStorage.setItem('giftMenuDesignerLayoutV2', JSON.stringify(payload));
@@ -1997,7 +2099,7 @@
                 return `
                     <div class="gmd-my-library-item ${isActive ? 'active' : ''}" data-layout-id="${layout._id}">
                         <div class="gmd-my-library-info">
-                            <strong>${layout.name || 'Menu không tên'}</strong>
+                            <strong>${this.escapeHtml(layout.name || 'Menu không tên')}</strong>
                             <span>${(layout.items || []).length} phần quà</span>
                         </div>
                         <div class="gmd-my-library-actions">
@@ -2051,6 +2153,13 @@
                     } else if (tabName === 'assets') {
                         this.renderAssetsList();
                     }
+                    return;
+                }
+
+                // Custom Gift Addition Button Click
+                const addGiftBtn = e.target.closest('.gmd-add-btn');
+                if (addGiftBtn) {
+                    this.showAddCustomGiftModal();
                     return;
                 }
 
@@ -2188,6 +2297,10 @@
                 if (action === 'delete') this.deleteSelected();
                 if (action === 'undo') this.undo();
                 if (action === 'redo') this.redo();
+                if (action === 'help') {
+                    alert('Gift Menu Designer\n\n• Kéo thả để di chuyển\n• Shift + click để chọn nhiều\n• Ctrl + D để nhân bản\n• Ctrl + Z / Ctrl + Y để hoàn tác / làm lại\n• Delete để xóa\n• Ctrl + cuộn chuột để zoom\n• Giữ Space hoặc chuột giữa để pan khi đang zoom');
+                    return;
+                }
                 if (action === 'save-new-template') {
                     this.showSaveTemplateModal();
                     return;
@@ -2201,7 +2314,7 @@
                     return;
                 }
                 if (action === 'save') {
-                    this.saveLayout(true, true);
+                    this.saveLayout(true, false);
                 }
                 if (action === 'save-export') {
                     this.saveAndExport();
@@ -2358,6 +2471,7 @@
                     }
                     return;
                 }
+                e.preventDefault(); // Prevent browser default drag/selection ghosts!
                 const item = this.items.find((x) => x.id === itemNode.dataset.itemId);
                 if (!item) return;
                 if (e.shiftKey) {
@@ -2410,7 +2524,6 @@
                     this.dragState = { mode: 'move', id: item.id, sx: e.clientX, sy: e.clientY, x: item.x, y: item.y, movingIds: moving.map((m) => m.id), startPositions };
                 }
                 this.renderCanvas();
-                this.renderInspector();
             });
 
             window.addEventListener('mousemove', (e) => {
@@ -2447,6 +2560,13 @@
                         movingItem.x = Math.round(start.x + snapDx);
                         movingItem.y = Math.round(start.y + snapDy);
                         this.clampInsideCanvas(movingItem);
+
+                        // Ultra Performance Direct DOM updates
+                        const domEl = document.getElementById('gmd-item-' + id);
+                        if (domEl) {
+                            domEl.style.left = movingItem.x + 'px';
+                            domEl.style.top = movingItem.y + 'px';
+                        }
                     });
                     this.updateGuides(snapped.guideX, snapped.guideY);
                 } else if (this.dragState.mode === 'stack-resize') {
@@ -2470,6 +2590,7 @@
                     const sy = exportSize.height / cfg.height;
                     item.w = Math.round(item.width * sx);
                     item.h = Math.round(item.height * sy);
+                    this.renderCanvas();
                 } else if (this.dragState.mode === 'resize') {
                     const finalScale = this.getFitScale() * this.zoomLevel;
                     const dx = (e.clientX - this.dragState.sx) / finalScale;
@@ -2514,6 +2635,7 @@
                         }
                         this.clampInsideCanvas(target);
                     });
+                    this.renderCanvas();
                 } else if (this.dragState.mode === 'rotate') {
                     const deltaRot = Math.round((e.clientX - this.dragState.sx) * 0.7);
                     (this.dragState.movingIds || [item.id]).forEach((id) => {
@@ -2522,14 +2644,15 @@
                         if (!target) return;
                         target.rotation = Math.round(startRot + deltaRot);
                     });
+                    this.renderCanvas();
                 }
-                this.renderCanvas();
-                this.renderInspector();
             });
 
             window.addEventListener('mouseup', () => {
                 if (this.dragState && this.dragState.mode !== 'pan') {
                     this.pushHistory('drag-finish');
+                    this.renderCanvas(); // Final render sync on release
+                    this.renderInspector();
                 }
                 this.updateGuides(null, null);
                 this.dragState = null;
@@ -3029,7 +3152,7 @@
             });
 
             this.customTemplates = Array.isArray(this.customTemplates) ? this.customTemplates : [];
-            this.customTemplates.unshift({
+            const newTemplate = {
                 id: templateId,
                 name: safeName,
                 tag: 'Custom',
@@ -3037,14 +3160,28 @@
                 tags: ['custom'],
                 isPremium: false,
                 layers
-            });
+            };
+            this.customTemplates.unshift(newTemplate);
+            try {
+                let localTemplates = [];
+                try { localTemplates = JSON.parse(localStorage.getItem('giftMenuDesignerCustomTemplates') || '[]'); } catch (_parseError) {}
+                if (!Array.isArray(localTemplates)) localTemplates = [];
+                localTemplates.unshift(newTemplate);
+                localStorage.setItem('giftMenuDesignerCustomTemplates', JSON.stringify(localTemplates));
+            } catch (_e) {
+                this.customTemplates.shift();
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', 'Không đủ dung lượng để lưu mẫu thiết kế trên máy.');
+                }
+                return;
+            }
 
             if (this.leftPanelTab === 'widgets') {
                 this.renderWidgetsList();
             }
 
             if (window.app && typeof window.app.showNotification === 'function') {
-                window.app.showNotification('info', 'Mẫu đã lưu tạm trong phiên hiện tại. Chức năng lưu vĩnh viễn sẽ được hoàn thiện sau.');
+                window.app.showNotification('success', 'Mẫu đã được lưu trên máy này.');
             }
         }
 
@@ -3086,10 +3223,49 @@
             }
         }
 
+        async optimizePngUpload(file, maxDimension = 1600) {
+            if (!file || !/\.png$/i.test(file.name || '')) return file;
+            try {
+                const bitmap = await createImageBitmap(file);
+                const largest = Math.max(bitmap.width, bitmap.height);
+                if (largest <= maxDimension && file.size <= 1024 * 1024) {
+                    bitmap.close();
+                    return file;
+                }
+                const scale = Math.min(1, maxDimension / largest);
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+                canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+                const ctx = canvas.getContext('2d', { alpha: true });
+                ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+                bitmap.close();
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                if (!blob) return file;
+                if (scale === 1 && blob.size >= file.size) return file;
+                return new File([blob], file.name, { type: 'image/png', lastModified: Date.now() });
+            } catch (_e) {
+                return file;
+            }
+        }
+
         async uploadGoalAsset(file) {
             if (!file) return;
+            const ext = `.${String(file.name || '').split('.').pop().toLowerCase()}`;
+            if (!['.png', '.gif', '.webm'].includes(ext) || (file.type && !['image/png', 'image/gif', 'video/webm'].includes(file.type))) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', 'Chỉ hỗ trợ tài nguyên PNG, GIF và WebM.');
+                }
+                return;
+            }
+            if (file.size > 50 * 1024 * 1024) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('error', 'File phải nhỏ hơn 50 MB trước khi tối ưu.');
+                }
+                return;
+            }
+            const uploadFile = await this.optimizePngUpload(file, 1600);
             const formData = new FormData();
-            formData.append('assetFile', file);
+            formData.append('assetFile', uploadFile);
 
             if (window.app && typeof window.app.showNotification === 'function') {
                 window.app.showNotification('info', 'Đang tải tài nguyên lên server...');
@@ -3107,7 +3283,12 @@
                 const data = await res.json();
                 if (data.success) {
                     if (window.app && typeof window.app.showNotification === 'function') {
-                        window.app.showNotification('success', 'Đã tải lên thành công tài nguyên mới!');
+                        const savedPercent = data.asset?.optimized && data.asset.originalSize
+                            ? Math.max(1, Math.round((1 - data.asset.size / data.asset.originalSize) * 100))
+                            : 0;
+                        window.app.showNotification('success', savedPercent > 0
+                            ? `Đã tải lên và giảm khoảng ${savedPercent}% dung lượng.`
+                            : 'Đã tải lên tài nguyên mới.');
                     }
                     await this.loadGoalAssets();
                 } else {
@@ -3125,13 +3306,22 @@
                 const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
                 const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/templates`, { headers });
                 const data = await res.json();
-                this.customTemplates = Array.isArray(data.customTemplates) ? data.customTemplates : [];
+                let localTemplates = [];
+                try { localTemplates = JSON.parse(localStorage.getItem('giftMenuDesignerCustomTemplates') || '[]'); } catch (_e) {}
+                if (!Array.isArray(localTemplates)) localTemplates = [];
+                const serverTemplates = Array.isArray(data.customTemplates) ? data.customTemplates : [];
+                this.customTemplates = [...localTemplates, ...serverTemplates];
                 if (this.leftPanelTab === 'widgets') {
                     this.renderWidgetsList();
                 }
             } catch (e) {
                 console.error('Failed to load custom goal templates:', e);
-                this.customTemplates = [];
+                try {
+                    const localTemplates = JSON.parse(localStorage.getItem('giftMenuDesignerCustomTemplates') || '[]');
+                    this.customTemplates = Array.isArray(localTemplates) ? localTemplates : [];
+                } catch (_e) {
+                    this.customTemplates = [];
+                }
             }
         }
 
@@ -3169,7 +3359,7 @@
                 testButtonHTML = `
                     <div class="gmd-section" style="border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
                         <h4 style="color: #a855f7; margin-bottom: 6px;"><i class="fas fa-flask"></i> CHẠY THỬ / TEST GOAL</h4>
-                        <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Gửi quà thử nghiệm ảo để xem hiệu ứng tiến trình trên canvas và OBS Overlay.</p>
+                        <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.</p>
                         <div style="display: flex; gap: 8px;">
                             <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: #8b5cf6; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.sendSimulatedGift('${selected.id}')"><i class="fas fa-play"></i> Gửi quà Test</button>
                             <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem('${selected.id}')"><i class="fas fa-undo"></i> Reset lại đầu</button>
@@ -3188,6 +3378,14 @@
                 </div>
             `;
 
+            const renderGiftOptionMedia = (url, size, marginRight = 0) => {
+                if (!url) return '🎁';
+                const style = `width:${size}px;height:${size}px;border-radius:50%;object-fit:contain;${marginRight ? `margin-right:${marginRight}px;` : ''}`;
+                return this.isVideoAsset(url)
+                    ? `<video src="${this.escapeHtml(url)}" style="${style}" autoplay loop muted playsinline></video>`
+                    : `<img src="${this.escapeHtml(url)}" style="${style}">`;
+            };
+
             const makeCustomGiftSelect = (label, currentId) => {
                 const currentGift = this.gifts.find(g => String(g.id) === String(currentId)) || this.gifts[0] || { id: '', name: 'Chọn quà', icon: '' };
                 const currentIcon = currentGift.icon ? (currentGift.icon.startsWith('http') ? currentGift.icon : this.apiBase + currentGift.icon) : '';
@@ -3196,7 +3394,7 @@
                         <label>${label}</label>
                         <div class="gmd-custom-select">
                             <div class="gmd-custom-select-header" onclick="this.nextElementSibling.classList.toggle('show')">
-                                ${currentIcon ? `<img src="${currentIcon}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain; margin-right: 8px;">` : '<div style="width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.1); margin-right: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px;">🎁</div>'}
+                                ${renderGiftOptionMedia(currentIcon, 20, 8)}
                                 <span>${currentGift.name || currentGift.id}</span>
                                 <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 10px; opacity: 0.7;"></i>
                             </div>
@@ -3205,7 +3403,7 @@
                                     const gIcon = g.icon ? (g.icon.startsWith('http') ? g.icon : this.apiBase + g.icon) : '';
                                     return `
                                         <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" onclick="window.giftMenuDesigner.updateGoalBoardSelectedItem('giftId', '${g.id}'); window.giftMenuDesigner.renderInspector();">
-                                            ${gIcon ? `<img src="${gIcon}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain;">` : '<div style="width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 10px;">🎁</div>'}
+                                            ${renderGiftOptionMedia(gIcon, 20)}
                                             <span>${g.name || g.id}</span>
                                             <span style="margin-left: auto; font-size: 9px; color: #a855f7;">${g.coins || 1}💎</span>
                                         </div>
@@ -3223,7 +3421,7 @@
                 return `
                     <div class="gmd-custom-select" style="grid-column: 1;">
                         <div class="gmd-custom-select-header" style="height: 32px; padding: 4px 8px;" onclick="this.nextElementSibling.classList.toggle('show')">
-                            ${currentIcon ? `<img src="${currentIcon}" style="width: 16px; height: 16px; border-radius: 50%; object-fit: contain; margin-right: 4px;">` : '🎁'}
+                            ${renderGiftOptionMedia(currentIcon, 16, 4)}
                             <span style="font-size: 10px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:55px;">${currentGift.name || currentGift.id}</span>
                         </div>
                         <div class="gmd-custom-select-options">
@@ -3231,7 +3429,7 @@
                                 const gIcon = g.icon ? (g.icon.startsWith('http') ? g.icon : this.apiBase + g.icon) : '';
                                 return `
                                     <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" style="padding: 4px 6px; font-size: 11px;" onclick="window.giftMenuDesigner.updateGoalListItem(${goalIdx}, 'giftId', '${g.id}'); this.parentElement.classList.remove('show'); window.giftMenuDesigner.renderInspector();">
-                                        ${gIcon ? `<img src="${gIcon}" style="width: 16px; height: 16px; border-radius: 50%; object-fit: contain;">` : '🎁'}
+                                        ${renderGiftOptionMedia(gIcon, 16)}
                                         <span>${g.name || g.id}</span>
                                     </div>
                                 `;
@@ -3308,7 +3506,7 @@
                             <label>Toc do cuon</label>
                             <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="1" max="60" data-goal-key="loopSpeed" value="${selected.loopSpeed !== undefined ? selected.loopSpeed : 15}"><span>s</span></div>
                         </div>
-                        <div style="font-size:11px;color:#94a3b8;line-height:1.4;margin:8px 0;">Tinh nang cuon se hoan thien o phase tiep theo.</div>
+                        <div style="font-size:11px;color:#94a3b8;line-height:1.4;margin:8px 0;">Khi bật cuộn, danh sách quà sẽ lặp liên tục theo hướng đã chọn.</div>
                         <button class="gmd-btn" data-action="ungroup-stack" style="width:100%; border-color: rgba(239,68,68,.4); color:#fca5a5;"><i class="fas fa-object-ungroup"></i> Bo gop</button>
                         <div style="font-size:11px;color:#94a3b8;line-height:1.4;margin-top:8px;">${Array.isArray(selected.children) ? selected.children.length : 0} gift trong nhom.</div>
                     </div>
@@ -3971,7 +4169,7 @@
             inspector.innerHTML = `
                 <div class="gmd-selected-card">
                     <div style="font-size: 20px;">${selected.type === 'media-asset' ? '🖼️' : '📊'}</div>
-                    <input class="gmd-title-input" data-goal-key="name" value="${selected.name}">
+                    <input class="gmd-title-input" data-goal-key="name" value="${this.escapeHtml(selected.name)}">
                     <button class="gmd-delete-btn" data-action="delete"><i class="fas fa-trash"></i></button>
                 </div>
                 
@@ -4328,25 +4526,24 @@
             if (!item) return;
 
             if (item.type === 'goal-bar' || item.type === 'boss-bar' || item.type === 'mystery-chests' || item.type === 'goal-circle') {
-                item.currentCount = 0;
-                delete item._originalCurrentCount;
+                if (item._originalCurrentCount === undefined) item._originalCurrentCount = item.currentCount || 0;
+                item.currentCount = item._originalCurrentCount;
             } else if (item.type === 'goal-list' && Array.isArray(item.goals)) {
                 item.goals.forEach(g => {
-                    g.current = 0;
-                    delete g._originalCurrent;
+                    if (g._originalCurrent === undefined) g._originalCurrent = g.current || 0;
+                    g.current = g._originalCurrent;
                 });
             } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
-                item.contributors = [];
-                delete item._originalContributors;
+                if (item._originalContributors === undefined) item._originalContributors = Array.isArray(item.contributors) ? item.contributors.map(c => ({ ...c })) : [];
+                item.contributors = item._originalContributors.map(c => ({ ...c }));
             } else if (item.type === 'combo') {
-                item.comboCount = 0;
-                delete item._originalComboCount;
+                if (item._originalComboCount === undefined) item._originalComboCount = item.comboCount || 0;
+                item.comboCount = item._originalComboCount;
             }
 
             this.renderCanvas();
             this.renderInspector();
 
-            await this.saveLayout(false, false);
         }
 
         async _oldResetGoalBoardItem_disabled(itemId) {
@@ -4841,6 +5038,8 @@
                 saveBtn.innerText = 'Đang đăng...';
 
                 try {
+                    const saved = await this.saveLayout(false, false);
+                    if (saved === false) throw new Error('Layout chưa được lưu');
                     const headers = { 'Content-Type': 'application/json' };
                     if (this.token) headers.Authorization = `Bearer ${this.token}`;
 
@@ -4883,6 +5082,169 @@
 
         onModeChange() {
             // Placeholder compatible wrapper
+        }
+
+        showAddCustomGiftModal() {
+            const modalId = 'gmd-add-custom-gift-modal';
+            let modal = document.getElementById(modalId);
+            if (modal) modal.remove();
+
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.style.position = 'fixed';
+            modal.style.inset = '0';
+            modal.style.background = 'rgba(3, 7, 18, 0.75)';
+            modal.style.backdropFilter = 'blur(8px)';
+            modal.style.zIndex = '99999';
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+
+            modal.innerHTML = `
+                <div class="gmd-modal-content" style="background:#0f172a; border:1px solid #334155; border-radius:16px; padding:20px; width:400px; max-width:90%; box-shadow:0 20px 50px rgba(0,0,0,0.5); font-family:inherit; color:#fff; position:relative; box-sizing:border-box;">
+                    <div class="gmd-modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:10px; margin-bottom:14px;">
+                        <h4 style="margin:0; font-size:16px; font-weight:700;"><i class="fas fa-plus-circle" style="color:#a855f7;"></i> Thêm Quà Tặng Tự Chọn</h4>
+                        <button class="gmd-modal-close" style="background:none; border:none; color:#94a3b8; font-size:22px; cursor:pointer;" onclick="document.getElementById('${modalId}').remove()">&times;</button>
+                    </div>
+                    <div class="gmd-modal-body" style="display:flex; flex-direction:column; gap:12px;">
+                        <div class="gmd-modal-field" style="display:flex; flex-direction:column; gap:4px;">
+                            <label style="font-size:11px; color:#94a3b8; font-weight:600;">ID Quà Tặng (Ví dụ: custom_balloon)</label>
+                            <input id="gmd-custom-gift-id" class="gmd-input" placeholder="Nhập ID quà (chỉ chữ thường, số, dấu gạch dưới)..." style="background:#1e293b; color:#fff; border:1px solid #334155; padding:8px; border-radius:6px; font-size:13px;" />
+                        </div>
+                        <div class="gmd-modal-field" style="display:flex; flex-direction:column; gap:4px;">
+                            <label style="font-size:11px; color:#94a3b8; font-weight:600;">Tên Quà Tặng (Ví dụ: Bong Bóng)</label>
+                            <input id="gmd-custom-gift-name" class="gmd-input" placeholder="Nhập tên hiển thị..." style="background:#1e293b; color:#fff; border:1px solid #334155; padding:8px; border-radius:6px; font-size:13px;" />
+                        </div>
+                        <div class="gmd-modal-field" style="display:flex; flex-direction:column; gap:4px;">
+                            <label style="font-size:11px; color:#94a3b8; font-weight:600;">Icon Quà Tặng</label>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <button class="gmd-btn primary" id="gmd-custom-gift-upload-btn" style="flex:1; font-size:12px; padding:8px; background:#8b5cf6; border:none; color:#fff; border-radius:6px; cursor:pointer; font-weight:bold;"><i class="fas fa-upload"></i> Chọn PNG/GIF/WebM</button>
+                                <input type="file" id="gmd-custom-gift-file-input" style="display:none;" accept=".png,.gif,.webm,image/png,image/gif,video/webm" />
+                                <div id="gmd-custom-gift-preview-container" style="width:40px; height:40px; border-radius:6px; border:1px solid #334155; display:flex; align-items:center; justify-content:center; background:#1e293b; overflow:hidden; flex-shrink:0;">
+                                    <span style="font-size:9px; color:#475569; text-align:center;">No Icon</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="gmd-modal-footer" style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #1e293b; padding-top:14px; margin-top:18px;">
+                        <button class="gmd-btn" style="background:#334155; border:none; color:#fff; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold;" onclick="document.getElementById('${modalId}').remove()">Hủy</button>
+                        <button class="gmd-btn primary" id="gmd-custom-gift-save-btn" style="background:#a855f7; border:none; color:#fff; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold;">Thêm Quà</button>
+                    </div>
+                </div>
+            `;
+
+            this.mount.appendChild(modal);
+
+            const fileInput = modal.querySelector('#gmd-custom-gift-file-input');
+            const uploadBtn = modal.querySelector('#gmd-custom-gift-upload-btn');
+            const previewContainer = modal.querySelector('#gmd-custom-gift-preview-container');
+            const saveBtn = modal.querySelector('#gmd-custom-gift-save-btn');
+
+            let selectedFile = null;
+            let previewUrl = '';
+
+            uploadBtn.onclick = () => fileInput.click();
+
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const ext = `.${String(file.name || '').split('.').pop().toLowerCase()}`;
+                const allowed = new Set(['.png', '.gif', '.webm']);
+                if (!allowed.has(ext) || (file.type && !['image/png', 'image/gif', 'video/webm'].includes(file.type))) {
+                    alert('Chỉ hỗ trợ PNG, GIF và WebM.');
+                    fileInput.value = '';
+                    return;
+                }
+                if (file.size > 50 * 1024 * 1024) {
+                    alert('File phải nhỏ hơn 50 MB trước khi tối ưu.');
+                    fileInput.value = '';
+                    return;
+                }
+                selectedFile = file;
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                previewUrl = URL.createObjectURL(file);
+                previewContainer.innerHTML = ext === '.webm'
+                    ? `<video src="${previewUrl}" style="width:100%; height:100%; object-fit:contain;" autoplay loop muted playsinline></video>`
+                    : `<img src="${previewUrl}" style="width:100%; height:100%; object-fit:contain;" />`;
+            };
+
+            saveBtn.onclick = async () => {
+                const id = modal.querySelector('#gmd-custom-gift-id').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+                const name = modal.querySelector('#gmd-custom-gift-name').value.trim();
+
+                if (!id) {
+                    alert('Vui lòng nhập ID quà tặng hợp lệ (chỉ chữ thường, số, dấu gạch dưới).');
+                    return;
+                }
+                if (!name) {
+                    alert('Vui lòng nhập tên quà tặng.');
+                    return;
+                }
+                if (!selectedFile) {
+                    alert('Vui lòng chọn file PNG, GIF hoặc WebM cho quà tặng.');
+                    return;
+                }
+
+                if (this.gifts.some(g => String(g.id).toLowerCase() === id.toLowerCase())) {
+                    alert('ID quà tặng này đã tồn tại trong danh sách. Vui lòng dùng ID khác!');
+                    return;
+                }
+
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Đang tối ưu...';
+                let uploadedAsset = null;
+                try {
+                    const uploadIconFile = await this.optimizePngUpload(selectedFile, 512);
+                    const formData = new FormData();
+                    formData.append('assetFile', uploadIconFile);
+                    const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+                    const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/upload-asset`, { method: 'POST', headers, body: formData });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || !data.success || !data.asset) throw new Error(data.error || `HTTP ${res.status}`);
+                    uploadedAsset = data.asset;
+                } catch (error) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Thêm Quà';
+                    alert(`Không thể tải icon: ${error.message}`);
+                    return;
+                }
+
+                const newGift = {
+                    id,
+                    name,
+                    icon: uploadedAsset.url,
+                    format: uploadedAsset.format,
+                    isVideo: uploadedAsset.format === 'webm',
+                    coins: 1
+                };
+
+                let customGifts = [];
+                try { customGifts = JSON.parse(localStorage.getItem('es_custom_gifts') || '[]'); } catch (_e) {}
+                if (!Array.isArray(customGifts)) customGifts = [];
+                customGifts.push(newGift);
+                try {
+                    localStorage.setItem('es_custom_gifts', JSON.stringify(customGifts));
+                } catch (_e) {
+                    alert('Không đủ dung lượng lưu icon. Hãy dùng ảnh nhỏ hơn.');
+                    return;
+                }
+
+                this.gifts.unshift(newGift);
+                this.filteredGifts = [...this.gifts];
+                this.renderGiftLibrary();
+                await this.loadGoalAssets();
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    const savedPercent = uploadedAsset.optimized && uploadedAsset.originalSize
+                        ? Math.max(1, Math.round((1 - uploadedAsset.size / uploadedAsset.originalSize) * 100))
+                        : 0;
+                    window.app.showNotification('success', savedPercent > 0
+                        ? `Đã thêm quà và giảm khoảng ${savedPercent}% dung lượng media.`
+                        : 'Đã thêm quà tặng tự chọn.');
+                }
+
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                modal.remove();
+            };
         }
     }
 

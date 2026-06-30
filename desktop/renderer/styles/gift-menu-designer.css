@@ -166,7 +166,8 @@
     border-color: rgba(167, 139, 250, 0.55);
     box-shadow: 0 10px 24px rgba(71, 85, 105, 0.2), 0 0 0 1px rgba(167, 139, 250, 0.2);
 }
-.gmd-gift-card img {
+.gmd-gift-card img,
+.gmd-gift-card video {
     width: 40px;
     height: 40px;
     object-fit: contain;
@@ -839,7 +840,7 @@
     display: block;
     overflow: hidden;
 }
-.gmd-icon-wrap img {
+.gmd-icon-wrap :is(img, video) {
     width: 100%;
     height: 100%;
     object-fit: contain;
@@ -894,7 +895,7 @@
 .gmd-visual.aura-glow .gmd-icon-wrap::after {
     display: none;
 }
-.gmd-visual.aura-glow .gmd-icon-wrap img {
+.gmd-visual.aura-glow .gmd-icon-wrap :is(img, video) {
     z-index: 3;
     opacity: 1;
     filter:
@@ -1199,7 +1200,7 @@
     pointer-events: none;
     z-index: 4;
 }
-.gmd-visual.aura-sweep .gmd-icon-wrap img {
+.gmd-visual.aura-sweep .gmd-icon-wrap :is(img, video) {
     animation: gmdIconShine calc(var(--aura-speed, 1s) * 1.5) linear infinite;
 }
 

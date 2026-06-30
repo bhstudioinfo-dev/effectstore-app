@@ -5,6 +5,8 @@ const { authMiddleware } = require('../middleware/auth');
 const Effect = require('../models/Effect');
 const OBSSettings = require('../models/OBSSettings');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
+const path = require('path');
 
 async function getObsConnectionConfig() {
     try {
@@ -97,7 +99,7 @@ router.post('/setup-effect', authMiddleware, async (req, res) => {
 });
 
 // Setup/Update Gift Menu overlay source in OBS
-router.post('/setup-gift-menu', async (_req, res) => {
+router.post('/setup-gift-menu', authMiddleware, async (_req, res) => {
     try {
         if (!obsService.isConnected()) {
             const config = await getObsConnectionConfig();
@@ -112,6 +114,18 @@ router.post('/setup-gift-menu', async (_req, res) => {
         const sceneName = 'EffectStore';
         const sourceName = 'gift_menu_overlay';
         const url = `http://localhost:${PORT}/overlay/gift-menu/?t=${Date.now()}`;
+        let sourceWidth = 1080;
+        let sourceHeight = 1920;
+        try {
+            const layoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
+            const layout = JSON.parse(fs.readFileSync(layoutPath, 'utf8'));
+            const width = Number(layout?.exportSize?.width);
+            const height = Number(layout?.exportSize?.height);
+            if (width >= 320 && width <= 7680 && height >= 320 && height <= 7680) {
+                sourceWidth = Math.round(width);
+                sourceHeight = Math.round(height);
+            }
+        } catch (_e) {}
 
         const { scenes } = await obsService.obs.call('GetSceneList');
         const sceneExists = scenes.find((s) => s.sceneName === sceneName);
@@ -129,9 +143,9 @@ router.post('/setup-gift-menu', async (_req, res) => {
                 inputKind: 'browser_source',
                 inputSettings: {
                     url,
-                    width: 1080,
-                    height: 1920,
-                    fps: 120,
+                    width: sourceWidth,
+                    height: sourceHeight,
+                    fps: 60,
                     fps_custom: true,
                     css: '',
                     shutdown: false,
@@ -145,9 +159,9 @@ router.post('/setup-gift-menu', async (_req, res) => {
                 inputName: sourceName,
                 inputSettings: {
                     url,
-                    width: 1080,
-                    height: 1920,
-                    fps: 120,
+                    width: sourceWidth,
+                    height: sourceHeight,
+                    fps: 60,
                     fps_custom: true,
                     css: '',
                     shutdown: false,

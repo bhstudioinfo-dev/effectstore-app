@@ -743,7 +743,7 @@
     display: block;
     overflow: hidden;
 }
-.gmd-icon-wrap img {
+.gmd-icon-wrap :is(img, video) {
     width: 100%;
     height: 100%;
     object-fit: contain;
@@ -798,7 +798,7 @@
 .gmd-visual.aura-glow .gmd-icon-wrap::after {
     display: none;
 }
-.gmd-visual.aura-glow .gmd-icon-wrap img {
+.gmd-visual.aura-glow .gmd-icon-wrap :is(img, video) {
     z-index: 3;
     opacity: 1;
     filter:
@@ -1103,7 +1103,7 @@
     pointer-events: none;
     z-index: 4;
 }
-.gmd-visual.aura-sweep .gmd-icon-wrap img {
+.gmd-visual.aura-sweep .gmd-icon-wrap :is(img, video) {
     animation: gmdIconShine calc(var(--aura-speed, 1s) * 1.5) linear infinite;
 }
 
@@ -1252,12 +1252,12 @@
     }
 
     .gmd-export-item > .gmd-icon-wrap,
-    .gmd-export-item > .gmd-icon-wrap img {
+    .gmd-export-item > .gmd-icon-wrap :is(img, video) {
       width: 100% !important;
       height: 100% !important;
     }
 
-    .gmd-export-item > .gmd-icon-wrap img {
+    .gmd-export-item > .gmd-icon-wrap :is(img, video) {
       object-fit: contain !important;
       image-rendering: auto;
       transform: translateZ(0);
@@ -1374,7 +1374,7 @@
       opacity: .92 !important;
     }
 
-    .gmd-export-item > .gmd-visual.aura-sweep .gmd-icon-wrap img {
+    .gmd-export-item > .gmd-visual.aura-sweep .gmd-icon-wrap :is(img, video) {
       filter:
         saturate(1.06)
         drop-shadow(0 0 4px color-mix(in srgb, var(--aura-color, #c084fc) 40%, transparent))
@@ -1608,7 +1608,10 @@
               let innerIconHTML = `<span style="font-size: ${Math.round(32 * s)}px; filter: drop-shadow(0 0 ${Math.round(6 * s)}px ${color});">${centerIcon}</span>`;
               if (centerIcon === 'gift-icon' && item.iconUrl) {
                 const gIcon = item.iconUrl.startsWith('http') ? item.iconUrl : `${item.iconUrl.startsWith('/') ? '' : '/'}${item.iconUrl}`;
-                innerIconHTML = `<img src="${gIcon}" style="width: ${Math.round(44 * s)}px; height: ${Math.round(44 * s)}px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 ${Math.round(6 * s)}px ${color});">`;
+                const isVideoIcon = /^data:video\/webm/i.test(gIcon) || /\.webm(?:$|[?#])/i.test(gIcon);
+                innerIconHTML = isVideoIcon
+                  ? `<video src="${gIcon}" autoplay loop muted playsinline style="width: ${Math.round(44 * s)}px; height: ${Math.round(44 * s)}px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 ${Math.round(6 * s)}px ${color});"></video>`
+                  : `<img src="${gIcon}" style="width: ${Math.round(44 * s)}px; height: ${Math.round(44 * s)}px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 ${Math.round(6 * s)}px ${color});">`;
               }
 
               widgetHTML = `
@@ -1865,6 +1868,9 @@
             const auraScale = Number(item.auraScale || 1);
             const iconUrl = item.iconUrl || '';
             const name = safeText(item.name || '');
+            const iconMedia = /^data:video\/webm/i.test(iconUrl) || /\.webm(?:$|[?#])/i.test(iconUrl)
+              ? `<video src="${iconUrl}" autoplay loop muted playsinline></video>`
+              : `<img src="${iconUrl}" alt="${name}">`;
 
             el.style.left = `${left}px`;
             el.style.top = `${top}px`;
@@ -1878,7 +1884,7 @@
                 style="--aura-color:${item.auraColor || '#d7b2ff'};--aura-radius:${shape.radius};--aura-clip:${shape.clip};--anim-speed:${animSpeed}s;--aura-speed:${auraSpeed}s;--aura-scale:${auraScale};--icon-url:url('${iconUrl}');">
                 <span class="gmd-aura gmd-aura-back ${auraClass}"></span>
                 <span class="gmd-icon-wrap" style="--icon-url:url('${iconUrl}')">
-                  <img src="${iconUrl}" alt="${name}">
+                  ${iconMedia}
                 </span>
                 <span class="gmd-aura gmd-aura-front ${auraClass}"></span>
               </div>

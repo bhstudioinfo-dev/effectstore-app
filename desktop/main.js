@@ -44,12 +44,12 @@ function createWindow() {
         minWidth: 1200,
         minHeight: 800,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
+            nodeIntegration: false,
+            contextIsolation: true,
             preload: path.join(__dirname, 'preload.js'),
             devTools: true,
-            webSecurity: false,
-            allowRunningInsecureContent: true
+            webSecurity: true,
+            allowRunningInsecureContent: false
         },
         backgroundColor: '#0a0a0a',
         icon: path.join(__dirname, 'assets', 'icon.ico'),
@@ -287,9 +287,9 @@ ipcMain.handle('open-page-new-window', async (event, pageName) => {
         minWidth: 1000,
         minHeight: 700,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            webSecurity: false
+            nodeIntegration: false,
+            contextIsolation: true,
+            webSecurity: true
         },
         backgroundColor: '#1a1a2e',
         parent: mainWindow,

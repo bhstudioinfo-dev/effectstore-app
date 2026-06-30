@@ -25,6 +25,10 @@
         return `${url.startsWith('/') ? '' : '/'}${url}`;
     }
 
+    function isVideoAsset(url) {
+        return /^data:video\/webm/i.test(String(url || '')) || /\.webm(?:$|[?#])/i.test(String(url || ''));
+    }
+
     function giftIconFromLibrary(item, gifts, apiBase) {
         if (item.iconUrl) return assetUrl(item.iconUrl, apiBase);
         if (!item.giftId || !Array.isArray(gifts)) return '';
@@ -76,13 +80,16 @@
         const animSpeed = Math.max(0.2, Number(item.animationSpeed) || 1);
         const auraSpeed = Math.max(0.2, Number(item.auraSpeed) || 1);
         const auraScale = Number(item.auraScale || 1);
+        const iconMedia = isVideoAsset(iconUrl)
+            ? `<video src="${iconUrl}" autoplay loop muted playsinline></video>`
+            : `<img src="${iconUrl}" alt="${name}">`;
 
         return `
             <div class="gmd-visual ${motionClass} ${auraClass}"
                 style="--aura-color:${item.auraColor || '#d7b2ff'};--aura-radius:${shape.radius};--aura-clip:${shape.clip};--anim-speed:${animSpeed}s;--aura-speed:${auraSpeed}s;--aura-scale:${auraScale};--icon-url:url('${iconUrl}');">
                 <span class="gmd-aura gmd-aura-back ${auraClass}"></span>
                 <span class="gmd-icon-wrap" style="--icon-url:url('${iconUrl}')">
-                    <img src="${iconUrl}" alt="${name}">
+                    ${iconMedia}
                 </span>
                 <span class="gmd-aura gmd-aura-front ${auraClass}"></span>
             </div>
@@ -160,7 +167,9 @@
         const icon = item.centerIcon || 'heart';
         const giftIcon = icon === 'gift-icon' ? giftIconFromLibrary(item, ctx.gifts, ctx.apiBase) : '';
         const innerIcon = giftIcon
-            ? `<img src="${giftIcon}" style="width: ${roundPx(44, ctx.scale)}px; height: ${roundPx(44, ctx.scale)}px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color});">`
+            ? (isVideoAsset(giftIcon)
+                ? `<video src="${giftIcon}" autoplay loop muted playsinline style="width: ${roundPx(44, ctx.scale)}px; height: ${roundPx(44, ctx.scale)}px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color});"></video>`
+                : `<img src="${giftIcon}" style="width: ${roundPx(44, ctx.scale)}px; height: ${roundPx(44, ctx.scale)}px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color});">`)
             : `<span style="font-size: ${roundPx(32, ctx.scale)}px; filter: drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color});">${text(ctx, icon)}</span>`;
         return `
             <div class="gmd-goal-circle-widget" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; background:${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(10,15,30,0.5) 0%, #0a0a14 100%)')}; border:${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : 'rgba(255,255,255,0.08)'}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(16, ctx.scale)}px; box-shadow:${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.37)`};">
@@ -532,6 +541,12 @@
                         const animSpeed = Math.max(0.2, Number(child.animationSpeed) || 1);
                         const auraSpeed = Math.max(0.2, Number(child.auraSpeed) || 1);
                         const auraScale = Number(child.auraScale || 1);
+                        const childMedia = isVideoAsset(icon)
+                            ? `<video src="${icon}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>`
+                            : `<img src="${icon}" alt="${name}">`;
+                        const plainChildMedia = isVideoAsset(icon)
+                            ? `<video src="${icon}" autoplay loop muted playsinline style="width:${iconSize}px;height:${iconSize}px;object-fit:contain;display:block;filter:drop-shadow(0 6px 12px rgba(0,0,0,.45));flex-shrink:0;"></video>`
+                            : `<img src="${icon}" alt="${name}" style="width:${iconSize}px;height:${iconSize}px;object-fit:contain;display:block;filter:drop-shadow(0 6px 12px rgba(0,0,0,.45));flex-shrink:0;">`;
 
                         const visualContent = (auraClass || motionClass)
                             ? `
@@ -539,12 +554,12 @@
                                     style="width:${iconSize}px;height:${iconSize}px;--aura-color:${child.auraColor || '#d7b2ff'};--aura-radius:${shape.radius};--aura-clip:${shape.clip};--anim-speed:${animSpeed}s;--aura-speed:${auraSpeed}s;--aura-scale:${auraScale};--icon-url:url('${icon}');flex-shrink:0;">
                                     <span class="gmd-aura gmd-aura-back ${auraClass}"></span>
                                     <span class="gmd-icon-wrap" style="--icon-url:url('${icon}')">
-                                        <img src="${icon}" alt="${name}">
+                                        ${childMedia}
                                     </span>
                                     <span class="gmd-aura gmd-aura-front ${auraClass}"></span>
                                 </div>
                             `
-                            : `<img src="${icon}" alt="${name}" style="width:${iconSize}px;height:${iconSize}px;object-fit:contain;display:block;filter:drop-shadow(0 6px 12px rgba(0,0,0,.45));flex-shrink:0;">`;
+                            : plainChildMedia;
 
                         const showTextBg = child.showTextBg === true;
                         const textBgColor = child.textBgColor || 'rgba(0,0,0,0.5)';
