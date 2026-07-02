@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, globalShortcut, clipboard, Tray, Me
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { spawn } = require('child_process');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const AutoLaunch = require('auto-launch');
@@ -15,9 +16,110 @@ const WS_PORT = 8081;
 
 const appDataPath = app.getPath('userData');
 const effectsPath = path.join(appDataPath, 'effects');
+const customEffectsPath = path.join(appDataPath, 'custom-effects');
+const CUSTOM_EFFECT_LARGE_FILE_WARNING_BYTES = 200 * 1024 * 1024;
+const MAX_CUSTOM_EFFECT_BYTES = 500 * 1024 * 1024;
+const CUSTOM_EFFECT_MAX_SECONDS = 15;
+const CUSTOM_EFFECT_OUTPUT_WIDTH = 720;
+const CUSTOM_EFFECT_OUTPUT_HEIGHT = 1280;
+const CUSTOM_EFFECT_ALLOWED_EXTENSIONS = new Set(['.mp4', '.mov', '.avi', '.webm']);
 
 if (!fs.existsSync(effectsPath)) {
     fs.mkdirSync(effectsPath, { recursive: true });
+}
+if (!fs.existsSync(customEffectsPath)) fs.mkdirSync(customEffectsPath, { recursive: true });
+
+function getFfmpegPath() {
+    try {
+        const ffmpegPath = require('ffmpeg-static');
+        if (ffmpegPath && ffmpegPath.includes('app.asar')) {
+            const unpackedPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
+            if (fs.existsSync(unpackedPath)) return unpackedPath;
+        }
+        if (ffmpegPath && fs.existsSync(ffmpegPath)) return ffmpegPath;
+    } catch (_error) { }
+
+    const devFallback = path.resolve(__dirname, '..', 'backend', 'node_modules', 'ffmpeg-static', 'ffmpeg.exe');
+    if (fs.existsSync(devFallback)) return devFallback;
+
+    return null;
+}
+
+const ffmpegPath = getFfmpegPath();
+
+function runFfmpeg(args) {
+    return new Promise((resolve, reject) => {
+        if (!ffmpegPath) {
+            reject(new Error('Không tìm thấy ffmpeg để tối ưu video. Vui lòng cài lại app hoặc chạy npm install trong desktop.'));
+            return;
+        }
+
+        const child = spawn(ffmpegPath, args, { windowsHide: true });
+        let stderr = '';
+        child.stderr.on('data', chunk => { stderr += chunk.toString(); });
+        child.on('error', reject);
+        child.on('close', code => {
+            if (code === 0) resolve({ stderr });
+            else reject(new Error(stderr.split(/\r?\n/).filter(Boolean).slice(-3).join(' ') || `ffmpeg lỗi mã ${code}`));
+        });
+    });
+}
+
+async function getMediaDurationSeconds(inputPath) {
+    try {
+        const result = await runFfmpeg([
+            '-hide_banner',
+            '-i', inputPath,
+            '-f', 'null',
+            '-'
+        ]);
+        const match = result.stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/i);
+        if (!match) return CUSTOM_EFFECT_MAX_SECONDS;
+        const duration = (Number(match[1]) * 3600) + (Number(match[2]) * 60) + Number(match[3]);
+        return Math.max(0.1, Math.min(CUSTOM_EFFECT_MAX_SECONDS, Math.round(duration * 10) / 10));
+    } catch (_error) {
+        return CUSTOM_EFFECT_MAX_SECONDS;
+    }
+}
+
+async function createCustomEffectWebm(inputPath, outputPath) {
+    const videoFilter = [
+        `scale=${CUSTOM_EFFECT_OUTPUT_WIDTH}:${CUSTOM_EFFECT_OUTPUT_HEIGHT}:force_original_aspect_ratio=decrease:flags=lanczos`,
+        `pad=${CUSTOM_EFFECT_OUTPUT_WIDTH}:${CUSTOM_EFFECT_OUTPUT_HEIGHT}:(ow-iw)/2:(oh-ih)/2:color=black@0`,
+        'fps=30',
+        'format=yuva420p'
+    ].join(',');
+
+    await runFfmpeg([
+        '-hide_banner',
+        '-loglevel', 'error',
+        '-y',
+        '-i', inputPath,
+        '-t', String(CUSTOM_EFFECT_MAX_SECONDS),
+        '-vf', videoFilter,
+        '-an',
+        '-c:v', 'libvpx-vp9',
+        '-pix_fmt', 'yuva420p',
+        '-crf', '30',
+        '-b:v', '0',
+        '-deadline', 'good',
+        '-cpu-used', '4',
+        '-row-mt', '1',
+        outputPath
+    ]);
+}
+
+async function createCustomEffectThumbnail(inputPath, outputPath) {
+    await runFfmpeg([
+        '-hide_banner',
+        '-loglevel', 'error',
+        '-y',
+        '-ss', '0',
+        '-i', inputPath,
+        '-frames:v', '1',
+        '-vf', `scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black@0`,
+        outputPath
+    ]);
 }
 
 const effectStoreLauncher = new AutoLaunch({
@@ -25,8 +127,15 @@ const effectStoreLauncher = new AutoLaunch({
     path: app.getPath('exe')
 });
 
-let effectQueue = [];
-let currentEffect = null;
+// ============================================================================
+// DEPRECATED LEGACY PREVIEW PIPELINE
+// This queue serves only the desktop-local preview overlay on ports 8080/8081.
+// Gift Mapping, TikTok gifts and OBS playback must never call this code path.
+// The only authoritative production queue is backend/services/effectQueue.js.
+// Keep all legacy preview state and handlers explicitly named with "legacy".
+// ============================================================================
+let legacyPreviewQueue = [];
+let legacyCurrentEffect = null;
 let connectedClients = new Set();
 let obsConnected = false;
 
@@ -94,7 +203,7 @@ function createTray() {
         
         const contextMenu = Menu.buildFromTemplate([
             { label: 'Mở EffectStore', click: () => mainWindow.show() },
-            { label: 'Trigger Effect', click: () => triggerEffect('eff-001') },
+            { label: 'Trigger Effect', click: () => triggerLegacyPreviewEffect('eff-001') },
             { type: 'separator' },
             { label: 'Thoát', click: () => app.quit() }
         ]);
@@ -128,7 +237,7 @@ function triggerEffectBySlot(slot) {
         const hotkeys = JSON.parse(fs.readFileSync(hotkeyPath, 'utf8'));
         const effectId = hotkeys[slot];
         if (effectId) {
-            triggerEffect(effectId);
+            triggerLegacyPreviewEffect(effectId);
             showNotification('Effect Triggered', `Slot ${slot}: ${effectId}`);
         }
     }
@@ -140,22 +249,27 @@ function startLocalServer() {
     // Serve static files from renderer folder
     expressApp.use('/renderer', express.static(path.join(__dirname, 'renderer')));
     expressApp.use('/effects', express.static(effectsPath));
+    expressApp.use('/custom-effects', express.static(customEffectsPath, {
+        fallthrough: false,
+        dotfiles: 'deny',
+        index: false
+    }));
     expressApp.use('/uploads', express.static(path.join(__dirname, 'uploads')));
     
     expressApp.get('/overlay', (req, res) => {
         res.sendFile(path.join(__dirname, 'renderer', 'overlay.html'));
     });
     
-    expressApp.get('/api/trigger/:effectId', (req, res) => {
-        triggerEffect(req.params.effectId);
+    expressApp.get('/legacy-preview/api/trigger/:effectId', (req, res) => {
+        triggerLegacyPreviewEffect(req.params.effectId);
         res.json({ success: true });
     });
     
-    expressApp.get('/api/status', (req, res) => {
+    expressApp.get('/legacy-preview/api/status', (req, res) => {
         res.json({
             obsConnected,
-            currentEffect,
-            queueLength: effectQueue.length,
+            currentEffect: legacyCurrentEffect,
+            queueLength: legacyPreviewQueue.length,
             connectedClients: connectedClients.size
         });
     });
@@ -175,7 +289,7 @@ function startLocalServer() {
             if (data.type === 'ping') {
                 ws.send(JSON.stringify({ type: 'pong' }));
             } else if (data.type === 'trigger') {
-                triggerEffect(data.effectId);
+                triggerLegacyPreviewEffect(data.effectId);
             }
         });
         
@@ -186,10 +300,11 @@ function startLocalServer() {
     });
 }
 
-function triggerEffect(effectId) {
+// DEPRECATED: local preview only. Never call from Gift Mapping or OBS routes.
+function triggerLegacyPreviewEffect(effectId) {
     const effect = { id: effectId, triggeredAt: Date.now() };
-    currentEffect = effect;
-    effectQueue.push(effect);
+    legacyCurrentEffect = effect;
+    legacyPreviewQueue.push(effect);
     
     connectedClients.forEach(client => {
         if (client.readyState === 1) {
@@ -239,7 +354,6 @@ app.on('activate', () => {
 ipcMain.handle('navigate-to', async (event, pageName) => {
     const pages = {
         'index': 'index.html',                    // ✅ BỎ 'renderer/'
-        'gift-mapping': 'gift-mapping.html',      // ✅ BỎ 'renderer/'
         'gift-coins': 'gift-coins-manager.html',  // ✅ BỎ 'renderer/'
         'admin-banner': 'admin-banner.html',      // ✅ BỎ 'renderer/'
         'overlay': 'overlay.html'                 // ✅ BỎ 'renderer/'
@@ -272,8 +386,7 @@ ipcMain.handle('navigate-to', async (event, pageName) => {
 ipcMain.handle('open-page-new-window', async (event, pageName) => {
     const pages = {
     'gift-coins': 'gift-coins-manager.html',
-    'admin-banner': 'admin-banner.html',
-    'gift-mapping': 'gift-mapping.html'
+    'admin-banner': 'admin-banner.html'
     };
     
     const pagePath = pages[pageName];
@@ -321,13 +434,134 @@ ipcMain.handle('get-machine-id', () => MACHINE_ID);
 ipcMain.handle('get-app-data-path', () => appDataPath);
 ipcMain.handle('get-obs-url', () => `http://localhost:${PORT}/overlay`);
 
+function readCustomEffects() {
+    if (!fs.existsSync(customEffectsPath)) return [];
+    return fs.readdirSync(customEffectsPath, { withFileTypes: true })
+        .filter(entry => entry.isDirectory() && /^custom-[a-zA-Z0-9-]+$/.test(entry.name))
+        .map(entry => {
+            try {
+                const dir = path.join(customEffectsPath, entry.name);
+                const metadata = JSON.parse(fs.readFileSync(path.join(dir, 'metadata.json'), 'utf8'));
+                if (!fs.existsSync(path.join(dir, 'effect.webm'))) return null;
+                return {
+                    ...metadata,
+                    id: entry.name,
+                    _id: entry.name,
+                    isCustom: true,
+                    previewUrl: `http://127.0.0.1:${PORT}/custom-effects/${entry.name}/effect.webm`,
+                    thumbUrl: fs.existsSync(path.join(dir, 'thumbnail.png'))
+                        ? `http://127.0.0.1:${PORT}/custom-effects/${entry.name}/thumbnail.png`
+                        : ''
+                };
+            } catch (_error) { return null; }
+        }).filter(Boolean).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+ipcMain.handle('custom-effects:list', () => ({ success: true, effects: readCustomEffects() }));
+
+ipcMain.handle('custom-effects:choose-files', async () => {
+    const videoResult = await dialog.showOpenDialog(mainWindow, {
+        title: 'Chọn video hiệu ứng cá nhân',
+        properties: ['openFile'],
+        filters: [{ name: 'Video hiệu ứng', extensions: ['mp4', 'mov', 'avi', 'webm'] }]
+    });
+    if (videoResult.canceled || !videoResult.filePaths[0]) return { success: false, canceled: true };
+
+    const videoPath = videoResult.filePaths[0];
+    const ext = path.extname(videoPath).toLowerCase();
+    if (!CUSTOM_EFFECT_ALLOWED_EXTENSIONS.has(ext)) {
+        return { success: false, error: 'Chỉ hỗ trợ video MP4, MOV, AVI hoặc WebM.' };
+    }
+
+    const stat = fs.statSync(videoPath);
+    if (stat.size > MAX_CUSTOM_EFFECT_BYTES) {
+        return {
+            success: false,
+            error: 'File quá nặng. Vui lòng chọn video dưới 500MB để tránh treo máy khi tối ưu.'
+        };
+    }
+
+    return {
+        success: true,
+        videoPath,
+        videoName: path.basename(videoPath),
+        originalBytes: stat.size,
+        isLargeFile: stat.size > CUSTOM_EFFECT_LARGE_FILE_WARNING_BYTES,
+        warning: stat.size > CUSTOM_EFFECT_LARGE_FILE_WARNING_BYTES
+            ? 'File khá nặng, quá trình tối ưu có thể mất vài phút. Nên thực hiện trước khi livestream.'
+            : '',
+        willOptimize: true,
+        maxDurationSeconds: CUSTOM_EFFECT_MAX_SECONDS,
+        outputLabel: `${CUSTOM_EFFECT_OUTPUT_WIDTH}x${CUSTOM_EFFECT_OUTPUT_HEIGHT} WebM VP9`
+    };
+});
+
+ipcMain.handle('custom-effects:save', async (_event, payload = {}) => {
+    try {
+        const name = String(payload.name || '').trim().slice(0, 80);
+        const videoPath = path.resolve(String(payload.videoPath || ''));
+        const ext = path.extname(videoPath).toLowerCase();
+        if (!name || !CUSTOM_EFFECT_ALLOWED_EXTENSIONS.has(ext) || !fs.existsSync(videoPath)) {
+            return { success: false, error: 'Tên hoặc file video không hợp lệ. Chỉ hỗ trợ MP4, MOV, AVI hoặc WebM.' };
+        }
+        const stat = fs.statSync(videoPath);
+        if (stat.size > MAX_CUSTOM_EFFECT_BYTES) {
+            return { success: false, error: 'File quá nặng. Vui lòng chọn video dưới 500MB để tránh treo máy khi tối ưu.' };
+        }
+        const requestedId = String(payload.id || '');
+        const id = /^custom-[a-zA-Z0-9-]+$/.test(requestedId) ? requestedId : `custom-${crypto.randomUUID()}`;
+        const dir = path.join(customEffectsPath, id);
+        fs.mkdirSync(dir, { recursive: false });
+        const outputPath = path.join(dir, 'effect.webm');
+        const thumbOutputPath = path.join(dir, 'thumbnail.png');
+
+        try {
+            await createCustomEffectWebm(videoPath, outputPath);
+            await createCustomEffectThumbnail(outputPath, thumbOutputPath);
+        } catch (error) {
+            fs.rmSync(dir, { recursive: true, force: true });
+            return { success: false, error: `Không thể tối ưu video sang WebM: ${error.message}` };
+        }
+
+        const outputBytes = fs.existsSync(outputPath) ? fs.statSync(outputPath).size : 0;
+        const duration = await getMediaDurationSeconds(outputPath);
+        fs.writeFileSync(path.join(dir, 'metadata.json'), JSON.stringify({
+            id,
+            name,
+            icon: '🎬',
+            createdAt: new Date().toISOString(),
+            sourceName: path.basename(videoPath),
+            originalBytes: stat.size,
+            optimizedBytes: outputBytes,
+            duration,
+            maxDurationSeconds: CUSTOM_EFFECT_MAX_SECONDS,
+            format: 'webm-vp9',
+            width: CUSTOM_EFFECT_OUTPUT_WIDTH,
+            height: CUSTOM_EFFECT_OUTPUT_HEIGHT,
+            fps: 30,
+            note: 'Video được tối ưu sang WebM VP9. App không tự xóa nền; nền trong suốt chỉ giữ được nếu file gốc có alpha.'
+        }, null, 2), 'utf8');
+        return { success: true, effect: readCustomEffects().find(item => item.id === id) };
+    } catch (error) { return { success: false, error: error.message }; }
+});
+
+ipcMain.handle('custom-effects:delete', async (_event, effectId) => {
+    try {
+        if (!/^custom-[a-zA-Z0-9-]+$/.test(effectId || '')) return { success: false, error: 'Mã hiệu ứng không hợp lệ.' };
+        const target = path.resolve(customEffectsPath, effectId);
+        if (path.dirname(target) !== path.resolve(customEffectsPath)) return { success: false, error: 'Đường dẫn không hợp lệ.' };
+        if (fs.existsSync(target)) fs.rmSync(target, { recursive: true, force: false });
+        return { success: true };
+    } catch (error) { return { success: false, error: error.message }; }
+});
+
 ipcMain.handle('copy-obs-url', async () => {
     clipboard.writeText(`http://localhost:${PORT}/overlay`);
     return { success: true };
 });
 
-ipcMain.handle('trigger-effect', async (event, effectId) => {
-    triggerEffect(effectId);
+ipcMain.handle('legacy-preview:trigger-effect', async (event, effectId) => {
+    triggerLegacyPreviewEffect(effectId);
     return { success: true };
 });
 

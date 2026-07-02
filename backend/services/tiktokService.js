@@ -4,6 +4,9 @@ const Effect = require('../models/Effect');
 const GiftLog = require('../models/GiftLog');
 const effectQueue = require('./effectQueue');
 const GiftMenuLayout = require('../models/GiftMenuLayout');
+const User = require('../models/User');
+const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
+const { resolveEffectForUser, resolveEffectDurationForUser } = require('./effectLibraryService');
 const fs = require('fs');
 const path = require('path');
 
@@ -28,6 +31,8 @@ class TikTokService {
         this.liveStats = { gifts: 0, likes: 0, chats: 0, viewers: 0, isLive: false };
         this.giftCatalogState = { gifts: [], lastSyncedAt: null, source: 'fallback-preview' };
         this.goalBoardLayout = null;
+        this.liveEntitlements = getEntitlements(null);
+        this.sessionUsage = { comments: 0, tts: 0, commentLimitNotified: false, ttsLimitNotified: false };
     }
 
     init(broadcastFn) {
@@ -80,11 +85,16 @@ class TikTokService {
         this.broadcast('gift_catalog_update', { type: 'gift_catalog_update', gifts });
     }
 
-    async connect(roomId, userId = null) {
+    async connect(roomId, userId = null, preserveSession = false) {
         try {
             if (this.tiktokClient) this.tiktokClient.stop();
             this.lastRoomId = roomId;
             this.currentLiveUserId = userId;
+            const liveUser = userId ? await User.findById(userId).lean().catch(() => null) : null;
+            this.liveEntitlements = getEntitlements(liveUser);
+            if (!preserveSession) {
+                this.sessionUsage = { comments: 0, tts: 0, commentLimitNotified: false, ttsLimitNotified: false };
+            }
             this.tiktokClient = new TikTokLiveClient({ uniqueId: roomId });
 
             this.tiktokClient.on('connected', () => {
@@ -100,7 +110,7 @@ class TikTokService {
                 this.broadcast('stats', this.liveStats);
                 if (this.lastRoomId) {
                     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-                    this.reconnectTimer = setTimeout(() => this.connect(this.lastRoomId, this.currentLiveUserId), 15000);
+                    this.reconnectTimer = setTimeout(() => this.connect(this.lastRoomId, this.currentLiveUserId, true), 15000);
                 }
             });
 
@@ -122,9 +132,19 @@ class TikTokService {
                 }
 
                 if (mapping && mapping.effectId) {
-                    const effect = await Effect.findById(mapping.effectId).catch(() => null);
-                    effectQueue.add(mapping.effectId, effect ? (effect.duration || 5) : 5, data);
-                    await GiftLog.create({ giftId: data.giftId, giftName: data.giftName, effectId: mapping.effectId, triggeredAt: new Date(), sessionId: this.currentLiveUserId, userId: this.currentLiveUserId, userName: data.nickname || data.uniqueId || 'TikTok user' }).catch(() => null);
+                    const resolvedEffect = await resolveEffectForUser(this.currentLiveUserId, mapping.effectId);
+                    const duration = await resolveEffectDurationForUser(this.currentLiveUserId, mapping.effectId);
+                    if (!duration) {
+                        console.warn(`Skipping mapped effect ${mapping.effectId}: missing duration metadata`);
+                        this.broadcast('effect_warning', {
+                            effectId: mapping.effectId,
+                            giftId: data.giftId,
+                            message: 'Effect skipped because duration metadata is missing.'
+                        });
+                    } else {
+                        effectQueue.add(mapping.effectId, duration, data, resolvedEffect?.name || mapping.effectName || mapping.effectId);
+                        await GiftLog.create({ giftId: data.giftId, giftName: data.giftName, effectId: mapping.effectId, triggeredAt: new Date(), sessionId: this.currentLiveUserId, userId: this.currentLiveUserId, userName: data.nickname || data.uniqueId || 'TikTok user' }).catch(() => null);
+                    }
                 } else {
                     this.broadcast('gift', data);
                 }
@@ -134,7 +154,20 @@ class TikTokService {
             this.tiktokClient.on('like', (data) => { this.liveStats.likes += data.count || 1; this.broadcast('stats', this.liveStats); });
             this.tiktokClient.on('follow', (data) => this.broadcast('follow', data));
             this.tiktokClient.on('share', (data) => this.broadcast('share', data));
-            this.tiktokClient.on('chat', (data) => { this.liveStats.chats++; this.broadcast('chat', data); });
+            this.tiktokClient.on('chat', (data) => {
+                this.liveStats.chats++;
+                const usage = this.consumeComment();
+                if (!usage.allowed) {
+                    if (!this.sessionUsage.commentLimitNotified) {
+                        this.sessionUsage.commentLimitNotified = true;
+                        this.broadcast('plan_limit_reached', usage.payload);
+                    }
+                    this.broadcast('stats', this.liveStats);
+                    return;
+                }
+                this.broadcast('chat', data);
+                this.broadcast('stats', this.liveStats);
+            });
             this.tiktokClient.on('viewer', (data) => { this.liveStats.viewers = data.count || 0; this.broadcast('stats', this.liveStats); });
             this.tiktokClient.on('error', (err) => console.error('TikTok Error:', err));
 
@@ -292,6 +325,43 @@ class TikTokService {
                 layers: layout.layers
             });
         }
+    }
+
+    consumeTts(userId) {
+        if (!this.currentLiveUserId || String(userId) !== String(this.currentLiveUserId)) {
+            return { allowed: false, status: 409, payload: { success: false, message: 'Hãy kết nối TikTok Live trước khi sử dụng TTS.' } };
+        }
+        const limit = this.liveEntitlements.ttsPerSession;
+        if (Number.isFinite(limit) && this.sessionUsage.tts >= limit) {
+            return {
+                allowed: false,
+                status: 403,
+                payload: upgradePayload(
+                    'tts',
+                    `Bạn đã dùng hết ${limit} lượt đọc tên/TTS trong phiên Live này.`,
+                    this.liveEntitlements
+                )
+            };
+        }
+        this.sessionUsage.tts++;
+        return { allowed: true, status: 200, payload: { success: true, remaining: Number.isFinite(limit) ? Math.max(0, limit - this.sessionUsage.tts) : null } };
+    }
+
+    consumeComment() {
+        const limit = this.liveEntitlements.commentsPerSession;
+        if (Number.isFinite(limit) && this.sessionUsage.comments >= limit) {
+            return {
+                allowed: false,
+                status: 403,
+                payload: upgradePayload(
+                    'comments',
+                    `Bạn đã dùng hết ${limit} bình luận dùng thử trong phiên Live này.`,
+                    this.liveEntitlements
+                )
+            };
+        }
+        this.sessionUsage.comments++;
+        return { allowed: true, status: 200, payload: { success: true, remaining: Number.isFinite(limit) ? Math.max(0, limit - this.sessionUsage.comments) : null } };
     }
 
     async processGiftMenuGift(giftEvent) {

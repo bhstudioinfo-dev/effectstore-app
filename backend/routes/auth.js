@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
+const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
 
 // Register
 router.post('/register', async (req, res) => {
@@ -46,7 +47,8 @@ router.post('/register', async (req, res) => {
                 email: user.email,
                 name: user.name,
                 isAdmin,
-                hasAdminUI: isAdmin
+                hasAdminUI: isAdmin,
+                customEffects: user.customEffects || []
             }
         });
     } catch (error) {
@@ -93,18 +95,18 @@ router.post('/login', async (req, res) => {
 
         // DEVICE LIMIT
         if (!isAdmin && machineId) {
-            const plan = user.subscription || 'free';
-            const deviceLimits = { 'free': 1, 'pro': 2, 'business': 5, 'studio': 999 };
-            const maxDevices = deviceLimits[plan] || 1;
+            const entitlements = getEntitlements(user);
+            const maxDevices = entitlements.devices;
 
             if (!user.activeDevices) user.activeDevices = [];
 
             if (!user.activeDevices.includes(machineId)) {
                 if (user.activeDevices.length >= maxDevices) {
-                    return res.status(403).json({ 
-                        success: false, 
-                        error: `Tài khoản gói ${plan.toUpperCase()} chỉ được đăng nhập trên ${maxDevices} thiết bị. Vui lòng đăng xuất ở máy khác!` 
-                    });
+                    return res.status(403).json(upgradePayload(
+                        'devices',
+                        `Gói ${entitlements.label} chỉ sử dụng được trên ${maxDevices} thiết bị.`,
+                        entitlements
+                    ));
                 }
                 user.activeDevices.push(machineId);
                 await user.save();
@@ -128,7 +130,8 @@ router.post('/login', async (req, res) => {
                 hasAdminUI: isAdmin,
                 subscription: isAdmin ? 'admin' : (user.subscription || 'free'),
                 subscriptionExpiresAt: user.subscriptionExpiresAt,
-                purchasedEffects: user.purchasedEffects || []
+                purchasedEffects: user.purchasedEffects || [],
+                customEffects: user.customEffects || []
             }
         });
     } catch (error) {
@@ -161,9 +164,21 @@ router.get('/me', authMiddleware, async (req, res) => {
                 hasAdminUI: user.hasAdminUI,
                 subscription: isAdmin ? 'admin' : user.subscription,
                 subscriptionExpiresAt: user.subscriptionExpiresAt,
-                purchasedEffects: user.purchasedEffects || []
+                purchasedEffects: user.purchasedEffects || [],
+                customEffects: user.customEffects || []
             }
         });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/logout', authMiddleware, async (req, res) => {
+    try {
+        if (req.machineId) {
+            await User.updateOne({ _id: req.userId }, { $pull: { activeDevices: req.machineId } });
+        }
+        res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

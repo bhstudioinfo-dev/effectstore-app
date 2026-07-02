@@ -699,9 +699,11 @@
 
             <!-- VIEW: LIBRARY -->
             <div id="library-view" class="hidden">
-                <div class="section-header">
+                <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:16px;">
                     <h2>📁 Hiệu ứng của tôi</h2>
+                    <button onclick="app.openPersonalEffectUpload()" class="pro-btn" style="padding:10px 16px;"><i class="fas fa-upload"></i> Tải hiệu ứng cá nhân</button>
                 </div>
+                <div style="margin:0 0 16px;padding:10px 14px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#93c5fd;font-size:12px;">🔒 Hiệu ứng cá nhân được lưu trên máy này, chỉ dùng cho Gift Mapping và không tự đồng bộ sang thiết bị khác.</div>
                 <div class="effects-grid-new" id="library-grid"> </div>
             </div>
 
@@ -1337,10 +1339,10 @@
 
             <div style="text-align: center; margin-bottom: 30px;">
                 <div style="font-size: 40px; margin-bottom: 15px; filter: drop-shadow(0 0 10px #a78bfa);">🎨</div>
-                <h2
+                <h2 id="custom-request-title"
                     style="font-size: 26px; font-weight: 800; margin-bottom: 10px; background: linear-gradient(to right, #fff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
                     Tạo Hiệu Ứng Riêng</h2>
-                <p style="color: #9ca3af; font-size: 14px;">Hãy gửi yêu cầu thiết kế của bạn, chúng tôi sẽ liên hệ lại
+                <p id="custom-request-subtitle" style="color: #9ca3af; font-size: 14px;">Hãy gửi yêu cầu thiết kế của bạn, chúng tôi sẽ liên hệ lại
                     sớm nhất!</p>
             </div>
 
@@ -1362,7 +1364,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label
+                    <label id="custom-request-description-label"
                         style="color: #9ca3af; font-size: 13px; font-weight: 600; margin-bottom: 8px; display: block;">Mô
                         tả ý tưởng hiệu ứng *</label>
                     <textarea id="custom-req-desc" rows="4" placeholder="Mô tả ngắn gọn kịch bản, quà tặng tương ứng..."
@@ -1420,16 +1422,16 @@
                 </div>
 
                 <!-- Basic Plan -->
-                <div class="pricing-card featured" id="plan-pro-card">
+                <div class="pricing-card featured" id="plan-pro-card" style="border:2px solid #f59e0b;box-shadow:0 18px 50px rgba(245,158,11,.24),0 0 0 1px rgba(251,191,36,.2);background:linear-gradient(180deg,rgba(245,158,11,.10),rgba(17,24,39,.96));">
                     <div class="featured-badge">⭐ ĐƯỢC CHỌN NHIỀU NHẤT</div>
                     <div class="plan-header">
                         <span class="plan-icon" style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(251,191,36,0.5));">⭐</span>
                         <h3>Basic</h3>
                         <div class="plan-price">
                             <del style="font-size: 14px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px;">250.000₫</del>
-                            <div style="color: #3b82f6; font-size: 28px; font-weight: 900;">199.000₫ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tháng</span></div>
+                            <div style="color: #fbbf24; font-size: 30px; font-weight: 900; text-shadow:0 0 18px rgba(251,191,36,.22);">199.000₫ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tháng</span></div>
                         </div>
-                        <div style="font-size: 11px; color: #3b82f6; margin-top: 8px; font-weight: 700;">Phù hợp với 90% streamer TikTok Live</div>
+                        <div style="font-size: 11px; color: #fbbf24; margin-top: 8px; font-weight: 800;">Phù hợp với 90% streamer TikTok Live</div>
                     </div>
                     <div class="plan-features">
                         <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 30 hiệu ứng gắn quà</div>
@@ -1441,11 +1443,11 @@
                         <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn đọc tên/TTS</div>
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 10 bảng mục tiêu livestream</div>
                     </div>
-                    <button class="plan-btn active" id="plan-btn-pro" onclick="app.buySubscription('pro')">🚀 NÂNG CẤP BASIC</button>
+                    <button class="plan-btn active" id="plan-btn-pro" onclick="app.buySubscription('pro')" style="background:linear-gradient(135deg,#f59e0b,#f97316);box-shadow:0 10px 28px rgba(249,115,22,.3);">🚀 NÂNG CẤP BASIC</button>
                 </div>
 
                 <!-- Pro Plan -->
-                <div class="pricing-card" id="plan-business-card">
+                <div class="pricing-card" id="plan-business-card" style="border-color:rgba(167,139,250,.24);box-shadow:0 10px 28px rgba(76,29,149,.10);">
                     <div class="featured-badge" style="background: rgba(255, 62, 62, 0.15); color: #ff3e3e; border: 1px solid rgba(255, 62, 62, 0.3); font-size: 9px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap;">🔥 CHO STREAMER CHUYÊN NGHIỆP</div>
                     <div class="plan-header">
                         <span class="plan-icon" style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(255,107,0,0.5));">🔥</span>
@@ -1469,7 +1471,7 @@
 
                 <!-- Studio Plan -->
                 <div class="pricing-card" id="plan-studio-card">
-                    <div class="featured-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 9px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap;">📘 GIẢI PHÁP DOANH NGHIỆP</div>
+                    <div class="featured-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 9px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap;">🏢 GIẢI PHÁP DOANH NGHIỆP</div>
                     <div class="plan-header">
                         <span class="plan-icon" style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(0, 242, 254, 0.5));">💎</span>
                         <h3>Studio</h3>
@@ -1483,7 +1485,7 @@
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> API tích hợp riêng</div>
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Giải pháp doanh nghiệp</div>
                     </div>
-                    <button class="plan-btn" id="plan-btn-studio" onclick="app.closePricing(); app.openCustomEffectModal();" style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white;">LIÊN HỆ NGAY</button>
+                    <button class="plan-btn" id="plan-btn-studio" onclick="app.openStudioContact();" style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white;">LIÊN HỆ NGAY</button>
                 </div>
             </div>
 

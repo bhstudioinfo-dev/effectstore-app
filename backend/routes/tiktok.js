@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
@@ -12,6 +12,13 @@ const { authMiddleware } = require('../middleware/auth');
 const GiftMenuLayout = require('../models/GiftMenuLayout');
 const multer = require('multer');
 const { spawn } = require('child_process');
+const { getEntitlements, upgradePayload, validateDesignerItems } = require('../config/planEntitlements');
+const {
+    getUserAvailableEffects,
+    resolveEffectForUser,
+    resolveEffectDurationForUser
+} = require('../services/effectLibraryService');
+const effectQueue = require('../services/effectQueue');
 let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) {}
 const giftMenuLayoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
@@ -36,7 +43,7 @@ const goalAssetUpload = multer({
     fileFilter: (_req, file, cb) => {
         const allowed = new Set(['.png', '.gif', '.webm']);
         const isAllowed = allowed.has(path.extname(file.originalname || '').toLowerCase());
-        cb(isAllowed ? null : new Error('Chỉ hỗ trợ PNG, GIF và WebM'), isAllowed);
+        cb(isAllowed ? null : new Error('Chá»‰ há»— trá»£ PNG, GIF vÃ  WebM'), isAllowed);
     }
 });
 
@@ -119,9 +126,14 @@ router.post('/prepare', async (req, res) => {
 });
 
 // Disconnect
-router.post('/disconnect', async (req, res) => {
+router.post('/disconnect', authMiddleware, async (req, res) => {
     await tiktokService.disconnect();
     res.json({ success: true });
+});
+
+router.post('/usage/tts', authMiddleware, (req, res) => {
+    const result = tiktokService.consumeTts(req.userId);
+    res.status(result.status).json(result.payload);
 });
 
 // Stats
@@ -137,10 +149,10 @@ router.get('/mappings', authMiddleware, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-// Available effects (compat endpoint for standalone mapping page)
-router.get('/available-effects', async (req, res) => {
+// Available effects for the canonical Gift Mapping picker
+router.get('/available-effects', authMiddleware, async (req, res) => {
     try {
-        const effects = await Effect.find({ isActive: true }).sort({ uses: -1 });
+        const effects = await getUserAvailableEffects(req.userId);
         res.json({ success: true, effects });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -152,42 +164,51 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
         const { giftId, effectId, giftName, effectName, giftIcon } = req.body;
         const userId = req.userId;
 
-        // Check plan limits
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-        const plan = user.subscription || 'free';
+        const resolvedEffect = await resolveEffectForUser(userId, effectId);
+        if (!resolvedEffect) {
+            return res.status(403).json({ success: false, message: 'Hiệu ứng không thuộc tài khoản này hoặc không còn khả dụng.' });
+        }
+
         const isAdmin = !!(user.isAdmin || user.email === 'admin@effectstore.vn');
-        const limits = { 'free': 5, 'pro': 20, 'business': 100, 'studio': 9999 };
-        const maxMappings = limits[plan] || 5;
+        const entitlements = getEntitlements(user);
+        const maxMappings = entitlements.mappings;
 
         const currentCount = await GiftMapping.countDocuments({ userId });
         const existing = await GiftMapping.findOne({ userId, giftId });
 
-        if (!existing && !isAdmin && currentCount >= maxMappings) {
-            return res.status(403).json({ 
-                success: false, 
-                error: `Gói ${plan.toUpperCase()} chỉ hỗ trợ tối đa ${maxMappings} mapping. Vui lòng nâng cấp!` 
-            });
+        if (!existing && !isAdmin && Number.isFinite(maxMappings) && currentCount >= maxMappings) {
+            return res.status(403).json(upgradePayload(
+                'mappings',
+                `Bạn đã dùng hết ${maxMappings} hiệu ứng gắn quà của gói ${entitlements.label}.`,
+                entitlements
+            ));
         }
 
         if (existing) {
             existing.effectId = effectId;
-            existing.effectName = effectName;
+            existing.effectName = resolvedEffect.name || effectName;
             existing.giftName = giftName;
             existing.giftIcon = giftIcon;
             existing.updatedAt = Date.now();
             await existing.save();
-            res.json({ success: true, mapping: existing });
-        } else {
-            const mapping = await GiftMapping.create({
-                userId, giftId, effectId, giftName, effectName, giftIcon, isActive: true
-            });
-            res.json({ success: true, mapping });
+            return res.json({ success: true, mapping: existing });
         }
+
+        const mapping = await GiftMapping.create({
+            userId,
+            giftId,
+            effectId,
+            giftName,
+            effectName: resolvedEffect.name || effectName,
+            giftIcon,
+            isActive: true
+        });
+        return res.json({ success: true, mapping });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
-
 router.delete('/mappings/:id', authMiddleware, async (req, res) => {
     try {
         await GiftMapping.findOneAndDelete({ _id: req.params.id, userId: req.userId });
@@ -210,27 +231,43 @@ router.put('/mappings/:id/toggle', authMiddleware, async (req, res) => {
 router.post('/test-trigger', authMiddleware, async (req, res) => {
     try {
         const { mappingId } = req.body;
-        const mapping = await GiftMapping.findOne({ _id: mappingId, userId: req.userId }).populate('effectId');
+        const mapping = await GiftMapping.findOne({ _id: mappingId, userId: req.userId });
         if (!mapping) return res.status(404).json({ success: false, message: 'Mapping not found' });
-        
-        const effectId = mapping.effectId._id || mapping.effectId;
-        const duration = mapping.effectId.duration || 15;
-        
-        const PORT = process.env.PORT || 9000;
-        await fetch(`http://localhost:${PORT}/api/obs/trigger`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ effectId, duration })
-        });
-        
+
+        const effectId = String(mapping.effectId || '');
+        const resolvedEffect = await resolveEffectForUser(req.userId, effectId);
+        if (!resolvedEffect) {
+            return res.status(403).json({ success: false, message: 'Hiệu ứng không thuộc tài khoản này hoặc không còn khả dụng.' });
+        }
+
+        const duration = await resolveEffectDurationForUser(req.userId, effectId);
+        if (!duration) {
+            return res.status(422).json({
+                success: false,
+                warning: 'Effect is missing duration metadata and was skipped.',
+                message: 'Hiệu ứng chưa có thời lượng hợp lệ. App đã bỏ qua để tránh treo queue.'
+            });
+        }
+        await effectQueue.add(effectId, duration, null, resolvedEffect.name || mapping.effectName || effectId);
+
         await GiftLog.create({
-            giftId: mapping.giftId, giftName: mapping.giftName, effectId: mapping.effectId,
-            triggeredAt: new Date(), sessionId: req.userId, userId: 'test', userName: 'Test User'
+            giftId: mapping.giftId,
+            giftName: mapping.giftName,
+            effectId,
+            triggeredAt: new Date(),
+            sessionId: req.userId,
+            userId: req.userId,
+            userName: 'Test OBS'
         });
-        res.json({ success: true, message: 'Effect triggered!', duration });
+
+        res.json({
+            success: true,
+            message: 'Effect triggered on OBS.',
+            effectId,
+            duration
+        });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
-
 // Logs
 router.get('/logs', authMiddleware, async (req, res) => {
     try {
@@ -255,25 +292,41 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
         const { giftId, userName } = req.body;
         const mapping = await GiftMapping.findOne({ giftId, userId: req.userId, isActive: true });
         if (!mapping) return res.json({ success: false, message: 'No mapping found', triggered: false });
-        
-        const effect = await Effect.findById(mapping.effectId);
-        const duration = effect?.duration || 15;
-        const PORT = process.env.PORT || 9000;
-        
-        await fetch(`http://localhost:${PORT}/api/obs/trigger`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ effectId: mapping.effectId, duration })
-        });
-        
+
+        const effectId = String(mapping.effectId || '');
+        const resolvedEffect = await resolveEffectForUser(req.userId, effectId);
+        if (!resolvedEffect) {
+            return res.status(403).json({ success: false, message: 'Hiệu ứng không thuộc tài khoản này hoặc không còn khả dụng.', triggered: false });
+        }
+
+        const duration = await resolveEffectDurationForUser(req.userId, effectId);
+        if (!duration) {
+            return res.status(422).json({
+                success: false,
+                triggered: false,
+                warning: 'Effect is missing duration metadata and was skipped.',
+                message: 'Hiệu ứng chưa có thời lượng hợp lệ. App đã bỏ qua để tránh treo queue.'
+            });
+        }
+        await effectQueue.add(effectId, duration, {
+            giftId,
+            giftName: mapping.giftName,
+            nickname: userName || 'Anonymous',
+            source: 'simulate-gift'
+        }, resolvedEffect.name || mapping.effectName || effectId);
+
         await GiftLog.create({
-            giftId, giftName: mapping.giftName, effectId: mapping.effectId,
-            triggeredAt: new Date(), sessionId: req.userId, userId: req.userId, userName: userName || 'Anonymous'
+            giftId,
+            giftName: mapping.giftName,
+            effectId,
+            triggeredAt: new Date(),
+            sessionId: req.userId,
+            userId: req.userId,
+            userName: userName || 'Anonymous'
         });
         res.json({ success: true, triggered: true });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
-
 // Gifts library
 router.get('/gifts-library', async (req, res) => {
     try {
@@ -411,7 +464,7 @@ router.get('/gift-menu-layout', authMiddleware, async (req, res) => {
         if (!layout) {
             layout = new GiftMenuLayout({
                 userId: req.userId,
-                name: 'Menu mặc định',
+                name: 'Menu máº·c Ä‘á»‹nh',
                 aspectRatio: '9:16',
                 items: [],
                 exportedItems: [],
@@ -427,11 +480,14 @@ router.get('/gift-menu-layout', authMiddleware, async (req, res) => {
 router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
     try {
         const payload = req.body || {};
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+        const entitlements = getEntitlements(user);
         const isRenameOnly = payload.id && payload.name && !payload.aspectRatio && !payload.items && !payload.exportedItems;
         if (isRenameOnly) {
             const renamedLayout = await GiftMenuLayout.findOneAndUpdate(
                 { _id: payload.id, userId: req.userId, isTemplate: false },
-                { name: String(payload.name).trim() || 'Thiết kế mới' },
+                { name: String(payload.name).trim() || 'Thiáº¿t káº¿ má»›i' },
                 { new: true }
             );
             if (!renamedLayout) return res.status(404).json({ success: false, error: 'Layout not found' });
@@ -441,18 +497,32 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             return res.json({ success: true, layout: renamedLayout });
         }
 
+        const designerViolation = validateDesignerItems(payload.items, entitlements) ||
+            validateDesignerItems(payload.exportedItems, entitlements);
+        if (designerViolation) return res.status(403).json(designerViolation);
+
         let layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
         if (!layout && (payload._id || payload.id)) {
             layout = await GiftMenuLayout.findOne({ _id: payload._id || payload.id, userId: req.userId });
         }
         if (!layout) {
+            if (Number.isFinite(entitlements.layouts)) {
+                const layoutCount = await GiftMenuLayout.countDocuments({ userId: req.userId, isTemplate: false });
+                if (layoutCount >= entitlements.layouts) {
+                    return res.status(403).json(upgradePayload(
+                        'layouts',
+                        `GÃ³i ${entitlements.label} chá»‰ lÆ°u Ä‘Æ°á»£c ${entitlements.layouts} thiáº¿t káº¿ menu.`,
+                        entitlements
+                    ));
+                }
+            }
             layout = new GiftMenuLayout({
                 userId: req.userId,
-                name: payload.name || 'Menu mặc định',
+                name: payload.name || 'Menu máº·c Ä‘á»‹nh',
                 isActive: true
             });
         }
-        layout.name = payload.name || layout.name || 'Menu mặc định';
+        layout.name = payload.name || layout.name || 'Menu máº·c Ä‘á»‹nh';
         layout.version = Number(payload.version) || 2;
         layout.savedAt = payload.savedAt ? new Date(payload.savedAt) : new Date();
         layout.aspectRatio = payload.aspectRatio || '9:16';
@@ -470,10 +540,23 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
 router.post('/gift-menu-layout/create', authMiddleware, async (req, res) => {
     try {
         const { name } = req.body;
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+        const entitlements = getEntitlements(user);
+        if (Number.isFinite(entitlements.layouts)) {
+            const layoutCount = await GiftMenuLayout.countDocuments({ userId: req.userId, isTemplate: false });
+            if (layoutCount >= entitlements.layouts) {
+                return res.status(403).json(upgradePayload(
+                    'layouts',
+                    `GÃ³i ${entitlements.label} chá»‰ lÆ°u Ä‘Æ°á»£c ${entitlements.layouts} thiáº¿t káº¿ menu.`,
+                    entitlements
+                ));
+            }
+        }
         await GiftMenuLayout.updateMany({ userId: req.userId, isTemplate: false }, { isActive: false });
         const layout = new GiftMenuLayout({
             userId: req.userId,
-            name: name || 'Thiết kế mới',
+            name: name || 'Thiáº¿t káº¿ má»›i',
             aspectRatio: '9:16',
             items: [],
             exportedItems: [],
@@ -545,7 +628,7 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
             price,
             originalPrice,
             description: String(payload.description || '').trim(),
-            icon: String(payload.icon || '📋').trim() || '📋',
+            icon: String(payload.icon || 'ðŸ“‹').trim() || 'ðŸ“‹',
             isPremium: price > 0
         });
         await template.save();
@@ -557,6 +640,26 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
     try {
         const template = await GiftMenuLayout.findOne({ _id: req.params.templateId, isTemplate: true });
         if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+        const entitlements = getEntitlements(user);
+        if (entitlements.designerLevel === 'lite' && String(template.category || '').toLowerCase() !== 'basic') {
+            return res.status(403).json(upgradePayload(
+                'templates',
+                'NÃ¢ng cáº¥p Basic Ä‘á»ƒ sá»­ dá»¥ng nhiá»u máº«u menu chuyÃªn nghiá»‡p.',
+                entitlements
+            ));
+        }
+        if (Number.isFinite(entitlements.layouts)) {
+            const layoutCount = await GiftMenuLayout.countDocuments({ userId: req.userId, isTemplate: false });
+            if (layoutCount >= entitlements.layouts) {
+                return res.status(403).json(upgradePayload(
+                    'layouts',
+                    `GÃ³i ${entitlements.label} chá»‰ lÆ°u Ä‘Æ°á»£c ${entitlements.layouts} thiáº¿t káº¿ menu.`,
+                    entitlements
+                ));
+            }
+        }
         if (Number(template.price) > 0) {
             return res.status(402).json({ success: false, error: 'Paid template checkout is not available yet' });
         }
@@ -605,18 +708,38 @@ router.get('/goal-board/templates', authMiddleware, async (req, res) => {
 
 router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('assetFile'), async (req, res) => {
     try {
+        const user = await User.findById(req.userId);
+        if (!user) {
+            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+        const entitlements = getEntitlements(user);
+        const userDir = path.join(goalAssetDir, String(req.userId));
+        const assetCount = fs.existsSync(userDir)
+            ? fs.readdirSync(userDir, { withFileTypes: true }).filter(entry => entry.isFile()).length
+            : 0;
+        if (Number.isFinite(entitlements.menuAssets) && assetCount > entitlements.menuAssets) {
+            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            return res.status(403).json(upgradePayload(
+                'menuAssets',
+                entitlements.menuAssets === 0
+                    ? 'NÃ¢ng cáº¥p Basic Ä‘á»ƒ táº£i áº£nh/video riÃªng vÃ o menu.'
+                    : `Báº¡n Ä‘Ã£ dÃ¹ng háº¿t ${entitlements.menuAssets} tÃ i nguyÃªn menu cá»§a gÃ³i ${entitlements.label}.`,
+                entitlements
+            ));
+        }
         if (!req.file) return res.status(400).json({ success: false, error: 'Missing asset file' });
         const ext = path.extname(req.file.filename).toLowerCase();
         const detectedExt = detectGoalAssetType(req.file.path);
         if (!detectedExt || detectedExt !== ext) {
             try { fs.unlinkSync(req.file.path); } catch (_e) {}
-            return res.status(400).json({ success: false, error: 'File không đúng định dạng PNG, GIF hoặc WebM' });
+            return res.status(400).json({ success: false, error: 'File khÃ´ng Ä‘Ãºng Ä‘á»‹nh dáº¡ng PNG, GIF hoáº·c WebM' });
         }
         const optimization = await optimizeGoalAsset(req.file.path, ext);
         const maxFinalSize = { '.png': 8 * 1024 * 1024, '.gif': 12 * 1024 * 1024, '.webm': 20 * 1024 * 1024 }[ext];
         if (optimization.finalSize > maxFinalSize) {
             try { fs.unlinkSync(req.file.path); } catch (_e) {}
-            return res.status(413).json({ success: false, error: 'File vẫn quá nặng sau tối ưu. Vui lòng giảm độ phân giải hoặc thời lượng.' });
+            return res.status(413).json({ success: false, error: 'File váº«n quÃ¡ náº·ng sau tá»‘i Æ°u. Vui lÃ²ng giáº£m Ä‘á»™ phÃ¢n giáº£i hoáº·c thá»i lÆ°á»£ng.' });
         }
         res.json({
             success: true,
@@ -639,11 +762,14 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
 });
 
 router.use((error, _req, res, next) => {
-    if (error instanceof multer.MulterError || error?.message === 'Chỉ hỗ trợ PNG, GIF và WebM') {
+    if (error instanceof multer.MulterError || error?.message === 'Chá»‰ há»— trá»£ PNG, GIF vÃ  WebM') {
         return res.status(400).json({ success: false, error: error.message });
     }
     return next(error);
 });
 
 module.exports = router;
+
+
+
 

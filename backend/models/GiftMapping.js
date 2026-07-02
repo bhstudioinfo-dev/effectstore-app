@@ -6,7 +6,7 @@ const GiftMappingSchema = new mongoose.Schema({
     giftId: { type: String, required: true },
     giftName: String,
     giftIcon: String,
-    effectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Effect', required: true },
+    effectId: { type: String, required: true },
     effectName: String,
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },

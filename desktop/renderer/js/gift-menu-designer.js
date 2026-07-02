@@ -66,6 +66,37 @@
             return window.app && window.app.currentUser && (window.app.currentUser.isAdmin || window.app.currentUser.email === 'admin@effectstore.vn');
         }
 
+        get planKey() {
+            if (this.isAdmin) return 'admin';
+            return String(window.app?.currentUser?.subscription || 'free').toLowerCase();
+        }
+
+        showUpgrade(feature, message) {
+            if (window.app && typeof window.app.showUpgradePopup === 'function') {
+                const targetPlan = this.planKey === 'free' ? 'pro' : (this.planKey === 'pro' ? 'business' : 'studio');
+                window.app.showUpgradePopup(feature, message, targetPlan);
+            } else if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('warning', message || 'Tính năng này cần nâng cấp gói.');
+            }
+        }
+
+        handlePlanLimit(data, feature) {
+            if (!data || data.upgradeRequired !== true) return false;
+            this.showUpgrade(data.feature || feature, data.message);
+            return true;
+        }
+
+        get goalTrackerLimit() {
+            if (this.planKey === 'free') return 1;
+            if (this.planKey === 'pro') return 10;
+            return Infinity;
+        }
+
+        countGoalTrackers(items = this.items) {
+            const types = new Set(['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'combo']);
+            return Array.isArray(items) ? items.filter(item => item && types.has(item.type)).length : 0;
+        }
+
         onViewSwitch() {
             if (!this.mount) return;
             const publishBtn = this.mount.querySelector('[data-action="publish-store"]');
@@ -576,7 +607,10 @@
                 if (this.token) headers.Authorization = `Bearer ${this.token}`;
                 const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-templates/${templateId}/use`, { method: 'POST', headers });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+                if (!res.ok || !data.success) {
+                    if (this.handlePlanLimit(data, 'templates')) return;
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                }
                 await this.loadLayoutsList();
                 await this.loadLayout();
                 if (window.app && typeof window.app.showNotification === 'function') {
@@ -1407,6 +1441,15 @@
             const child = item.children[index];
             if (!child) return;
 
+            if (this.planKey === 'free' && ['auraType', 'animationType', 'showTextBg', 'textBgStyle', 'textBgColor', 'textBgGradientFrom', 'textBgGradientTo', 'textColor'].includes(key)) {
+                this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu và dùng hiệu ứng động.');
+                return;
+            }
+            if (this.planKey === 'pro' && ((key === 'animationType' && !['None', 'Pulse', 'Bounce', 'Float'].includes(String(value))) || (key === 'auraType' && !['None', 'Glow'].includes(String(value))))) {
+                this.showUpgrade('menuAdvanced', 'Hiệu ứng chuyển động cao cấp dành cho gói Pro.');
+                return;
+            }
+
             if (key === 'showTextBg') {
                 child[key] = Boolean(value);
             } else {
@@ -1425,6 +1468,14 @@
         updateSelectedItem(key, value, refreshInspector = true, pushHist = true) {
             const primaryItem = this.items.find((x) => x.id === this.selectedId);
             if (!primaryItem) return;
+            if (this.planKey === 'free' && ['animationType', 'auraType', 'auraColor', 'showTextBg', 'textBgStyle', 'textBgColor', 'textBgGradientFrom', 'textBgGradientTo', 'textColor', 'iconTextColor'].includes(key)) {
+                this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu và dùng hiệu ứng động.');
+                return;
+            }
+            if (this.planKey === 'pro' && ((key === 'animationType' && !['None', 'Pulse', 'Bounce', 'Float'].includes(String(value))) || (key === 'auraType' && !['None', 'Glow'].includes(String(value))))) {
+                this.showUpgrade('menuAdvanced', 'Hiệu ứng chuyển động cao cấp dành cho gói Pro.');
+                return;
+            }
             const selectedItems = this.getSelectedItems().filter((x) => !x.locked);
 
             selectedItems.forEach((item) => {
@@ -1947,7 +1998,6 @@
                 items: cleanItems,
                 exportedItems
             };
-            localStorage.setItem('giftMenuDesignerLayoutV2', JSON.stringify(payload));
             try {
                 const headers = { 'Content-Type': 'application/json' };
                 if (this.token) headers.Authorization = `Bearer ${this.token}`;
@@ -1956,7 +2006,9 @@
                 if (res.ok && data && data.success && data.layout) {
                     this.currentLayoutId = data.layout._id;
                     this.currentLayoutName = data.layout.name;
+                    localStorage.setItem('giftMenuDesignerLayoutV2', JSON.stringify(payload));
                 } else {
+                    if (this.handlePlanLimit(data, 'layouts')) return false;
                     throw new Error((data && (data.message || data.error)) || `HTTP ${res.status}`);
                 }
             } catch (err) {
@@ -2010,6 +2062,11 @@
         }
 
         async loadLayoutsList() {
+            if (!this.token) {
+                this.layouts = [];
+                this.renderMyLibrary();
+                return;
+            }
             try {
                 const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
                 const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layouts`, { headers });
@@ -2028,17 +2085,19 @@
         async loadLayout() {
             let payload = null;
             let loadedFromDb = false;
-            try {
-                const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
-                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout`, { headers });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data && data.success) {
-                        payload = data.layout;
-                        loadedFromDb = true;
+            if (this.token) {
+                try {
+                    const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+                    const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout`, { headers });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.success) {
+                            payload = data.layout;
+                            loadedFromDb = true;
+                        }
                     }
-                }
-            } catch (_e) { }
+                } catch (_e) { }
+            }
             if (!payload && !loadedFromDb) {
                 try { payload = JSON.parse(localStorage.getItem('giftMenuDesignerLayoutV2') || 'null'); } catch (_e) { payload = null; }
             }
@@ -2140,6 +2199,8 @@
                     this.history = [];
                     this.historyIndex = -1;
                     this.pushHistory('new-layout');
+                } else if (!this.handlePlanLimit(data, 'layouts')) {
+                    throw new Error(data.error || data.message || 'Không thể tạo thiết kế mới');
                 }
             } catch (err) {
                 if (window.app && typeof window.app.showNotification === 'function') {
@@ -2326,6 +2387,10 @@
                 const uploadBtn = e.target.closest('#gmd-upload-asset-btn');
                 const fileInput = this.mount.querySelector('#gmd-asset-file-input');
                 if (uploadBtn && fileInput) {
+                    if (this.planKey === 'free') {
+                        this.showUpgrade('menuAssets', 'Nâng cấp Basic để tải ảnh/video riêng vào menu.');
+                        return;
+                    }
                     fileInput.click();
                     return;
                 }
@@ -2362,11 +2427,19 @@
                 const tmplCard = e.target.closest('.gmd-template-card');
                 if (tmplCard) {
                     const templateId = tmplCard.dataset.templateId;
+                    if (this.planKey === 'free' && templateId !== 'tmpl_neon_purple') {
+                        this.showUpgrade('templates', 'Gói Free chỉ sử dụng mẫu cơ bản. Nâng cấp Basic để mở thêm mẫu.');
+                        return;
+                    }
                     this.addTemplateToCanvas(templateId);
                     return;
                 }
                 const assetCard = e.target.closest('.gmd-asset-card');
                 if (assetCard) {
+                    if (this.planKey === 'free') {
+                        this.showUpgrade('menuAssets', 'Nâng cấp Basic để đưa ảnh/video riêng vào menu.');
+                        return;
+                    }
                     const url = assetCard.dataset.assetUrl;
                     const name = assetCard.dataset.assetName;
                     const type = assetCard.dataset.assetType;
@@ -2387,6 +2460,10 @@
                 const layerId = btn.dataset.layerId;
                 const tab = btn.dataset.tab;
                 if (tab === 'gift' || tab === 'layers') {
+                    if (tab === 'layers' && !['business', 'studio', 'admin'].includes(this.planKey)) {
+                        this.showUpgrade('menuAdvanced', 'Hệ thống lớp nâng cao dành cho gói Pro.');
+                        return;
+                    }
                     this.inspectorTab = tab;
                     this.renderInspector();
                     return;
@@ -2451,6 +2528,10 @@
                 if (action === 'redo') this.redo();
                 if (action === 'help') {
                     alert('Gift Menu Designer\n\n• Kéo thả để di chuyển\n• Shift + click để chọn nhiều\n• Ctrl + D để nhân bản\n• Ctrl + Z / Ctrl + Y để hoàn tác / làm lại\n• Delete để xóa\n• Ctrl + cuộn chuột để zoom\n• Giữ Space hoặc chuột giữa để pan khi đang zoom');
+                    return;
+                }
+                if (['layer-toggle-visible', 'layer-toggle-lock', 'layer-up', 'layer-down', 'align-left', 'align-center-x', 'align-right', 'align-top', 'align-center-y', 'align-bottom', 'distribute-x', 'distribute-y', 'create-stack-group', 'ungroup-stack'].includes(action) && !['business', 'studio', 'admin'].includes(this.planKey)) {
+                    this.showUpgrade('menuAdvanced', 'Hệ thống lớp nâng cao dành cho gói Pro.');
                     return;
                 }
                 if (action === 'save-new-template') {
@@ -2588,11 +2669,19 @@
                     const point = this.clientToCanvasPoint(e.clientX, e.clientY);
 
                     if (templateId) {
+                        if (this.planKey === 'free' && templateId !== 'tmpl_neon_purple') {
+                            this.showUpgrade('templates', 'Gói Free chỉ sử dụng mẫu cơ bản.');
+                            return;
+                        }
                         this.addTemplateToCanvas(templateId, point.x, point.y);
                         return;
                     }
 
                     if (assetUrl) {
+                        if (this.planKey === 'free') {
+                            this.showUpgrade('menuAssets', 'Nâng cấp Basic để đưa ảnh/video riêng vào menu.');
+                            return;
+                        }
                         this.addAssetToCanvas(assetUrl, assetName, assetType, point.x - 60, point.y - 60);
                         return;
                     }
@@ -2966,7 +3055,7 @@
                         let previewHTML = '';
                         if (t.id === 'tmpl_neon_purple') {
                             previewHTML = `
-                                <div class="gmd-mini-widget" style="background: radial-gradient(circle at top left, #1e1145, #090518); border: 1px solid #ff007f; box-shadow: 0 0 10px rgba(255,0,127,0.3); border-radius: 6px; padding: 6px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-sizing: border-box;">
+                                <div class="gmd-mini-widget" style="background:#111827;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:6px;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;gap:4px;box-sizing:border-box;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 800; color: #fff; line-height: 1;">
                                         <span style="text-shadow: 0 0 4px #ff007f; display: flex; align-items: center; gap: 2px;">🎁 Mở quà</span>
                                         <span style="color: #ff007f; text-shadow: 0 0 4px #ff007f; font-size: 7px;">30%</span>
@@ -3083,9 +3172,11 @@
 
                         const isPremium = Boolean(t.isPremium);
                         const priceTag = isPremium ? `${Number(t.price || 0).toLocaleString()}đ` : 'Free';
+                        const isPlanLocked = this.planKey === 'free' && t.id !== 'tmpl_neon_purple';
 
                         return `
-                            <div class="gmd-template-card" draggable="true" data-template-id="${t.id}" style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; cursor: grab;">
+                            <div class="gmd-template-card" draggable="true" data-template-id="${t.id}" data-plan-locked="${isPlanLocked ? 'true' : 'false'}" style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid ${isPlanLocked ? 'rgba(245,158,11,.35)' : 'rgba(255, 255, 255, 0.08)'}; border-radius: 8px; cursor: ${isPlanLocked ? 'pointer' : 'grab'}; position:relative;">
+                                ${isPlanLocked ? '<span style="position:absolute;right:5px;top:5px;z-index:2;padding:2px 5px;border-radius:5px;background:rgba(15,23,42,.9);color:#fbbf24;font-size:8px;font-weight:900;">🔒 BASIC</span>' : ''}
                                 <div class="gmd-template-preview-box" style="width: 100%; height: 60px; background: rgba(0,0,0,0.35); border-radius: 6px; display: flex; align-items: center; justify-content: center; padding: 4px; box-sizing: border-box; overflow: hidden;">
                                     ${previewHTML}
                                 </div>
@@ -3134,10 +3225,19 @@
         }
 
         addTemplateToCanvas(templateId, dropX = null, dropY = null) {
+            if (this.planKey === 'free' && templateId !== 'tmpl_neon_purple') {
+                this.showUpgrade('templates', 'Gói Free chỉ sử dụng mẫu cơ bản. Nâng cấp Basic để mở thêm mẫu.');
+                return;
+            }
             const templates = this.getDefaultTemplates();
             const allTemplates = [...(this.customTemplates || []), ...templates];
             const tmpl = allTemplates.find(t => t.id === templateId);
             if (!tmpl) return;
+            const incomingGoals = this.countGoalTrackers(tmpl.layers);
+            if (this.countGoalTrackers() + incomingGoals > this.goalTrackerLimit) {
+                this.showUpgrade('goalTrackers', `Gói hiện tại chỉ hỗ trợ ${this.goalTrackerLimit} bảng mục tiêu.`);
+                return;
+            }
 
             const baseZ = this.items.length;
             const groupUniqueId = `group_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -3205,6 +3305,10 @@
         }
 
         addAssetToCanvas(assetUrl, assetName, assetType, x = 100, y = 100) {
+            if (this.planKey === 'free') {
+                this.showUpgrade('menuAssets', 'Nâng cấp Basic để đưa ảnh/video riêng vào menu.');
+                return;
+            }
             const uniqueId = `asset_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
             const isWebM = assetType === 'video' || assetUrl.endsWith('.webm');
 
@@ -3367,6 +3471,13 @@
         }
 
         async loadGoalAssets() {
+            if (!this.token) {
+                this.goalAssets = [];
+                if (this.leftPanelTab === 'assets') {
+                    this.renderAssetsList();
+                }
+                return;
+            }
             try {
                 const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
                 const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/assets`, { headers });
@@ -3420,6 +3531,10 @@
         }
 
         async uploadGoalAsset(file) {
+            if (this.planKey === 'free') {
+                this.showUpgrade('menuAssets', 'Nâng cấp Basic để tải ảnh/video riêng vào menu.');
+                return;
+            }
             if (!file) return;
             const ext = `.${String(file.name || '').split('.').pop().toLowerCase()}`;
             if (!['.png', '.gif', '.webm'].includes(ext) || (file.type && !['image/png', 'image/gif', 'video/webm'].includes(file.type))) {
@@ -3463,6 +3578,7 @@
                     }
                     await this.loadGoalAssets();
                 } else {
+                    if (this.handlePlanLimit(data, 'menuAssets')) return;
                     throw new Error(data.error || 'Lỗi upload');
                 }
             } catch (err) {
@@ -3473,6 +3589,18 @@
         }
 
         async loadGoalTemplates() {
+            if (!this.token) {
+                try {
+                    const localTemplates = JSON.parse(localStorage.getItem('giftMenuDesignerCustomTemplates') || '[]');
+                    this.customTemplates = Array.isArray(localTemplates) ? localTemplates : [];
+                } catch (_e) {
+                    this.customTemplates = [];
+                }
+                if (this.leftPanelTab === 'widgets') {
+                    this.renderWidgetsList();
+                }
+                return;
+            }
             try {
                 const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
                 const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/templates`, { headers });
@@ -4463,6 +4591,16 @@
             const item = this.items.find((x) => x.id === this.selectedId);
             if (!item) return;
 
+            const freeStyleKeys = ['barColor', 'glowColor', 'bgColor', 'textColor', 'useCustomBg', 'useCustomTextColor', 'barStyle', 'panelEffect', 'borderEffect', 'panelColor', 'panelGradientFrom', 'panelGradientTo', 'borderColor', 'borderGradientFrom', 'borderGradientTo'];
+            if (this.planKey === 'free' && freeStyleKeys.includes(key)) {
+                this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu và dùng hiệu ứng đẹp mắt.');
+                return;
+            }
+            if (this.planKey === 'pro' && ((key === 'panelEffect' && !['none', 'breathing'].includes(String(value))) || (key === 'borderEffect' && !['none', 'glow', 'pulse'].includes(String(value))))) {
+                this.showUpgrade('menuAdvanced', 'Tùy chỉnh chuyển động nâng cao dành cho gói Pro.');
+                return;
+            }
+
             if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'iconSize', 'gap', 'textSize', 'textGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
@@ -4817,10 +4955,10 @@
                 },
                 {
                     id: 'tmpl_neon_purple',
-                    name: 'Neon Purple Gift Goal',
-                    tag: 'Neon',
-                    category: 'goal-board',
-                    tags: ['basic', 'purple', 'gift'],
+                    name: 'Mục tiêu quà cơ bản',
+                    tag: 'Cơ bản',
+                    category: 'basic',
+                    tags: ['basic', 'gift'],
                     isPremium: false,
                     layers: [
                         {
@@ -4840,12 +4978,12 @@
                             currentCount: 150,
                             showPercentage: true,
                             barColor: '#ff007f',
-                            glowColor: '#a855f7',
+                            glowColor: 'rgba(255,0,127,0.5)',
                             borderRadius: 20,
-                            themeStyle: 'neon',
+                            themeStyle: 'default',
                             titleColor: '#ffffff',
                             subtitleText: 'Mục tiêu: 150/500 Rose',
-                            subtitleColor: '#a855f7'
+                            subtitleColor: '#cbd5e1'
                         }
                     ]
                 },
@@ -5466,7 +5604,14 @@
                         const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
                         const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/upload-asset`, { method: 'POST', headers, body: formData });
                         const data = await res.json().catch(() => ({}));
-                        if (!res.ok || !data.success || !data.asset) throw new Error(data.error || `HTTP ${res.status}`);
+                        if (!res.ok || !data.success || !data.asset) {
+                            if (this.handlePlanLimit(data, 'menuAssets')) {
+                                saveBtn.disabled = false;
+                                saveBtn.textContent = 'Thêm Quà';
+                                return;
+                            }
+                            throw new Error(data.error || `HTTP ${res.status}`);
+                        }
                         uploadedAsset = data.asset;
                     } catch (error) {
                         saveBtn.disabled = false;

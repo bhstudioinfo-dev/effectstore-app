@@ -130,6 +130,10 @@ app.use('/api/tiktok', require('./routes/tiktok'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/settings', require('./routes/settings'));
 
+app.get('/api/queue/status', (_req, res) => {
+    res.json(effectQueue.getStatus());
+});
+
 // Compatibility endpoint used by older renderer builds
 app.post('/api/effect-requests', async (req, res) => {
     try {

@@ -1,4 +1,4 @@
-console.log("JS LOADED OK 🔥");
+﻿console.log("JS LOADED OK ðŸ”¥");
 
 // Global Navigation Function
 function navigateTo(url) {
@@ -15,6 +15,8 @@ class EffectStoreApp {
     constructor() {
         this.effects = [];
         this.ownedEffects = [];
+        this.personalEffects = [];
+        this.pendingPersonalEffectFiles = null;
         this.cart = [];
         this.machineId = null;
         this.currentView = 'store';
@@ -32,22 +34,22 @@ class EffectStoreApp {
         this.selectedEffect = null;
         this.giftMappings = [];
 
-        // Cài đặt TTS (Text to Speech)
+        // CÃ i Ä‘áº·t TTS (Text to Speech)
         this.isTTSGiftEnabled = localStorage.getItem('es_tts_gift_enabled') !== 'false';
         this.isTTSFollowEnabled = localStorage.getItem('es_tts_follow_enabled') !== 'false';
         this.ttsThreshold = parseInt(localStorage.getItem('es_tts_threshold') || '10');
         this.pendingDonors = new Map(); // userId -> {nickname, giftName, timestamp}
         this.ttsVolume = parseFloat(localStorage.getItem('es_tts_volume') || '1.0');
 
-        // Hàng đợi giọng nói (TTS Queue)
+        // HÃ ng Ä‘á»£i giá»ng nÃ³i (TTS Queue)
         this.ttsQueue = [];
         this.isProcessingTTS = false;
         this.currentAudio = null;
 
-        // Load danh sách giọng khi thay đổi
+        // Load danh sÃ¡ch giá»ng khi thay Ä‘á»•i
         window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
 
-        // Thêm lắng nghe phím Enter để mapping
+        // ThÃªm láº¯ng nghe phÃ­m Enter Ä‘á»ƒ mapping
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && this.currentView === 'gift-mapping') {
                 if (this.selectedGift && this.selectedEffect) {
@@ -60,7 +62,7 @@ class EffectStoreApp {
     }
     async init() {
         try {
-            // Dọn dẹp localStorage cũ từ phiên bản trước
+            // Dá»n dáº¹p localStorage cÅ© tá»« phiÃªn báº£n trÆ°á»›c
             // Cleanup logic removed to prevent data loss on refresh
 
             let savedMachineId = localStorage.getItem('es_machine_id');
@@ -82,6 +84,9 @@ class EffectStoreApp {
                 this.pollSystemStatus();
                 setInterval(() => this.pollSystemStatus(), 5000);
                 this.startFlashSaleTimer();
+                if (new URLSearchParams(window.location.search).get('pricing') === '1') {
+                    setTimeout(() => this.showPricing(), 150);
+                }
             }
         } catch (err) {
             console.error('Init error:', err);
@@ -125,11 +130,19 @@ class EffectStoreApp {
     }
 
     openCustomEffectModal() {
+        const title = document.getElementById('custom-request-title');
+        const subtitle = document.getElementById('custom-request-subtitle');
+        const descLabel = document.getElementById('custom-request-description-label');
+        const desc = document.getElementById('custom-req-desc');
+        if (title) title.textContent = 'Táº¡o Hiá»‡u á»¨ng RiÃªng';
+        if (subtitle) subtitle.textContent = 'HÃ£y gá»­i yÃªu cáº§u thiáº¿t káº¿ cá»§a báº¡n, chÃºng tÃ´i sáº½ liÃªn há»‡ láº¡i sá»›m nháº¥t!';
+        if (descLabel) descLabel.textContent = 'MÃ´ táº£ Ã½ tÆ°á»Ÿng hiá»‡u á»©ng *';
+        if (desc) desc.placeholder = 'MÃ´ táº£ ngáº¯n gá»n ká»‹ch báº£n, quÃ  táº·ng tÆ°Æ¡ng á»©ng...';
         const modal = document.getElementById('custom-effect-modal');
         if (modal) {
             modal.classList.remove('hidden');
             modal.classList.add('show');
-            // Điền sẵn thông tin nếu user đã đăng nhập
+            // Äiá»n sáºµn thÃ´ng tin náº¿u user Ä‘Ã£ Ä‘Äƒng nháº­p
             if (this.currentUser) {
                 document.getElementById('custom-req-name').value = this.currentUser.name || '';
                 document.getElementById('custom-req-phone').value = this.currentUser.phone || '';
@@ -155,8 +168,8 @@ class EffectStoreApp {
             const notifIcon = document.getElementById('notification-icon');
             const notif = document.getElementById('notification');
             if (notifMessage && notifIcon && notif) {
-                notifIcon.textContent = '⚠️';
-                notifMessage.textContent = 'Vui lòng điền đầy đủ thông tin!';
+                notifIcon.textContent = 'âš ï¸';
+                notifMessage.textContent = 'Vui lÃ²ng Ä‘iá»n Ä‘áº§y Ä‘á»§ thÃ´ng tin!';
                 notif.className = 'notification warning show';
                 setTimeout(() => notif.classList.remove('show'), 3000);
             }
@@ -182,8 +195,8 @@ class EffectStoreApp {
 
             if (data.success) {
                 if (notifMessage && notifIcon && notif) {
-                    notifIcon.textContent = '✅';
-                    notifMessage.textContent = 'Gửi yêu cầu thành công! Chúng tôi sẽ liên hệ lại sớm.';
+                    notifIcon.textContent = 'âœ…';
+                    notifMessage.textContent = 'Gá»­i yÃªu cáº§u thÃ nh cÃ´ng! ChÃºng tÃ´i sáº½ liÃªn há»‡ láº¡i sá»›m.';
                     notif.className = 'notification success show';
                     setTimeout(() => notif.classList.remove('show'), 3000);
                 }
@@ -194,8 +207,8 @@ class EffectStoreApp {
                 document.getElementById('custom-req-desc').value = '';
             } else {
                 if (notifMessage && notifIcon && notif) {
-                    notifIcon.textContent = '❌';
-                    notifMessage.textContent = data.error || 'Có lỗi xảy ra';
+                    notifIcon.textContent = 'âŒ';
+                    notifMessage.textContent = data.error || 'CÃ³ lá»—i xáº£y ra';
                     notif.className = 'notification error show';
                     setTimeout(() => notif.classList.remove('show'), 3000);
                 }
@@ -206,8 +219,8 @@ class EffectStoreApp {
             const notifIcon = document.getElementById('notification-icon');
             const notif = document.getElementById('notification');
             if (notifMessage && notifIcon && notif) {
-                notifIcon.textContent = '❌';
-                notifMessage.textContent = 'Lỗi kết nối máy chủ';
+                notifIcon.textContent = 'âŒ';
+                notifMessage.textContent = 'Lá»—i káº¿t ná»‘i mÃ¡y chá»§';
                 notif.className = 'notification error show';
                 setTimeout(() => notif.classList.remove('show'), 3000);
             }
@@ -219,17 +232,17 @@ class EffectStoreApp {
         const u = this.currentUser;
         const nameChar = (u.name && u.name.length > 0) ? u.name[0].toUpperCase() : 'U';
 
-        // Badge + màu theo cấp độ
+        // Badge + mÃ u theo cáº¥p Ä‘á»™
         const planInfo = {
-            admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
-            business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
-            pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
-            free: { label: '🆓 Free', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
+            admin: { label: 'ðŸ‘‘ Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
+            business: { label: 'â­ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
+            pro: { label: 'âš¡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
+            free: { label: 'ðŸ†“ Free', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
         };
         const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
         const plan = planInfo[planKey] || planInfo.free;
 
-        // Cập nhật avatar chữ
+        // Cáº­p nháº­t avatar chá»¯
         const avatarEl = document.getElementById('user-avatar-small');
         if (avatarEl) {
             avatarEl.textContent = nameChar;
@@ -245,11 +258,11 @@ class EffectStoreApp {
             avatarEl.style.background = 'transparent';
         }
 
-        // Cập nhật tên
+        // Cáº­p nháº­t tÃªn
         const nameEl = document.getElementById('user-name-display');
         if (nameEl) nameEl.textContent = u.name || u.email;
 
-        // Cập nhật Rank Badge
+        // Cáº­p nháº­t Rank Badge
         const rankBadge = document.getElementById('user-rank-badge');
         if (rankBadge) {
             rankBadge.textContent = plan.label.replace(/^[^\s]+\s/, '').toUpperCase();
@@ -263,13 +276,13 @@ class EffectStoreApp {
             rankBadge.style.fontWeight = '800';
         }
 
-        // Cập nhật email → thay bằng badge gói
+        // Cáº­p nháº­t email â†’ thay báº±ng badge gÃ³i
         const emailEl = document.getElementById('user-email-display');
         if (emailEl) {
             emailEl.innerHTML = `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${plan.bg};color:${plan.color};border:1px solid ${plan.border};font-weight:700;">${plan.label}</span>`;
         }
 
-        // Hiện/ẩn Admin Dashboard
+        // Hiá»‡n/áº©n Admin Dashboard
         const adminNavItem = document.getElementById('admin-nav-item');
         if (adminNavItem) {
             adminNavItem.style.display = u.isAdmin ? '' : 'none';
@@ -293,7 +306,7 @@ class EffectStoreApp {
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         if (!email || !password) {
-            this.showNotification('error', 'Vui lòng nhập email và mật khẩu!');
+            this.showNotification('error', 'Vui lÃ²ng nháº­p email vÃ  máº­t kháº©u!');
             return;
         }
         try {
@@ -308,7 +321,7 @@ class EffectStoreApp {
                 this.authToken = data.token;
                 document.getElementById('auth-modal')?.classList.remove('show');
                 this.updateUserUI();
-                this.showNotification('success', `✅ Chào mừng ${data.user.name || data.user.email}!`);
+                this.showNotification('success', `âœ… ChÃ o má»«ng ${data.user.name || data.user.email}!`);
                 await this.loadBanner();
                 await this.loadOwnedEffects();
                 await this.loadEffects();
@@ -317,11 +330,11 @@ class EffectStoreApp {
                 this.pollSystemStatus();
                 setInterval(() => this.pollSystemStatus(), 5000);
             } else {
-                this.showNotification('error', data.error || data.message || 'Đăng nhập thất bại');
+                this.showNotification('error', data.error || data.message || 'ÄÄƒng nháº­p tháº¥t báº¡i');
             }
         } catch (e) {
             console.error('Login exception:', e);
-            this.showNotification('error', 'Lỗi kết nối server');
+            this.showNotification('error', 'Lá»—i káº¿t ná»‘i server');
         }
     }
 
@@ -337,17 +350,38 @@ class EffectStoreApp {
             const data = await res.json();
             if (data.success) {
                 localStorage.setItem('token', data.token);
-                this.showNotification('success', 'Đăng ký thành công!');
+                this.showNotification('success', 'ÄÄƒng kÃ½ thÃ nh cÃ´ng!');
                 location.reload();
             } else {
-                this.showNotification('error', data.error || data.message || 'Đăng ký thất bại');
+                this.showNotification('error', data.error || data.message || 'ÄÄƒng kÃ½ tháº¥t báº¡i');
             }
-        } catch (e) { this.showNotification('error', 'Lỗi kết nối server'); }
+        } catch (e) { this.showNotification('error', 'Lá»—i káº¿t ná»‘i server'); }
     }
 
-    logout() {
+    async logout() {
+        try {
+            if (this.authToken) {
+                await fetch(`${this.API_URL}/api/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${this.authToken}` }
+                });
+            }
+        } catch (_error) { }
         localStorage.removeItem('token');
         location.reload();
+    }
+
+    openStudioContact() {
+        this.closePricing();
+        this.openCustomEffectModal();
+        const title = document.getElementById('custom-request-title');
+        const subtitle = document.getElementById('custom-request-subtitle');
+        const descLabel = document.getElementById('custom-request-description-label');
+        const desc = document.getElementById('custom-req-desc');
+        if (title) title.textContent = 'TÆ° váº¥n gÃ³i Studio';
+        if (subtitle) subtitle.textContent = 'BH Studio sáº½ tÆ° váº¥n giáº£i phÃ¡p phÃ¹ há»£p cho team vÃ  doanh nghiá»‡p cá»§a báº¡n.';
+        if (descLabel) descLabel.textContent = 'Nhu cáº§u váº­n hÃ nh *';
+        if (desc) desc.placeholder = 'Sá»‘ mÃ¡y, sá»‘ phÃ²ng Live, quy mÃ´ team vÃ  nhu cáº§u tÃ­ch há»£p...';
     }
 
     async pollSystemStatus() {
@@ -357,7 +391,7 @@ class EffectStoreApp {
             const data = await res.json();
             this.updateSystemStatusUI(data);
         } catch (err) {
-            // Nếu lỗi (không gọi được API), mặc định Launcher là offline, còn lại offline
+            // Náº¿u lá»—i (khÃ´ng gá»i Ä‘Æ°á»£c API), máº·c Ä‘á»‹nh Launcher lÃ  offline, cÃ²n láº¡i offline
             this.updateSystemStatusUI({
                 tiktok: { connected: false },
                 obs: { connected: false },
@@ -371,36 +405,36 @@ class EffectStoreApp {
         const tiktokCard = document.getElementById('status-card-tiktok');
         if (data.tiktok?.connected) {
             tiktokCard.className = 'status-card-horizontal status-connected';
-            document.getElementById('status-badge-tiktok').textContent = 'ĐANG LIVE';
-            document.getElementById('status-sub-tiktok').textContent = 'Đang nhận dữ liệu trực tiếp';
+            document.getElementById('status-badge-tiktok').textContent = 'ÄANG LIVE';
+            document.getElementById('status-sub-tiktok').textContent = 'Äang nháº­n dá»¯ liá»‡u trá»±c tiáº¿p';
         } else {
             tiktokCard.className = 'status-card-horizontal status-disconnected';
-            document.getElementById('status-badge-tiktok').textContent = 'NGẮT KẾT NỐI';
-            document.getElementById('status-sub-tiktok').textContent = 'Vui lòng kết nối tài khoản';
+            document.getElementById('status-badge-tiktok').textContent = 'NGáº®T Káº¾T Ná»I';
+            document.getElementById('status-sub-tiktok').textContent = 'Vui lÃ²ng káº¿t ná»‘i tÃ i khoáº£n';
         }
 
         // OBS
         const obsCard = document.getElementById('status-card-obs');
         if (data.obs?.connected) {
             obsCard.className = 'status-card-horizontal status-connected';
-            document.getElementById('status-badge-obs').textContent = 'ĐÃ KẾT NỐI';
-            document.getElementById('status-sub-obs').textContent = 'Sẵn sàng kích hoạt hiệu ứng';
+            document.getElementById('status-badge-obs').textContent = 'ÄÃƒ Káº¾T Ná»I';
+            document.getElementById('status-sub-obs').textContent = 'Sáºµn sÃ ng kÃ­ch hoáº¡t hiá»‡u á»©ng';
         } else {
             obsCard.className = 'status-card-horizontal status-disconnected';
             document.getElementById('status-badge-obs').textContent = 'OFFLINE';
-            document.getElementById('status-sub-obs').textContent = 'Đang dò tìm... Vui lòng mở OBS';
+            document.getElementById('status-sub-obs').textContent = 'Äang dÃ² tÃ¬m... Vui lÃ²ng má»Ÿ OBS';
         }
 
         // LAUNCHER
         const launcherCard = document.getElementById('status-card-launcher');
         if (data.launcher?.connected) {
             launcherCard.className = 'status-card-horizontal status-connected';
-            document.getElementById('status-badge-launcher').textContent = 'ĐANG CHẠY';
-            document.getElementById('status-sub-launcher').textContent = 'Hệ thống hoạt động bình thường';
+            document.getElementById('status-badge-launcher').textContent = 'ÄANG CHáº Y';
+            document.getElementById('status-sub-launcher').textContent = 'Há»‡ thá»‘ng hoáº¡t Ä‘á»™ng bÃ¬nh thÆ°á»ng';
         } else {
             launcherCard.className = 'status-card-horizontal status-disconnected';
-            document.getElementById('status-badge-launcher').textContent = 'MẤT KẾT NỐI';
-            document.getElementById('status-sub-launcher').textContent = 'Không thể kết nối đến máy chủ';
+            document.getElementById('status-badge-launcher').textContent = 'Máº¤T Káº¾T Ná»I';
+            document.getElementById('status-sub-launcher').textContent = 'KhÃ´ng thá»ƒ káº¿t ná»‘i Ä‘áº¿n mÃ¡y chá»§';
         }
     }
     async loadBanner() {
@@ -444,13 +478,13 @@ class EffectStoreApp {
                     preloadImg.src = bannerUrl;
                 }
 
-                console.log('✅ Banner loaded:', data.banner.url);
+                console.log('âœ… Banner loaded:', data.banner.url);
             } else if (!heroBanner) {
-                console.warn('⚠️ .hero-banner-new not found in DOM');
+                console.warn('âš ï¸ .hero-banner-new not found in DOM');
             }
 
         } catch (err) {
-            console.error('Load banner lỗi:', err);
+            console.error('Load banner lá»—i:', err);
         }
     }
     async loadEffects() {
@@ -477,16 +511,16 @@ class EffectStoreApp {
                     return `
                                 <div class="ranking-item" onclick="app.showEffectDetail('${e._id}')" style="cursor:pointer;">
                                     <div class="ranking-num ${rankClass}">${index + 1}</div>
-                                    <div class="ranking-thumb">${e.icon || '🎬'}</div>
+                                    <div class="ranking-thumb">${e.icon || 'ðŸŽ¬'}</div>
                                     <div class="ranking-info">
                                         <div class="name">${e.name}</div>
-                                        <div class="uses">👁 ${formattedUses} lượt dùng</div>
+                                        <div class="uses">ðŸ‘ ${formattedUses} lÆ°á»£t dÃ¹ng</div>
                                     </div>
                                 </div>
                             `;
                 }).join('');
             } else {
-                container.innerHTML = '<div style="padding:20px;text-align:center;color:#6b7280;font-size:12px;">Chưa có hiệu ứng hot</div>';
+                container.innerHTML = '<div style="padding:20px;text-align:center;color:#6b7280;font-size:12px;">ChÆ°a cÃ³ hiá»‡u á»©ng hot</div>';
             }
         } catch (error) { console.error('Load trending error:', error); }
     }
@@ -505,19 +539,19 @@ class EffectStoreApp {
             const data = await response.json();
             if (data.success) {
                 if (data.libraryType === 'all_with_ownership') {
-                    // API mới: tất cả effects có flag isOwned
+                    // API má»›i: táº¥t cáº£ effects cÃ³ flag isOwned
                     this.effects = data.effects || [];
                     this.ownedEffects = this.effects.filter(e => e.isOwned);
                 } else if (data.libraryType === 'admin_all') {
-                    // Admin: thấy tất cả
+                    // Admin: tháº¥y táº¥t cáº£
                     this.effects = data.effects || [];
-                    this.ownedEffects = this.effects; // admin "sở hữu" tất cả
+                    this.ownedEffects = this.effects; // admin "sá»Ÿ há»¯u" táº¥t cáº£
                 } else {
-                    // Fallback cũ
+                    // Fallback cÅ©
                     this.ownedEffects = data.effects || [];
                 }
 
-                // TỰ ĐỘNG DỌN DẸP: Nếu đã sở hữu thì xóa khỏi danh sách chờ duyệt
+                // Tá»° Äá»˜NG Dá»ŒN Dáº¸P: Náº¿u Ä‘Ã£ sá»Ÿ há»¯u thÃ¬ xÃ³a khá»i danh sÃ¡ch chá» duyá»‡t
                 const ownedIds = this.ownedEffects.map(e => (e.id || e._id));
                 const oldPendingCount = (this.pendingPaymentEffects || []).length;
                 this.pendingPaymentEffects = (this.pendingPaymentEffects || []).filter(id => !ownedIds.includes(id));
@@ -526,6 +560,7 @@ class EffectStoreApp {
                     localStorage.setItem('es_pending_payments', JSON.stringify(this.pendingPaymentEffects));
                 }
 
+                await this.loadPersonalEffects();
                 this.renderEffects();
             } else {
                 this.ownedEffects = [];
@@ -534,7 +569,147 @@ class EffectStoreApp {
             console.error('Load owned effects error:', error);
             this.ownedEffects = [];
         }
-    } // ✅ Đóng loadOwnedEffects ở đây
+    } // âœ… ÄÃ³ng loadOwnedEffects á»Ÿ Ä‘Ã¢y
+
+    async loadPersonalEffects() {
+        try {
+            if (!window.electronAPI?.invoke) {
+                this.personalEffects = [];
+                return;
+            }
+            const result = await window.electronAPI.invoke('custom-effects:list');
+            const localEffects = result?.success ? (result.effects || []) : [];
+            const registeredIds = new Set((this.currentUser?.customEffects || []).map(effect => String(effect.localId || effect._id || effect.id || '')));
+            this.personalEffects = localEffects.filter(effect => registeredIds.has(String(effect._id || effect.id || effect.localId || '')));
+            this.ownedEffects = [...this.personalEffects, ...this.ownedEffects.filter(effect => !effect?.isCustom)];
+        } catch (error) {
+            if (this.isCustomEffectBridgeMissing(error)) return;
+            console.error('Load personal effects error:', error);
+        }
+    }
+
+    isCustomEffectBridgeMissing(error) {
+        const message = String(error?.message || error || '');
+        return message.includes('No handler registered for') && message.includes('custom-effects:');
+    }
+
+    showCustomEffectRestartNotice() {
+        this.showNotification('warning', 'Vui lÃ²ng táº¯t má»Ÿ láº¡i app Ä‘á»ƒ kÃ­ch hoáº¡t upload hiá»‡u á»©ng cÃ¡ nhÃ¢n.');
+    }
+
+    openPersonalEffectUpload() {
+        this.pendingPersonalEffectFiles = null;
+        this.showModal('Táº£i hiá»‡u á»©ng cÃ¡ nhÃ¢n', `<div style="display:grid;gap:14px;color:#cbd5e1;">
+            <div style="padding:12px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);font-size:12px;line-height:1.6;"><b style="color:#93c5fd;">â„¹ï¸ LÆ°u Ã½ vá» hiá»‡u á»©ng cÃ¡ nhÃ¢n</b><br>File Ä‘Æ°á»£c lÆ°u trá»±c tiáº¿p trÃªn mÃ¡y tÃ­nh nÃ y vÃ  khÃ´ng táº£i lÃªn mÃ¡y chá»§ BH Studio.<br>â€¢ Chá»‰ nháº­n video MP4, MOV, AVI hoáº·c WebM dÆ°á»›i 500MB.<br>â€¢ File trÃªn 200MB cÃ³ thá»ƒ máº¥t vÃ i phÃºt Ä‘á»ƒ tá»‘i Æ°u, nÃªn lÃ m trÆ°á»›c khi livestream.<br>â€¢ App sáº½ tá»‘i Æ°u thÃ nh WebM VP9 dá»c 9:16, tá»‘i Ä‘a 15 giÃ¢y Ä‘á»ƒ cháº¡y mÆ°á»£t hÆ¡n.<br>â€¢ App khÃ´ng tá»± xÃ³a ná»n; ná»n trong suá»‘t chá»‰ cÃ³ náº¿u video gá»‘c cÃ³ alpha.<br>â€¢ Äá»•i mÃ¡y hoáº·c cÃ i láº¡i á»©ng dá»¥ng sáº½ khÃ´ng tá»± khÃ´i phá»¥c.</div>
+            <label style="display:grid;gap:6px;font-size:12px;">TÃªn hiá»‡u á»©ng<input id="personal-effect-name" maxlength="80" class="upload-form-input" placeholder="VÃ­ dá»¥: PhÃ¡o hoa cáº£m Æ¡n"></label>
+            <button onclick="app.choosePersonalEffectFiles()" style="padding:12px;border:1px dashed rgba(167,139,250,.55);border-radius:10px;background:rgba(124,58,237,.1);color:#ddd6fe;cursor:pointer;font-weight:700;">Chá»n video hiá»‡u á»©ng</button>
+            <div id="personal-effect-file-status" style="font-size:12px;color:#94a3b8;">ChÆ°a chá»n video</div>
+            <button id="personal-effect-save-btn" onclick="app.savePersonalEffect()" class="pro-btn" style="padding:12px;">Tá»‘i Æ°u & lÆ°u hiá»‡u á»©ng</button></div>`);
+    }
+
+    async choosePersonalEffectFiles() {
+        try {
+        if (!window.electronAPI?.invoke) return this.showCustomEffectRestartNotice();
+        const result = await window.electronAPI.invoke('custom-effects:choose-files');
+        if (!result?.success) {
+            if (result?.error) this.showNotification('warning', result.error);
+            return;
+        }
+        this.pendingPersonalEffectFiles = result;
+        const status = document.getElementById('personal-effect-file-status');
+        if (status) status.textContent = `âœ“ ÄÃ£ chá»n ${result.videoName || 'video'} â€¢ sáº½ tá»‘i Æ°u thÃ nh ${result.outputLabel || 'WebM VP9'} â€¢ tá»‘i Ä‘a ${result.maxDurationSeconds || 15}s${result.warning ? ` â€¢ ${result.warning}` : ''}`;
+        if (result.warning) this.showNotification('warning', result.warning);
+        } catch (error) {
+            if (this.isCustomEffectBridgeMissing(error)) return this.showCustomEffectRestartNotice();
+            console.error('Choose personal effect files error:', error);
+            this.showNotification('error', 'KhÃ´ng thá»ƒ má»Ÿ cá»­a sá»• chá»n file.');
+        }
+    }
+
+    async savePersonalEffect() {
+        const name = document.getElementById('personal-effect-name')?.value.trim();
+        if (!name || !this.pendingPersonalEffectFiles?.videoPath) return this.showNotification('warning', 'Vui lÃ²ng nháº­p tÃªn vÃ  chá»n video hiá»‡u á»©ng.');
+        const registerId = `custom-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const saveBtn = document.getElementById('personal-effect-save-btn');
+        const status = document.getElementById('personal-effect-file-status');
+        try {
+            if (!window.electronAPI?.invoke) return this.showCustomEffectRestartNotice();
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Äang tá»‘i Æ°u video...';
+                saveBtn.style.opacity = '0.7';
+                saveBtn.style.cursor = 'wait';
+            }
+            if (status) status.textContent = 'Äang chuyá»ƒn video sang WebM VP9, vui lÃ²ng chá»...';
+            const saved = await window.electronAPI.invoke('custom-effects:save', { id: registerId, name, ...this.pendingPersonalEffectFiles });
+            if (!saved?.success) {
+                throw new Error(saved?.error || 'KhÃ´ng thá»ƒ lÆ°u file.');
+            }
+            const savedEffect = saved.effect || {};
+            const duration = Number(savedEffect.duration || savedEffect.maxDurationSeconds);
+            if (!Number.isFinite(duration) || duration <= 0) {
+                await window.electronAPI.invoke('custom-effects:delete', registerId);
+                throw new Error('KhÃ´ng Ä‘á»c Ä‘Æ°á»£c thá»i lÆ°á»£ng video sau khi chuyá»ƒn Ä‘á»•i.');
+            }
+            const response = await fetch(`${this.API_URL}/api/user/custom-effects/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` },
+                body: JSON.stringify({ localId: registerId, name, machineId: this.machineId, duration })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                await window.electronAPI.invoke('custom-effects:delete', registerId);
+                if (response.status === 404) throw new Error('Backend chÆ°a náº¡p API upload hiá»‡u á»©ng cÃ¡ nhÃ¢n. Vui lÃ²ng táº¯t má»Ÿ láº¡i backend/app rá»“i thá»­ láº¡i.');
+                if (this.handlePlanLimit(data, 'customEffects')) {
+                    if (status) status.textContent = 'GÃ³i hiá»‡n táº¡i Ä‘Ã£ Ä‘áº¡t giá»›i háº¡n hiá»‡u á»©ng cÃ¡ nhÃ¢n.';
+                    return;
+                }
+                throw new Error(data.message || data.error || `KhÃ´ng thá»ƒ Ä‘Äƒng kÃ½ hiá»‡u á»©ng. HTTP ${response.status}`);
+            }
+            if (this.currentUser) {
+                this.currentUser.customEffects = [
+                    ...(this.currentUser.customEffects || []).filter(effect => effect?.localId !== registerId),
+                    { localId: registerId, name, machineId: this.machineId, duration, createdAt: new Date().toISOString() }
+                ];
+            }
+            this.closeModal();
+            await this.loadOwnedEffects();
+            if (this.currentView === 'gift-mapping') await this.loadEffectsForMapping();
+            this.showNotification('success', 'ÄÃ£ thÃªm hiá»‡u á»©ng cÃ¡ nhÃ¢n vÃ o Gift Mapping.');
+        } catch (error) {
+            if (this.isCustomEffectBridgeMissing(error)) return this.showCustomEffectRestartNotice();
+            console.error('Save personal effect error:', error);
+            this.showNotification('error', error.message || 'KhÃ´ng thá»ƒ lÆ°u hiá»‡u á»©ng cÃ¡ nhÃ¢n.');
+            if (status) status.textContent = 'LÆ°u tháº¥t báº¡i. Vui lÃ²ng kiá»ƒm tra lá»—i vÃ  thá»­ láº¡i.';
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Tá»‘i Æ°u & lÆ°u hiá»‡u á»©ng';
+                saveBtn.style.opacity = '';
+                saveBtn.style.cursor = '';
+            }
+        }
+    }
+
+    async deletePersonalEffect(effectId) {
+        if (!confirm('Hiá»‡u á»©ng sáº½ bá»‹ xÃ³a vÄ©nh viá»…n khá»i mÃ¡y tÃ­nh nÃ y. CÃ¡c mapping Ä‘ang sá»­ dá»¥ng hiá»‡u á»©ng cÅ©ng sáº½ bá»‹ áº£nh hÆ°á»Ÿng. Báº¡n cÃ³ cháº¯c muá»‘n xÃ³a?')) return;
+        try {
+            if (!window.electronAPI?.invoke) return this.showCustomEffectRestartNotice();
+            const result = await window.electronAPI.invoke('custom-effects:delete', effectId);
+            if (!result?.success) return this.showNotification('error', result?.error || 'KhÃ´ng thá»ƒ xÃ³a hiá»‡u á»©ng.');
+            await fetch(`${this.API_URL}/api/user/custom-effects/${effectId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.authToken}` } });
+            if (this.currentUser) {
+                this.currentUser.customEffects = (this.currentUser.customEffects || []).filter(effect => effect?.localId !== effectId);
+            }
+            await this.loadOwnedEffects();
+            if (this.currentView === 'gift-mapping') await this.loadEffectsForMapping();
+            this.showNotification('success', 'ÄÃ£ xÃ³a hiá»‡u á»©ng cÃ¡ nhÃ¢n khá»i mÃ¡y.');
+        } catch (error) {
+            if (this.isCustomEffectBridgeMissing(error)) return this.showCustomEffectRestartNotice();
+            console.error('Delete personal effect error:', error);
+            this.showNotification('error', 'KhÃ´ng thá»ƒ xÃ³a hiá»‡u á»©ng cÃ¡ nhÃ¢n.');
+        }
+    }
 
     updateUI() {
         this.updateUserUI();
@@ -542,11 +717,11 @@ class EffectStoreApp {
 
         const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
 
-        // Nếu là admin, số lượng sở hữu thực tế có thể khác với danh sách hiển thị (vì admin thấy tất cả)
-        // Tuy nhiên để đẹp thì admin vẫn hiện số lượng toàn bộ kho
+        // Náº¿u lÃ  admin, sá»‘ lÆ°á»£ng sá»Ÿ há»¯u thá»±c táº¿ cÃ³ thá»ƒ khÃ¡c vá»›i danh sÃ¡ch hiá»ƒn thá»‹ (vÃ¬ admin tháº¥y táº¥t cáº£)
+        // Tuy nhiÃªn Ä‘á»ƒ Ä‘áº¹p thÃ¬ admin váº«n hiá»‡n sá»‘ lÆ°á»£ng toÃ n bá»™ kho
         document.getElementById('owned-count').textContent = this.ownedEffects.length;
 
-        // Sử dụng giá trị thực tế từ DB thay vì cộng dồn giá tiền (đặc biệt quan trọng với Admin)
+        // Sá»­ dá»¥ng giÃ¡ trá»‹ thá»±c táº¿ tá»« DB thay vÃ¬ cá»™ng dá»“n giÃ¡ tiá»n (Ä‘áº·c biá»‡t quan trá»ng vá»›i Admin)
         const displaySpent = this.currentUser ? (this.currentUser.totalSpent || 0) : 0;
         document.getElementById('total-spent').textContent = this.formatPrice(displaySpent);
 
@@ -560,7 +735,7 @@ class EffectStoreApp {
         }, 0);
         document.getElementById('savings').textContent = this.formatPrice(totalSavings);
         this.renderEffects();
-    } // ✅ Đóng updateUI ở đây
+    } // âœ… ÄÃ³ng updateUI á»Ÿ Ä‘Ã¢y
 
     addOwnedEffect(effect) {
         const owned = { ...effect, purchasedAt: new Date().toISOString(), machineId: this.machineId, useCount: 0 };
@@ -583,13 +758,13 @@ class EffectStoreApp {
     }
     updateCartUI() {
         const count = this.cart.length;
-        // Badge trên icon giỏ hàng
+        // Badge trÃªn icon giá» hÃ ng
         const badge = document.getElementById('cart-count');
         if (badge) badge.textContent = count;
         // Text trong sidebar
         const countText = document.getElementById('cart-count-text');
-        if (countText) countText.textContent = `${count} sản phẩm`;
-        // Danh sách items
+        if (countText) countText.textContent = `${count} sáº£n pháº©m`;
+        // Danh sÃ¡ch items
         const list = document.getElementById('cart-items-list');
         const empty = document.getElementById('cart-empty');
         const footer = document.getElementById('cart-footer');
@@ -597,7 +772,7 @@ class EffectStoreApp {
         if (count === 0) {
             if (empty) empty.style.display = 'block';
             if (footer) footer.style.display = 'none';
-            // Xóa items cũ (giữ empty state)
+            // XÃ³a items cÅ© (giá»¯ empty state)
             Array.from(list.children).forEach(c => { if (c.id !== 'cart-empty') c.remove(); });
             return;
         }
@@ -610,7 +785,7 @@ class EffectStoreApp {
         }, 0);
         const totalEl = document.getElementById('cart-total-price');
         if (totalEl) totalEl.textContent = this.formatPrice(total);
-        // Xóa items cũ
+        // XÃ³a items cÅ©
         Array.from(list.children).forEach(c => { if (c.id !== 'cart-empty') c.remove(); });
         this.cart.forEach(effect => {
             const id = effect._id || effect.id;
@@ -621,12 +796,12 @@ class EffectStoreApp {
             const priceColor = effect.isFlashSale ? '#ef4444' : '#d4af37';
 
             item.innerHTML = `
-                        <div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${effect.icon || '🎬'}</div>
+                        <div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${effect.icon || 'ðŸŽ¬'}</div>
                         <div style="flex:1;min-width:0;">
                             <div style="font-weight:600;font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${effect.name}</div>
                             <div style="font-size:12px;color:${priceColor};font-weight:700;margin-top:2px;">${this.formatPrice(cartItemPrice)}</div>
                         </div>
-                        <button onclick="app.removeFromCart('${id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
+                        <button onclick="app.removeFromCart('${id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">Ã—</button>
                     `;
             list.appendChild(item);
         });
@@ -634,12 +809,12 @@ class EffectStoreApp {
     addToCart(effectId) {
         const effect = this.effects.find(e => (e.id || e._id) === effectId);
         if (!effect) return;
-        if (this.ownedEffects.find(e => (e.id || e._id) === effectId)) { this.showNotification('warning', '⚠️ Bạn đã sở hữu effect này!'); return; }
-        if (this.pendingPaymentEffects && this.pendingPaymentEffects.includes(effectId)) { this.showNotification('warning', '⏳ Đang chờ admin duyệt thanh toán!'); return; }
-        if (this.cart.find(e => (e.id || e._id) === effectId)) { this.showNotification('warning', '⚠️ Đã có trong giỏ!'); return; }
+        if (this.ownedEffects.find(e => (e.id || e._id) === effectId)) { this.showNotification('warning', 'âš ï¸ Báº¡n Ä‘Ã£ sá»Ÿ há»¯u effect nÃ y!'); return; }
+        if (this.pendingPaymentEffects && this.pendingPaymentEffects.includes(effectId)) { this.showNotification('warning', 'â³ Äang chá» admin duyá»‡t thanh toÃ¡n!'); return; }
+        if (this.cart.find(e => (e.id || e._id) === effectId)) { this.showNotification('warning', 'âš ï¸ ÄÃ£ cÃ³ trong giá»!'); return; }
         this.cart.push(effect);
         this.saveCart();
-        this.showNotification('success', `✅ Đã thêm "${effect.name}" vào giỏ!`);
+        this.showNotification('success', `âœ… ÄÃ£ thÃªm "${effect.name}" vÃ o giá»!`);
         this.renderEffects();
     }
 
@@ -662,8 +837,24 @@ class EffectStoreApp {
     }
 
     // ===== TEXT TO SPEECH (TTS) =====
-    speakText(text) {
+    async speakText(text) {
         if (!text) return;
+        try {
+            const response = await fetch(`${this.API_URL}/api/tiktok/usage/tts`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${this.authToken}` }
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                if (!this.handlePlanLimit(data, 'tts') && response.status !== 409) {
+                    this.showNotification('error', data.message || 'KhÃ´ng thá»ƒ sá»­ dá»¥ng TTS lÃºc nÃ y');
+                }
+                return;
+            }
+        } catch (_error) {
+            this.showNotification('error', 'KhÃ´ng thá»ƒ kiá»ƒm tra lÆ°á»£t TTS');
+            return;
+        }
         this.ttsQueue.push(text);
         if (!this.isProcessingTTS) {
             this.processTTSQueue();
@@ -685,7 +876,7 @@ class EffectStoreApp {
             this.currentAudio = new Audio(googleTTSUrl);
             this.currentAudio.volume = this.ttsVolume;
 
-            // Chờ âm thanh phát xong mới chuyển sang câu tiếp theo
+            // Chá» Ã¢m thanh phÃ¡t xong má»›i chuyá»ƒn sang cÃ¢u tiáº¿p theo
             this.currentAudio.onended = () => {
                 this.processTTSQueue();
             };
@@ -698,16 +889,16 @@ class EffectStoreApp {
             await this.currentAudio.play().catch(e => {
                 if (e.name !== 'AbortError') console.error('TTS Play Error:', e);
             });
-            console.log('🗣️ Đang phát TTS:', text);
+            console.log('ðŸ—£ï¸ Äang phÃ¡t TTS:', text);
         } catch (error) {
             console.error('TTS Play Error:', error);
             this.processTTSQueue();
         }
     }
 
-    removeFromCart(effectId) { this.cart = this.cart.filter(e => (e.id || e._id) !== effectId); this.saveCart(); this.renderEffects(); this.showNotification('success', '✅ Đã xóa khỏi giỏ!'); }
+    removeFromCart(effectId) { this.cart = this.cart.filter(e => (e.id || e._id) !== effectId); this.saveCart(); this.renderEffects(); this.showNotification('success', 'âœ… ÄÃ£ xÃ³a khá»i giá»!'); }
     async checkout() {
-        if (this.cart.length === 0) { this.showNotification('warning', '⚠️ Giỏ trống!'); return; }
+        if (this.cart.length === 0) { this.showNotification('warning', 'âš ï¸ Giá» trá»‘ng!'); return; }
         const total = this.cart.reduce((sum, e) => {
             const actualPrice = (e.isFlashSale && e.flashSalePrice > 0) ? e.flashSalePrice : (e.price || 0);
             return sum + actualPrice;
@@ -716,7 +907,7 @@ class EffectStoreApp {
         this.pendingEffects = this.cart.map(effect => ({ effectId: effect._id || effect.id, effectName: effect.name, videoPath: `${effect.id}.webm` }));
 
         try {
-            this.showNotification('info', '⏳ Đang tạo mã QR...');
+            this.showNotification('info', 'â³ Äang táº¡o mÃ£ QR...');
             const response = await fetch(this.API_URL + '/api/payment/create-qr', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -730,25 +921,25 @@ class EffectStoreApp {
             const data = await response.json();
             if (!data.success) throw new Error('Failed to create QR');
 
-            // Fix: đảm bảo orderId luôn có giá trị
+            // Fix: Ä‘áº£m báº£o orderId luÃ´n cÃ³ giÃ¡ trá»‹
             const orderId = data.orderId || `DH${Date.now()}`;
             const bank = data.bankInfo || {};
             const formattedTotal = this.formatPrice(total);
 
-            this.showModal('Thanh toán', `
+            this.showModal('Thanh toÃ¡n', `
                         <div style="font-family:inherit;max-width:480px;margin:0 auto;">
 
                             <!-- QR Block -->
                             <div style="text-align:center;margin-bottom:20px;">
                                 <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:6px 14px;margin-bottom:14px;">
-                                    <span style="font-size:14px;">📲</span>
-                                    <span style="font-size:13px;color:#10b981;font-weight:600;">Quét QR để thanh toán</span>
+                                    <span style="font-size:14px;">ðŸ“²</span>
+                                    <span style="font-size:13px;color:#10b981;font-weight:600;">QuÃ©t QR Ä‘á»ƒ thanh toÃ¡n</span>
                                 </div>
                                 <div style="background:#fff;border-radius:16px;padding:12px;display:inline-block;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
                                     <img src="${data.qrCode}" alt="QR Code" style="width:200px;height:200px;display:block;border-radius:8px;">
                                     <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;">
                                         <span style="color:#d4145a;font-size:11px;font-weight:800;letter-spacing:0.5px;">VIET</span><span style="color:#00b14f;font-size:11px;font-weight:800;letter-spacing:0.5px;">QR</span>
-                                        <span style="color:#bbb;font-size:11px;">•</span>
+                                        <span style="color:#bbb;font-size:11px;">â€¢</span>
                                         <span style="color:#555;font-size:12px;font-weight:700;">${bank.bank || 'Techcombank'}</span>
                                     </div>
                                 </div>
@@ -757,69 +948,69 @@ class EffectStoreApp {
                             <!-- Bank Info -->
                             <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;margin-bottom:16px;">
                                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06);">
-                                    <span style="font-size:14px;">🏦</span>
-                                    <span style="font-size:13px;font-weight:700;color:#fff;">Thông tin chuyển khoản</span>
+                                    <span style="font-size:14px;">ðŸ¦</span>
+                                    <span style="font-size:13px;font-weight:700;color:#fff;">ThÃ´ng tin chuyá»ƒn khoáº£n</span>
                                 </div>
                                 <div style="display:flex;flex-direction:column;gap:10px;">
                                     <div style="display:flex;justify-content:space-between;align-items:center;">
-                                        <span style="color:#6b7280;font-size:13px;">Ngân hàng</span>
+                                        <span style="color:#6b7280;font-size:13px;">NgÃ¢n hÃ ng</span>
                                         <span style="color:#60a5fa;font-weight:700;font-size:13px;">${bank.bank || 'MBBank'}</span>
                                     </div>
                                     <div style="display:flex;justify-content:space-between;align-items:center;">
-                                        <span style="color:#6b7280;font-size:13px;">Số TK</span>
+                                        <span style="color:#6b7280;font-size:13px;">Sá»‘ TK</span>
                                         <span style="color:#fff;font-weight:700;font-size:14px;letter-spacing:1px;">${bank.accountNumber || '123456789'}</span>
                                     </div>
                                     <div style="display:flex;justify-content:space-between;align-items:center;">
-                                        <span style="color:#6b7280;font-size:13px;">Chủ TK</span>
+                                        <span style="color:#6b7280;font-size:13px;">Chá»§ TK</span>
                                         <span style="color:#a78bfa;font-weight:700;font-size:13px;">${bank.accountName || 'NGUYEN VAN A'}</span>
                                     </div>
                                     <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
-                                        <span style="color:#6b7280;font-size:13px;">Số tiền</span>
+                                        <span style="color:#6b7280;font-size:13px;">Sá»‘ tiá»n</span>
                                         <span style="color:#d4af37;font-weight:800;font-size:18px;">${formattedTotal}</span>
                                     </div>
                                     <div style="display:flex;justify-content:space-between;align-items:center;">
-                                        <span style="color:#6b7280;font-size:13px;">Nội dung CK</span>
+                                        <span style="color:#6b7280;font-size:13px;">Ná»™i dung CK</span>
                                         <span style="color:#10b981;font-weight:700;font-size:13px;background:rgba(16,185,129,0.1);padding:3px 10px;border-radius:6px;border:1px solid rgba(16,185,129,0.2);">${bank.description || orderId}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Hướng dẫn -->
+                            <!-- HÆ°á»›ng dáº«n -->
                             <div style="background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.15);border-radius:12px;padding:14px;margin-bottom:16px;">
                                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                                    <span>⚡</span>
-                                    <span style="font-size:13px;font-weight:700;color:#fbbf24;">Hướng dẫn:</span>
+                                    <span>âš¡</span>
+                                    <span style="font-size:13px;font-weight:700;color:#fbbf24;">HÆ°á»›ng dáº«n:</span>
                                 </div>
                                 <ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;">
-                                    <li style="font-size:12px;color:#9ca3af;">Quét QR code bằng app ngân hàng</li>
-                                    <li style="font-size:12px;color:#9ca3af;">Kiểm tra số tiền và nội dung chuyển khoản</li>
-                                    <li style="font-size:12px;color:#9ca3af;">Chuyển khoản thành công</li>
-                                    <li style="font-size:12px;color:#9ca3af;">Nhấn <strong style="color:#fff;">"Xác nhận đã chuyển khoản"</strong> bên dưới</li>
-                                    <li style="font-size:12px;color:#a78bfa;">(Tùy chọn) Upload ảnh để được duyệt nhanh hơn</li>
+                                    <li style="font-size:12px;color:#9ca3af;">QuÃ©t QR code báº±ng app ngÃ¢n hÃ ng</li>
+                                    <li style="font-size:12px;color:#9ca3af;">Kiá»ƒm tra sá»‘ tiá»n vÃ  ná»™i dung chuyá»ƒn khoáº£n</li>
+                                    <li style="font-size:12px;color:#9ca3af;">Chuyá»ƒn khoáº£n thÃ nh cÃ´ng</li>
+                                    <li style="font-size:12px;color:#9ca3af;">Nháº¥n <strong style="color:#fff;">"XÃ¡c nháº­n Ä‘Ã£ chuyá»ƒn khoáº£n"</strong> bÃªn dÆ°á»›i</li>
+                                    <li style="font-size:12px;color:#a78bfa;">(TÃ¹y chá»n) Upload áº£nh Ä‘á»ƒ Ä‘Æ°á»£c duyá»‡t nhanh hÆ¡n</li>
                                 </ol>
                             </div>
 
-                            <!-- Upload ảnh (tùy chọn) -->
+                            <!-- Upload áº£nh (tÃ¹y chá»n) -->
                             <div style="margin-bottom:16px;">
                                 <label style="font-size:12px;color:#6b7280;display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                                    📎 Upload ảnh chuyển khoản
-                                    <span style="font-size:10px;background:rgba(167,139,250,0.15);color:#a78bfa;border:1px solid rgba(167,139,250,0.3);padding:2px 7px;border-radius:20px;font-weight:600;">Không bắt buộc</span>
+                                    ðŸ“Ž Upload áº£nh chuyá»ƒn khoáº£n
+                                    <span style="font-size:10px;background:rgba(167,139,250,0.15);color:#a78bfa;border:1px solid rgba(167,139,250,0.3);padding:2px 7px;border-radius:20px;font-weight:600;">KhÃ´ng báº¯t buá»™c</span>
                                 </label>
                                 <div style="border:2px dashed rgba(255,255,255,0.10);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;transition:border-color 0.2s;"
                                     onmouseover="this.style.borderColor='rgba(167,139,250,0.35)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.10)'">
                                     <input type="file" id="payment-proof-input" accept="image/*" style="display:none;" onchange="app.previewPaymentProof(this)">
-                                    <button onclick="document.getElementById('payment-proof-input').click()" style="padding:8px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;font-size:12px;white-space:nowrap;">Chọn ảnh</button>
-                                    <span id="payment-proof-name" style="font-size:12px;color:#6b7280;">Chưa chọn file</span>
+                                    <button onclick="document.getElementById('payment-proof-input').click()" style="padding:8px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;font-size:12px;white-space:nowrap;">Chá»n áº£nh</button>
+                                    <span id="payment-proof-name" style="font-size:12px;color:#6b7280;">ChÆ°a chá»n file</span>
                                 </div>
                                 <div id="payment-proof-preview" style="display:none;margin-top:10px;text-align:center;">
                                     <img id="payment-proof-img" style="max-width:100%;max-height:140px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
                                 </div>
-                                <p style="font-size:11px;color:#4b5563;margin-top:6px;">Ảnh giúp admin xác thực nhanh hơn (10-30 phút)</p>
+                                <p style="font-size:11px;color:#4b5563;margin-top:6px;">áº¢nh giÃºp admin xÃ¡c thá»±c nhanh hÆ¡n (10-30 phÃºt)</p>
                             </div>
 
                             <!-- Auto status -->
                             <div id="payment-status-indicator" style="padding:10px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);color:#10b981;font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px;">
-                                <span>⏳</span> Đang chờ xác nhận thanh toán...
+                                <span>â³</span> Äang chá» xÃ¡c nháº­n thanh toÃ¡n...
                             </div>
 
                             <!-- Buttons -->
@@ -827,19 +1018,19 @@ class EffectStoreApp {
                                 <button onclick="app.confirmPaymentWithProof('${orderId}', ${total})" style="width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#ec4899);border:none;border-radius:12px;color:#fff;font-weight:800;font-size:15px;cursor:pointer;transition:all 0.2s;"
                                     onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(124,58,237,0.5)'"
                                     onmouseout="this.style.transform='';this.style.boxShadow=''">
-                                    ✅ Xác nhận đã chuyển khoản
+                                    âœ… XÃ¡c nháº­n Ä‘Ã£ chuyá»ƒn khoáº£n
                                 </button>
-                                <button onclick="app.closeModal()" style="width:100%;padding:11px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#6b7280;font-size:13px;cursor:pointer;">Đóng</button>
+                                <button onclick="app.closeModal()" style="width:100%;padding:11px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#6b7280;font-size:13px;cursor:pointer;">ÄÃ³ng</button>
                             </div>
                         </div>
                     `);
 
-            // Bắt đầu Polling trạng thái đơn hàng
+            // Báº¯t Ä‘áº§u Polling tráº¡ng thÃ¡i Ä‘Æ¡n hÃ ng
             this.startPaymentPolling(orderId, effectIds, total);
 
         } catch (error) {
             console.error('Checkout error:', error);
-            this.showNotification('error', '❌ Lỗi thanh toán: ' + error.message);
+            this.showNotification('error', 'âŒ Lá»—i thanh toÃ¡n: ' + error.message);
         }
     }
     previewPaymentProof(input) {
@@ -860,7 +1051,7 @@ class EffectStoreApp {
         const hasProof = input && input.files && input.files[0];
         try {
             const btn = event.target;
-            btn.textContent = '⏳ Đang gửi...'; btn.disabled = true;
+            btn.textContent = 'â³ Äang gá»­i...'; btn.disabled = true;
             const formData = new FormData();
             if (hasProof) formData.append('proof', input.files[0]);
             formData.append('noProof', hasProof ? 'false' : 'true');
@@ -879,34 +1070,34 @@ class EffectStoreApp {
                 indicator.style.background = 'rgba(16,185,129,0.15)';
                 indicator.style.borderColor = 'rgba(16,185,129,0.4)';
                 indicator.innerHTML = hasProof
-                    ? '✅ Đã gửi kèm ảnh! Admin sẽ duyệt trong 5-30 phút.'
-                    : '✅ Đã gửi yêu cầu! Admin sẽ kiểm tra sao kê trong 1-24h.';
+                    ? 'âœ… ÄÃ£ gá»­i kÃ¨m áº£nh! Admin sáº½ duyá»‡t trong 5-30 phÃºt.'
+                    : 'âœ… ÄÃ£ gá»­i yÃªu cáº§u! Admin sáº½ kiá»ƒm tra sao kÃª trong 1-24h.';
             }
-            btn.textContent = '✅ Đã gửi thành công!';
+            btn.textContent = 'âœ… ÄÃ£ gá»­i thÃ nh cÃ´ng!';
             const msg = hasProof
-                ? '✅ Gửi kèm ảnh! Admin duyệt trong 5-30 phút.'
-                : '✅ Đã gửi! Admin kiểm tra sao kê trong 1-24h.';
+                ? 'âœ… Gá»­i kÃ¨m áº£nh! Admin duyá»‡t trong 5-30 phÃºt.'
+                : 'âœ… ÄÃ£ gá»­i! Admin kiá»ƒm tra sao kÃª trong 1-24h.';
             this.showNotification('success', msg);
 
-            // Thêm vào danh sách chờ duyệt
+            // ThÃªm vÃ o danh sÃ¡ch chá» duyá»‡t
             const cartIds = this.cart.map(e => e._id || e.id);
             this.pendingPaymentEffects.push(...cartIds);
             this.pendingPaymentEffects = [...new Set(this.pendingPaymentEffects)];
             localStorage.setItem('es_pending_payments', JSON.stringify(this.pendingPaymentEffects));
 
-            // Xóa giỏ hàng
+            // XÃ³a giá» hÃ ng
             this.cart = [];
             this.saveCart();
             this.updateCartUI();
-            this.renderEffects(); // Cập nhật nút thành Đang chờ duyệt
+            this.renderEffects(); // Cáº­p nháº­t nÃºt thÃ nh Äang chá» duyá»‡t
 
-            // Tự động đóng form sau 2.5 giây
+            // Tá»± Ä‘á»™ng Ä‘Ã³ng form sau 2.5 giÃ¢y
             setTimeout(() => {
                 this.closeModal();
             }, 2500);
 
         } catch (err) {
-            this.showNotification('error', '❌ Lỗi gửi: ' + err.message);
+            this.showNotification('error', 'âŒ Lá»—i gá»­i: ' + err.message);
         }
     }
 
@@ -916,7 +1107,7 @@ class EffectStoreApp {
 
         this.paymentInterval = setInterval(async () => {
             attempts++;
-            // Dừng sau 10 phút (200 lần)
+            // Dá»«ng sau 10 phÃºt (200 láº§n)
             if (attempts > 200 || !document.getElementById('modal-overlay').classList.contains('show')) {
                 clearInterval(this.paymentInterval);
                 return;
@@ -931,7 +1122,7 @@ class EffectStoreApp {
                     if (indicator) {
                         indicator.style.background = '#10b981';
                         indicator.style.color = '#000';
-                        indicator.innerHTML = '🎉 Thanh toán thành công!';
+                        indicator.innerHTML = 'ðŸŽ‰ Thanh toÃ¡n thÃ nh cÃ´ng!';
                     }
                     setTimeout(() => {
                         this.completePurchase(effectIds, amount);
@@ -948,23 +1139,23 @@ class EffectStoreApp {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: orderId, transferAmount: amount })
             });
-            this.showNotification('info', 'Đã bắn webhook giả lập!');
+            this.showNotification('info', 'ÄÃ£ báº¯n webhook giáº£ láº­p!');
         } catch (e) {
             console.error('Simulate err:', e);
         }
     }
     async completePurchase(effectIds, amount) {
-        // Xóa khỏi danh sách chờ duyệt
+        // XÃ³a khá»i danh sÃ¡ch chá» duyá»‡t
         this.pendingPaymentEffects = this.pendingPaymentEffects.filter(id => !effectIds.includes(id));
         localStorage.setItem('es_pending_payments', JSON.stringify(this.pendingPaymentEffects));
 
-        // Thêm vào ownedEffects từ danh sách tổng (vì cart đã bị xóa trước đó)
+        // ThÃªm vÃ o ownedEffects tá»« danh sÃ¡ch tá»•ng (vÃ¬ cart Ä‘Ã£ bá»‹ xÃ³a trÆ°á»›c Ä‘Ã³)
         effectIds.forEach(id => {
             const effect = this.effects.find(e => (e._id || e.id) === id);
             if (effect) this.addOwnedEffect(effect);
         });
 
-        // Xử lý Setup OBS nếu có
+        // Xá»­ lÃ½ Setup OBS náº¿u cÃ³
         if (this.pendingEffects && this.pendingEffects.length > 0) {
             for (const effect of this.pendingEffects) {
                 try {
@@ -978,12 +1169,12 @@ class EffectStoreApp {
             this.pendingEffects = null;
         }
 
-        // Lưu lịch sử
+        // LÆ°u lá»‹ch sá»­
         const history = JSON.parse(localStorage.getItem('es_purchase_history') || '[]');
         history.push({ date: new Date().toISOString(), items: effectIds, total: amount });
         localStorage.setItem('es_purchase_history', JSON.stringify(history));
 
-        // Quan trọng: Tải lại dữ liệu từ server để cập nhật Rank Pro/Business
+        // Quan trá»ng: Táº£i láº¡i dá»¯ liá»‡u tá»« server Ä‘á»ƒ cáº­p nháº­t Rank Pro/Business
         await this.checkAuth();
         await this.loadOwnedEffects();
 
@@ -991,15 +1182,21 @@ class EffectStoreApp {
         this.saveCart();
         this.closeModal();
         this.updateUI();
-        this.showNotification('success', '🎉 Chúc mừng! Đơn hàng đã được kích hoạt thành công.');
+        this.showNotification('success', 'ðŸŽ‰ ChÃºc má»«ng! ÄÆ¡n hÃ ng Ä‘Ã£ Ä‘Æ°á»£c kÃ­ch hoáº¡t thÃ nh cÃ´ng.');
     }
     async triggerEffect(effectId) {
-        console.log('🎬 Trigger:', effectId);
-        this.showNotification('info', '🎬 Đang kích hoạt effect...');
+        console.log('ðŸŽ¬ Trigger:', effectId);
+        this.showNotification('info', 'ðŸŽ¬ Äang kÃ­ch hoáº¡t effect...');
 
         try {
             const effect = this.ownedEffects.find(e => (e.id || e._id) === effectId) ||
                 this.effects.find(e => (e.id || e._id) === effectId);
+
+            if (effect?.isCustom) {
+                this.showModal(`Xem thá»­: ${effect.name}`, `<div style="display:flex;justify-content:center;min-height:420px;"><video src="${effect.previewUrl}" autoplay controls playsinline style="width:100%;max-height:70vh;object-fit:contain;background:transparent;"></video></div>`);
+                this.showNotification('success', 'Äang xem thá»­ trÃªn app. OBS khÃ´ng Ä‘Æ°á»£c kÃ­ch hoáº¡t.');
+                return;
+            }
 
             let webcamSourceName = null;
             if (effect && effect.isComposite && this.authToken) {
@@ -1013,7 +1210,7 @@ class EffectStoreApp {
                             const webcams = sourcesData.sources.filter(s => s.isWebcam);
                             if (webcams.length > 0) {
                                 webcamSourceName = webcams[0].name;
-                                console.log(`📹 Auto-selected webcam: ${webcamSourceName}`);
+                                console.log(`ðŸ“¹ Auto-selected webcam: ${webcamSourceName}`);
                             }
                         }
                     }
@@ -1025,6 +1222,11 @@ class EffectStoreApp {
             const endpoint = (effect && effect.isComposite && webcamSourceName)
                 ? this.API_URL + '/api/obs/trigger-with-duplicate'
                 : this.API_URL + '/api/obs/trigger';
+            const duration = Number(effect?.duration);
+            if (!Number.isFinite(duration) || duration <= 0) {
+                this.showNotification('warning', 'Hiệu ứng chưa có thời lượng hợp lệ nên không thể chạy thử.');
+                return;
+            }
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -1034,7 +1236,8 @@ class EffectStoreApp {
                 },
                 body: JSON.stringify({
                     effectId,
-                    duration: effect ? (effect.duration || 15) : 15,
+                    duration,
+                    effectName: effect?.name || effectId,
                     webcamSourceName: webcamSourceName
                 })
             });
@@ -1042,18 +1245,18 @@ class EffectStoreApp {
             const data = await response.json();
 
             if (data.success) {
-                this.showNotification('success', '✅ Effect đã được kích hoạt!');
+                this.showNotification('success', 'âœ… Effect Ä‘Ã£ Ä‘Æ°á»£c kÃ­ch hoáº¡t!');
                 const ownedEffect = this.ownedEffects.find(e => (e.id || e._id) === effectId);
                 if (ownedEffect) {
                     ownedEffect.useCount = (ownedEffect.useCount || 0) + 1;
                     localStorage.setItem('es_owned_effects', JSON.stringify(this.ownedEffects));
                 }
             } else {
-                this.showNotification('error', '❌ ' + (data.error || data.message));
+                this.showNotification('error', 'âŒ ' + (data.error || data.message));
             }
         } catch (error) {
             console.error('Trigger error:', error);
-            this.showNotification('error', '❌ Lỗi: ' + error.message);
+            this.showNotification('error', 'âŒ Lá»—i: ' + error.message);
         }
     }
     handleThumbError(imgEl) {
@@ -1110,7 +1313,7 @@ class EffectStoreApp {
             this.startMiniFlashSaleTimers();
         }
         if (this.currentView === 'library' && libraryGrid) {
-            console.log('📚 Rendering Library:', this.ownedEffects);
+            console.log('ðŸ“š Rendering Library:', this.ownedEffects);
             this._renderGrid(libraryGrid, this.ownedEffects, filter, search, 'library');
         }
     }
@@ -1138,11 +1341,11 @@ class EffectStoreApp {
                 const sBlock = timer.querySelector('.time-s');
 
                 if (distance < 0) {
-                    if (textSpan && textSpan.innerText !== 'HẾT HẠN') {
-                        textSpan.innerText = 'HẾT HẠN';
+                    if (textSpan && textSpan.innerText !== 'Háº¾T Háº N') {
+                        textSpan.innerText = 'Háº¾T Háº N';
                         if (hBlock) { hBlock.innerText = '00'; mBlock.innerText = '00'; sBlock.innerText = '00'; }
-                        // Tự động render lại để ẩn khung Flash Sale
-                        console.log('⚡ Flash Sale expired, re-rendering...');
+                        // Tá»± Ä‘á»™ng render láº¡i Ä‘á»ƒ áº©n khung Flash Sale
+                        console.log('âš¡ Flash Sale expired, re-rendering...');
                         this.renderEffects();
                     }
                     return;
@@ -1186,7 +1389,7 @@ class EffectStoreApp {
 
         grid.innerHTML = '';
         if (filtered.length === 0) {
-            grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;padding:80px 20px;"><div class="empty-icon" style="font-size:64px;margin-bottom:20px;">${viewName === 'library' ? '📚' : '🔍'}</div><h3 style="color:var(--text-secondary);font-size:18px;margin-bottom:10px;">${viewName === 'library' ? 'Chưa có hiệu ứng nào' : 'Không tìm thấy hiệu ứng'}</h3><p style="color:var(--text-muted);">${viewName === 'library' ? 'Hãy mua hiệu ứng từ cửa hàng để sở hữu' : 'Thử tìm với từ khóa khác'}</p></div>`;
+            grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;padding:80px 20px;"><div class="empty-icon" style="font-size:64px;margin-bottom:20px;">${viewName === 'library' ? 'ðŸ“š' : 'ðŸ”'}</div><h3 style="color:var(--text-secondary);font-size:18px;margin-bottom:10px;">${viewName === 'library' ? 'ChÆ°a cÃ³ hiá»‡u á»©ng nÃ o' : 'KhÃ´ng tÃ¬m tháº¥y hiá»‡u á»©ng'}</h3><p style="color:var(--text-muted);">${viewName === 'library' ? 'HÃ£y mua hiá»‡u á»©ng tá»« cá»­a hÃ ng Ä‘á»ƒ sá»Ÿ há»¯u' : 'Thá»­ tÃ¬m vá»›i tá»« khÃ³a khÃ¡c'}</p></div>`;
             return;
         }
 
@@ -1194,18 +1397,18 @@ class EffectStoreApp {
             if (!effect) return '';
             const effectId = effect._id || effect.id || effect;
             if (typeof effect !== 'object') {
-                // Trường hợp dữ liệu thô chưa được populate
+                // TrÆ°á»ng há»£p dá»¯ liá»‡u thÃ´ chÆ°a Ä‘Æ°á»£c populate
                 return `<div class="effect-card pending" style="padding:20px; text-align:center; color:var(--text-muted);">
-                            <div style="font-size:24px; margin-bottom:10px;">⏳</div>
-                            <div style="font-size:12px;">Đang tải dữ liệu hiệu ứng...</div>
+                            <div style="font-size:24px; margin-bottom:10px;">â³</div>
+                            <div style="font-size:12px;">Äang táº£i dá»¯ liá»‡u hiá»‡u á»©ng...</div>
                             <div style="font-size:10px; opacity:0.5; margin-top:5px;">ID: ${effect}</div>
                         </div>`;
             }
 
-            // Logic sở hữu:
-            // 1. Admin sở hữu tất cả
-            // 2. Gói Business sở hữu tất cả
-            // 3. User đã mua lẻ (có trong ownedEffects)
+            // Logic sá»Ÿ há»¯u:
+            // 1. Admin sá»Ÿ há»¯u táº¥t cáº£
+            // 2. GÃ³i Business sá»Ÿ há»¯u táº¥t cáº£
+            // 3. User Ä‘Ã£ mua láº» (cÃ³ trong ownedEffects)
             const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
             const isBusiness = this.currentUser && this.currentUser.subscription === 'business';
             const hasPurchased = this.ownedEffects.some(e => (e.id || e._id) === effectId);
@@ -1213,11 +1416,12 @@ class EffectStoreApp {
             const isOwned = isAdmin || isBusiness || hasPurchased;
             const isPending = this.pendingPaymentEffects.includes(effectId);
 
-            // ✅ XỬ LÝ PREVIEW: Thumb -> Video on Hover
+            // âœ… Xá»¬ LÃ PREVIEW: Thumb -> Video on Hover
             let previewHTML = '';
-            const thumbUrl = effect.thumbUrl ? `${this.API_URL}${effect.thumbUrl}` : '';
-            const videoUrl = effect.previewUrl ? `${this.API_URL}${effect.previewUrl}` : '';
-            const fallbackIcon = effect.icon || '🎬';
+            const resolveMediaUrl = value => !value ? '' : (/^https?:\/\//i.test(value) ? value : `${this.API_URL}${value}`);
+            const thumbUrl = resolveMediaUrl(effect.thumbUrl);
+            const videoUrl = resolveMediaUrl(effect.previewUrl);
+            const fallbackIcon = effect.icon || 'ðŸŽ¬';
 
             if (thumbUrl && videoUrl) {
                 previewHTML = `
@@ -1238,15 +1442,15 @@ class EffectStoreApp {
                 previewHTML = `<div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="display:flex;align-items:center;justify-content:center;height:100%;font-size:64px;cursor:pointer;">${fallbackIcon}</div>`;
             }
 
-            // Xác định trạng thái và nội dung nút
+            // XÃ¡c Ä‘á»‹nh tráº¡ng thÃ¡i vÃ  ná»™i dung nÃºt
             let btnClass = 'btn-add-cart';
             let btnAction = `app.addToCart('${effectId}')`;
-            let btnText = '🛒 Thêm vào giỏ';
+            let btnText = 'ðŸ›’ ThÃªm vÃ o giá»';
             let borderCol = 'transparent';
 
             const isInCart = this.cart.some(item => (item.id || item._id) === effectId);
 
-            // Kiểm tra Flash Sale còn hiệu lực không
+            // Kiá»ƒm tra Flash Sale cÃ²n hiá»‡u lá»±c khÃ´ng
             let isFlashSaleActive = false;
             if (effect.isFlashSale && viewName === 'store') {
                 const now = new Date();
@@ -1259,22 +1463,27 @@ class EffectStoreApp {
             if (isOwned) {
                 btnClass += ' btn-owned';
                 btnAction = `app.triggerEffect('${effectId}')`;
-                btnText = '▶ Kích Hoạt (Đã Sở Hữu)';
+                btnText = 'â–¶ KÃ­ch Hoáº¡t (ÄÃ£ Sá»Ÿ Há»¯u)';
                 borderCol = isFlashSaleActive ? '#ef4444' : 'var(--success)';
             } else if (isPending) {
                 btnClass += ' btn-pending';
                 btnAction = 'void(0)';
-                btnText = '⏳ Đang chờ duyệt';
+                btnText = 'â³ Äang chá» duyá»‡t';
                 borderCol = 'rgba(212, 175, 55, 0.5)';
             } else if (isInCart) {
                 btnClass += ' btn-in-cart';
                 btnAction = 'app.openCart()';
-                btnText = '🛒 Đã trong giỏ';
+                btnText = 'ðŸ›’ ÄÃ£ trong giá»';
                 borderCol = '#ec4899';
             } else if (isFlashSaleActive) {
                 borderCol = '#ef4444';
                 btnClass = 'btn-flash-sale';
-                btnText = '⚡ MUA NGAY (GIÁ SỐC)';
+                btnText = 'âš¡ MUA NGAY (GIÃ Sá»C)';
+            }
+
+            if (effect.isCustom) {
+                btnAction = `app.triggerEffect('${effectId}')`;
+                btnText = 'â–¶ Xem thá»­ trÃªn app';
             }
 
             let flashSaleBadge = '';
@@ -1304,7 +1513,7 @@ class EffectStoreApp {
                             </div>`;
                 }
 
-                // Nút thanh toán
+                // NÃºt thanh toÃ¡n
                 let activeBtnClass = 'btn-fs-buy';
                 let activeBtnAction = `app.addToCart('${effectId}')`;
                 let activeBtnText = '<i class="fas fa-shopping-cart"></i> MUA NGAY';
@@ -1312,15 +1521,15 @@ class EffectStoreApp {
                 if (isInCart) {
                     activeBtnClass = 'btn-add-cart btn-in-cart';
                     activeBtnAction = 'app.openCart()';
-                    activeBtnText = '🛒 Đã trong giỏ';
+                    activeBtnText = 'ðŸ›’ ÄÃ£ trong giá»';
                 } else if (isOwned) {
                     activeBtnClass = 'btn-add-cart btn-owned';
                     activeBtnAction = `app.triggerEffect('${effectId}')`;
-                    activeBtnText = '▶ Kích Hoạt (Đã Sở Hữu)';
+                    activeBtnText = 'â–¶ KÃ­ch Hoáº¡t (ÄÃ£ Sá»Ÿ Há»¯u)';
                 } else if (isPending) {
                     activeBtnClass = 'btn-add-cart btn-pending';
                     activeBtnAction = 'void(0)';
-                    activeBtnText = '⏳ Đang chờ duyệt';
+                    activeBtnText = 'â³ Äang chá» duyá»‡t';
                 }
 
                 return `<div class="effect-card flash-sale-card" style="position: relative; border: 2px solid #ff3e3e; box-shadow: 0 0 20px rgba(255,62,62,0.3); animation: borderPulse 2s infinite;">
@@ -1342,7 +1551,7 @@ class EffectStoreApp {
                                         <span class="price-current" style="color: #ffcc00; font-weight: 900; font-size: 26px; text-shadow: 0 0 20px rgba(255,204,0,0.6); letter-spacing: -0.5px;">${this.formatPrice(currentPrice)}</span>
                                         <span class="price-original" style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 13px; font-weight: 500;">${this.formatPrice(origPrice)}</span>
                                     </div>
-                                    <span class="duration-badge">${(effect.duration || 15).toFixed(1)}s</span>
+                                    <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
                                 </div>
                                 ${countdownHTML}
                                 <button class="${activeBtnClass}" onclick="${activeBtnAction}">${activeBtnText}</button>
@@ -1363,13 +1572,13 @@ class EffectStoreApp {
                             ${previewHTML}
                         </div>
                         <div class="effect-info">
-                            <div class="effect-name">${effect.name || 'Hiệu ứng không tên'}</div>
+                            <div class="effect-name">${effect.name || 'Hiá»‡u á»©ng khÃ´ng tÃªn'}</div>
                             ${viewName === 'library' ? `
                             <div class="effect-price-row" style="margin-bottom: 5px;">
                                 <div style="display: flex; align-items: baseline;">
-                                    <span class="price-current" style="color: var(--success); font-weight: 600; font-size: 13px;"><i class="fas fa-check-circle" style="margin-right: 4px;"></i> Đã sở hữu</span>
+                                    <span class="price-current" style="color: var(--success); font-weight: 600; font-size: 13px;"><i class="fas fa-check-circle" style="margin-right: 4px;"></i> ÄÃ£ sá»Ÿ há»¯u</span>
                                 </div>
-                                <span class="duration-badge">${(effect.duration || 15).toFixed(1)}s</span>
+                                <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
                             </div>
                             ` : `
                             <div class="effect-price-row" style="margin-bottom: 5px;">
@@ -1377,14 +1586,15 @@ class EffectStoreApp {
                                     <span class="price-current" style="color: ${priceColor}; font-weight: 800; font-size: 15px;">${this.formatPrice(currentPrice)}</span>
                                     ${originalPriceHTML}
                                 </div>
-                                <span class="duration-badge">${(effect.duration || 15).toFixed(1)}s</span>
+                                <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
                             </div>
                             `}
                             <button class="${btnClass}" onclick="${btnAction}">${btnText}</button>
+                            ${effect.isCustom && viewName === 'library' ? `<button onclick="app.deletePersonalEffect('${effectId}')" style="margin-top:7px;width:100%;padding:7px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#fca5a5;cursor:pointer;">XÃ³a khá»i mÃ¡y</button>` : ''}
                         </div>
                     </div>`;
         }).join('');
-        // Xử lý hover cho videos - Fix lỗi AbortError
+        // Xá»­ lÃ½ hover cho videos - Fix lá»—i AbortError
         setTimeout(() => {
             const containers = grid.querySelectorAll('.effect-thumb-container');
             containers.forEach(container => {
@@ -1403,24 +1613,24 @@ class EffectStoreApp {
                 }
             });
         }, 100);
-        console.log(`✅ Rendered ${filtered.length} effects to ${viewName}`);
+        console.log(`âœ… Rendered ${filtered.length} effects to ${viewName}`);
     }
     getCategoryName(cat) {
         return {
-            transformation: 'Biến hình', gift: 'Quà tặng',
+            transformation: 'Biáº¿n hÃ¬nh', gift: 'QuÃ  táº·ng',
             background: 'Background', animation: 'Animation',
-            pk: 'PK', meme: 'Meme', team_heart: 'Tym đội'
+            pk: 'PK', meme: 'Meme', team_heart: 'Tym Ä‘á»™i'
         }[cat] || cat;
     }
-    formatPrice(price) { return new Intl.NumberFormat('vi-VN').format(price) + '₫'; }
-    showNotification(type, message) { const n = document.getElementById('notification'); document.getElementById('notification-icon').textContent = type === 'warning' ? '⚠️' : type === 'error' ? '❌' : '✅'; document.getElementById('notification-message').textContent = message; n.className = 'notification show ' + type; setTimeout(() => n.classList.remove('show'), 4000); }
+    formatPrice(price) { return new Intl.NumberFormat('vi-VN').format(price) + 'â‚«'; }
+    showNotification(type, message) { const n = document.getElementById('notification'); document.getElementById('notification-icon').textContent = type === 'warning' ? 'âš ï¸' : type === 'error' ? 'âŒ' : 'âœ…'; document.getElementById('notification-message').textContent = message; n.className = 'notification show ' + type; setTimeout(() => n.classList.remove('show'), 4000); }
     showModal(title, content) {
-        // Đóng cart sidebar nếu đang mở
+        // ÄÃ³ng cart sidebar náº¿u Ä‘ang má»Ÿ
         const cartSidebar = document.getElementById('cart-sidebar');
         const cartOverlay = document.getElementById('cart-overlay');
         if (cartSidebar) cartSidebar.style.right = '-420px';
         if (cartOverlay) cartOverlay.style.display = 'none';
-        // Hiện modal
+        // Hiá»‡n modal
         document.getElementById('modal-title').textContent = title;
         document.getElementById('modal-body').innerHTML = content;
         document.getElementById('modal-actions').innerHTML = '';
@@ -1441,11 +1651,11 @@ class EffectStoreApp {
         const isOwned = isAdmin || isBusiness || hasPurchased;
         const videoUrl = effect.previewUrl ? `http://127.0.0.1:9000${effect.previewUrl}` : '';
 
-        document.getElementById('detail-name').textContent = `${effect.icon || '🎬'} ${effect.name}`;
+        document.getElementById('detail-name').textContent = `${effect.icon || 'ðŸŽ¬'} ${effect.name}`;
         document.getElementById('detail-category').textContent = this.getCategoryName(effect.category);
-        document.getElementById('detail-price').textContent = isOwned ? 'Đã Sở Hữu' : this.formatPrice(effect.price);
+        document.getElementById('detail-price').textContent = isOwned ? 'ÄÃ£ Sá»Ÿ Há»¯u' : this.formatPrice(effect.price);
         document.getElementById('detail-original-price').textContent = effect.originalPrice > effect.price ? this.formatPrice(effect.originalPrice) : '';
-        document.getElementById('detail-desc-text').textContent = effect.description || 'Không có mô tả chi tiết.';
+        document.getElementById('detail-desc-text').textContent = effect.description || 'KhÃ´ng cÃ³ mÃ´ táº£ chi tiáº¿t.';
 
         const videoEl = document.getElementById('detail-video-player');
         if (videoUrl) {
@@ -1464,19 +1674,19 @@ class EffectStoreApp {
 
         const btnAddCart = document.getElementById('btn-detail-add-cart');
         if (isOwned) {
-            btnAddCart.innerHTML = '▶ Kích Hoạt Lên OBS';
+            btnAddCart.innerHTML = 'â–¶ KÃ­ch Hoáº¡t LÃªn OBS';
             btnAddCart.className = 'btn-add-cart btn-owned';
             btnAddCart.onclick = () => { this.closeEffectDetailModal(); this.triggerEffect(effectId); };
         } else if (isPending) {
-            btnAddCart.innerHTML = '⏳ Đang chờ duyệt';
+            btnAddCart.innerHTML = 'â³ Äang chá» duyá»‡t';
             btnAddCart.className = 'btn-add-cart btn-pending';
             btnAddCart.onclick = null;
         } else if (isInCart) {
-            btnAddCart.innerHTML = '🛒 Đã Trong Giỏ';
+            btnAddCart.innerHTML = 'ðŸ›’ ÄÃ£ Trong Giá»';
             btnAddCart.className = 'btn-add-cart btn-in-cart';
             btnAddCart.onclick = () => { this.closeEffectDetailModal(); this.openCart(); };
         } else {
-            btnAddCart.innerHTML = '🛒 Thêm Vào Giỏ Hàng';
+            btnAddCart.innerHTML = 'ðŸ›’ ThÃªm VÃ o Giá» HÃ ng';
             btnAddCart.className = 'btn-add-cart';
             btnAddCart.onclick = () => { this.closeEffectDetailModal(); this.addToCart(effectId); };
         }
@@ -1496,12 +1706,12 @@ class EffectStoreApp {
     saveGlobalFlashSaleTime() {
         const val = document.getElementById('global-flash-sale-ends').value;
         localStorage.setItem('es_global_flash_sale_ends', val);
-        this.showNotification('success', '💾 Đã cập nhật thời gian Flash Sale dùng chung!');
+        this.showNotification('success', 'ðŸ’¾ ÄÃ£ cáº­p nháº­t thá»i gian Flash Sale dÃ¹ng chung!');
         this.renderEffects();
     }
 
     async testTryEffect(effectId) {
-        this.showNotification('info', '⏳ Đang phát lên OBS (8s)...');
+        this.showNotification('info', 'â³ Äang phÃ¡t lÃªn OBS (8s)...');
         try {
             const response = await fetch(this.API_URL + '/api/obs/trigger', {
                 method: 'POST',
@@ -1509,16 +1719,16 @@ class EffectStoreApp {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.authToken}`
                 },
-                body: JSON.stringify({ effectId, duration: 8 }) // Dùng thử 8s
+                body: JSON.stringify({ effectId, duration: 8 }) // DÃ¹ng thá»­ 8s
             });
             const data = await response.json();
             if (data.success) {
-                this.showNotification('success', '✅ Đã kích hoạt dùng thử!');
+                this.showNotification('success', 'âœ… ÄÃ£ kÃ­ch hoáº¡t dÃ¹ng thá»­!');
             } else {
-                this.showNotification('error', '❌ Lỗi: ' + (data.error || 'Không thể test'));
+                this.showNotification('error', 'âŒ Lá»—i: ' + (data.error || 'KhÃ´ng thá»ƒ test'));
             }
         } catch (error) {
-            this.showNotification('error', '❌ Lỗi kết nối OBS');
+            this.showNotification('error', 'âŒ Lá»—i káº¿t ná»‘i OBS');
         }
     }
 
@@ -1538,7 +1748,7 @@ class EffectStoreApp {
             }
         });
 
-        // Xử lý ẩn/hiện các layout chung
+        // Xá»­ lÃ½ áº©n/hiá»‡n cÃ¡c layout chung
         const rightSidebar = document.querySelector('.sidebar-right');
         const mainContent = document.querySelector('.main-content-new');
         const mainLayout = document.querySelector('.main-layout-new');
@@ -1560,22 +1770,22 @@ class EffectStoreApp {
             targetView.classList.remove('hidden');
 
             if (view === 'admin') {
-                document.getElementById('page-title').textContent = '👨‍💼 Admin Dashboard';
+                document.getElementById('page-title').textContent = 'ðŸ‘¨â€ðŸ’¼ Admin Dashboard';
                 this.loadAdminDashboard();
             } else if (view === 'store') {
-                document.getElementById('page-title').textContent = '🛒 Cửa Hàng';
+                document.getElementById('page-title').textContent = 'ðŸ›’ Cá»­a HÃ ng';
                 this.renderEffects();
             } else if (view === 'library') {
-                document.getElementById('page-title').textContent = '📚 Thư Viện';
+                document.getElementById('page-title').textContent = 'ðŸ“š ThÆ° Viá»‡n';
                 this.loadOwnedEffects();
             } else if (view === 'gift-mapping') {
-                document.getElementById('page-title').textContent = '🎁 Gift Mapping';
-                this.initGiftMapping(); // Khởi tạo Gift Mapping khi vào view
+                document.getElementById('page-title').textContent = 'ðŸŽ Gift Mapping';
+                this.initGiftMapping(); // Khá»Ÿi táº¡o Gift Mapping khi vÃ o view
             } else if (view === 'settings') {
-                document.getElementById('page-title').textContent = '⚙️ Cài Đặt';
+                document.getElementById('page-title').textContent = 'âš™ï¸ CÃ i Äáº·t';
                 this.loadSettings();
             } else if (view === 'gift-menu-designer') {
-                document.getElementById('page-title').textContent = '🎨 Gift Menu Designer';
+                document.getElementById('page-title').textContent = 'ðŸŽ¨ Gift Menu Designer';
                 if (rightSidebar) rightSidebar.style.display = 'none';
             } else {
                 document.getElementById('page-title').textContent = 'EffectStore';
@@ -1598,12 +1808,12 @@ class EffectStoreApp {
         const price = document.getElementById('upload-price').value;
         const originalPrice = document.getElementById('upload-original-price').value;
         const description = document.getElementById('upload-description').value;
-        const icon = document.getElementById('upload-icon').value || '🎬';
+        const icon = document.getElementById('upload-icon').value || 'ðŸŽ¬';
         const fileInput = document.getElementById('upload-file');
-        const thumbInput = document.getElementById('upload-thumb'); // ✅ Lấy thumb input
+        const thumbInput = document.getElementById('upload-thumb'); // âœ… Láº¥y thumb input
 
         if (!name || !price || !fileInput.files[0]) {
-            this.showNotification('warning', '⚠️ Điền đủ thông tin!');
+            this.showNotification('warning', 'âš ï¸ Äiá»n Ä‘á»§ thÃ´ng tin!');
             return;
         }
 
@@ -1615,7 +1825,7 @@ class EffectStoreApp {
         formData.append('description', description);
         formData.append('icon', icon);
 
-        // ✅ Thêm thumb vào formData nếu có
+        // âœ… ThÃªm thumb vÃ o formData náº¿u cÃ³
         if (thumbInput && thumbInput.files[0]) {
             formData.append('thumb', thumbInput.files[0]);
         }
@@ -1635,7 +1845,7 @@ class EffectStoreApp {
         formData.append('flashSaleEndsAt', fsEnds || '');
 
         try {
-            this.showNotification('info', '⏳ Đang upload...');
+            this.showNotification('info', 'â³ Äang upload...');
             const response = await fetch(this.API_URL + '/api/effects', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${this.authToken}` },
@@ -1644,7 +1854,7 @@ class EffectStoreApp {
             const data = await response.json();
 
             if (data.success) {
-                this.showNotification('success', '✅ Upload thành công!');
+                this.showNotification('success', 'âœ… Upload thÃ nh cÃ´ng!');
                 document.getElementById('upload-name').value = '';
                 document.getElementById('upload-price').value = '';
                 document.getElementById('upload-original-price').value = '';
@@ -1653,14 +1863,14 @@ class EffectStoreApp {
                 document.getElementById('upload-description').value = '';
                 document.getElementById('upload-icon').value = '';
                 fileInput.value = '';
-                if (thumbInput) thumbInput.value = ''; // ✅ Reset thumb input
+                if (thumbInput) thumbInput.value = ''; // âœ… Reset thumb input
                 this.loadAdminDashboard();
                 this.loadEffects();
             } else {
                 throw new Error(data.error);
             }
         } catch (error) {
-            this.showNotification('error', '❌ ' + error.message);
+            this.showNotification('error', 'âŒ ' + error.message);
         }
     }
 
@@ -1701,7 +1911,7 @@ class EffectStoreApp {
                 }
                 document.getElementById('edit-effect-modal').classList.add('show');
             }
-        } catch (e) { this.showNotification('error', 'Lỗi tải dữ liệu: ' + e.message); }
+        } catch (e) { this.showNotification('error', 'Lá»—i táº£i dá»¯ liá»‡u: ' + e.message); }
     }
 
     async updateEffect() {
@@ -1735,7 +1945,7 @@ class EffectStoreApp {
         if (thumbInput.files[0]) formData.append('thumb', thumbInput.files[0]);
 
         try {
-            this.showNotification('info', '⏳ Đang cập nhật...');
+            this.showNotification('info', 'â³ Äang cáº­p nháº­t...');
             const res = await fetch(`${this.API_URL}/api/effects/${id}/update`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${this.authToken}` },
@@ -1743,14 +1953,14 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', '✅ Cập nhật thành công!');
+                this.showNotification('success', 'âœ… Cáº­p nháº­t thÃ nh cÃ´ng!');
                 this.closeEditModal();
                 this.loadAdminDashboard();
                 this.loadEffects();
             } else {
-                this.showNotification('error', 'Lỗi: ' + (data.error || data.message));
+                this.showNotification('error', 'Lá»—i: ' + (data.error || data.message));
             }
-        } catch (e) { this.showNotification('error', 'Lỗi: ' + e.message); }
+        } catch (e) { this.showNotification('error', 'Lá»—i: ' + e.message); }
     }
 
     closeEditModal() {
@@ -1769,7 +1979,7 @@ class EffectStoreApp {
             const stats = await statsRes.json();
             console.log('Stats loaded:', stats);
 
-            // ✅ KIỂM TRA NULL TRƯỚC KHI SET
+            // âœ… KIá»‚M TRA NULL TRÆ¯á»šC KHI SET
             if (stats.success) {
                 const totalEffectsEl = document.getElementById('admin-total-effects');
                 const totalUsersEl = document.getElementById('admin-total-users');
@@ -1802,8 +2012,8 @@ class EffectStoreApp {
                 // Populate Trending select
                 const trendingSelect = document.getElementById('admin-trending-select');
                 if (trendingSelect) {
-                    trendingSelect.innerHTML = '<option value="">-- Chọn Effect --</option>' +
-                        effectsData.effects.map(e => `<option value="${e._id}">${e.icon || '🎬'} ${e.name}</option>`).join('');
+                    trendingSelect.innerHTML = '<option value="">-- Chá»n Effect --</option>' +
+                        effectsData.effects.map(e => `<option value="${e._id}">${e.icon || 'ðŸŽ¬'} ${e.name}</option>`).join('');
                 }
 
                 // Render Trending list
@@ -1811,15 +2021,15 @@ class EffectStoreApp {
                 if (trendingList) {
                     const trendingEffects = effectsData.effects.filter(e => e.isTrending);
                     if (trendingEffects.length === 0) {
-                        trendingList.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">🔥 Chưa có hiệu ứng xu hướng</div>';
+                        trendingList.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">ðŸ”¥ ChÆ°a cÃ³ hiá»‡u á»©ng xu hÆ°á»›ng</div>';
                     } else {
                         trendingList.innerHTML = trendingEffects.map(e => `
                                     <div class="effect-item-row" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239,68,68,0.1); border-radius: 12px; padding: 12px; display:flex; align-items:center; gap:12px;">
-                                        <div style="font-size:24px;">${e.icon || '🎬'}</div>
+                                        <div style="font-size:24px;">${e.icon || 'ðŸŽ¬'}</div>
                                         <div style="flex:1; overflow:hidden;">
                                             <h4 style="font-size:13px; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${e.name}</h4>
                                             <div style="display:flex; align-items:center; gap:5px; margin-top:4px;">
-                                                <span style="font-size:10px; color:var(--text-muted);">Mắt:</span>
+                                                <span style="font-size:10px; color:var(--text-muted);">Máº¯t:</span>
                                                 <input type="number" value="${e.fakeUses || 0}" 
                                                     onchange="app.quickUpdateFakeUses('${e._id}', this.value)"
                                                     style="width:60px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; font-size:10px; padding:2px 5px; border-radius:4px;">
@@ -1837,7 +2047,7 @@ class EffectStoreApp {
                 const container = document.getElementById('admin-effects-list');
                 if (container) {
                     if (effectsData.effects.length === 0) {
-                        container.innerHTML = '<div class="empty-state">📦 Chưa có effects nào</div>';
+                        container.innerHTML = '<div class="empty-state">ðŸ“¦ ChÆ°a cÃ³ effects nÃ o</div>';
                     } else {
                         container.innerHTML = effectsData.effects.map(effect => `
                                     <div class="effect-item-row">
@@ -1846,16 +2056,16 @@ class EffectStoreApp {
                                             <div>
                                                 <h4 style="display:flex; align-items:center; gap:8px;">
                                                     ${effect.name}
-                                                    ${effect.isTrending ? '<span style="font-size:12px;" title="Hiệu ứng Hot">🔥</span>' : ''}
-                                                    ${effect.isFlashSale ? '<span style="font-size:12px;" title="Đang Flash Sale">⚡</span>' : ''}
+                                                    ${effect.isTrending ? '<span style="font-size:12px;" title="Hiá»‡u á»©ng Hot">ðŸ”¥</span>' : ''}
+                                                    ${effect.isFlashSale ? '<span style="font-size:12px;" title="Äang Flash Sale">âš¡</span>' : ''}
                                                 </h4>
-                                                <span>${this.getCategoryName(effect.category)} • ${this.formatPrice(effect.price)}</span>
+                                                <span>${this.getCategoryName(effect.category)} â€¢ ${this.formatPrice(effect.price)}</span>
                                             </div>
                                         </div>
                                         <div class="effect-actions">
-                                            <button class="btn-sm-edit" onclick="app.prepareEditEffect('${effect._id}')">⚙️ Sửa</button>
-                                            <button class="btn-sm-timeline" onclick="openTimelineEditor('${effect._id}', '${effect.name}')">🎬 Timeline</button>
-                                            <button class="btn-sm-delete" onclick="app.deleteEffect('${effect._id}')">Xóa</button>
+                                            <button class="btn-sm-edit" onclick="app.prepareEditEffect('${effect._id}')">âš™ï¸ Sá»­a</button>
+                                            <button class="btn-sm-timeline" onclick="openTimelineEditor('${effect._id}', '${effect.name}')">ðŸŽ¬ Timeline</button>
+                                            <button class="btn-sm-delete" onclick="app.deleteEffect('${effect._id}')">XÃ³a</button>
                                         </div>
                                     </div>
                                 `).join('');
@@ -1878,7 +2088,7 @@ class EffectStoreApp {
                 if (container) {
                     const pending = paymentsData.payments.filter(p => p.status === 'pending');
                     if (pending.length === 0) {
-                        container.innerHTML = '<div class="empty-state">💳 Không có payment chờ</div>';
+                        container.innerHTML = '<div class="empty-state">ðŸ’³ KhÃ´ng cÃ³ payment chá»</div>';
                     } else {
                         container.innerHTML = pending.map(p => `
                                     <div class="effect-item-row" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display:flex; flex-direction:column; gap:8px;">
@@ -1890,10 +2100,10 @@ class EffectStoreApp {
                                             <div style="color: #fbbf24; font-weight: 700; font-size: 13px;">${this.formatPrice(p.amount)}</div>
                                         </div>
                                         <div style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top:8px;">
-                                            <span style="font-size:11px; color:#a78bfa;">${p.effectIds.length} hiệu ứng</span>
+                                            <span style="font-size:11px; color:#a78bfa;">${p.effectIds.length} hiá»‡u á»©ng</span>
                                             <div style="display:flex; gap:5px;">
-                                                <button onclick="app.approvePayment('${p._id}')" style="background:rgba(16,185,129,0.1); color:#10b981; border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:600; cursor:pointer;">Duyệt</button>
-                                                <button onclick="app.rejectPayment('${p._id}')" style="background:rgba(239,68,68,0.1); color:#ef4444; border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:600; cursor:pointer;">Hủy</button>
+                                                <button onclick="app.approvePayment('${p._id}')" style="background:rgba(16,185,129,0.1); color:#10b981; border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:600; cursor:pointer;">Duyá»‡t</button>
+                                                <button onclick="app.rejectPayment('${p._id}')" style="background:rgba(239,68,68,0.1); color:#ef4444; border:none; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:600; cursor:pointer;">Há»§y</button>
                                             </div>
                                         </div>
                                     </div>
@@ -1912,24 +2122,24 @@ class EffectStoreApp {
                     const reqContainer = document.getElementById('admin-requests-list');
                     if (reqContainer) {
                         if (reqData.requests.length === 0) {
-                            reqContainer.innerHTML = '<div class="empty-state">🎨 Không có yêu cầu thiết kế</div>';
+                            reqContainer.innerHTML = '<div class="empty-state">ðŸŽ¨ KhÃ´ng cÃ³ yÃªu cáº§u thiáº¿t káº¿</div>';
                         } else {
                             reqContainer.innerHTML = reqData.requests.map(r => `
                                         <div class="effect-item-row">
                                             <div class="effect-info-row">
                                                 <div>
-                                                    <h4 style="margin-bottom:5px;">Khách hàng: ${r.name}</h4>
-                                                    <span style="font-size:12px;color:var(--text-muted);">📞 Zalo/SĐT: ${r.phone}</span>
+                                                    <h4 style="margin-bottom:5px;">KhÃ¡ch hÃ ng: ${r.name}</h4>
+                                                    <span style="font-size:12px;color:var(--text-muted);">ðŸ“ž Zalo/SÄT: ${r.phone}</span>
                                                     <div style="margin-top:6px; font-size:13px; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; color: #d1d5db;">
                                                         ${r.description}
                                                     </div>
                                                     <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">
-                                                        🕒 Gửi lúc: ${new Date(r.createdAt).toLocaleString('vi-VN')}
+                                                        ðŸ•’ Gá»­i lÃºc: ${new Date(r.createdAt).toLocaleString('vi-VN')}
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="effect-actions">
-                                                <button class="btn-sm-delete" onclick="app.deleteEffectRequest('${r._id}')">Xóa</button>
+                                                <button class="btn-sm-delete" onclick="app.deleteEffectRequest('${r._id}')">XÃ³a</button>
                                             </div>
                                         </div>
                                     `).join('');
@@ -1941,15 +2151,15 @@ class EffectStoreApp {
             }
 
             console.log('Admin Dashboard loaded successfully!');
-            // Load danh sách users
+            // Load danh sÃ¡ch users
             this.loadAdminUsers();
         } catch (error) {
             console.error('Dashboard error:', error);
-            this.showNotification('error', 'Lỗi load dashboard: ' + error.message);
+            this.showNotification('error', 'Lá»—i load dashboard: ' + error.message);
         }
     }
     async deleteEffectRequest(id) {
-        if (!confirm('⚠️ Bạn có chắc chắn muốn xóa yêu cầu thiết kế này?')) return;
+        if (!confirm('âš ï¸ Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a yÃªu cáº§u thiáº¿t káº¿ nÃ y?')) return;
         try {
             const res = await fetch(`${this.API_URL}/api/admin/effect-requests/${id}`, {
                 method: 'DELETE',
@@ -1957,18 +2167,18 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', '✅ Đã xóa yêu cầu thành công!');
+                this.showNotification('success', 'âœ… ÄÃ£ xÃ³a yÃªu cáº§u thÃ nh cÃ´ng!');
                 this.loadAdminDashboard();
             } else {
-                this.showNotification('error', 'Lỗi: ' + data.error);
+                this.showNotification('error', 'Lá»—i: ' + data.error);
             }
         } catch (e) {
-            this.showNotification('error', 'Lỗi: ' + e.message);
+            this.showNotification('error', 'Lá»—i: ' + e.message);
         }
     }
-    async deleteEffect(effectId) { if (!confirm('⚠️ Xóa effect?')) return; try { const res = await fetch(`${this.API_URL}/api/effects/${effectId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.authToken}` } }); const data = await res.json(); if (data.success) { this.showNotification('success', '✅ Đã xóa'); this.loadAdminDashboard(); this.loadEffects(); } } catch (error) { this.showNotification('error', '❌ ' + error.message); } }
-    async approvePayment(paymentId) { if (!confirm('✅ Duyệt payment?')) return; try { const res = await fetch(`${this.API_URL}/api/payment/admin/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` }, body: JSON.stringify({ paymentId }) }); const data = await res.json(); if (data.success) { this.showNotification('success', '✅ Đã duyệt!'); this.loadAdminDashboard(); } } catch (error) { this.showNotification('error', '❌ ' + error.message); } }
-    async rejectPayment(paymentId) { if (!confirm('❌ Từ chối payment này?')) return; const reason = 'Không xác định'; try { const res = await fetch(`${this.API_URL}/api/payment/admin/reject`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` }, body: JSON.stringify({ paymentId, reason }) }); const data = await res.json(); if (data.success) { this.showNotification('success', '✅ Đã từ chối'); this.loadAdminDashboard(); } } catch (error) { this.showNotification('error', '❌ ' + error.message); } }
+    async deleteEffect(effectId) { if (!confirm('âš ï¸ XÃ³a effect?')) return; try { const res = await fetch(`${this.API_URL}/api/effects/${effectId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.authToken}` } }); const data = await res.json(); if (data.success) { this.showNotification('success', 'âœ… ÄÃ£ xÃ³a'); this.loadAdminDashboard(); this.loadEffects(); } } catch (error) { this.showNotification('error', 'âŒ ' + error.message); } }
+    async approvePayment(paymentId) { if (!confirm('âœ… Duyá»‡t payment?')) return; try { const res = await fetch(`${this.API_URL}/api/payment/admin/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` }, body: JSON.stringify({ paymentId }) }); const data = await res.json(); if (data.success) { this.showNotification('success', 'âœ… ÄÃ£ duyá»‡t!'); this.loadAdminDashboard(); } } catch (error) { this.showNotification('error', 'âŒ ' + error.message); } }
+    async rejectPayment(paymentId) { if (!confirm('âŒ Tá»« chá»‘i payment nÃ y?')) return; const reason = 'KhÃ´ng xÃ¡c Ä‘á»‹nh'; try { const res = await fetch(`${this.API_URL}/api/payment/admin/reject`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` }, body: JSON.stringify({ paymentId, reason }) }); const data = await res.json(); if (data.success) { this.showNotification('success', 'âœ… ÄÃ£ tá»« chá»‘i'); this.loadAdminDashboard(); } } catch (error) { this.showNotification('error', 'âŒ ' + error.message); } }
 
     async addToTrending() {
         const select = document.getElementById('admin-trending-select');
@@ -1990,7 +2200,7 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', isTrending ? '🔥 Đã thêm vào xu hướng' : '✅ Đã gỡ khỏi xu hướng');
+                this.showNotification('success', isTrending ? 'ðŸ”¥ ÄÃ£ thÃªm vÃ o xu hÆ°á»›ng' : 'âœ… ÄÃ£ gá»¡ khá»i xu hÆ°á»›ng');
                 this.loadAdminDashboard();
                 this.loadTrending();
             }
@@ -2009,7 +2219,7 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', '👁 Đã cập nhật mắt xem');
+                this.showNotification('success', 'ðŸ‘ ÄÃ£ cáº­p nháº­t máº¯t xem');
                 this.loadTrending();
             }
         } catch (e) { this.showNotification('error', e.message); }
@@ -2018,7 +2228,7 @@ class EffectStoreApp {
     async loadAdminUsers() {
         const container = document.getElementById('admin-users-list');
         if (!container) return;
-        container.innerHTML = '<div style="text-align:center;padding:30px;color:#6b7280;"><i class="fas fa-spinner fa-spin" style="font-size:24px;"></i><br>Đang tải...</div>';
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:#6b7280;"><i class="fas fa-spinner fa-spin" style="font-size:24px;"></i><br>Äang táº£i...</div>';
         try {
             const res = await fetch(`${this.API_URL}/api/admin/users`, {
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
@@ -2027,18 +2237,18 @@ class EffectStoreApp {
             if (!data.success) throw new Error(data.error);
 
                         const planBadge = (sub, isAdmin) => {
-                if (isAdmin || sub === 'admin') return '<span style="padding:2px 10px;border-radius:12px;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:11px;font-weight:700;">👑 Admin</span>';
+                if (isAdmin || sub === 'admin') return '<span style="padding:2px 10px;border-radius:12px;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:11px;font-weight:700;">ðŸ‘‘ Admin</span>';
                 const map = {
-                    studio: '<span style="padding:2px 10px;border-radius:12px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-size:11px;font-weight:700;">💎 Studio</span>',
-                    business: '<span style="padding:2px 10px;border-radius:12px;background:rgba(236,72,153,0.15);color:#ec4899;border:1px solid rgba(236,72,153,0.3);font-size:11px;font-weight:700;">⭐ Pro</span>',
-                    pro: '<span style="padding:2px 10px;border-radius:12px;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);font-size:11px;font-weight:700;">⚡ Basic</span>',
-                    free: '<span style="padding:2px 10px;border-radius:12px;background:rgba(107,114,128,0.12);color:#9ca3af;border:1px solid rgba(107,114,128,0.2);font-size:11px;font-weight:700;">🆓 Miễn phí</span>'
+                    studio: '<span style="padding:2px 10px;border-radius:12px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-size:11px;font-weight:700;">ðŸ’Ž Studio</span>',
+                    business: '<span style="padding:2px 10px;border-radius:12px;background:rgba(236,72,153,0.15);color:#ec4899;border:1px solid rgba(236,72,153,0.3);font-size:11px;font-weight:700;">â­ Pro</span>',
+                    pro: '<span style="padding:2px 10px;border-radius:12px;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);font-size:11px;font-weight:700;">âš¡ Basic</span>',
+                    free: '<span style="padding:2px 10px;border-radius:12px;background:rgba(107,114,128,0.12);color:#9ca3af;border:1px solid rgba(107,114,128,0.2);font-size:11px;font-weight:700;">ðŸ†“ Miá»…n phÃ­</span>'
                 };
                 return map[sub] || map.free;
             };
 
             const formatTimeAgo = (date) => {
-                if (!date) return 'Chưa rõ';
+                if (!date) return 'ChÆ°a rÃµ';
                 const now = new Date();
                 const past = new Date(date);
                 const diffMs = now - past;
@@ -2047,10 +2257,10 @@ class EffectStoreApp {
                 const diffHour = Math.floor(diffMin / 60);
                 const diffDay = Math.floor(diffHour / 24);
 
-                if (diffSec < 60) return 'Vừa xong';
-                if (diffMin < 60) return `${diffMin} phút trước`;
-                if (diffHour < 24) return `${diffHour} giờ trước`;
-                if (diffDay < 30) return `${diffDay} ngày trước`;
+                if (diffSec < 60) return 'Vá»«a xong';
+                if (diffMin < 60) return `${diffMin} phÃºt trÆ°á»›c`;
+                if (diffHour < 24) return `${diffHour} giá» trÆ°á»›c`;
+                if (diffDay < 30) return `${diffDay} ngÃ y trÆ°á»›c`;
                 return past.toLocaleDateString('vi-VN');
             };
 
@@ -2059,11 +2269,11 @@ class EffectStoreApp {
                             <table style="width:100%;border-collapse:collapse;font-size:13px;">
                                 <thead>
                                     <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
-                                        <th style="padding:12px 16px;text-align:left;color:#6b7280;font-weight:600;">Người dùng</th>
-                                        <th style="padding:12px 16px;text-align:left;color:#6b7280;font-weight:600;">Gói</th>
-                                        <th style="padding:12px 16px;text-align:left;color:#6b7280;font-weight:600;">Hoạt động</th>
-                                        <th style="padding:12px 16px;text-align:center;color:#6b7280;font-weight:600;">Gia hạn nhanh</th>
-                                        <th style="padding:12px 16px;text-align:center;color:#6b7280;font-weight:600;">Xóa</th>
+                                        <th style="padding:12px 16px;text-align:left;color:#6b7280;font-weight:600;">NgÆ°á»i dÃ¹ng</th>
+                                        <th style="padding:12px 16px;text-align:left;color:#6b7280;font-weight:600;">GÃ³i</th>
+                                        <th style="padding:12px 16px;text-align:left;color:#6b7280;font-weight:600;">Hoáº¡t Ä‘á»™ng</th>
+                                        <th style="padding:12px 16px;text-align:center;color:#6b7280;font-weight:600;">Gia háº¡n nhanh</th>
+                                        <th style="padding:12px 16px;text-align:center;color:#6b7280;font-weight:600;">XÃ³a</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -2075,7 +2285,7 @@ class EffectStoreApp {
                                                         ${(u.name || u.email || '?')[0].toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <div style="font-weight:600;color:#fff;">${u.name || '(chưa đặt tên)'}</div>
+                                                        <div style="font-weight:600;color:#fff;">${u.name || '(chÆ°a Ä‘áº·t tÃªn)'}</div>
                                                         <div style="font-size:11px;color:#6b7280;">${u.email}</div>
                                                     </div>
                                                 </div>
@@ -2085,16 +2295,16 @@ class EffectStoreApp {
                                                 <div style="color:${(new Date() - new Date(u.lastActive)) > 86400000 * 7 ? '#ef4444' : '#6b7280'}; font-size:12px;">
                                                     ${formatTimeAgo(u.lastActive)}
                                                 </div>
-                                                <div style="font-size:10px;color:#4b5563;">Ngày đk: ${new Date(u.createdAt).toLocaleDateString('vi-VN')}</div>
+                                                <div style="font-size:10px;color:#4b5563;">NgÃ y Ä‘k: ${new Date(u.createdAt).toLocaleDateString('vi-VN')}</div>
                                             </td>
                                             <td style="padding:12px 16px;text-align:center;">
-                                                 ${u.isAdmin ? '<span style="color:#6b7280;font-size:12px;">—</span>' : `
+                                                 ${u.isAdmin ? '<span style="color:#6b7280;font-size:12px;">â€”</span>' : `
                                                  <div style="display:flex;gap:6px;justify-content:center;align-items:center;">
-                                                     <button onclick="app.upgradeSubscription('${u._id}','pro',30)" style="padding:5px 10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#f59e0b;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Basic 30 ngày</button>
-                                                     <button onclick="app.upgradeSubscription('${u._id}','business',30)" style="padding:5px 10px;background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.3);border-radius:6px;color:#ec4899;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Pro 30 ngày</button>
+                                                     <button onclick="app.upgradeSubscription('${u._id}','pro',30)" style="padding:5px 10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#f59e0b;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Basic 30 ngÃ y</button>
+                                                     <button onclick="app.upgradeSubscription('${u._id}','business',30)" style="padding:5px 10px;background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.3);border-radius:6px;color:#ec4899;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Pro 30 ngÃ y</button>
                                                      <button onclick="app.upgradeSubscription('${u._id}','studio',3650)" style="padding:5px 10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:6px;color:#10b981;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Studio</button>
-                                                     ${u.subscription && u.subscription !== 'free' ? `<button onclick="app.upgradeSubscription('${u._id}','${u.subscription}',30,true)" style="padding:5px 10px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:6px;color:#3b82f6;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Gia hạn 30 ngày</button>` : ''}
-                                                     <button onclick="app.upgradeSubscription('${u._id}','free',0)" style="padding:5px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;">Hạ Free</button>
+                                                     ${u.subscription && u.subscription !== 'free' ? `<button onclick="app.upgradeSubscription('${u._id}','${u.subscription}',30,true)" style="padding:5px 10px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:6px;color:#3b82f6;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Gia háº¡n 30 ngÃ y</button>` : ''}
+                                                     <button onclick="app.upgradeSubscription('${u._id}','free',0)" style="padding:5px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;">Háº¡ Free</button>
                                                  </div>`}
                                              </td>
                                             <td style="padding:12px 16px;text-align:center;">
@@ -2106,19 +2316,19 @@ class EffectStoreApp {
                             </table>
                         </div>
                         <div style="padding:12px 16px;color:#6b7280;font-size:12px;border-top:1px solid rgba(255,255,255,0.04);margin-top:4px;">
-                            Tổng: <strong style="color:#fff;">${data.users.length}</strong> người dùng
+                            Tá»•ng: <strong style="color:#fff;">${data.users.length}</strong> ngÆ°á»i dÃ¹ng
                         </div>
                     `;
         } catch (err) {
-            container.innerHTML = `<div style="text-align:center;padding:30px;color:#ef4444;">❌ Lỗi tải danh sách: ${err.message}</div>`;
+            container.innerHTML = `<div style="text-align:center;padding:30px;color:#ef4444;">âŒ Lá»—i táº£i danh sÃ¡ch: ${err.message}</div>`;
         }
     }
 
         async upgradeSubscription(userId, plan, durationDays, extend = false) {
-        const planLabel = { pro: 'Basic', business: 'Pro', studio: 'Studio', free: 'Miễn phí' }[plan] || plan;
+        const planLabel = { pro: 'Basic', business: 'Pro', studio: 'Studio', free: 'Miá»…n phÃ­' }[plan] || plan;
         const msg = plan === 'free'
-            ? `Hạ tài khoản về Free?`
-            : (extend ? `Gia hạn thêm gói ${planLabel} thêm ${durationDays} ngày?` : `Đặt gói ${planLabel} trong ${durationDays} ngày?`);
+            ? `Háº¡ tÃ i khoáº£n vá» Free?`
+            : (extend ? `Gia háº¡n thÃªm gÃ³i ${planLabel} thÃªm ${durationDays} ngÃ y?` : `Äáº·t gÃ³i ${planLabel} trong ${durationDays} ngÃ y?`);
         if (!confirm(msg)) return;
         try {
             const res = await fetch(`${this.API_URL}/api/admin/users/${userId}/subscription`, {
@@ -2128,17 +2338,17 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', extend ? `✅ Đã gia hạn thành công!` : `✅ Đã đặt gói ${planLabel}!`);
+                this.showNotification('success', extend ? `âœ… ÄÃ£ gia háº¡n thÃ nh cÃ´ng!` : `âœ… ÄÃ£ Ä‘áº·t gÃ³i ${planLabel}!`);
                 this.loadAdminUsers();
             } else {
-                this.showNotification('error', '❌ Lỗi: ' + data.error);
+                this.showNotification('error', 'âŒ Lá»—i: ' + data.error);
             }
         } catch (e) {
-            this.showNotification('error', '❌ Lỗi kết nối: ' + e.message);
+            this.showNotification('error', 'âŒ Lá»—i káº¿t ná»‘i: ' + e.message);
         }
     }
     async deleteUser(userId, email) {
-        if (!confirm(`⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XÓA tài khoản ${email}?\nHành động này không thể hoàn tác!`)) return;
+        if (!confirm(`âš ï¸ Cáº¢NH BÃO: Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n XÃ“A tÃ i khoáº£n ${email}?\nHÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c!`)) return;
         try {
             const res = await fetch(`${this.API_URL}/api/admin/users/${userId}`, {
                 method: 'DELETE',
@@ -2146,16 +2356,56 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', '🗑️ Đã xóa người dùng');
+                this.showNotification('success', 'ðŸ—‘ï¸ ÄÃ£ xÃ³a ngÆ°á»i dÃ¹ng');
                 this.loadAdminDashboard();
             } else {
-                this.showNotification('error', 'Lỗi: ' + data.error);
+                this.showNotification('error', 'Lá»—i: ' + data.error);
             }
-        } catch (error) { this.showNotification('error', '❌ ' + error.message); }
+        } catch (error) { this.showNotification('error', 'âŒ ' + error.message); }
     }
     // ===== PRICING MODAL FUNCTIONS =====
+    showUpgradePopup(feature = 'general', message = '', recommendedPlan = null) {
+        const now = Date.now();
+        if (this._lastUpgradePopupAt && now - this._lastUpgradePopupAt < 1200) return;
+        this._lastUpgradePopupAt = now;
+        const featureCopy = {
+            mappings: '30 hiá»‡u á»©ng gáº¯n quÃ ',
+            layouts: '10 thiáº¿t káº¿ menu Ä‘Ã£ lÆ°u',
+            menuAssets: 'Táº£i áº£nh/video riÃªng vÃ o menu',
+            templates: 'Nhiá»u máº«u menu chuyÃªn nghiá»‡p',
+            menuAdvanced: 'Hiá»‡u á»©ng Ä‘á»™ng Ä‘áº¹p máº¯t',
+            comments: 'KhÃ´ng giá»›i háº¡n bÃ¬nh luáº­n',
+            tts: 'KhÃ´ng giá»›i háº¡n Ä‘á»c tÃªn/TTS',
+            goalTrackers: '10 báº£ng má»¥c tiÃªu livestream',
+            devices: 'Sá»­ dá»¥ng gÃ³i phÃ¹ há»£p trÃªn nhiá»u thiáº¿t bá»‹',
+            customEffects: 'ThÃªm nhiá»u hiá»‡u á»©ng cÃ¡ nhÃ¢n cho Gift Mapping'
+        };
+        const primaryBenefit = featureCopy[feature] || 'Menu quÃ  táº·ng chuyÃªn nghiá»‡p';
+        const currentPlan = String(this.currentUser?.subscription || 'free').toLowerCase();
+        const targetPlan = recommendedPlan || (currentPlan === 'free' ? 'pro' : (currentPlan === 'pro' ? 'business' : 'studio'));
+        const targetLabel = targetPlan === 'pro' ? 'Basic' : (targetPlan === 'business' ? 'Pro' : 'Studio');
+        const isBasicOffer = targetPlan === 'pro';
+        this.showModal('ðŸš€ Báº¡n Ä‘Ã£ Ä‘áº¡t giá»›i háº¡n gÃ³i hiá»‡n táº¡i', `
+            <div style="color:#cbd5e1;font-size:14px;line-height:1.6;">
+                ${message ? `<div style="padding:10px 12px;margin-bottom:14px;border-radius:10px;background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.22);color:#fbbf24;">${this.escapeHtml ? this.escapeHtml(message) : message}</div>` : ''}
+                <div style="color:#fff;font-weight:800;margin-bottom:10px;">NÃ¢ng cáº¥p ${targetLabel} Ä‘á»ƒ má»Ÿ khÃ³a:</div>
+                <div style="display:grid;gap:8px;margin-bottom:18px;">
+                    <div>âœ“ ${primaryBenefit}</div>
+                    ${isBasicOffer ? '<div>âœ“ 30 hiá»‡u á»©ng gáº¯n quÃ </div><div>âœ“ Menu quÃ  táº·ng chuyÃªn nghiá»‡p</div><div>âœ“ KhÃ´ng giá»›i háº¡n bÃ¬nh luáº­n</div><div>âœ“ KhÃ´ng giá»›i háº¡n Ä‘á»c tÃªn/TTS</div><div>âœ“ Táº£i áº£nh/video riÃªng vÃ o menu</div>' : '<div>âœ“ KhÃ´ng giá»›i háº¡n hiá»‡u á»©ng vÃ  layout</div><div>âœ“ Hiá»‡u á»©ng chuyá»ƒn Ä‘á»™ng cao cáº¥p</div><div>âœ“ TÃ¹y chá»‰nh lá»›p nÃ¢ng cao</div><div>âœ“ Tá»± Ä‘á»™ng hÃ³a livestream nÃ¢ng cao</div><div>âœ“ Há»— trá»£ Æ°u tiÃªn</div>'}
+                </div>
+                <button onclick="app.closeModal();app.showPricing();" style="width:100%;padding:13px;border:0;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;font-weight:900;cursor:pointer;box-shadow:0 8px 24px rgba(249,115,22,.28);">NÃ‚NG Cáº¤P NGAY</button>
+            </div>
+        `);
+    }
+
+    handlePlanLimit(data, fallbackFeature = 'general') {
+        if (!data || data.upgradeRequired !== true) return false;
+        this.showUpgradePopup(data.feature || fallbackFeature, data.message || 'TÃ­nh nÄƒng nÃ y cáº§n gÃ³i cao hÆ¡n.', data.recommendedPlan);
+        return true;
+    }
+
     showPricing() {
-        console.log('💎 Opening Pricing Modal...');
+        console.log('ðŸ’Ž Opening Pricing Modal...');
         const modal = document.getElementById('pricing-modal');
         if (!modal) return;
 
@@ -2170,29 +2420,38 @@ class EffectStoreApp {
         const btnFree = document.getElementById('plan-btn-free');
         const btnPro = document.getElementById('plan-btn-pro');
         const btnBusiness = document.getElementById('plan-btn-business');
+        const btnStudio = document.getElementById('plan-btn-studio');
+        const rank = { free: 0, pro: 1, business: 2, studio: 3, admin: 4 };
+        const currentRank = isAdmin ? 4 : (rank[currentPlan] ?? 0);
 
         if (isAdmin) {
-            if (btnFree) { btnFree.innerText = 'Đã sở hữu'; btnFree.classList.add('disabled'); }
-            if (btnPro) { btnPro.innerText = 'Đã sở hữu'; btnPro.classList.add('disabled'); btnPro.onclick = null; }
-            if (btnBusiness) { btnBusiness.innerText = 'Đã sở hữu'; btnBusiness.classList.add('disabled'); btnBusiness.onclick = null; }
+            if (btnFree) { btnFree.innerText = 'ÄÃ£ sá»Ÿ há»¯u'; btnFree.classList.add('disabled'); }
+            if (btnPro) { btnPro.innerText = 'ÄÃ£ sá»Ÿ há»¯u'; btnPro.classList.add('disabled'); btnPro.onclick = null; }
+            if (btnBusiness) { btnBusiness.innerText = 'ÄÃ£ sá»Ÿ há»¯u'; btnBusiness.classList.add('disabled'); btnBusiness.onclick = null; }
+            if (btnStudio) { btnStudio.innerText = 'ÄÃ£ sá»Ÿ há»¯u'; btnStudio.classList.add('disabled'); btnStudio.onclick = null; }
         } else {
             if (btnFree) {
-                btnFree.innerText = currentPlan === 'free' ? 'Gói hiện tại' : 'Gói miễn phí';
+                btnFree.innerText = currentPlan === 'free' ? 'GÃ³i hiá»‡n táº¡i' : 'GÃ³i miá»…n phÃ­';
                 btnFree.className = currentPlan === 'free' ? 'plan-btn disabled' : 'plan-btn';
             }
             if (btnPro) {
-                btnPro.innerText = currentPlan === 'pro' ? 'Gói hiện tại' : '🚀 NÂNG CẤP BASIC';
-                btnPro.className = currentPlan === 'pro' ? 'plan-btn disabled' : 'plan-btn active';
-                btnPro.onclick = currentPlan === 'pro' ? null : () => this.buySubscription('pro');
+                btnPro.innerText = currentPlan === 'pro' ? 'GÃ³i hiá»‡n táº¡i' : (currentRank > 1 ? 'ÄÃ£ bao gá»“m' : 'ðŸš€ NÃ‚NG Cáº¤P BASIC');
+                btnPro.className = currentRank >= 1 ? 'plan-btn disabled' : 'plan-btn active';
+                btnPro.onclick = currentRank >= 1 ? null : () => this.buySubscription('pro');
             }
             if (btnBusiness) {
-                btnBusiness.innerText = currentPlan === 'business' ? 'Gói hiện tại' : '💎 NÂNG CẤP PRO';
-                btnBusiness.className = currentPlan === 'business' ? 'plan-btn disabled' : 'plan-btn';
-                btnBusiness.onclick = currentPlan === 'business' ? null : () => this.buySubscription('business');
+                btnBusiness.innerText = currentPlan === 'business' ? 'GÃ³i hiá»‡n táº¡i' : (currentRank > 2 ? 'ÄÃ£ bao gá»“m' : 'ðŸ’Ž NÃ‚NG Cáº¤P PRO');
+                btnBusiness.className = currentRank >= 2 ? 'plan-btn disabled' : 'plan-btn';
+                btnBusiness.onclick = currentRank >= 2 ? null : () => this.buySubscription('business');
+            }
+            if (btnStudio && currentPlan === 'studio') {
+                btnStudio.innerText = 'GÃ³i hiá»‡n táº¡i';
+                btnStudio.classList.add('disabled');
+                btnStudio.onclick = null;
             }
         }
 
-        console.log('✅ Pricing Modal updated for', isAdmin ? 'Admin' : currentPlan);
+        console.log('âœ… Pricing Modal updated for', isAdmin ? 'Admin' : currentPlan);
     }
 
     closePricing() {
@@ -2209,12 +2468,12 @@ class EffectStoreApp {
         const planName = plan === 'pro' ? 'Basic' : 'Pro';
 
         // CRITICAL FIX: Set pendingEffects so confirmPaymentWithProof sends the correct code
-        this.pendingEffects = [{ effectId: subCode, effectName: `Gói ${planName}` }];
+        this.pendingEffects = [{ effectId: subCode, effectName: `GÃ³i ${planName}` }];
 
         this.closePricing();
 
         try {
-            this.showNotification('info', '⏳ Đang tạo mã QR thanh toán...');
+            this.showNotification('info', 'â³ Äang táº¡o mÃ£ QR thanh toÃ¡n...');
             const response = await fetch(`${this.API_URL}/api/payment/create-qr`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2232,7 +2491,7 @@ class EffectStoreApp {
             const bank = data.bankInfo || {};
             const formattedPrice = this.formatPrice(price);
 
-            this.showModal(`Thanh toán nâng cấp ${planName}`, `
+            this.showModal(`Thanh toÃ¡n nÃ¢ng cáº¥p ${planName}`, `
                         <div style="font-family: 'Inter', sans-serif; max-width: 650px; margin: 0 auto; color: #fff;">
                             <div style="display: flex; gap: 30px; align-items: flex-start;">
                                 <!-- Left side: QR -->
@@ -2246,33 +2505,33 @@ class EffectStoreApp {
                                             <span style="color: #555; font-size: 12px; font-weight: 700;">${bank.bank}</span>
                                         </div>
                                     </div>
-                                    <p style="margin-top: 15px; font-size: 12px; color: var(--text-secondary);">Quét mã bằng ứng dụng Ngân hàng hoặc Ví điện tử để thanh toán nhanh.</p>
+                                    <p style="margin-top: 15px; font-size: 12px; color: var(--text-secondary);">QuÃ©t mÃ£ báº±ng á»©ng dá»¥ng NgÃ¢n hÃ ng hoáº·c VÃ­ Ä‘iá»‡n tá»­ Ä‘á»ƒ thanh toÃ¡n nhanh.</p>
                                 </div>
 
                                 <!-- Right side: Info -->
                                 <div style="flex: 1.2;">
                                     <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 20px;">
                                         <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 5px;">Gói dịch vụ</div>
-                                            <div style="font-size: 18px; font-weight: 800; color: var(--primary);">${planName} (1 Tháng)</div>
+                                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 5px;">GÃ³i dá»‹ch vá»¥</div>
+                                            <div style="font-size: 18px; font-weight: 800; color: var(--primary);">${planName} (1 ThÃ¡ng)</div>
                                         </div>
 
                                         <div style="display: flex; flex-direction: column; gap: 15px;">
                                             <div>
-                                                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Số tiền thanh toán</div>
+                                                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Sá»‘ tiá»n thanh toÃ¡n</div>
                                                 <div style="font-size: 22px; font-weight: 900; color: #fbbf24;">${formattedPrice}</div>
                                             </div>
 
                                             <div>
-                                                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Nội dung chuyển khoản</div>
+                                                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Ná»™i dung chuyá»ƒn khoáº£n</div>
                                                 <div style="display: flex; gap: 8px;">
                                                     <div style="flex: 1; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); padding: 8px 12px; border-radius: 8px; color: #10b981; font-weight: 700; font-family: monospace; font-size: 14px;">${bank.description || data.orderId}</div>
-                                                    <button onclick="navigator.clipboard.writeText('${bank.description || data.orderId}'); app.showNotification('info', '📋 Đã sao chép nội dung')" style="padding: 0 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; cursor: pointer;"><i class="fas fa-copy"></i></button>
+                                                    <button onclick="navigator.clipboard.writeText('${bank.description || data.orderId}'); app.showNotification('info', 'ðŸ“‹ ÄÃ£ sao chÃ©p ná»™i dung')" style="padding: 0 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; cursor: pointer;"><i class="fas fa-copy"></i></button>
                                                 </div>
                                             </div>
 
                                             <div style="font-size: 11px; color: rgba(239, 68, 68, 0.8); background: rgba(239, 68, 68, 0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.1);">
-                                                ⚠️ Lưu ý: Chuyển đúng nội dung để hệ thống tự động kích hoạt gói ngay lập tức.
+                                                âš ï¸ LÆ°u Ã½: Chuyá»ƒn Ä‘Ãºng ná»™i dung Ä‘á»ƒ há»‡ thá»‘ng tá»± Ä‘á»™ng kÃ­ch hoáº¡t gÃ³i ngay láº­p tá»©c.
                                             </div>
                                         </div>
                                     </div>
@@ -2282,19 +2541,19 @@ class EffectStoreApp {
                             <div style="margin-top: 25px; display: flex; flex-direction: column; gap: 15px;">
                                 <div style="display: flex; gap: 15px; align-items: center; background: rgba(255,255,255,0.02); padding: 15px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
                                     <div style="flex: 1;">
-                                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Minh chứng thanh toán (Duyệt nhanh hơn)</div>
-                                        <div id="payment-proof-name" style="font-size: 11px; color: var(--primary);">Chưa chọn ảnh...</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">Minh chá»©ng thanh toÃ¡n (Duyá»‡t nhanh hÆ¡n)</div>
+                                        <div id="payment-proof-name" style="font-size: 11px; color: var(--primary);">ChÆ°a chá»n áº£nh...</div>
                                     </div>
                                     <input type="file" id="payment-proof-input" accept="image/*" style="display:none;" onchange="app.previewPaymentProof(this)">
-                                    <button onclick="document.getElementById('payment-proof-input').click()" style="padding: 10px 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; cursor: pointer; font-size: 13px; font-weight: 600;">Chọn ảnh</button>
+                                    <button onclick="document.getElementById('payment-proof-input').click()" style="padding: 10px 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; cursor: pointer; font-size: 13px; font-weight: 600;">Chá»n áº£nh</button>
                                 </div>
 
                                 <div id="payment-status-indicator" style="text-align: center; color: var(--secondary); font-size: 12px; font-weight: 600; padding: 10px; background: rgba(236, 72, 153, 0.05); border-radius: 10px;">
-                                    <i class="fas fa-spinner fa-spin"></i> Đang kết nối với cổng thanh toán...
+                                    <i class="fas fa-spinner fa-spin"></i> Äang káº¿t ná»‘i vá»›i cá»•ng thanh toÃ¡n...
                                 </div>
 
                                 <button onclick="app.confirmPaymentWithProof('${orderId}', ${price})" style="width: 100%; padding: 18px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border: none; border-radius: 16px; color: #fff; font-weight: 800; font-size: 16px; cursor: pointer; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3); transition: 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.filter='brightness(1.1)';" onmouseout="this.style.transform=''; this.style.filter='';">
-                                    XÁC NHẬN ĐÃ CHUYỂN KHOẢN
+                                    XÃC NHáº¬N ÄÃƒ CHUYá»‚N KHOáº¢N
                                 </button>
                             </div>
                         </div>
@@ -2304,7 +2563,7 @@ class EffectStoreApp {
 
         } catch (error) {
             console.error('Buy Subscription error:', error);
-            this.showNotification('error', '❌ Lỗi: ' + error.message);
+            this.showNotification('error', 'âŒ Lá»—i: ' + error.message);
         }
     }
 
@@ -2319,7 +2578,7 @@ class EffectStoreApp {
     connectWebSocket() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
         this.ws = new WebSocket(this.WS_URL);
-        this.ws.onopen = () => console.log('✅ WebSocket connected');
+        this.ws.onopen = () => console.log('âœ… WebSocket connected');
         this.ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
@@ -2337,6 +2596,10 @@ class EffectStoreApp {
             case 'follow': this.handleFollow(data.data); break;
             case 'share': this.handleShare(data.data); break;
             case 'chat': this.handleChat(data.data); break;
+            case 'effect_warning':
+                this.showNotification('warning', data.data?.message || 'Hiệu ứng đã bị bỏ qua vì thiếu thời lượng.');
+                break;
+            case 'plan_limit_reached': this.handlePlanLimit(data.data, data.data?.feature); break;
         }
     }
 
@@ -2350,19 +2613,19 @@ class EffectStoreApp {
         const statusEl = document.getElementById('connection-status');
         if (statusEl) {
             if (stats.isLive) {
-                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;"></span>Đang live';
+                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;"></span>Äang live';
                 statusEl.style.background = 'rgba(16,185,129,0.2)';
             } else {
-                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block;"></span>Chưa kết nối';
+                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block;"></span>ChÆ°a káº¿t ná»‘i';
                 statusEl.style.background = 'rgba(239,68,68,0.2)';
             }
         }
     }
     async prepareTikTok() {
         const roomId = document.getElementById('room-id')?.value.trim();
-        if (!roomId) return this.showNotification('error', 'Vui lòng nhập Room ID!');
+        if (!roomId) return this.showNotification('error', 'Vui lÃ²ng nháº­p Room ID!');
         try {
-            this.showNotification('info', '🎬 Đang ở chế độ chuẩn bị. Hệ thống sẽ tự động kết nối khi bạn bắt đầu Live.');
+            this.showNotification('info', 'ðŸŽ¬ Äang á»Ÿ cháº¿ Ä‘á»™ chuáº©n bá»‹. Há»‡ thá»‘ng sáº½ tá»± Ä‘á»™ng káº¿t ná»‘i khi báº¡n báº¯t Ä‘áº§u Live.');
             const res = await fetch(`${this.API_URL}/api/tiktok/prepare`, {
                 method: 'POST',
                 headers: {
@@ -2375,14 +2638,14 @@ class EffectStoreApp {
             if (data.success) {
                 this.setConnectBtnState('prepare');
             }
-        } catch (e) { this.showNotification('error', 'Lỗi: ' + e.message); }
+        } catch (e) { this.showNotification('error', 'Lá»—i: ' + e.message); }
     }
 
     async connectTikTok() {
         const roomId = document.getElementById('room-id')?.value.trim();
-        if (!roomId) return this.showNotification('error', 'Vui lòng nhập Room ID!');
+        if (!roomId) return this.showNotification('error', 'Vui lÃ²ng nháº­p Room ID!');
         try {
-            this.showNotification('info', 'Đang kết nối...');
+            this.showNotification('info', 'Äang káº¿t ná»‘i...');
             const res = await fetch(`${this.API_URL}/api/tiktok/connect`, {
                 method: 'POST',
                 headers: {
@@ -2393,12 +2656,12 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', '✅ Đã kết nối TikTok Live!');
+                this.showNotification('success', 'âœ… ÄÃ£ káº¿t ná»‘i TikTok Live!');
                 this.setConnectBtnState('connect');
                 this.connectWebSocket();
             }
         } catch (e) {
-            this.showNotification('error', 'Không thể kết nối. Có thể bạn chưa Live hoặc sai ID.');
+            this.showNotification('error', 'KhÃ´ng thá»ƒ káº¿t ná»‘i. CÃ³ thá»ƒ báº¡n chÆ°a Live hoáº·c sai ID.');
         }
     }
 
@@ -2408,11 +2671,11 @@ class EffectStoreApp {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
             });
-            this.showNotification('success', '✅ Đã ngắt kết nối!');
+            this.showNotification('success', 'âœ… ÄÃ£ ngáº¯t káº¿t ná»‘i!');
             this.setConnectBtnState('disconnect');
             this.updateStats({ isLive: false, gifts: 0, likes: 0, chats: 0, viewers: 0 });
             if (this.ws) this.ws.close();
-        } catch (e) { this.showNotification('error', 'Lỗi: ' + e.message); }
+        } catch (e) { this.showNotification('error', 'Lá»—i: ' + e.message); }
     }
 
     setConnectBtnState(state) {
@@ -2443,7 +2706,7 @@ class EffectStoreApp {
 
     async loadGifts() {
         try {
-            console.log('🎁 Loading gifts...');
+            console.log('ðŸŽ Loading gifts...');
             const res = await fetch(`${this.API_URL}/api/tiktok/gifts-library`, {
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
             });
@@ -2459,7 +2722,7 @@ class EffectStoreApp {
                         const isImage = g.icon && (g.icon.includes('/') || g.icon.includes('.'));
                         const iconHtml = isImage
                             ? `<img src="${this.API_URL}${g.icon}" style="width:40px;height:40px;object-fit:contain;margin-bottom:5px;display:block;margin:0 auto;">`
-                            : `<div style="font-size:32px;margin-bottom:5px;">${g.icon || '🎁'}</div>`;
+                            : `<div style="font-size:32px;margin-bottom:5px;">${g.icon || 'ðŸŽ'}</div>`;
                         return `
                                     <div class="gift-item" onclick="app.selectGift('${g.id}','${g.name}','${g.icon}')">
                                         ${iconHtml}
@@ -2468,15 +2731,15 @@ class EffectStoreApp {
                                     </div>
                                 `;
                     }).join('');
-                    console.log('✅ Rendered', data.gifts.length, 'gifts');
+                    console.log('âœ… Rendered', data.gifts.length, 'gifts');
                 } else {
-                    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:20px;">Không có gifts</div>';
+                    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:20px;">KhÃ´ng cÃ³ gifts</div>';
                 }
             } else {
-                console.error('❌ No gifts data or grid element not found');
+                console.error('âŒ No gifts data or grid element not found');
             }
         } catch (e) {
-            console.error('❌ Load gifts error:', e);
+            console.error('âŒ Load gifts error:', e);
         }
     }
     async loadEffectsForMapping() {
@@ -2485,13 +2748,30 @@ class EffectStoreApp {
             const grid = document.getElementById('effects-mapping-grid');
             if (!grid) return;
 
-            // Nếu là admin dùng toàn bộ effect, nếu là user chỉ dùng effect đã mua
-            const displayEffects = (this.currentUser && this.currentUser.isAdmin) ? this.effects : this.ownedEffects;
+            const res = await fetch(`${this.API_URL}/api/tiktok/available-effects`, {
+                headers: { 'Authorization': `Bearer ${this.authToken}` }
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.success === false) {
+                throw new Error(data.message || data.error || `Lỗi tải thư viện effect ${res.status}`);
+            }
+
+            const displayEffects = Array.isArray(data.effects) ? data.effects : [];
+            const customEffects = displayEffects.filter(effect => effect?.isCustom);
+            const purchasedEffects = displayEffects.filter(effect => !effect?.isCustom);
+
+            this.personalEffects = customEffects;
+            if (this.currentUser?.isAdmin) {
+                this.effects = purchasedEffects;
+            } else {
+                this.ownedEffects = [...purchasedEffects, ...customEffects];
+            }
 
             if (displayEffects && displayEffects.length > 0) {
                 grid.innerHTML = displayEffects.map(e => {
-                    const thumbUrl = e.thumbUrl ? `${this.API_URL}${e.thumbUrl}` : '';
-                    const videoUrl = e.previewUrl ? `${this.API_URL}${e.previewUrl}` : '';
+                    const effectId = e._id || e.id;
+                    const thumbUrl = e.thumbUrl ? (/^https?:\/\//i.test(e.thumbUrl) ? e.thumbUrl : `${this.API_URL}${e.thumbUrl}`) : '';
+                    const videoUrl = e.previewUrl ? (/^https?:\/\//i.test(e.previewUrl) ? e.previewUrl : `${this.API_URL}${e.previewUrl}`) : '';
                     let previewHTML = '';
 
                     if (thumbUrl && videoUrl) {
@@ -2506,7 +2786,7 @@ class EffectStoreApp {
                     }
 
                     return `
-                <div class="effect-mapping-item" data-effect-id="${e._id || e.id}">
+                <div class="effect-mapping-item" data-effect-id="${effectId}" data-effect-name="${e.name || ''}" style="${e.isCustom ? 'border-color:rgba(34,197,94,.35);' : ''}">
                     <div class="effect-mapping-thumb" 
                         onmouseenter="const v=this.querySelector('video'); if(v) { v.muted=true; const p=v.play(); if(p!==undefined) p.catch(()=>{}); }" 
                         onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
@@ -2514,18 +2794,17 @@ class EffectStoreApp {
                     </div>
                     <div class="effect-mapping-info">
                         <div class="effect-mapping-name">${e.icon || '🎬'} ${e.name}</div>
+                        ${e.isCustom ? '<div style="margin-top:3px;color:#34d399;font-size:10px;font-weight:800;">Hiệu ứng cá nhân</div>' : ''}
                     </div>
                 </div>
             `}).join('');
                 console.log('✅ Rendered', displayEffects.length, 'mapping effects');
 
-                // Xử lý sự kiện click & hover cho danh sách effect
                 setTimeout(() => {
                     const effectItems = grid.querySelectorAll('.effect-mapping-item');
                     effectItems.forEach(item => {
                         const video = item.querySelector('video');
 
-                        // Xử lý Play/Pause video khi hover
                         if (video) {
                             item.addEventListener('mouseenter', () => {
                                 video.style.opacity = '1';
@@ -2538,33 +2817,30 @@ class EffectStoreApp {
                             });
                         }
 
-                        // Xử lý Click để chọn effect
                         item.addEventListener('click', () => {
                             const effectId = item.getAttribute('data-effect-id');
-                            const effectName = item.querySelector('.effect-mapping-name').textContent.trim();
+                            const effectName = item.getAttribute('data-effect-name') || item.querySelector('.effect-mapping-name').textContent.trim();
                             this.selectEffect(effectId, effectName);
 
-                            // Highlight thẻ được chọn
                             effectItems.forEach(i => i.style.border = '1px solid rgba(255,255,255,0.1)');
                             item.style.border = '1px solid var(--primary)';
                         });
                     });
                 }, 100);
             } else {
-                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:20px;">Không có effects nào. Hãy mua hiệu ứng trong cửa hàng!</div>';
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:20px;">Không có effect nào khả dụng cho tài khoản này.</div>';
             }
         } catch (e) {
             console.error('❌ Load effects mapping error:', e);
         }
     }
-
     selectGift(id, name, icon) {
         this.selectedGift = { id, name, icon };
         document.querySelectorAll('.gift-item').forEach(el => el.classList.remove('selected'));
         event.currentTarget.classList.add('selected');
 
         if (this.selectedEffect) {
-            this.showNotification('info', '⌨️ Nhấn ENTER để xác nhận Mapping');
+            this.showNotification('info', 'âŒ¨ï¸ Nháº¥n ENTER Ä‘á»ƒ xÃ¡c nháº­n Mapping');
         }
     }
 
@@ -2574,7 +2850,7 @@ class EffectStoreApp {
         event.currentTarget.classList.add('selected');
 
         if (this.selectedGift) {
-            this.showNotification('info', '⌨️ Nhấn ENTER để xác nhận Mapping');
+            this.showNotification('info', 'âŒ¨ï¸ Nháº¥n ENTER Ä‘á»ƒ xÃ¡c nháº­n Mapping');
         }
     }
 
@@ -2594,17 +2870,19 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', `✅ Mapping: ${this.selectedGift.name} → ${this.selectedEffect.name}`);
+                this.showNotification('success', `âœ… Mapping: ${this.selectedGift.name} â†’ ${this.selectedEffect.name}`);
                 this.selectedGift = null; this.selectedEffect = null;
                 document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
                 this.loadMappings();
+            } else if (!this.handlePlanLimit(data, 'mappings')) {
+                this.showNotification('error', data.message || data.error || 'KhÃ´ng thá»ƒ táº¡o hiá»‡u á»©ng gáº¯n quÃ ');
             }
-        } catch (e) { this.showNotification('error', 'Lỗi: ' + e.message); }
+        } catch (e) { this.showNotification('error', 'Lá»—i: ' + e.message); }
     }
 
     async loadMappings() {
         try {
-            console.log('📋 Loading mappings...');
+            console.log('ðŸ“‹ Loading mappings...');
             const res = await fetch(`${this.API_URL}/api/tiktok/mappings`, {
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
             });
@@ -2622,17 +2900,17 @@ class EffectStoreApp {
                             ? m.giftIcon
                             : `${this.API_URL}${m.giftIcon}`;
 
-                        // Kiểm tra xem có phải là ảnh không (dựa vào đuôi file hoặc bắt đầu bằng http)
+                        // Kiá»ƒm tra xem cÃ³ pháº£i lÃ  áº£nh khÃ´ng (dá»±a vÃ o Ä‘uÃ´i file hoáº·c báº¯t Ä‘áº§u báº±ng http)
                         const isImageIcon = m.giftIcon && (
                             m.giftIcon.includes('.') ||
                             m.giftIcon.includes('/') ||
                             m.giftIcon.startsWith('http') ||
-                            m.giftIcon.length > 10 // Chuỗi dài thường là URL
+                            m.giftIcon.length > 10 // Chuá»—i dÃ i thÆ°á»ng lÃ  URL
                         );
 
                         const giftIconHtml = isImageIcon
                             ? `<img src="${giftIconUrl}" style="width:32px;height:32px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,0.05);padding:2px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/679/679821.png'">`
-                            : `<span style="font-size:24px;">${m.giftIcon || '🎁'}</span>`;
+                            : `<span style="font-size:24px;">${m.giftIcon || 'ðŸŽ'}</span>`;
 
                         return `
                                 <div class="mapping-list-item">
@@ -2641,26 +2919,26 @@ class EffectStoreApp {
                                             ${giftIconHtml}
                                             <span style="font-size:14px;font-weight:600;">${m.giftName}</span>
                                         </div>
-                                        <span style="color:var(--text-muted);font-size:16px;">▶</span>
+                                        <span style="color:var(--text-muted);font-size:16px;">â–¶</span>
                                         <div class="mapping-badge" style="background:rgba(240,147,251,0.1);border-color:rgba(240,147,251,0.2);">
                                             <span style="font-size:14px;font-weight:600;color:#f093fb;">${m.effectName || 'Unknown'}</span>
                                         </div>
                                     </div>
                                     <div class="mapping-actions">
-                                        <button class="btn-sm btn-test" onclick="app.testMapping(event, '${m._id}')">▶ Test</button>
-                                        <button class="btn-sm btn-delete" onclick="app.deleteMapping('${m._id}')">🗑️ Xóa</button>
+                                        <button class="btn-sm btn-test" onclick="app.testMapping(event, '${m._id}')">â–¶ Test</button>
+                                        <button class="btn-sm btn-delete" onclick="app.deleteMapping('${m._id}')">ðŸ—‘ï¸ XÃ³a</button>
                                     </div>
                                 </div>
                             `}).join('');
-                    console.log('✅ Rendered', data.mappings.length, 'mappings');
+                    console.log('âœ… Rendered', data.mappings.length, 'mappings');
                 } else {
-                    list.innerHTML = '<p style="text-align:center;color:var(--text-muted);">Chưa có mapping nào. Chọn gift và effect để tạo mapping!</p>';
+                    list.innerHTML = '<p style="text-align:center;color:var(--text-muted);">ChÆ°a cÃ³ mapping nÃ o. Chá»n gift vÃ  effect Ä‘á»ƒ táº¡o mapping!</p>';
                 }
             } else {
-                console.error('❌ No mappings data or list element not found');
+                console.error('âŒ No mappings data or list element not found');
             }
         } catch (e) {
-            console.error('❌ Load mappings error:', e);
+            console.error('âŒ Load mappings error:', e);
         }
     }
 
@@ -2676,6 +2954,7 @@ class EffectStoreApp {
             btn.style.position = 'relative';
             btn.style.overflow = 'hidden';
             btn.style.transition = 'none';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
             const token = localStorage.getItem('token');
             const res = await fetch(`${this.API_URL}/api/tiktok/test-trigger`, {
@@ -2686,69 +2965,66 @@ class EffectStoreApp {
                 },
                 body: JSON.stringify({ mappingId: id })
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
 
-            if (data.success) {
-                this.showNotification('success', '🎬 Đã kích hoạt hiệu ứng!');
-
-                const totalDuration = Math.max(((data.duration || 5) * 1000) - 1000, 1000);
-                let timeLeft = totalDuration;
-                const step = 50;
-
-                const interval = setInterval(() => {
-                    timeLeft -= step;
-                    const percent = (timeLeft / totalDuration) * 100;
-                    const seconds = Math.max(0, (timeLeft / 1000)).toFixed(1);
-
-                    btn.innerHTML = `<i class="fas fa-hourglass-half"></i> ${seconds}s`;
-                    // Hiệu ứng thanh thời gian chạy lùi
-                    btn.style.background = `linear-gradient(90deg, #10b981 ${percent}%, rgba(0,0,0,0.3) ${percent}%)`;
-
-                    if (timeLeft <= 0) {
-                        clearInterval(interval);
-                        btn.disabled = false;
-                        btn.innerHTML = originalContent;
-                        btn.style.background = '';
-                        btn.style.cursor = 'pointer';
-                        btn.style.transition = '0.3s';
-                    }
-                }, step);
-            } else {
-                throw new Error(data.message || 'Lỗi server');
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || data.error || `Lỗi server ${res.status}`);
             }
+
+            this.showNotification('success', '🎬 Đã chạy thử hiệu ứng trên OBS!');
+
+            const resolvedDuration = Number(data.duration);
+            if (!Number.isFinite(resolvedDuration) || resolvedDuration <= 0) {
+                throw new Error('Server không trả về thời lượng hiệu ứng hợp lệ.');
+            }
+            const totalDuration = Math.max(resolvedDuration * 1000, 1000);
+            let timeLeft = totalDuration;
+            const step = 50;
+            btn.innerHTML = `<i class="fas fa-hourglass-half"></i> ${(timeLeft / 1000).toFixed(1)}s`;
+            btn.style.background = `linear-gradient(90deg, #10b981 100%, rgba(0,0,0,0.3) 100%)`;
+
+            const interval = setInterval(() => {
+                timeLeft -= step;
+                const percent = Math.max(0, (timeLeft / totalDuration) * 100);
+                const seconds = Math.max(0, (timeLeft / 1000)).toFixed(1);
+
+                btn.innerHTML = `<i class="fas fa-hourglass-half"></i> ${seconds}s`;
+                btn.style.background = `linear-gradient(90deg, #10b981 ${percent}%, rgba(0,0,0,0.3) ${percent}%)`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                    btn.style.background = '';
+                    btn.style.cursor = 'pointer';
+                    btn.style.transition = '0.3s';
+                    this.loadLogs?.();
+                }
+            }, step);
         } catch (e) {
-            this.showNotification('error', 'Lỗi: ' + e.message);
+            this.showNotification('error', 'Lỗi test OBS: ' + e.message);
             btn.disabled = false;
             btn.innerHTML = originalContent;
             btn.style.background = '';
             btn.style.cursor = 'pointer';
         }
     }
-
     async deleteMapping(id) {
-        if (!confirm('Xóa mapping này?')) return;
+        if (!confirm('XÃ³a mapping nÃ y?')) return;
         try {
             await fetch(`${this.API_URL}/api/tiktok/mappings/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
             });
-            this.showNotification('success', 'Đã xóa mapping');
+            this.showNotification('success', 'ÄÃ£ xÃ³a mapping');
             this.loadMappings();
-        } catch (e) { this.showNotification('error', 'Lỗi: ' + e.message); }
+        } catch (e) { this.showNotification('error', 'Lá»—i: ' + e.message); }
     }
 
-    async triggerOBSEffect(effectId) {
-        try {
-            await fetch(`${this.API_URL}/api/obs/trigger`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ effectId })
-            });
-        } catch (e) { console.error('OBS trigger error:', e); }
-    }
     connectWebSocket() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
         this.ws = new WebSocket(this.WS_URL);
-        this.ws.onopen = () => console.log('✅ WebSocket connected');
+        this.ws.onopen = () => console.log('âœ… WebSocket connected');
         this.ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
@@ -2763,7 +3039,10 @@ class EffectStoreApp {
         switch (data.event) {
             case 'stats': this.updateStats(data.data); break;
             case 'gift': this.handleGift(data.data); break;
-            case 'chat': console.log('💬 Chat:', data.data); break;
+            case 'follow': this.handleFollow(data.data); break;
+            case 'share': this.handleShare(data.data); break;
+            case 'chat': this.handleChat(data.data); break;
+            case 'plan_limit_reached': this.handlePlanLimit(data.data, data.data?.feature); break;
         }
     }
 
@@ -2777,63 +3056,60 @@ class EffectStoreApp {
         const statusEl = document.getElementById('connection-status');
         if (statusEl) {
             if (stats.isLive) {
-                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;"></span>Đang live';
+                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;"></span>Äang live';
                 statusEl.style.background = 'rgba(16,185,129,0.2)';
             } else {
-                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block;"></span>Chưa kết nối';
+                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block;"></span>ChÆ°a káº¿t ná»‘i';
                 statusEl.style.background = 'rgba(239,68,68,0.2)';
             }
         }
     }
 
     async handleGift(giftData) {
-        console.log('🎁 Gift received:', giftData);
-        this.showNotification('info', `🎁 ${giftData.userName} tặng ${giftData.giftName}!`);
+        console.log('ðŸŽ Gift received:', giftData);
+        this.showNotification('info', `ðŸŽ ${giftData.userName} táº·ng ${giftData.giftName}!`);
 
-        // Phát giọng nói cảm ơn (nếu bật) - Đợi 800ms sau tiếng Ping cho rõ ràng
+        // PhÃ¡t giá»ng nÃ³i cáº£m Æ¡n (náº¿u báº­t) - Äá»£i 800ms sau tiáº¿ng Ping cho rÃµ rÃ ng
         if (this.isTTSGiftEnabled) {
             setTimeout(() => {
-                const nickname = giftData.nickname || giftData.uniqueId || 'bạn';
-                this.speakText(`Cảm ơn ${nickname} đã tặng ${giftData.giftName}`);
+                const nickname = giftData.nickname || giftData.uniqueId || 'báº¡n';
+                this.speakText(`Cáº£m Æ¡n ${nickname} Ä‘Ã£ táº·ng ${giftData.giftName}`);
 
-                // Nếu đủ ngưỡng xu, đưa vào danh sách chờ đọc comment
+                // Náº¿u Ä‘á»§ ngÆ°á»¡ng xu, Ä‘Æ°a vÃ o danh sÃ¡ch chá» Ä‘á»c comment
                 if (giftData.diamondCount >= this.ttsThreshold) {
                     this.pendingDonors.set(giftData.userId, {
                         nickname: nickname,
                         timestamp: Date.now()
                     });
-                    // Xóa sau 60 giây nếu họ không comment
+                    // XÃ³a sau 60 giÃ¢y náº¿u há» khÃ´ng comment
                     setTimeout(() => this.pendingDonors.delete(giftData.userId), 60000);
                 }
             }, 800);
         }
 
-        const mapping = this.giftMappings?.find(m => m.giftId === giftData.giftId && m.isActive);
-        if (mapping) {
-            this.triggerOBSEffect(mapping.effectId);
-        }
+        // OBS is triggered once by the backend queue for a real TikTok gift.
     }
 
     async handleFollow(data) {
-        const nickname = data.nickname || data.uniqueId || 'bạn mới';
-        this.showNotification('success', `👤 ${nickname} vừa Follow!`);
+        const nickname = data.nickname || data.uniqueId || 'báº¡n má»›i';
+        this.showNotification('success', `ðŸ‘¤ ${nickname} vá»«a Follow!`);
         if (this.isTTSFollowEnabled) {
-            this.speakText(`Cảm ơn ${nickname} đã follow kênh nhé!`);
+            this.speakText(`Cáº£m Æ¡n ${nickname} Ä‘Ã£ follow kÃªnh nhÃ©!`);
         }
     }
 
     async handleShare(data) {
-        const nickname = data.nickname || data.uniqueId || 'bạn mới';
-        this.showNotification('info', `📢 ${nickname} vừa Share!`);
-        this.speakText(`Cảm ơn ${nickname} đã chia sẻ livestream nhé!`);
+        const nickname = data.nickname || data.uniqueId || 'báº¡n má»›i';
+        this.showNotification('info', `ðŸ“¢ ${nickname} vá»«a Share!`);
+        this.speakText(`Cáº£m Æ¡n ${nickname} Ä‘Ã£ chia sáº» livestream nhÃ©!`);
     }
 
     handleChat(data) {
         const donor = this.pendingDonors.get(data.userId);
         if (donor) {
-            // Nếu là người vừa donate khủng, đọc comment của họ
-            this.speakText(`${donor.nickname} nhắn là: ${data.comment}`);
-            this.pendingDonors.delete(data.userId); // Chỉ đọc 1 lần duy nhất
+            // Náº¿u lÃ  ngÆ°á»i vá»«a donate khá»§ng, Ä‘á»c comment cá»§a há»
+            this.speakText(`${donor.nickname} nháº¯n lÃ : ${data.comment}`);
+            this.pendingDonors.delete(data.userId); // Chá»‰ Ä‘á»c 1 láº§n duy nháº¥t
         }
     }
 
@@ -2841,7 +3117,7 @@ class EffectStoreApp {
     // These methods were previously defined above and are already handled.
     async loadLogs() {
         try {
-            console.log('📜 Loading logs...');
+            console.log('ðŸ“œ Loading logs...');
             const res = await fetch(`${this.API_URL}/api/tiktok/logs`, {
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
             });
@@ -2852,18 +3128,18 @@ class EffectStoreApp {
                     tbody.innerHTML = data.logs.map(log => `
                                 <tr>
                                     <td>${new Date(log.triggeredAt).toLocaleString('vi-VN')}</td>
-                                    <td>🎁 ${log.giftName}</td>
-                                    <td>🎬 ${log.effectName || 'Unknown'}</td>
+                                    <td>ðŸŽ ${log.giftName}</td>
+                                    <td>ðŸŽ¬ ${log.effectName || 'Unknown'}</td>
                                     <td>${log.userName || 'N/A'}</td>
-                                    <td style="color:#00ff88;">✅</td>
+                                    <td style="color:#00ff88;">âœ…</td>
                                 </tr>
                             `).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#666;">Chưa có log nào</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#666;">ChÆ°a cÃ³ log nÃ o</td></tr>';
                 }
             }
         } catch (e) {
-            console.error('Lỗi load logs:', e);
+            console.error('Lá»—i load logs:', e);
         }
     }
 
@@ -2906,10 +3182,10 @@ class EffectStoreApp {
 
         if (badgeEl) {
             const planInfo = {
-                admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
-                business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
-                pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
-                free: { label: '🆓 Free', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
+                admin: { label: 'ðŸ‘‘ Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
+                business: { label: 'â­ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
+                pro: { label: 'âš¡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
+                free: { label: 'ðŸ†“ Free', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
             };
             const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
             const plan = planInfo[planKey] || planInfo.free;
@@ -2918,14 +3194,14 @@ class EffectStoreApp {
 
         if (expiryEl) {
             if (u.isAdmin) {
-                expiryEl.textContent = 'Vĩnh viễn';
+                expiryEl.textContent = 'VÄ©nh viá»…n';
             } else if (u.subscriptionExpiresAt) {
                 const expiry = new Date(u.subscriptionExpiresAt);
                 const now = new Date();
                 const diff = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
-                expiryEl.textContent = diff > 0 ? `Còn ${diff} ngày (${expiry.toLocaleDateString('vi-VN')})` : 'Đã hết hạn';
+                expiryEl.textContent = diff > 0 ? `CÃ²n ${diff} ngÃ y (${expiry.toLocaleDateString('vi-VN')})` : 'ÄÃ£ háº¿t háº¡n';
             } else {
-                expiryEl.textContent = 'Không khả dụng';
+                expiryEl.textContent = 'KhÃ´ng kháº£ dá»¥ng';
             }
         }
 
@@ -2968,7 +3244,7 @@ class EffectStoreApp {
         const startupEl = document.getElementById('settings-run-startup');
         if (startupEl) startupEl.checked = localStorage.getItem('run_startup') === 'true';
 
-        // Load danh sách giọng đọc
+        // Load danh sÃ¡ch giá»ng Ä‘á»c
         this.loadVoices();
 
         // Populate the connection username input automatically if default exists
@@ -2984,10 +3260,10 @@ class EffectStoreApp {
         const port = document.getElementById('settings-obs-port').value.trim();
         const password = document.getElementById('settings-obs-password').value;
 
-        if (!host || !port) return this.showNotification('error', 'Thiếu thông tin Host hoặc Port!');
+        if (!host || !port) return this.showNotification('error', 'Thiáº¿u thÃ´ng tin Host hoáº·c Port!');
 
         try {
-            this.showNotification('info', '⏳ Đang lưu cấu hình OBS...');
+            this.showNotification('info', 'â³ Äang lÆ°u cáº¥u hÃ¬nh OBS...');
             const res = await fetch(`${this.API_URL}/api/settings/obs`, {
                 method: 'POST',
                 headers: { 
@@ -3003,7 +3279,7 @@ class EffectStoreApp {
                 this.showNotification('error', data.message);
             }
         } catch (e) {
-            this.showNotification('error', 'Lỗi lưu cài đặt: ' + e.message);
+            this.showNotification('error', 'Lá»—i lÆ°u cÃ i Ä‘áº·t: ' + e.message);
         }
     }
 
@@ -3017,7 +3293,7 @@ class EffectStoreApp {
         const liveUserInput = document.getElementById('room-id');
         if (user && liveUserInput) liveUserInput.value = user;
 
-        this.showNotification('success', '✅ Lưu cài đặt TikTok Live thành công!');
+        this.showNotification('success', 'âœ… LÆ°u cÃ i Ä‘áº·t TikTok Live thÃ nh cÃ´ng!');
     }
 
     savePreferences() {
@@ -3043,13 +3319,13 @@ class EffectStoreApp {
         this.isTTSFollowEnabled = ttsFollow;
         this.ttsThreshold = parseInt(ttsThreshold);
 
-        this.showNotification('success', '✅ Lưu tùy chọn thành công!');
+        this.showNotification('success', 'âœ… LÆ°u tÃ¹y chá»n thÃ nh cÃ´ng!');
     }
 
     clearAppData() {
-        if (confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu tạm của ứng dụng? Hành động này không thể hoàn tác.')) {
+        if (confirm('Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a toÃ n bá»™ dá»¯ liá»‡u táº¡m cá»§a á»©ng dá»¥ng? HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c.')) {
             localStorage.clear();
-            this.showNotification('success', '🧹 Đã xóa dữ liệu! Ứng dụng sẽ tải lại...');
+            this.showNotification('success', 'ðŸ§¹ ÄÃ£ xÃ³a dá»¯ liá»‡u! á»¨ng dá»¥ng sáº½ táº£i láº¡i...');
             setTimeout(() => location.reload(), 1500);
         }
     }
@@ -3113,10 +3389,10 @@ function showAccount() {
     if (!app.currentUser) return;
     const u = app.currentUser;
     const planInfo = {
-        admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.12)', border: 'rgba(255,107,53,0.25)' },
-        business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.25)' },
-        pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.12)', border: 'rgba(212,175,55,0.25)' },
-        free: { label: '🆓 Free', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.18)' }
+        admin: { label: 'ðŸ‘‘ Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.12)', border: 'rgba(255,107,53,0.25)' },
+        business: { label: 'â­ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.25)' },
+        pro: { label: 'âš¡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.12)', border: 'rgba(212,175,55,0.25)' },
+        free: { label: 'ðŸ†“ Free', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.18)' }
     };
     const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
     const plan = planInfo[planKey] || planInfo.free;
@@ -3126,15 +3402,15 @@ function showAccount() {
                 : 'linear-gradient(135deg,#374151,#4b5563)'));
     const avatarColor = (u.subscription === 'pro' && !u.isAdmin) ? '#000' : '#fff';
 
-    app.showModal('Tài khoản của tôi', `
+    app.showModal('TÃ i khoáº£n cá»§a tÃ´i', `
                 <div style="text-align:center; padding: 12px 0;">
                     <div style="width:72px;height:72px;border-radius:50%;background:${avatarBg};display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:${avatarColor};margin:0 auto 14px;box-shadow:0 8px 24px rgba(0,0,0,0.3);">${(u.name || 'U')[0].toUpperCase()}</div>
-                    <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;">${u.name || 'Người dùng'}</div>
+                    <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;">${u.name || 'NgÆ°á»i dÃ¹ng'}</div>
                     <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">${u.email}</div>
                     <div style="font-size:12px;padding:5px 16px;border-radius:20px;display:inline-block;background:${plan.bg};color:${plan.color};border:1px solid ${plan.border};font-weight:700;">${plan.label}</div>
                 </div>
                 <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);">
-                    <button onclick="app.logout()" style="width:100%;padding:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;color:#ef4444;font-weight:600;cursor:pointer;font-size:14px;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">🚪 Đăng xuất</button>
+                    <button onclick="app.logout()" style="width:100%;padding:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;color:#ef4444;font-weight:600;cursor:pointer;font-size:14px;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">ðŸšª ÄÄƒng xuáº¥t</button>
                 </div>
             `);
 }
@@ -3150,24 +3426,24 @@ function openBannerManager() {
     const token = localStorage.getItem('token');
     window.location.href = `admin-banner.html?token=${token}`;
 }
-function openGiftMapping() { navigateTo('gift-mapping.html'); }
+function openGiftMapping() { switchView('gift-mapping'); }
 
 
-// ===== TIMELINE EDITOR FUNCTIONS (BƯỚC 1: FIX LOGIC THÊM KEYFRAME) =====
+// ===== TIMELINE EDITOR FUNCTIONS (BÆ¯á»šC 1: FIX LOGIC THÃŠM KEYFRAME) =====
 
 let currentTimelineEffectId = null;
-let currentTimeline = []; // Mảng chứa danh sách keyframe đang chỉnh sửa
+let currentTimeline = []; // Máº£ng chá»©a danh sÃ¡ch keyframe Ä‘ang chá»‰nh sá»­a
 
-// 1. Hàm mở Modal Timeline
+// 1. HÃ m má»Ÿ Modal Timeline
 function openTimelineEditor(effectId, effectName) {
-    console.log('🎬 Opening Timeline Editor for:', effectId, effectName);
+    console.log('ðŸŽ¬ Opening Timeline Editor for:', effectId, effectName);
     currentTimelineEffectId = effectId;
 
-    // Đặt tên hiệu ứng lên tiêu đề modal
+    // Äáº·t tÃªn hiá»‡u á»©ng lÃªn tiÃªu Ä‘á» modal
     const nameEl = document.getElementById('tl-effect-name');
     if (nameEl) nameEl.textContent = effectName || 'Effect';
 
-    // Mở modal
+    // Má»Ÿ modal
     const modal = document.getElementById('timeline-modal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -3179,12 +3455,12 @@ function openTimelineEditor(effectId, effectName) {
     const timeInput = document.getElementById('kf-time');
     if (timeInput) timeInput.value = '0';
 
-    // Tải danh sách OBS Sources
+    // Táº£i danh sÃ¡ch OBS Sources
     if (typeof loadOBSSources === 'function') {
         loadOBSSources();
     }
 
-    // Tải timeline cũ từ server (nếu có)
+    // Táº£i timeline cÅ© tá»« server (náº¿u cÃ³)
     fetch(`http://127.0.0.1:9000/api/effects/${effectId}/timeline`, {
         headers: { 'Authorization': `Bearer ${app.authToken}` }
     })
@@ -3195,12 +3471,12 @@ function openTimelineEditor(effectId, effectName) {
             } else {
                 currentTimeline = [];
             }
-            renderKeyframes(); // Vẽ lại giao diện
+            renderKeyframes(); // Váº½ láº¡i giao diá»‡n
         })
         .catch(err => console.error('Load timeline error:', err));
 }
 
-// 2. Hàm đóng Modal
+// 2. HÃ m Ä‘Ã³ng Modal
 function closeTimelineEditor() {
     const modal = document.getElementById('timeline-modal');
     if (modal) {
@@ -3212,24 +3488,24 @@ function closeTimelineEditor() {
     }
 }
 
-// ✅ HÀM THÊM KEYFRAME MỚI (Đã có X, Y, Scale, Layer)
+// âœ… HÃ€M THÃŠM KEYFRAME Má»šI (ÄÃ£ cÃ³ X, Y, Scale, Layer)
 function addKeyframe() {
     const time = parseFloat(document.getElementById('kf-time').value);
     const action = document.getElementById('kf-action').value;
     const source = document.getElementById('kf-source').value;
 
-    // ✅ Lấy thêm X, Y, Scale, Layer
+    // âœ… Láº¥y thÃªm X, Y, Scale, Layer
     const x = parseFloat(document.getElementById('kf-x').value) || 0;
     const y = parseFloat(document.getElementById('kf-y').value) || 0;
     const scale = parseFloat(document.getElementById('kf-scale').value) || 100;
     const layer = document.getElementById('kf-layer').value;
 
     // Validate
-    if (!source || source === '-- Chọn Source --') {
-        return app.showNotification('warning', '⚠️ Vui lòng chọn Source!');
+    if (!source || source === '-- Chá»n Source --') {
+        return app.showNotification('warning', 'âš ï¸ Vui lÃ²ng chá»n Source!');
     }
 
-    // Thêm vào mảng timeline
+    // ThÃªm vÃ o máº£ng timeline
     currentTimeline.push({
         time,
         action,
@@ -3238,26 +3514,26 @@ function addKeyframe() {
         transform: { x, y, scale }
     });
 
-    // Sắp xếp theo thời gian
+    // Sáº¯p xáº¿p theo thá»i gian
     currentTimeline.sort((a, b) => a.time - b.time);
 
-    // Vẽ lại danh sách
+    // Váº½ láº¡i danh sÃ¡ch
     renderKeyframes();
 
-    // Reset ô thời gian
+    // Reset Ã´ thá»i gian
     document.getElementById('kf-time').value = '0';
 
-    app.showNotification('success', `✅ Đã thêm keyframe tại ${time}s`);
+    app.showNotification('success', `âœ… ÄÃ£ thÃªm keyframe táº¡i ${time}s`);
 }
 
-// ✅ HÀM VẼ LẠI DANH SÁCH KEYFRAME (Hiển thị rõ thông số)
+// âœ… HÃ€M Váº¼ Láº I DANH SÃCH KEYFRAME (Hiá»ƒn thá»‹ rÃµ thÃ´ng sá»‘)
 function renderKeyframes() {
     const list = document.getElementById('keyframes-list');
     if (!list) return;
     list.innerHTML = '';
 
     if (currentTimeline.length === 0) {
-        list.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">📭 Chưa có keyframe nào.</div>';
+        list.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">ðŸ“­ ChÆ°a cÃ³ keyframe nÃ o.</div>';
         return;
     }
 
@@ -3265,55 +3541,55 @@ function renderKeyframes() {
         const item = document.createElement('div');
         item.className = 'keyframe-item';
 
-        // Dịch action & layer sang tiếng Việt
-        const actionMap = { move: '📍 Di chuyển', scale: '📏 Scale', layer: '🔲 Đổi Lớp', show: '👁️ Hiện', hide: '🕶️ Ẩn', play: '▶️ Chạy lại' };
-        const layerMap = { above: 'Trên', below: 'Dưới' };
+        // Dá»‹ch action & layer sang tiáº¿ng Viá»‡t
+        const actionMap = { move: 'ðŸ“ Di chuyá»ƒn', scale: 'ðŸ“ Scale', layer: 'ðŸ”² Äá»•i Lá»›p', show: 'ðŸ‘ï¸ Hiá»‡n', hide: 'ðŸ•¶ï¸ áº¨n', play: 'â–¶ï¸ Cháº¡y láº¡i' };
+        const layerMap = { above: 'TrÃªn', below: 'DÆ°á»›i' };
 
         let detailText = '';
         if (kf.action === 'move') detailText = `X:${kf.transform.x} Y:${kf.transform.y}`;
         else if (kf.action === 'scale') detailText = `Scale: ${kf.transform.scale}%`;
-        else if (kf.action === 'layer') detailText = `Lớp: ${layerMap[kf.layer] || kf.layer}`;
-        else if (kf.action === 'show' || kf.action === 'hide') detailText = `Thay đổi hiển thị`;
-        else if (kf.action === 'play') detailText = `Kích hoạt phát video`;
+        else if (kf.action === 'layer') detailText = `Lá»›p: ${layerMap[kf.layer] || kf.layer}`;
+        else if (kf.action === 'show' || kf.action === 'hide') detailText = `Thay Ä‘á»•i hiá»ƒn thá»‹`;
+        else if (kf.action === 'play') detailText = `KÃ­ch hoáº¡t phÃ¡t video`;
 
         item.innerHTML = `
                     <div class="keyframe-info" style="display:flex; align-items:center; gap:12px; flex:1;">
                         <span class="keyframe-time">${kf.time}s</span>
                         <div style="display:flex; flex-direction:column;">
                             <span style="font-weight:600; font-size:13px;">${actionMap[kf.action] || kf.action}</span>
-                            <span style="font-size:11px; color:#888;">${kf.source} • ${detailText}</span>
+                            <span style="font-size:11px; color:#888;">${kf.source} â€¢ ${detailText}</span>
                         </div>
                     </div>
-                    <button class="btn-delete-kf" onclick="deleteKeyframe(${index})">🗑️</button>
+                    <button class="btn-delete-kf" onclick="deleteKeyframe(${index})">ðŸ—‘ï¸</button>
                 `;
         list.appendChild(item);
     });
 }
 
-// ✅ HÀM XÓA KEYFRAME
+// âœ… HÃ€M XÃ“A KEYFRAME
 function deleteKeyframe(index) {
     if (index > -1 && index < currentTimeline.length) {
         currentTimeline.splice(index, 1);
         renderKeyframes();
-        app.showNotification('success', `🗑️ Đã xóa keyframe!`);
+        app.showNotification('success', `ðŸ—‘ï¸ ÄÃ£ xÃ³a keyframe!`);
     }
 }
 
-// ✅ HÀM LƯU TIMELINE (TỰ ĐỘNG THÊM KEYFRAME QUAY VỀ GỐC Ở CUỐI)
-// ✅ HÀM LƯU TIMELINE (SỬA LỖI TỰ ĐỘNG THÊM RESET TRÁNH LỖI undefined VÀ DỒN KEYFRAME)
+// âœ… HÃ€M LÆ¯U TIMELINE (Tá»° Äá»˜NG THÃŠM KEYFRAME QUAY Vá»€ Gá»C á»ž CUá»I)
+// âœ… HÃ€M LÆ¯U TIMELINE (Sá»¬A Lá»–I Tá»° Äá»˜NG THÃŠM RESET TRÃNH Lá»–I undefined VÃ€ Dá»’N KEYFRAME)
 function saveTimeline() {
     if (!currentTimelineEffectId) return;
 
-    // Tạo bản sao sạch không chứa các auto-reset cũ nếu có
+    // Táº¡o báº£n sao sáº¡ch khÃ´ng chá»©a cÃ¡c auto-reset cÅ© náº¿u cÃ³
     const cleanTimeline = currentTimeline.filter(kf => !kf.isAutoReset);
 
     if (cleanTimeline.length === 0) {
-        if (!confirm('Timeline đang trống. Bạn có chắc chắn muốn lưu không?')) return;
+        if (!confirm('Timeline Ä‘ang trá»‘ng. Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n lÆ°u khÃ´ng?')) return;
     } else {
-        // Tự động thêm 1 keyframe Reset an toàn ở cuối
+        // Tá»± Ä‘á»™ng thÃªm 1 keyframe Reset an toÃ n á»Ÿ cuá»‘i
         const firstKf = cleanTimeline[0];
         const lastKfTime = cleanTimeline[cleanTimeline.length - 1].time;
-        const effectDuration = Math.max(10.0, lastKfTime + 2.0); // Tối thiểu 10s hoặc sau frame cuối 2s
+        const effectDuration = Math.max(10.0, lastKfTime + 2.0); // Tá»‘i thiá»ƒu 10s hoáº·c sau frame cuá»‘i 2s
 
         cleanTimeline.push({
             time: effectDuration,
@@ -3325,7 +3601,7 @@ function saveTimeline() {
         });
     }
 
-    // Sắp xếp lại
+    // Sáº¯p xáº¿p láº¡i
     cleanTimeline.sort((a, b) => a.time - b.time);
 
     fetch(`http://127.0.0.1:9000/api/effects/${currentTimelineEffectId}/timeline`, {
@@ -3336,29 +3612,29 @@ function saveTimeline() {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                app.showNotification('success', '💾 Lưu timeline thành công!');
-                // Cập nhật lại dữ liệu giao diện từ backend trả về hoặc bản clean
+                app.showNotification('success', 'ðŸ’¾ LÆ°u timeline thÃ nh cÃ´ng!');
+                // Cáº­p nháº­t láº¡i dá»¯ liá»‡u giao diá»‡n tá»« backend tráº£ vá» hoáº·c báº£n clean
                 currentTimeline = data.timeline || cleanTimeline;
                 renderKeyframes();
                 closeTimelineEditor();
                 if (app.loadAdminDashboard) app.loadAdminDashboard();
             } else {
-                app.showNotification('error', '❌ Lưu thất bại: ' + (data.error || 'Lỗi máy chủ'));
+                app.showNotification('error', 'âŒ LÆ°u tháº¥t báº¡i: ' + (data.error || 'Lá»—i mÃ¡y chá»§'));
             }
         })
         .catch(err => {
             console.error('Save timeline error:', err);
-            app.showNotification('error', '❌ Lỗi kết nối API lưu timeline!');
+            app.showNotification('error', 'âŒ Lá»—i káº¿t ná»‘i API lÆ°u timeline!');
         });
 }
-// ===== HÀM TẢI DANH SÁCH OBS SOURCES =====
+// ===== HÃ€M Táº¢I DANH SÃCH OBS SOURCES =====
 async function loadOBSSources() {
     const select = document.getElementById('kf-source');
     if (!select) return;
 
-    // ✅ Thêm option tự động nhận diện lên đầu
-    select.innerHTML = `<option value="auto_webcam" style="color:#10b981; font-weight:bold;">📷 Webcam (Tự động nhận diện)</option>
-                        <option value="">-- Hoặc chọn Source cụ thể --</option>`;
+    // âœ… ThÃªm option tá»± Ä‘á»™ng nháº­n diá»‡n lÃªn Ä‘áº§u
+    select.innerHTML = `<option value="auto_webcam" style="color:#10b981; font-weight:bold;">ðŸ“· Webcam (Tá»± Ä‘á»™ng nháº­n diá»‡n)</option>
+                        <option value="">-- Hoáº·c chá»n Source cá»¥ thá»ƒ --</option>`;
 
     try {
         const res = await fetch(this.API_URL + '/api/obs/sources', {
@@ -3367,14 +3643,14 @@ async function loadOBSSources() {
         const data = await res.json();
 
         if (data.success && data.sources) {
-            // Phân loại webcam và source khác
+            // PhÃ¢n loáº¡i webcam vÃ  source khÃ¡c
             const webcams = data.sources.filter(s => s.isWebcam);
             const others = data.sources.filter(s => !s.isWebcam);
 
-            // Thêm nhóm webcam
+            // ThÃªm nhÃ³m webcam
             if (webcams.length > 0) {
                 const grp = document.createElement('optgroup');
-                grp.label = '📹 Webcam / Video Capture';
+                grp.label = 'ðŸ“¹ Webcam / Video Capture';
                 webcams.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.name;
@@ -3384,10 +3660,10 @@ async function loadOBSSources() {
                 select.appendChild(grp);
             }
 
-            // Thêm nhóm source khác
+            // ThÃªm nhÃ³m source khÃ¡c
             if (others.length > 0) {
                 const grp = document.createElement('optgroup');
-                grp.label = '📦 Source khác (Audio, Text, Browser...)';
+                grp.label = 'ðŸ“¦ Source khÃ¡c (Audio, Text, Browser...)';
                 others.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.name;
@@ -3398,23 +3674,23 @@ async function loadOBSSources() {
             }
         }
     } catch (err) {
-        console.error('Lỗi load OBS sources:', err);
-        select.innerHTML += '<option value="">❌ Lỗi kết nối</option>';
+        console.error('Lá»—i load OBS sources:', err);
+        select.innerHTML += '<option value="">âŒ Lá»—i káº¿t ná»‘i</option>';
     }
 }
 
 
 // ===== DEBUG GIFT MAPPING =====
 window.testGiftMapping = function () {
-    console.log('🔍 Testing Gift Mapping...');
+    console.log('ðŸ” Testing Gift Mapping...');
     console.log('API_URL:', app.API_URL);
     console.log('WS_URL:', app.WS_URL);
     console.log('App object:', app);
 
     // Test load functions
-    app.loadGifts().then(() => console.log('✅ Gifts loaded'));
-    app.loadEffectsForMapping().then(() => console.log('✅ Effects loaded'));
-    app.loadMappings().then(() => console.log('✅ Mappings loaded'));
+    app.loadGifts().then(() => console.log('âœ… Gifts loaded'));
+    app.loadEffectsForMapping().then(() => console.log('âœ… Effects loaded'));
+    app.loadMappings().then(() => console.log('âœ… Mappings loaded'));
 };
 
 window.openTimelineEditor = openTimelineEditor;
@@ -3422,3 +3698,5 @@ window.closeTimelineEditor = closeTimelineEditor;
 window.addKeyframe = addKeyframe;
 window.deleteKeyframe = deleteKeyframe;
 window.saveTimeline = saveTimeline;
+
+

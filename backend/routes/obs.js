@@ -32,7 +32,26 @@ router.get('/effect/:id', async (req, res) => {
     try {
         const effectId = req.params.id;
         const PORT = process.env.PORT || 9000;
+        const blankHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:1080px!important;height:1920px!important;overflow:hidden;background:transparent!important}</style></head><body></body></html>`;
+        if (req.query.idle === '1') return res.send(blankHtml);
+
+        const requestedDuration = Number(req.query.duration || req.query.d || 0);
+        if (!Number.isFinite(requestedDuration) || requestedDuration <= 0) {
+            console.warn(`Skipping OBS effect ${effectId}: missing duration query metadata`);
+            res.setHeader('X-Effect-Warning', 'missing-duration');
+            return res.status(422).send(blankHtml);
+        }
+        const durationMs = requestedDuration < 100
+            ? Math.round(requestedDuration * 1000)
+            : Math.round(requestedDuration);
+        const trigger = obsService.consumeTriggerToken(req.query.trigger, effectId);
+        if (!trigger) return res.send(blankHtml);
+
+        const isCustomEffect = /^custom-[a-zA-Z0-9-]+$/.test(effectId);
         const streamToken = jwt.sign({ effectId, userId: 'obs' }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '24h' });
+        const videoUrl = isCustomEffect
+            ? `http://127.0.0.1:8080/custom-effects/${effectId}/effect.webm`
+            : `http://localhost:${PORT}/api/stream/effect/${effectId}?token=${streamToken}`;
 
         res.send(`
 <!DOCTYPE html>
@@ -49,21 +68,43 @@ router.get('/effect/:id', async (req, res) => {
             width: 100% !important; height: 100% !important;
             object-fit: contain !important;
             background: transparent !important;
+            opacity: 0;
         }
     </style>
 </head>
 <body>
-    <video id="effectVideo" autoplay muted playsinline preload="auto">
-        <source src="http://localhost:${PORT}/api/stream/effect/${effectId}?token=${streamToken}" type="video/webm">
+    <video id="effectVideo" muted playsinline preload="auto">
+        <source src="${videoUrl}" type="video/webm">
     </video>
     <script>
         const video = document.getElementById('effectVideo');
-        video.play().catch(err => console.error('Play error:', err));
-
-        video.addEventListener('ended', () => {
+        let stopped = false;
+        const stopEffect = () => {
+            if (stopped) return;
+            stopped = true;
             video.pause();
+            video.removeAttribute('src');
+            while (video.firstChild) video.removeChild(video.firstChild);
+            video.load();
+            video.style.opacity = '0';
+            document.body.style.background = 'transparent';
+        };
+
+        const startEffect = () => {
+            stopped = false;
             video.currentTime = 0;
-        });
+            video.style.opacity = '1';
+            video.play().catch(err => {
+                console.error('Play error:', err);
+                stopEffect();
+            });
+            window.setTimeout(stopEffect, ${durationMs});
+        };
+
+        video.addEventListener('ended', stopEffect);
+        video.addEventListener('error', stopEffect);
+        if (video.readyState >= 2) startEffect();
+        else video.addEventListener('loadeddata', startEffect, { once: true });
     </script>
 </body>
 </html>`);
@@ -89,7 +130,7 @@ router.post('/setup-effect', authMiddleware, async (req, res) => {
                 sceneName: 'EffectStore',
                 inputName: sourceName,
                 inputKind: 'browser_source',
-                inputSettings: { url, width: 1080, height: 1920, fps: 30, css: '' }
+                inputSettings: { url, width: 1080, height: 1920, fps: 30, css: '', restart_when_active: false }
             });
         }
         res.json({ success: true, sourceName });
@@ -213,12 +254,19 @@ router.post('/setup-gift-menu', authMiddleware, async (_req, res) => {
 
 
 // Trigger
-router.post('/trigger', async (req, res) => {
+router.post('/trigger', authMiddleware, async (req, res) => {
     try {
         const { effectId, duration } = req.body;
         const effectQueue = require('../services/effectQueue');
 
-        effectQueue.add(effectId, duration);
+        const queued = await effectQueue.add(effectId, duration, null, req.body?.effectName || effectId);
+        if (!queued) {
+            return res.status(422).json({
+                success: false,
+                warning: 'Effect is missing duration metadata and was skipped.',
+                message: 'Hiệu ứng chưa có thời lượng hợp lệ. App đã bỏ qua để tránh treo queue.'
+            });
+        }
         res.json({ success: true, message: 'Added to queue' });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

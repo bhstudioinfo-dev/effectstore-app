@@ -12,7 +12,7 @@ const EffectSchema = new mongoose.Schema({
     previewUrl: { type: String },
     thumbUrl: { type: String },
     thumbFilePath: { type: String },
-    duration: { type: Number, default: 15 },
+    duration: { type: Number, required: true, min: 0.1 },
     previewFilePath: { type: String },
     encryptedFilePath: { type: String },
     fileSize: { type: Number },

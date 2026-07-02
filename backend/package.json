@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "echo \"Backend tests passed!\" && exit 0"
+    "test": "node tests/plan-entitlements.test.js"
   },
   "keywords": [
     "express",

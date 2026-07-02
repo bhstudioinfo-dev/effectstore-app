@@ -50,9 +50,9 @@
       "auraScale": 1,
       "textPosition": "bottom",
       "hideBg": true,
-      "lockedW": 378,
-      "lockedH": 417,
-      "hasBorder": false
+      "hasBorder": false,
+      "lockedW": 486,
+      "lockedH": 537
     },
     {
       "id": "layer_goal-bar_1782657779542_774_0",
@@ -90,26 +90,61 @@
       "giftId": "heart",
       "name": "Heart",
       "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Finger_Heart.png",
-      "x": 234,
-      "y": 150,
-      "width": 84,
-      "height": 84,
+      "x": 257,
+      "y": 320,
+      "width": 45,
+      "height": 43,
       "rotation": 0,
       "showName": true,
       "textSize": 13,
       "textColor": "#f7cb64",
       "textGap": 4,
       "textPosition": "bottom",
-      "auraType": "None",
+      "auraType": "Magic Ring",
       "auraColor": "#d7b2ff",
       "auraShape": "Circle",
       "animationType": "None",
       "animationSpeed": 1,
-      "auraSpeed": 1,
+      "auraSpeed": 1.1,
       "auraScale": 1,
       "zIndex": 3,
       "visible": true,
-      "locked": false
+      "locked": false,
+      "lockRatio": false
+    },
+    {
+      "id": "itm_1782832282181_77",
+      "giftId": "text",
+      "name": "text",
+      "iconUrl": "",
+      "iconDisplayMode": "text",
+      "iconText": "text",
+      "iconTextColor": "#ff0000",
+      "iconTextSize": 20,
+      "isVideoIcon": false,
+      "x": 298,
+      "y": 189,
+      "width": 47,
+      "height": 46,
+      "rotation": 0,
+      "showName": true,
+      "textSize": 13,
+      "textColor": "#f7cb64",
+      "textGap": 0,
+      "textPosition": "right",
+      "auraType": "None",
+      "auraColor": "#d7b2ff",
+      "auraShape": "Circle",
+      "animationType": "Float",
+      "animationSpeed": 1,
+      "auraSpeed": 1,
+      "auraScale": 0.75,
+      "zIndex": 5,
+      "visible": true,
+      "locked": false,
+      "lockRatio": false,
+      "showTextBg": true,
+      "textBgStyle": "neon"
     },
     {
       "id": "stack_1782664140107_129",
@@ -154,7 +189,7 @@
           "auraType": "Fire Aura",
           "auraColor": "#d7b2ff",
           "auraShape": "Circle",
-          "animationType": "Zoom",
+          "animationType": "Bounce",
           "animationSpeed": 1,
           "auraSpeed": 1,
           "auraScale": 1,
@@ -162,7 +197,8 @@
           "visible": true,
           "locked": false,
           "relativeX": 0,
-          "relativeY": 0
+          "relativeY": 0,
+          "showTextBg": true
         },
         {
           "id": "itm_1782663093859_853",
@@ -179,7 +215,7 @@
           "textColor": "#ffffff",
           "textGap": 4,
           "textPosition": "right",
-          "auraType": "None",
+          "auraType": "Magic Ring",
           "auraColor": "#d7b2ff",
           "auraShape": "Circle",
           "animationType": "None",
@@ -341,7 +377,7 @@
           "showTextBg": false
         }
       ],
-      "x": 162,
+      "x": 178,
       "y": 513,
       "width": 365,
       "height": 58,
@@ -405,11 +441,12 @@
       "auraScale": 1,
       "textPosition": "bottom",
       "hideBg": true,
-      "lockedW": 378,
-      "lockedH": 417,
       "hasBorder": false,
+      "lockedW": 486,
+      "lockedH": 537,
       "textSize": 39,
-      "textGap": 12
+      "textGap": 12,
+      "iconTextSize": 60
     },
     {
       "id": "layer_goal-bar_1782657779542_774_0",
@@ -442,33 +479,70 @@
       "auraScale": 1,
       "textPosition": "bottom",
       "textSize": 39,
-      "textGap": 12
+      "textGap": 12,
+      "iconTextSize": 60
     },
     {
       "id": "itm_1782663092870_572",
       "giftId": "heart",
       "name": "Heart",
       "iconUrl": "http://127.0.0.1:9000/assets/gift-icons/Finger_Heart.png",
-      "x": 162,
-      "y": -30,
-      "width": 252,
-      "height": 252,
+      "x": 231,
+      "y": 480,
+      "width": 135,
+      "height": 129,
       "rotation": 0,
       "showName": true,
       "textSize": 39,
       "textColor": "#f7cb64",
       "textGap": 12,
       "textPosition": "bottom",
-      "auraType": "None",
+      "auraType": "Magic Ring",
       "auraColor": "#d7b2ff",
       "auraShape": "Circle",
       "animationType": "None",
       "animationSpeed": 1,
-      "auraSpeed": 1,
+      "auraSpeed": 1.1,
       "auraScale": 1,
       "zIndex": 3,
       "visible": true,
-      "locked": false
+      "locked": false,
+      "lockRatio": false,
+      "iconTextSize": 60
+    },
+    {
+      "id": "itm_1782832282181_77",
+      "giftId": "text",
+      "name": "text",
+      "iconUrl": "",
+      "iconDisplayMode": "text",
+      "iconText": "text",
+      "iconTextColor": "#ff0000",
+      "iconTextSize": 60,
+      "isVideoIcon": false,
+      "x": 354,
+      "y": 87,
+      "width": 141,
+      "height": 138,
+      "rotation": 0,
+      "showName": true,
+      "textSize": 39,
+      "textColor": "#f7cb64",
+      "textGap": 12,
+      "textPosition": "right",
+      "auraType": "None",
+      "auraColor": "#d7b2ff",
+      "auraShape": "Circle",
+      "animationType": "Float",
+      "animationSpeed": 1,
+      "auraSpeed": 1,
+      "auraScale": 0.75,
+      "zIndex": 5,
+      "visible": true,
+      "locked": false,
+      "lockRatio": false,
+      "showTextBg": true,
+      "textBgStyle": "neon"
     },
     {
       "id": "stack_1782664140107_129",
@@ -513,7 +587,7 @@
           "auraType": "Fire Aura",
           "auraColor": "#d7b2ff",
           "auraShape": "Circle",
-          "animationType": "Zoom",
+          "animationType": "Bounce",
           "animationSpeed": 1,
           "auraSpeed": 1,
           "auraScale": 1,
@@ -521,7 +595,9 @@
           "visible": true,
           "locked": false,
           "relativeX": 0,
-          "relativeY": 0
+          "relativeY": 0,
+          "showTextBg": true,
+          "iconTextSize": 60
         },
         {
           "id": "itm_1782663093859_853",
@@ -538,7 +614,7 @@
           "textColor": "#ffffff",
           "textGap": 4,
           "textPosition": "right",
-          "auraType": "None",
+          "auraType": "Magic Ring",
           "auraColor": "#d7b2ff",
           "auraShape": "Circle",
           "animationType": "None",
@@ -550,7 +626,8 @@
           "locked": false,
           "relativeX": 0,
           "relativeY": 45,
-          "showTextBg": false
+          "showTextBg": false,
+          "iconTextSize": 60
         },
         {
           "id": "itm_1782663094343_303",
@@ -581,7 +658,8 @@
           "relativeY": 90,
           "showTextBg": true,
           "subtext": "adsadsaasda",
-          "textBgStyle": "neon"
+          "textBgStyle": "neon",
+          "iconTextSize": 60
         },
         {
           "id": "itm_1782663095663_777",
@@ -612,7 +690,8 @@
           "relativeY": 135,
           "showTextBg": true,
           "textBgStyle": "dark-matte",
-          "subtext": "sadasdasda"
+          "subtext": "sadasdasda",
+          "iconTextSize": 60
         },
         {
           "id": "itm_1782663096643_773",
@@ -640,7 +719,8 @@
           "visible": true,
           "locked": false,
           "relativeX": 0,
-          "relativeY": 180
+          "relativeY": 180,
+          "iconTextSize": 60
         },
         {
           "id": "itm_1782663097708_870",
@@ -668,7 +748,8 @@
           "visible": true,
           "locked": false,
           "relativeX": 0,
-          "relativeY": 225
+          "relativeY": 225,
+          "iconTextSize": 60
         },
         {
           "id": "itm_1782663098112_231",
@@ -697,10 +778,11 @@
           "locked": false,
           "relativeX": 0,
           "relativeY": 270,
-          "showTextBg": false
+          "showTextBg": false,
+          "iconTextSize": 60
         }
       ],
-      "x": -54,
+      "x": -6,
       "y": 1059,
       "width": 1095,
       "height": 174,
@@ -730,12 +812,19 @@
       "h": 174,
       "padding": 11,
       "textAlign": "left",
+      "iconTextSize": 60,
       "renderScale": 3
     }
   ],
-  "updatedAt": "2026-06-29T15:50:24.499Z",
-  "__v": 746,
-  "savedAt": "2026-06-17T15:03:22.203Z",
+  "updatedAt": "2026-07-01T14:18:28.963Z",
+  "__v": 749,
+  "savedAt": "2026-07-01T14:18:28.943Z",
   "category": "all",
-  "isTemplate": false
+  "isTemplate": false,
+  "description": "",
+  "icon": "📋",
+  "isPremium": false,
+  "originalPrice": 0,
+  "price": 0,
+  "version": 2
 }

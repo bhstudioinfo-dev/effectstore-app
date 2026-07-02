@@ -6,6 +6,7 @@ class OBSService {
         this._isConnected = false;
         this._reconnectTimer = null;
         this._lastConfig = null;
+        this._triggerTokens = new Map();
 
         // Add event listeners for connection status
         this.obs.on('Identified', () => {
@@ -27,6 +28,34 @@ class OBSService {
             this._isConnected = false;
             console.error('❌ OBS WebSocket Connection Error:', err.message || err);
         });
+    }
+
+    createTriggerToken(effectId, durationMs) {
+        const token = `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+        this._triggerTokens.set(token, {
+            effectId: String(effectId || ''),
+            durationMs,
+            expiresAt: Date.now() + Math.max(durationMs, 1000) + 30000,
+            used: false
+        });
+        return token;
+    }
+
+    consumeTriggerToken(token, effectId) {
+        const entry = this._triggerTokens.get(String(token || ''));
+        if (!entry || entry.used || entry.effectId !== String(effectId || '') || entry.expiresAt < Date.now()) {
+            return null;
+        }
+        entry.used = true;
+        this._triggerTokens.set(token, entry);
+        return entry;
+    }
+
+    cleanupTriggerTokens() {
+        const now = Date.now();
+        for (const [token, entry] of this._triggerTokens.entries()) {
+            if (entry.used || entry.expiresAt < now) this._triggerTokens.delete(token);
+        }
     }
 
     async connect(host = '127.0.0.1', port = 4455, password = 'obs123') {
@@ -68,9 +97,15 @@ class OBSService {
         }, 5000);
     }
 
-    async triggerOBSEffect(effectId, duration = 3000) {
+    async triggerOBSEffect(effectId, duration) {
         if (!this._isConnected) {
             console.error('OBS not connected');
+            return false;
+        }
+
+        const durationValue = Number(duration);
+        if (!Number.isFinite(durationValue) || durationValue <= 0) {
+            console.warn(`Skipping OBS effect ${effectId}: missing valid duration`);
             return false;
         }
 
@@ -86,8 +121,11 @@ class OBSService {
             // 2. Prepare Source Info
             const sourceName = `effect_${effectId}`;
             const PORT = process.env.PORT || 9000;
+            const finalDuration = durationValue < 100 ? durationValue * 1000 : durationValue;
+            const triggerToken = this.createTriggerToken(effectId, finalDuration);
             // Add timestamp to force reload every time
-            const url = `http://localhost:${PORT}/api/obs/effect/${effectId}?t=${Date.now()}`;
+            const url = `http://localhost:${PORT}/api/obs/effect/${effectId}?t=${Date.now()}&duration=${encodeURIComponent(finalDuration)}&trigger=${encodeURIComponent(triggerToken)}`;
+            const blankUrl = `http://localhost:${PORT}/api/obs/effect/${effectId}?idle=1&t=${Date.now()}`;
             
             const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName: 'EffectStore' });
             let item = sceneItems.find(i => i.sourceName === sourceName);
@@ -98,7 +136,7 @@ class OBSService {
                     inputName: sourceName,
                     inputSettings: { 
                         url,
-                        restart_when_active: true,
+                        restart_when_active: false,
                         reroute_audio: true
                     }
                 });
@@ -110,7 +148,7 @@ class OBSService {
                     inputKind: 'browser_source',
                     inputSettings: { 
                         url, width: 1080, height: 1920, fps: 30, css: '',
-                        restart_when_active: true,
+                        restart_when_active: false,
                         reroute_audio: true
                     }
                 });
@@ -123,8 +161,6 @@ class OBSService {
             if (!item) return false;
 
             const sceneItemId = item.sceneItemId;
-            const finalDuration = duration < 100 ? duration * 1000 : duration;
-
             // 3. Trigger Visibility & Force Refresh
             await this.obs.call('SetSceneItemEnabled', {
                 sceneName: 'EffectStore', sceneItemId, sceneItemEnabled: true
@@ -148,6 +184,15 @@ class OBSService {
                     await this.obs.call('SetSceneItemEnabled', {
                         sceneName: 'EffectStore', sceneItemId, sceneItemEnabled: false
                     });
+                    await this.obs.call('SetInputSettings', {
+                        inputName: sourceName,
+                        inputSettings: {
+                            url: blankUrl,
+                            restart_when_active: false,
+                            reroute_audio: true
+                        }
+                    });
+                    this.cleanupTriggerTokens();
                 } catch (e) { console.error('Error disabling effect:', e); }
             }, finalDuration);
 

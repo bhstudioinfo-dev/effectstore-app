@@ -14,6 +14,13 @@ const UserSchema = new mongoose.Schema({
         purchasedAt: { type: Date, default: Date.now },
         licenseKey: { type: String }
     }],
+    customEffects: [{
+        localId: { type: String, required: true },
+        name: { type: String, required: true },
+        machineId: { type: String, required: true },
+        duration: { type: Number, required: true, min: 0.1 },
+        createdAt: { type: Date, default: Date.now }
+    }],
     totalSpent: { type: Number, default: 0 },
     totalUses: { type: Number, default: 0 },
     isAdmin: { type: Boolean, default: false }, // Added this as I saw it used in DB
