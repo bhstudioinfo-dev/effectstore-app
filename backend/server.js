@@ -87,7 +87,10 @@ try {
         ws.on('message', (raw) => {
             try {
                 const packet = JSON.parse(raw.toString() || '{}');
-                // process other socket messages if any
+                // Phase 2A infrastructure only. These events do not trigger media.
+                if (packet.event === 'effect_player_ready' || packet.event === 'effect_player_play_finished') {
+                    broadcastToClients(packet.event, packet.data || {});
+                }
             } catch (error) {
                 console.error('⚠️ WebSocket message ignored:', error.message);
             }
@@ -134,6 +137,12 @@ app.get('/api/queue/status', (_req, res) => {
     res.json(effectQueue.getStatus());
 });
 
+app.post('/api/debug/test-effect-player', (_req, res) => {
+    const payload = { effectId: 'test', effectName: 'TEST EFFECT' };
+    broadcastToClients('effect_player_play_request', payload);
+    res.json({ success: true, event: 'effect_player_play_request', data: payload });
+});
+
 // Compatibility endpoint used by older renderer builds
 app.post('/api/effect-requests', async (req, res) => {
     try {
@@ -155,10 +164,11 @@ app.get('/api/system/status', async (req, res) => {
     try {
         const tiktokService = require('./services/tiktokService');
         const obsService = require('./services/obsService');
+        const obsSources = await obsService.getFoundationSourceStatus();
         res.json({
             success: true,
             tiktok: { connected: tiktokService.isConnected() },
-            obs: { connected: obsService.isConnected() },
+            obs: { connected: obsService.isConnected(), sources: obsSources },
             launcher: { connected: true }
         });
     } catch (error) {

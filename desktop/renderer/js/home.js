@@ -425,6 +425,13 @@ class EffectStoreApp {
             document.getElementById('status-sub-obs').textContent = 'Äang dÃ² tÃ¬m... Vui lÃ²ng má»Ÿ OBS';
         }
 
+        const obsDiagnostic = document.getElementById('obs-source-diagnostic');
+        const giftMenuStatus = document.getElementById('obs-source-gift-menu');
+        const effectPlayerStatus = document.getElementById('obs-source-effect-player');
+        if (obsDiagnostic) obsDiagnostic.style.display = data.obs?.connected ? 'block' : 'none';
+        if (giftMenuStatus) giftMenuStatus.textContent = data.obs?.sources?.gift_menu ? 'READY' : 'MISSING';
+        if (effectPlayerStatus) effectPlayerStatus.textContent = data.obs?.sources?.effect_player ? 'READY' : 'MISSING';
+
         // LAUNCHER
         const launcherCard = document.getElementById('status-card-launcher');
         if (data.launcher?.connected) {

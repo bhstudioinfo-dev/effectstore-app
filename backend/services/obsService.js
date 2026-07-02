@@ -16,6 +16,10 @@ class OBSService {
                 clearInterval(this._reconnectTimer);
                 this._reconnectTimer = null;
             }
+            // Phase 2A foundation only. Existing playback is not routed here.
+            this.ensureEffectPlayerSource().catch((error) => {
+                console.warn('Unable to prepare effect_player source:', error.message || error);
+            });
         });
 
         this.obs.on('ConnectionClosed', () => {
@@ -95,6 +99,54 @@ class OBSService {
                     .catch(() => {});
             }
         }, 5000);
+    }
+
+    async ensureEffectPlayerSource() {
+        if (!this._isConnected) return false;
+
+        const sceneName = 'EffectStore';
+        const sourceName = 'effect_player';
+        const sourceUrl = 'http://localhost:9000/effect-player-overlay.html';
+        const { scenes } = await this.obs.call('GetSceneList');
+
+        if (!scenes.some((scene) => scene.sceneName === sceneName)) {
+            await this.obs.call('CreateScene', { sceneName });
+        }
+
+        const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName });
+        if (sceneItems.some((item) => item.sourceName === sourceName)) return true;
+
+        await this.obs.call('CreateInput', {
+            sceneName,
+            inputName: sourceName,
+            inputKind: 'browser_source',
+            inputSettings: {
+                url: sourceUrl,
+                width: 1080,
+                height: 1920,
+                fps: 30,
+                css: '',
+                shutdown: false,
+                restart_when_active: false
+            }
+        });
+        console.log('Prepared future OBS browser source: effect_player');
+        return true;
+    }
+
+    async getFoundationSourceStatus() {
+        const status = { gift_menu: false, effect_player: false };
+        if (!this._isConnected) return status;
+
+        try {
+            const { inputs } = await this.obs.call('GetInputList');
+            const names = new Set(inputs.map((input) => input.inputName));
+            status.gift_menu = names.has('gift_menu_overlay') || names.has('gift_menu');
+            status.effect_player = names.has('effect_player');
+        } catch (error) {
+            console.warn('Unable to inspect OBS foundation sources:', error.message || error);
+        }
+        return status;
     }
 
     async triggerOBSEffect(effectId, duration) {
