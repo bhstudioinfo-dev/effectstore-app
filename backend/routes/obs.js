@@ -54,7 +54,7 @@ router.get('/effect-player-media/:effectId', async (req, res) => {
     try {
         const token = String(req.query.token || '');
         const payload = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        const allowedPurposes = new Set(['effect-player-preview', 'effect-player-test-mapping']);
+        const allowedPurposes = new Set(['effect-player-preview', 'effect-player-test-mapping', 'effect-player-live-mapping']);
         if (!allowedPurposes.has(payload.purpose) || String(payload.effectId) !== String(req.params.effectId)) {
             return res.status(403).json({ success: false, message: 'Liên kết xem thử không hợp lệ.' });
         }
@@ -261,8 +261,9 @@ router.post('/setup-gift-menu', authMiddleware, async (_req, res) => {
 
         const PORT = process.env.PORT || 9000;
         const sceneName = 'EffectStore';
-        const sourceName = 'gift_menu_overlay';
-        const url = `http://localhost:${PORT}/overlay/gift-menu/?t=${Date.now()}`;
+        const defaultSourceName = 'gift_menu_overlay';
+        const giftMenuSourceNames = ['gift_menu_overlay', 'gift_menu'];
+        const url = `http://localhost:${PORT}/gift-menu-overlay.html?t=${Date.now()}`;
         let sourceWidth = 1080;
         let sourceHeight = 1920;
         try {
@@ -283,7 +284,8 @@ router.post('/setup-gift-menu', authMiddleware, async (_req, res) => {
         }
 
         const { sceneItems } = await obsService.obs.call('GetSceneItemList', { sceneName });
-        let item = sceneItems.find((x) => x.sourceName === sourceName);
+        let item = sceneItems.find((x) => giftMenuSourceNames.includes(x.sourceName));
+        const sourceName = item?.sourceName || defaultSourceName;
 
         if (!item) {
             await obsService.obs.call('CreateInput', {
@@ -353,7 +355,7 @@ router.post('/setup-gift-menu', authMiddleware, async (_req, res) => {
             success: true,
             sceneName,
             sourceName,
-            overlayUrl: `http://localhost:${PORT}/overlay/gift-menu/`
+            overlayUrl: `http://localhost:${PORT}/gift-menu-overlay.html`
         });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
@@ -394,6 +396,88 @@ router.get('/sources', authMiddleware, async (req, res) => {
         res.json({ success: true, sources });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// Repair OBS Sources
+router.post('/repair-sources', authMiddleware, async (req, res) => {
+    try {
+        if (!obsService.isConnected()) {
+            const config = await getObsConnectionConfig();
+            await obsService.connect(config.host, config.port, config.password);
+        }
+
+        if (!obsService.isConnected()) {
+            return res.status(503).json({ success: false, message: 'OBS chưa kết nối' });
+        }
+
+        const sceneName = 'EffectStore';
+        
+        // 1. Ensure scene exists
+        const { scenes } = await obsService.obs.call('GetSceneList');
+        const sceneExists = scenes.find((s) => s.sceneName === sceneName);
+        if (!sceneExists) {
+            await obsService.obs.call('CreateScene', { sceneName });
+        }
+
+        const { sceneItems } = await obsService.obs.call('GetSceneItemList', { sceneName });
+        const existingSources = new Set(sceneItems.map(item => item.sourceName));
+
+        const report = {
+            effect_player: { status: 'ok', repaired: false },
+            gift_menu_overlay: { status: 'ok', repaired: false }
+        };
+
+        // 2. Check and repair effect_player
+        const effectPlayerExists = existingSources.has('effect_player');
+        if (!effectPlayerExists) {
+            await obsService.ensureEffectPlayerSource();
+            report.effect_player.status = 'repaired';
+            report.effect_player.repaired = true;
+        }
+
+        // 3. Check and repair gift_menu_overlay / gift_menu
+        const giftMenuSourceNames = ['gift_menu_overlay', 'gift_menu'];
+        const giftMenuExists = sceneItems.some((x) => giftMenuSourceNames.includes(x.sourceName));
+
+        if (!giftMenuExists) {
+            const PORT = process.env.PORT || 9000;
+            const url = `http://localhost:${PORT}/gift-menu-overlay.html?t=${Date.now()}`;
+            let sourceWidth = 1080;
+            let sourceHeight = 1920;
+            try {
+                const layoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
+                const layout = JSON.parse(fs.readFileSync(layoutPath, 'utf8'));
+                const width = Number(layout?.exportSize?.width);
+                const height = Number(layout?.exportSize?.height);
+                if (width >= 320 && width <= 7680 && height >= 320 && height <= 7680) {
+                    sourceWidth = Math.round(width);
+                    sourceHeight = Math.round(height);
+                }
+            } catch (_e) {}
+
+            await obsService.obs.call('CreateInput', {
+                sceneName,
+                inputName: 'gift_menu_overlay',
+                inputKind: 'browser_source',
+                inputSettings: {
+                    url,
+                    width: sourceWidth,
+                    height: sourceHeight,
+                    fps: 60,
+                    fps_custom: true,
+                    css: '',
+                    shutdown: false,
+                    restart_when_active: true
+                }
+            });
+            report.gift_menu_overlay.status = 'repaired';
+            report.gift_menu_overlay.repaired = true;
+        }
+
+        res.json({ success: true, report });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

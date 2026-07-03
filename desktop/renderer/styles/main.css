@@ -8,8 +8,8 @@
 @font-face { font-family: 'Inter'; src: url('../../assets/fonts/Inter_18pt-Bold.ttf') format('truetype'); font-weight: 700; }
 @font-face { font-family: 'Inter'; src: url('../../assets/fonts/Inter_18pt-ExtraBold.ttf') format('truetype'); font-weight: 800; }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { overflow-y: auto !important; }
+* { margin: 0; padding: 0; box-sizing: border-box; overflow-anchor: none !important; }
+html, body { overflow-y: auto !important; overflow-anchor: none !important; }
 body { 
     font-family: 'Inter', sans-serif; 
     background: radial-gradient(circle at 20% 20%, rgba(255,0,150,0.08), transparent 40%),

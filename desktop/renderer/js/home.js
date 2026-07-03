@@ -1,4 +1,4 @@
-﻿console.log("JS LOADED OK 🔥");
+console.log("JS LOADED OK 🔥");
 
 // Global Navigation Function
 function navigateTo(url) {
@@ -38,6 +38,11 @@ class EffectStoreApp {
         this.isTTSGiftEnabled = localStorage.getItem('es_tts_gift_enabled') !== 'false';
         this.isTTSFollowEnabled = localStorage.getItem('es_tts_follow_enabled') !== 'false';
         this.ttsThreshold = parseInt(localStorage.getItem('es_tts_threshold') || '10');
+        this.ttsVoice = localStorage.getItem('es_tts_voice') || 'default';
+        this.ttsSpeed = parseFloat(localStorage.getItem('es_tts_speed') || '1.0');
+        this.ttsPitch = parseFloat(localStorage.getItem('es_tts_pitch') || '1.0');
+        this.ttsTemplate = localStorage.getItem('es_tts_template') || 'Cảm ơn {username} đã tặng {quantity} {giftName} ❤️';
+        this.ttsFollowTemplate = localStorage.getItem('es_tts_follow_template') || 'Cảm ơn {username} đã follow kênh nhé! ❤️';
         this.pendingDonors = new Map(); // userId -> {nickname, giftName, timestamp}
         this.ttsVolume = parseFloat(localStorage.getItem('es_tts_volume') || '1.0');
 
@@ -49,13 +54,26 @@ class EffectStoreApp {
         // Load danh sách giọng khi thay đổi
         window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
 
-        // Thêm lắng nghe phím Enter để mapping
+                // Thêm lắng nghe phím Enter để mapping
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && this.currentView === 'gift-mapping') {
-                if (this.selectedGift && this.selectedEffect) {
+                if (this.selectedGift && this.selectedEffects && this.selectedEffects.length > 0) {
                     this.createMapping();
                 }
             }
+        });
+
+
+        // Close dropdowns on document click
+        document.addEventListener('click', () => {
+            const varMenu = document.getElementById('variable-menu-dropdown');
+            if (varMenu) varMenu.style.display = 'none';
+            const tempMenu = document.getElementById('template-menu-dropdown');
+            if (tempMenu) tempMenu.style.display = 'none';
+            const followVarMenu = document.getElementById('follow-variable-menu-dropdown');
+            if (followVarMenu) followVarMenu.style.display = 'none';
+            const followTempMenu = document.getElementById('follow-template-menu-dropdown');
+            if (followTempMenu) followTempMenu.style.display = 'none';
         });
 
         this.init();
@@ -860,44 +878,205 @@ class EffectStoreApp {
 
     // ===== TEXT TO SPEECH (TTS) =====
     loadVoices() {
-        const voiceSelect = document.getElementById('settings-tts-voice');
-        if (!voiceSelect) return;
-
-        const voices = window.speechSynthesis.getVoices();
-        const viVoices = voices.filter(v => v.lang.includes('vi'));
-
-        voiceSelect.innerHTML = viVoices.map(v =>
-            `<option value="${v.name}" ${v.name === this.selectedVoiceName ? 'selected' : ''}>${v.name}</option>`
-        ).join('');
-
-        if (viVoices.length > 0 && !this.selectedVoiceName) {
-            this.selectedVoiceName = viVoices[0].name;
-        }
+        // No-op: voice selection has been dropped. Standard Google TTS is used.
     }
 
     // ===== TEXT TO SPEECH (TTS) =====
-    async speakText(text) {
+    async speakText(text, isTest = false) {
         if (!text) return;
         try {
             const response = await fetch(`${this.API_URL}/api/tiktok/usage/tts`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${this.authToken}` }
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`
+                },
+                body: JSON.stringify({ isTest })
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok || !data.success) {
-                if (!this.handlePlanLimit(data, 'tts') && response.status !== 409) {
-                    this.showNotification('error', data.message || 'Không thể sử dụng TTS lúc này');
+                if (isTest) {
+                    if (response.status === 409) {
+                        this.showNotification('error', 'Giọng đọc đang bận, thử lại sau vài giây.');
+                    } else {
+                        this.showNotification('error', 'Không thể phát thử giọng đọc.');
+                    }
+                } else {
+                    if (!this.handlePlanLimit(data, 'tts') && response.status !== 409) {
+                        this.showNotification('error', data.message || 'Không thể sử dụng TTS lúc này');
+                    }
                 }
                 return;
             }
         } catch (_error) {
-            this.showNotification('error', 'Không thể kiểm tra lượt TTS');
+            if (isTest) {
+                this.showNotification('error', 'Không thể phát thử giọng đọc.');
+            } else {
+                this.showNotification('error', 'Không thể kiểm tra lượt TTS');
+            }
             return;
         }
         this.ttsQueue.push(text);
         if (!this.isProcessingTTS) {
             this.processTTSQueue();
         }
+    }
+
+    toggleVariableMenu(event) {
+        event.stopPropagation();
+        const dropdown = document.getElementById('variable-menu-dropdown');
+        if (dropdown) {
+            const isVisible = dropdown.style.display === 'block';
+            const templateDropdown = document.getElementById('template-menu-dropdown');
+            if (templateDropdown) templateDropdown.style.display = 'none';
+            dropdown.style.display = isVisible ? 'none' : 'block';
+        }
+    }
+
+    insertVariable(variable) {
+        const textarea = document.getElementById('settings-tts-template');
+        if (textarea) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            textarea.value = text.substring(0, start) + variable + text.substring(end);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+            this.savePreferences();
+        }
+        const dropdown = document.getElementById('variable-menu-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    }
+
+    toggleTemplateMenu(event) {
+        event.stopPropagation();
+        const dropdown = document.getElementById('template-menu-dropdown');
+        if (dropdown) {
+            const isVisible = dropdown.style.display === 'block';
+            const variableDropdown = document.getElementById('variable-menu-dropdown');
+            if (variableDropdown) variableDropdown.style.display = 'none';
+            dropdown.style.display = isVisible ? 'none' : 'block';
+        }
+    }
+
+    applyVoiceTemplate(id) {
+        let templateText = "";
+        switch (id) {
+            case 1:
+                templateText = "Cảm ơn {username} đã tặng {giftName} ❤️";
+                break;
+            case 2:
+                templateText = "Wow, cảm ơn {username} đã tặng {quantity} {giftName}, tuyệt vời quá!";
+                break;
+            case 3:
+                templateText = "Cảm ơn {username} nha, chúc bạn một ngày thật nhiều niềm vui.";
+                break;
+            case 4:
+                templateText = "Yêu quá, cảm ơn {username} đã tặng quà cho mình nha.";
+                break;
+            default:
+                templateText = "Cảm ơn {username} đã tặng {quantity} {giftName} ❤️";
+        }
+        const textarea = document.getElementById('settings-tts-template');
+        if (textarea) {
+            textarea.value = templateText;
+            this.savePreferences();
+        }
+        const dropdown = document.getElementById('template-menu-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    }
+
+    testVoicePreview() {
+        this.savePreferences();
+        
+        const templateText = this.ttsTemplate || 'Cảm ơn {username} đã tặng {quantity} {giftName} ❤️';
+        if (!templateText.trim()) {
+            this.showNotification('error', 'Vui lòng kiểm tra lại nội dung mẫu thoại.');
+            return;
+        }
+
+        const processedText = templateText
+            .replace(/{username}/g, "Nguyễn Văn A")
+            .replace(/{giftName}/g, "Hoa Hồng")
+            .replace(/{quantity}/g, "10")
+            .replace(/{coin}/g, "10");
+
+        this.speakText(processedText, true);
+    }
+
+    toggleFollowVariableMenu(event) {
+        event.stopPropagation();
+        const dropdown = document.getElementById('follow-variable-menu-dropdown');
+        if (dropdown) {
+            const isVisible = dropdown.style.display === 'block';
+            const templateDropdown = document.getElementById('follow-template-menu-dropdown');
+            if (templateDropdown) templateDropdown.style.display = 'none';
+            dropdown.style.display = isVisible ? 'none' : 'block';
+        }
+    }
+
+    insertFollowVariable(variable) {
+        const textarea = document.getElementById('settings-tts-follow-template');
+        if (textarea) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            textarea.value = text.substring(0, start) + variable + text.substring(end);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+            this.savePreferences();
+        }
+        const dropdown = document.getElementById('follow-variable-menu-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    }
+
+    toggleFollowTemplateMenu(event) {
+        event.stopPropagation();
+        const dropdown = document.getElementById('follow-template-menu-dropdown');
+        if (dropdown) {
+            const isVisible = dropdown.style.display === 'block';
+            const variableDropdown = document.getElementById('follow-variable-menu-dropdown');
+            if (variableDropdown) variableDropdown.style.display = 'none';
+            dropdown.style.display = isVisible ? 'none' : 'block';
+        }
+    }
+
+    applyFollowVoiceTemplate(id) {
+        let templateText = "";
+        switch (id) {
+            case 1:
+                templateText = "Cảm ơn {username} đã follow kênh nhé! ❤️";
+                break;
+            case 2:
+                templateText = "Chào mừng {username} đã ghé thăm phòng live của mình!";
+                break;
+            case 3:
+                templateText = "Welcome {username}! Chúc bạn xem live vui vẻ nhé!";
+                break;
+            default:
+                templateText = "Cảm ơn {username} đã follow kênh nhé! ❤️";
+        }
+        const textarea = document.getElementById('settings-tts-follow-template');
+        if (textarea) {
+            textarea.value = templateText;
+            this.savePreferences();
+        }
+        const dropdown = document.getElementById('follow-template-menu-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+    }
+
+    testFollowVoicePreview() {
+        this.savePreferences();
+        
+        const templateText = this.ttsFollowTemplate || 'Cảm ơn {username} đã follow kênh nhé! ❤️';
+        if (!templateText.trim()) {
+            this.showNotification('error', 'Vui lòng kiểm tra lại nội dung mẫu thoại.');
+            return;
+        }
+
+        const processedText = templateText.replace(/{username}/g, "Nguyễn Văn A");
+
+        this.speakText(processedText, true);
     }
 
     async processTTSQueue() {
@@ -914,23 +1093,23 @@ class EffectStoreApp {
 
             this.currentAudio = new Audio(googleTTSUrl);
             this.currentAudio.volume = this.ttsVolume;
+            this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
 
-            // Chờ âm thanh phát xong mới chuyển sang câu tiếp theo
             this.currentAudio.onended = () => {
                 this.processTTSQueue();
             };
 
             this.currentAudio.onerror = () => {
-                console.error('TTS Error, skipping...');
+                console.error('Google TTS Error, skipping...');
                 this.processTTSQueue();
             };
 
             await this.currentAudio.play().catch(e => {
-                if (e.name !== 'AbortError') console.error('TTS Play Error:', e);
+                if (e.name !== 'AbortError') console.error('Google TTS Play Error:', e);
             });
-            console.log('🗣️ Đang phát TTS:', text);
+            console.log('🗣️ Đang phát Google TTS:', text);
         } catch (error) {
-            console.error('TTS Play Error:', error);
+            console.error('Google TTS Play Error:', error);
             this.processTTSQueue();
         }
     }
@@ -2652,12 +2831,126 @@ class EffectStoreApp {
     }
 
     // ===== GIFT MAPPING FUNCTIONS =====
-    initGiftMapping() {
+        initGiftMapping() {
         this.connectWebSocket();
         this.loadGifts();
         this.loadEffectsForMapping();
         this.loadMappings();
+        this.startEffectQueueStatusPolling();
     }
+
+    startEffectQueueStatusPolling() {
+        this.stopEffectQueueStatusPolling();
+        this.refreshEffectQueueStatus();
+        this.effectQueueStatusInterval = setInterval(() => {
+            if (this.currentView !== 'gift-mapping') {
+                this.stopEffectQueueStatusPolling();
+                return;
+            }
+            this.refreshEffectQueueStatus();
+        }, 500);
+    }
+
+    stopEffectQueueStatusPolling() {
+        if (this.effectQueueStatusInterval) {
+            clearInterval(this.effectQueueStatusInterval);
+            this.effectQueueStatusInterval = null;
+        }
+    }
+
+    isEffectQueueBusy() {
+        return this.effectQueueStatus?.status && this.effectQueueStatus.status !== 'idle';
+    }
+
+    async refreshEffectQueueStatus() {
+        try {
+            const res = await fetch(`${this.API_URL}/api/queue/status`);
+            if (!res.ok) return;
+            const status = await res.json();
+            this.effectQueueStatus = status;
+            if (!this.isEffectQueueBusy()) {
+                this.activeTestMappingId = null;
+            }
+            this.updateMappingTestButtons();
+
+            // Update Queue Status Panel UI
+            const panel = document.getElementById('queue-status-panel');
+            if (panel) {
+                const isBusy = status && status.status !== 'idle';
+                const currentEffect = document.getElementById('queue-current-effect');
+                const currentDetails = document.getElementById('queue-current-details');
+                const currentTime = document.getElementById('queue-current-time');
+                const currentType = document.getElementById('queue-current-type');
+                const lengthInfo = document.getElementById('queue-length-info');
+                const nextEffect = document.getElementById('queue-next-effect');
+
+                if (isBusy) {
+                    if (currentEffect) currentEffect.textContent = status.currentEffectName || '--';
+                    if (currentDetails) {
+                        const sender = status.currentSender || 'System';
+                        const gift = status.currentGiftName ? `${status.currentGiftName} (x${status.currentQuantity})` : '--';
+                        currentDetails.textContent = `Người gửi: ${sender} | Quà: ${gift}`;
+                    }
+                    if (currentTime) {
+                        const remSec = (Math.max(0, status.remainingMs || 0) / 1000).toFixed(1);
+                        currentTime.textContent = `${remSec}s`;
+                    }
+                    if (currentType) {
+                        const typeText = status.currentPlaybackType === 'live_mapping' ? 'TikTok Live' : 
+                                         status.currentPlaybackType === 'test_mapping' ? 'Test Mapping' : 
+                                         status.currentPlaybackType === 'preview_effect' ? 'Xem thử' : 'OBS Layer';
+                        currentType.textContent = `Loại: ${typeText}`;
+                    }
+                    if (lengthInfo) {
+                        lengthInfo.textContent = `${status.queueLength || 0} đang chờ`;
+                    }
+                    if (nextEffect) {
+                        nextEffect.textContent = status.nextEffectName ? `Tiếp theo: ${status.nextEffectName}` : 'Tiếp theo: --';
+                    }
+                } else {
+                    if (currentEffect) currentEffect.textContent = 'Nhàn rỗi';
+                    if (currentDetails) currentDetails.textContent = 'Hàng đợi đang rảnh, sẵn sàng chạy hiệu ứng.';
+                    if (currentTime) currentTime.textContent = '0.0s';
+                    if (currentType) currentType.textContent = 'Loại: --';
+                    if (lengthInfo) lengthInfo.textContent = '0 đang chờ';
+                    if (nextEffect) nextEffect.textContent = 'Tiếp theo: --';
+                }
+            }
+        } catch (error) {
+            console.warn('Queue status check failed:', error);
+        }
+    }
+
+    updateMappingTestButtons() {
+        const buttons = document.querySelectorAll('.btn-test[data-mapping-id]');
+        if (!buttons.length) return;
+
+        const busy = this.isEffectQueueBusy();
+        const remainingSeconds = Math.max(0, Number(this.effectQueueStatus?.remainingMs || 0) / 1000).toFixed(1);
+        const queueLength = Number(this.effectQueueStatus?.queueLength || 0);
+        const busyLabel = queueLength > 0 ? `⏳ Đang chạy (${queueLength} chờ)` : `⏳ ${remainingSeconds}s`;
+
+        buttons.forEach((btn) => {
+            const defaultLabel = btn.dataset.defaultLabel || '▶ Test';
+            const mappingId = btn.dataset.mappingId;
+            const isActiveTest = this.activeTestMappingId && mappingId === this.activeTestMappingId;
+
+            if (isActiveTest) return;
+
+            btn.disabled = busy;
+            btn.style.cursor = busy ? 'not-allowed' : 'pointer';
+            btn.style.opacity = busy && !isActiveTest ? '0.55' : '';
+
+            if (busy) {
+                btn.innerHTML = isActiveTest ? busyLabel : '⏸ Đang bận';
+            } else {
+                btn.innerHTML = defaultLabel;
+                btn.style.background = '';
+                btn.style.transition = '0.3s';
+            }
+        });
+    }
+
 
     connectWebSocket() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
@@ -2901,14 +3194,12 @@ class EffectStoreApp {
                             });
                         }
 
-                        item.addEventListener('click', () => {
+                                                item.addEventListener('click', () => {
                             const effectId = item.getAttribute('data-effect-id');
                             const effectName = item.getAttribute('data-effect-name') || item.querySelector('.effect-mapping-name').textContent.trim();
-                            this.selectEffect(effectId, effectName);
-
-                            effectItems.forEach(i => i.style.border = '1px solid rgba(255,255,255,0.1)');
-                            item.style.border = '1px solid var(--primary)';
+                            this.selectEffect(effectId, effectName, item);
                         });
+
                     });
                 }, 100);
             } else {
@@ -2918,51 +3209,132 @@ class EffectStoreApp {
             console.error('❌ Load effects mapping error:', e);
         }
     }
-    selectGift(id, name, icon) {
+        selectGift(id, name, icon) {
         this.selectedGift = { id, name, icon };
         document.querySelectorAll('.gift-item').forEach(el => el.classList.remove('selected'));
-        event.currentTarget.classList.add('selected');
-
-        if (this.selectedEffect) {
-            this.showNotification('info', '⌨️ Nhấn ENTER để xác nhận Mapping');
+        if (event && event.currentTarget) {
+            event.currentTarget.classList.add('selected');
         }
+        this.updateMappingConfigPanel();
     }
 
-    selectEffect(id, name) {
-        this.selectedEffect = { id, name };
-        document.querySelectorAll('.effect-mapping-item').forEach(el => el.classList.remove('selected'));
-        event.currentTarget.classList.add('selected');
-
-        if (this.selectedGift) {
-            this.showNotification('info', '⌨️ Nhấn ENTER để xác nhận Mapping');
+    selectEffect(id, name, element) {
+        if (!this.selectedEffects) this.selectedEffects = [];
+        const idx = this.selectedEffects.findIndex(x => x.id === id);
+        const itemEl = element || (event && event.currentTarget);
+        
+        if (idx >= 0) {
+            this.selectedEffects.splice(idx, 1);
+            if (itemEl) {
+                itemEl.classList.remove('selected');
+                itemEl.style.border = '';
+            }
+        } else {
+            this.selectedEffects.push({ id, name });
+            if (itemEl) {
+                itemEl.classList.add('selected');
+                itemEl.style.border = '1px solid var(--primary)';
+            }
         }
+        this.selectedEffect = this.selectedEffects[0] || null;
+        this.updateMappingConfigPanel();
     }
 
-    async createMapping() {
-        if (!this.selectedGift || !this.selectedEffect) return;
+    updateMappingConfigPanel() {
+        const panel = document.getElementById('mapping-config-panel');
+        if (!panel) return;
+        
+        if (this.selectedGift && this.selectedEffects && this.selectedEffects.length > 0) {
+            panel.style.display = 'block';
+            
+            const giftEl = document.getElementById('config-selected-gift');
+            const effectEl = document.getElementById('config-selected-effects');
+            if (giftEl) {
+                const isImg = this.selectedGift.icon && (
+                    this.selectedGift.icon.includes('/') ||
+                    this.selectedGift.icon.includes('.') ||
+                    this.selectedGift.icon.startsWith('http')
+                );
+                const iconHtml = isImg
+                    ? `<img src="${this.selectedGift.icon.startsWith('http') ? this.selectedGift.icon : this.API_URL + this.selectedGift.icon}" style="width:24px;height:24px;object-fit:contain;border-radius:4px;vertical-align:middle;margin-right:6px;">`
+                    : `<span style="font-size:20px;vertical-align:middle;margin-right:6px;">${this.selectedGift.icon || '🎁'}</span>`;
+                
+                giftEl.innerHTML = `${iconHtml}<span style="vertical-align:middle;font-weight:700;">${this.selectedGift.name}</span>`;
+            }
+            if (effectEl) {
+                const names = this.selectedEffects.map(x => x.name).join(', ');
+                effectEl.textContent = names;
+                effectEl.title = names;
+            }
+            
+            const modeField = document.getElementById('config-playback-mode-field');
+            if (modeField) {
+                modeField.style.display = this.selectedEffects.length > 1 ? 'block' : 'none';
+            }
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+    
+    clearSelection() {
+        this.selectedGift = null;
+        this.selectedEffect = null;
+        this.selectedEffects = [];
+        document.querySelectorAll('.gift-item.selected, .effect-mapping-item.selected').forEach(el => {
+            el.classList.remove('selected');
+            if (el.classList.contains('effect-mapping-item')) {
+                el.style.border = '';
+            }
+        });
+        this.updateMappingConfigPanel();
+    }
+
+
+        async createMapping() {
+        if (!this.selectedGift || !this.selectedEffects || this.selectedEffects.length === 0) return;
         try {
+            const cooldownVal = document.getElementById('mapping-cooldown')?.value || 0;
+            const cooldownActionVal = document.getElementById('mapping-cooldown-action')?.value || 'queue';
+            const minQtyVal = document.getElementById('mapping-min-qty')?.value || 1;
+            const maxQtyVal = document.getElementById('mapping-max-qty')?.value || '';
+            const exactQtyVal = document.getElementById('mapping-exact-qty')?.value || '';
+            const modeVal = document.getElementById('mapping-playback-mode')?.value || 'random';
+
+            const payload = {
+                giftId: this.selectedGift.id, 
+                giftName: this.selectedGift.name, 
+                giftIcon: this.selectedGift.icon,
+                effectId: this.selectedEffects[0].id, 
+                effectName: this.selectedEffects[0].name,
+                effects: this.selectedEffects.map(x => ({ effectId: x.id, effectName: x.name })),
+                playbackMode: modeVal,
+                minQuantity: minQtyVal ? Number(minQtyVal) : 1,
+                maxQuantity: maxQtyVal ? Number(maxQtyVal) : null,
+                exactQuantity: exactQtyVal ? Number(exactQtyVal) : null,
+                cooldown: cooldownVal ? Number(cooldownVal) : 0,
+                cooldownAction: cooldownActionVal
+            };
+
             const res = await fetch(`${this.API_URL}/api/tiktok/map-gift`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.authToken}`
                 },
-                body: JSON.stringify({
-                    giftId: this.selectedGift.id, giftName: this.selectedGift.name, giftIcon: this.selectedGift.icon,
-                    effectId: this.selectedEffect.id, effectName: this.selectedEffect.name
-                })
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', `✅ Mapping: ${this.selectedGift.name} → ${this.selectedEffect.name}`);
-                this.selectedGift = null; this.selectedEffect = null;
-                document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+                const names = this.selectedEffects.map(x => x.name).join(', ');
+                this.showNotification('success', `✅ Mapping: ${this.selectedGift.name} → ${names}`);
+                this.clearSelection();
                 this.loadMappings();
             } else if (!this.handlePlanLimit(data, 'mappings')) {
                 this.showNotification('error', data.message || data.error || 'Không thể tạo hiệu ứng gắn quà');
             }
         } catch (e) { this.showNotification('error', 'Lỗi: ' + e.message); }
     }
+
 
     async loadMappings() {
         try {
@@ -2996,29 +3368,61 @@ class EffectStoreApp {
                             ? `<img src="${giftIconUrl}" style="width:32px;height:32px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,0.05);padding:2px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/679/679821.png'">`
                             : `<span style="font-size:24px;">${m.giftIcon || '🎁'}</span>`;
 
+                                                let detailBadges = '';
+                        let badges = [];
+                        if (m.effects && m.effects.length > 1) {
+                            const modeText = m.playbackMode === 'sequential' ? 'Tuần tự' : 'Ngẫu nhiên';
+                            badges.push(`<span style="font-size:11px;color:#a78bfa;background:rgba(167,139,250,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(167,139,250,0.2);margin-left:6px;">Group: ${m.effects.length} effect (${modeText})</span>`);
+                        }
+                        
+                        // Quantity triggers
+                        if (m.exactQuantity !== undefined && m.exactQuantity !== null && m.exactQuantity > 0) {
+                            badges.push(`<span style="font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(251,191,36,0.2);margin-left:6px;">SL: chính xác ${m.exactQuantity}</span>`);
+                        } else if ((m.minQuantity && m.minQuantity > 1) || (m.maxQuantity !== undefined && m.maxQuantity !== null && m.maxQuantity > 0)) {
+                            let qtyText = '';
+                            if (m.minQuantity && m.maxQuantity) qtyText = `SL: ${m.minQuantity} - ${m.maxQuantity}`;
+                            else if (m.minQuantity) qtyText = `SL: >= ${m.minQuantity}`;
+                            else if (m.maxQuantity) qtyText = `SL: <= ${m.maxQuantity}`;
+                            badges.push(`<span style="font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(251,191,36,0.2);margin-left:6px;">${qtyText}</span>`);
+                        }
+                        
+                        // Cooldown
+                        if (m.cooldown && m.cooldown > 0) {
+                            const actionText = m.cooldownAction === 'ignore' ? 'Bỏ qua' : 'Đợi';
+                            badges.push(`<span style="font-size:11px;color:#ef4444;background:rgba(239,68,68,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(239,68,68,0.2);margin-left:6px;">Chờ: ${m.cooldown}s (${actionText})</span>`);
+                        }
+                        
+                        if (badges.length > 0) {
+                            detailBadges = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;width:100%;">${badges.join('')}</div>`;
+                        }
+
                         return `
-                                <div class="mapping-list-item">
-                                    <div class="mapping-info">
-                                        <div class="mapping-badge">
-                                            ${giftIconHtml}
-                                            <span style="font-size:14px;font-weight:600;">${m.giftName}</span>
+                                <div class="mapping-list-item" style="flex-wrap:wrap;height:auto;padding:12px 16px;">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+                                        <div class="mapping-info">
+                                            <div class="mapping-badge">
+                                                ${giftIconHtml}
+                                                <span style="font-size:14px;font-weight:600;">${m.giftName}</span>
+                                            </div>
+                                            <span style="color:var(--text-muted);font-size:16px;">▶</span>
+                                            <div class="mapping-badge" style="background:rgba(240,147,251,0.1);border-color:rgba(240,147,251,0.2);">
+                                                <span style="font-size:14px;font-weight:600;color:#f093fb;">${m.effects && m.effects.length > 0 ? (m.effects.map(x => x.effectName).join(', ')) : (m.effectName || 'Unknown')}</span>
+                                            </div>
                                         </div>
-                                        <span style="color:var(--text-muted);font-size:16px;">▶</span>
-                                        <div class="mapping-badge" style="background:rgba(240,147,251,0.1);border-color:rgba(240,147,251,0.2);">
-                                            <span style="font-size:14px;font-weight:600;color:#f093fb;">${m.effectName || 'Unknown'}</span>
+                                        <div class="mapping-actions">
+                                            <button class="btn-sm btn-test" data-mapping-id="${m._id}" data-default-label="▶ Test" onclick="app.testMapping(event, '${m._id}')">▶ Test</button>
+                                            <button class="btn-sm btn-delete" onclick="app.deleteMapping('${m._id}')">🗑️ Xóa</button>
                                         </div>
                                     </div>
-                                    <div class="mapping-actions">
-                                        <button class="btn-sm btn-test" onclick="app.testMapping(event, '${m._id}')">▶ Test</button>
-                                        <button class="btn-sm btn-delete" onclick="app.deleteMapping('${m._id}')">🗑️ Xóa</button>
-                                    </div>
+                                    ${detailBadges}
                                 </div>
-                            `}).join('');
+                            `
+}).join('');
                     console.log('✅ Rendered', data.mappings.length, 'mappings');
                 } else {
                     list.innerHTML = '<p style="text-align:center;color:var(--text-muted);">Chưa có mapping nào. Chọn gift và effect để tạo mapping!</p>';
                 }
-            } else {
+                        } else {
                 console.error('❌ No mappings data or list element not found');
             }
         } catch (e) {
@@ -3026,9 +3430,45 @@ class EffectStoreApp {
         }
     }
 
+    async repairOBSSources() {
+        const btn = document.getElementById('btn-repair-obs');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⚙️ Đang sửa...';
+        }
+        try {
+            const res = await fetch(`${this.API_URL}/api/obs/repair-sources`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`
+                }
+            });
+            const data = await res.json();
+            if (data.success) {
+                const rep = data.report;
+                const effectRep = rep.effect_player.repaired ? 'Đã sửa effect_player' : 'effect_player sẵn sàng';
+                const overlayRep = rep.gift_menu_overlay.repaired ? 'Đã sửa gift_menu_overlay' : 'gift_menu_overlay sẵn sàng';
+                this.showNotification('success', `🛠️ OBS Diagnostics: ${effectRep}, ${overlayRep}`);
+            } else {
+                this.showNotification('error', '❌ Lỗi sửa nguồn OBS: ' + (data.message || data.error));
+            }
+        } catch (e) {
+            this.showNotification('error', '❌ Lỗi kết nối sửa OBS: ' + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '🛠️ Sửa lỗi OBS';
+            }
+        }
+    }
+
+
     async testMapping(event, id) {
         const btn = event.currentTarget;
         if (btn.disabled) return;
+
+        btn.blur();
 
         const originalContent = btn.innerHTML;
 
@@ -3057,6 +3497,8 @@ class EffectStoreApp {
 
             this.showNotification('success', '🎬 Đã chạy thử hiệu ứng trên OBS!');
 
+            this.activeTestMappingId = id;
+
             const resolvedDuration = Number(data.duration);
             if (!Number.isFinite(resolvedDuration) || resolvedDuration <= 0) {
                 throw new Error('Server không trả về thời lượng hiệu ứng hợp lệ.');
@@ -3077,6 +3519,7 @@ class EffectStoreApp {
 
                 if (timeLeft <= 0) {
                     clearInterval(interval);
+                    this.activeTestMappingId = null;
                     btn.disabled = false;
                     btn.innerHTML = originalContent;
                     btn.style.background = '';
@@ -3087,6 +3530,7 @@ class EffectStoreApp {
             }, step);
         } catch (e) {
             this.showNotification('error', 'Lỗi test OBS: ' + e.message);
+            this.activeTestMappingId = null;
             btn.disabled = false;
             btn.innerHTML = originalContent;
             btn.style.background = '';
@@ -3157,10 +3601,21 @@ class EffectStoreApp {
         if (this.isTTSGiftEnabled) {
             setTimeout(() => {
                 const nickname = giftData.nickname || giftData.uniqueId || 'bạn';
-                this.speakText(`Cảm ơn ${nickname} đã tặng ${giftData.giftName}`);
+                const giftName = giftData.giftName || 'quà';
+                const quantity = giftData.repeatCount || giftData.quantity || 1;
+                const coin = (giftData.diamondCount || 0) * quantity;
+
+                let textToSpeak = this.ttsTemplate || 'Cảm ơn {username} đã tặng {quantity} {giftName} ❤️';
+                textToSpeak = textToSpeak
+                    .replace(/{username}/g, nickname)
+                    .replace(/{giftName}/g, giftName)
+                    .replace(/{quantity}/g, quantity)
+                    .replace(/{coin}/g, coin);
+
+                this.speakText(textToSpeak);
 
                 // Nếu đủ ngưỡng xu, đưa vào danh sách chờ đọc comment
-                if (giftData.diamondCount >= this.ttsThreshold) {
+                if ((giftData.diamondCount || 0) >= this.ttsThreshold) {
                     this.pendingDonors.set(giftData.userId, {
                         nickname: nickname,
                         timestamp: Date.now()
@@ -3178,7 +3633,9 @@ class EffectStoreApp {
         const nickname = data.nickname || data.uniqueId || 'bạn mới';
         this.showNotification('success', `👤 ${nickname} vừa Follow!`);
         if (this.isTTSFollowEnabled) {
-            this.speakText(`Cảm ơn ${nickname} đã follow kênh nhé!`);
+            let textToSpeak = this.ttsFollowTemplate || 'Cảm ơn {username} đã follow kênh nhé! ❤️';
+            textToSpeak = textToSpeak.replace(/{username}/g, nickname);
+            this.speakText(textToSpeak);
         }
     }
 
@@ -3325,6 +3782,15 @@ class EffectStoreApp {
         const ttsThresholdEl = document.getElementById('settings-tts-threshold');
         if (ttsThresholdEl) ttsThresholdEl.value = localStorage.getItem('es_tts_threshold') || '10';
 
+        const ttsSpeedEl = document.getElementById('settings-tts-speed');
+        if (ttsSpeedEl) ttsSpeedEl.value = localStorage.getItem('es_tts_speed') || '1.0';
+
+        const ttsTemplateEl = document.getElementById('settings-tts-template');
+        if (ttsTemplateEl) ttsTemplateEl.value = localStorage.getItem('es_tts_template') || 'Cảm ơn {username} đã tặng {quantity} {giftName} ❤️';
+
+        const ttsFollowTemplateEl = document.getElementById('settings-tts-follow-template');
+        if (ttsFollowTemplateEl) ttsFollowTemplateEl.value = localStorage.getItem('es_tts_follow_template') || 'Cảm ơn {username} đã follow kênh nhé! ❤️';
+
         const startupEl = document.getElementById('settings-run-startup');
         if (startupEl) startupEl.checked = localStorage.getItem('run_startup') === 'true';
 
@@ -3385,23 +3851,39 @@ class EffectStoreApp {
         const ttsGiftEl = document.getElementById('settings-tts-gift');
         const ttsFollowEl = document.getElementById('settings-tts-follow');
         const ttsThresholdEl = document.getElementById('settings-tts-threshold');
+        const ttsSpeedEl = document.getElementById('settings-tts-speed');
+        const ttsTemplateEl = document.getElementById('settings-tts-template');
+        const ttsFollowTemplateEl = document.getElementById('settings-tts-follow-template');
         const startupEl = document.getElementById('settings-run-startup');
 
         const sound = soundEl ? soundEl.checked : (localStorage.getItem('sound_alert') !== 'false');
         const ttsGift = ttsGiftEl ? ttsGiftEl.checked : (localStorage.getItem('es_tts_gift_enabled') !== 'false');
         const ttsFollow = ttsFollowEl ? ttsFollowEl.checked : (localStorage.getItem('es_tts_follow_enabled') !== 'false');
         const ttsThreshold = ttsThresholdEl ? ttsThresholdEl.value : (localStorage.getItem('es_tts_threshold') || '10');
+        const ttsSpeed = ttsSpeedEl ? ttsSpeedEl.value : (localStorage.getItem('es_tts_speed') || '1.0');
+        const ttsTemplate = ttsTemplateEl ? ttsTemplateEl.value : (localStorage.getItem('es_tts_template') || 'Cảm ơn {username} đã tặng {quantity} {giftName} ❤️');
+        const ttsFollowTemplate = ttsFollowTemplateEl ? ttsFollowTemplateEl.value : (localStorage.getItem('es_tts_follow_template') || 'Cảm ơn {username} đã follow kênh nhé! ❤️');
         const startup = startupEl ? startupEl.checked : (localStorage.getItem('run_startup') === 'true');
 
         localStorage.setItem('sound_alert', sound);
         localStorage.setItem('es_tts_gift_enabled', ttsGift);
         localStorage.setItem('es_tts_follow_enabled', ttsFollow);
         localStorage.setItem('es_tts_threshold', ttsThreshold);
+        localStorage.setItem('es_tts_voice', 'default');
+        localStorage.setItem('es_tts_speed', ttsSpeed);
+        localStorage.setItem('es_tts_pitch', '1.0');
+        localStorage.setItem('es_tts_template', ttsTemplate);
+        localStorage.setItem('es_tts_follow_template', ttsFollowTemplate);
         localStorage.setItem('run_startup', startup);
 
         this.isTTSGiftEnabled = ttsGift;
         this.isTTSFollowEnabled = ttsFollow;
         this.ttsThreshold = parseInt(ttsThreshold);
+        this.ttsVoice = 'default';
+        this.ttsSpeed = parseFloat(ttsSpeed);
+        this.ttsPitch = 1.0;
+        this.ttsTemplate = ttsTemplate;
+        this.ttsFollowTemplate = ttsFollowTemplate;
 
         this.showNotification('success', '✅ Lưu tùy chọn thành công!');
     }

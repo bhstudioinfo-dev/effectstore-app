@@ -8,6 +8,17 @@ const GiftMappingSchema = new mongoose.Schema({
     giftIcon: String,
     effectId: { type: String, required: true },
     effectName: String,
+    effects: [{
+        effectId: { type: String },
+        effectName: { type: String },
+        weight: { type: Number, default: 1 }
+    }],
+    playbackMode: { type: String, default: 'random' },
+    minQuantity: { type: Number, default: 1 },
+    maxQuantity: { type: Number, default: null },
+    exactQuantity: { type: Number, default: null },
+    cooldown: { type: Number, default: 0 },
+    cooldownAction: { type: String, default: 'queue' },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }

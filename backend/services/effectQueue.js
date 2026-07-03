@@ -1,19 +1,68 @@
 const obsService = require('./obsService');
+const playbackManager = require('./playbackManager');
+const eventBus = require('./eventBus');
 
 class EffectQueue {
     constructor() {
         this.queue = [];
-        this.isProcessing = false;
         this.broadcastFn = null;
-        this.current = null;
-        this.currentStartedAt = null;
-        this.currentEndsAt = null;
-        this.currentTimer = null;
-        this.pendingPlayerRequestId = null;
+        
+        // Listen to playback manager events to handle queue empty or queue updates
+        eventBus.on('effect_playback_finished', () => {
+            if (this.queue.length === 0) {
+                eventBus.emit('effect_queue_empty', { emittedAt: Date.now() });
+            }
+            this.process();
+        });
     }
 
     setBroadcastFn(fn) {
         this.broadcastFn = fn;
+        // Keep fallback broadcasting for backward compatibility with old listeners
+        if (typeof fn === 'function') {
+            eventBus.removeAllListeners('effect_playback_started_broadcast');
+            eventBus.removeAllListeners('effect_playback_finished_broadcast');
+            eventBus.removeAllListeners('effect_queue_empty_broadcast');
+            eventBus.removeAllListeners('effect_player_play_request_broadcast');
+
+            eventBus.on('effect_playback_started', (item) => {
+                fn('effect_playback_started', {
+                    effectId: item.effectId,
+                    effectName: item.effectName,
+                    playbackType: item.playbackType,
+                    duration: item.duration,
+                    startedAt: playbackManager.currentStartedAt || Date.now(),
+                    giftData: item.giftData || null
+                });
+            });
+
+            eventBus.on('effect_playback_finished', ({ item, reason }) => {
+                fn('effect_playback_finished', {
+                    effectId: item?.effectId,
+                    effectName: item?.effectName,
+                    playbackType: item?.playbackType,
+                    duration: item?.duration,
+                    startedAt: playbackManager.currentStartedAt,
+                    finishedAt: Date.now(),
+                    reason,
+                    queueLength: this.queue.length,
+                    nextEffectName: this.queue[0]?.effectName || null,
+                    giftData: item?.giftData || null
+                });
+            });
+
+            eventBus.on('effect_queue_empty', (data) => {
+                fn('effect_queue_empty', data);
+            });
+
+            eventBus.on('effect_player_play_request', (data) => {
+                fn('effect_player_play_request', data);
+            });
+
+            eventBus.on('queue_updated', (data) => {
+                fn('queue_updated', data);
+            });
+        }
     }
 
     normalizeDurationMs(duration) {
@@ -34,17 +83,22 @@ class EffectQueue {
             };
         const durationMs = this.normalizeDurationMs(input.duration);
         const effectId = String(input.effectId || '').trim();
-        if (!effectId || !durationMs) return null;
+        if (!effectId && (!input.effects || input.effects.length === 0)) return null;
+        if (effectId && !durationMs && (!input.effects || input.effects.length === 0)) return null;
 
         return {
+            mappingId: input.mappingId || null,
             effectId,
             effectName: input.effectName || effectId,
             effectUrl: input.effectUrl || null,
-            duration: durationMs,
+            duration: durationMs || 3000,
             playbackType: input.playbackType || 'live_mapping',
             priority: Number.isFinite(Number(input.priority)) ? Number(input.priority) : 0,
             createdAt: input.createdAt || Date.now(),
-            giftData: input.giftData || null
+            giftData: input.giftData || null,
+            effects: input.effects || [],
+            playbackMode: input.playbackMode || 'random',
+            userId: input.userId || null
         };
     }
 
@@ -55,105 +109,91 @@ class EffectQueue {
             console.warn(`Skipping effect ${effectId}: missing id or valid duration`);
             return false;
         }
-        if ((item.playbackType === 'test_mapping' || item.playbackType === 'preview_effect') && !item.effectUrl) {
-            console.warn(`Skipping ${item.playbackType} ${item.effectId}: missing effect URL`);
+
+        // Validate URLs for test or live mapping
+        if ((item.playbackType === 'test_mapping' || item.playbackType === 'preview_effect' || item.playbackType === 'live_mapping') && 
+            !item.effectUrl && (!item.effects || item.effects.length === 0)) {
+            console.warn(`Skipping ${item.playbackType} ${item.effectId}: missing effect URL/group`);
             return false;
         }
 
         console.log(`Adding to queue: ${item.effectId} (${item.duration}ms, ${item.playbackType})`);
+        
+        // High Traffic Extension Point
+        this.onBeforeEnqueue(item);
+
         this.queue.push(item);
-        if (!this.isProcessing) this.process();
+        
+        // Sort queue by priority desc, then createdAt asc
+        this.queue.sort((a, b) => (b.priority - a.priority) || (a.createdAt - b.createdAt));
+
+        eventBus.emit('queue_updated', this.getStatus());
+        
+        this.process();
         return true;
+    }
+
+    // Part 6 High Traffic Mode - Queue Extension Point
+    onBeforeEnqueue(item) {
+        // Placeholder for future aggregation logic:
+        // e.g. merge multiple consecutive small gifts into a single combo item
     }
 
     getStatus() {
         const now = Date.now();
         const next = this.queue[0] || null;
+        const currentPlayback = playbackManager.getCurrentPlayback();
         return {
-            status: this.current ? 'playing' : (this.queue.length ? 'queued' : 'idle'),
-            currentEffectId: this.current?.effectId || null,
-            currentEffectName: this.current?.effectName || null,
-            remainingMs: this.currentEndsAt ? Math.max(0, this.currentEndsAt - now) : 0,
+            status: currentPlayback ? 'playing' : (this.queue.length ? 'queued' : 'idle'),
+            currentPlaybackType: currentPlayback?.playbackType || null,
+            currentEffectId: currentPlayback?.effectId || null,
+            currentEffectName: currentPlayback?.effectName || null,
+            currentGiftName: currentPlayback?.giftData?.giftName || null,
+            currentSender: currentPlayback?.giftData?.nickname || currentPlayback?.giftData?.uniqueId || null,
+            currentQuantity: currentPlayback?.giftData?.repeatCount || 1,
+            remainingMs: playbackManager.getRemainingMs(),
             queueLength: this.queue.length,
-            nextEffectName: next?.effectName || null
+            nextPlaybackType: next?.playbackType || null,
+            nextEffectName: next?.effectName || null,
+            queue: this.queue.map(q => ({
+                effectId: q.effectId,
+                effectName: q.effectName,
+                playbackType: q.playbackType,
+                priority: q.priority,
+                createdAt: q.createdAt,
+                sender: q.giftData?.nickname || q.giftData?.uniqueId || 'System',
+                giftName: q.giftData?.giftName || null,
+                quantity: q.giftData?.repeatCount || 1
+            }))
         };
     }
 
-    clearCurrentAndContinue() {
-        if (this.currentTimer) clearTimeout(this.currentTimer);
-        this.currentTimer = null;
-        this.pendingPlayerRequestId = null;
-        this.current = null;
-        this.currentStartedAt = null;
-        this.currentEndsAt = null;
-        this.process();
-    }
-
     handleEffectPlayerEvent(event, data = {}) {
-        if (!this.current || !['test_mapping', 'preview_effect'].includes(this.current.playbackType)) return false;
-        if (!this.pendingPlayerRequestId || data.requestId !== this.pendingPlayerRequestId) return false;
-        if (event !== 'effect_player_play_finished' && event !== 'effect_player_play_failed') return false;
-
-        console.log(`[QUEUE] effect_player ${event === 'effect_player_play_finished' ? 'finished' : 'failed'}`);
-        this.clearCurrentAndContinue();
-        return true;
-    }
-
-    startEffectPlayerPlayback(item) {
-        const requestId = `${item.playbackType}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        this.pendingPlayerRequestId = requestId;
-        console.log(`[QUEUE] playbackType=${item.playbackType} → effect_player`);
-        console.log('[QUEUE] waiting for effect_player finish');
-
-        this.broadcastFn('effect_player_play_request', {
-            requestId,
-            effectId: item.effectId,
-            effectName: item.effectName,
-            effectUrl: item.effectUrl,
-            duration: item.duration,
-            playbackType: item.playbackType,
-            startedAt: Date.now()
+        const handled = playbackManager.handleEffectPlayerEvent(event, data, () => {
+            this.process();
         });
-
-        // Actual completion comes from effect_player_play_finished. This timeout
-        // is only a deadlock guard if the overlay disconnects or never responds.
-        this.currentTimer = setTimeout(() => {
-            if (this.pendingPlayerRequestId !== requestId) return;
-            console.warn('[QUEUE] effect_player safety timeout; continuing queue');
-            this.clearCurrentAndContinue();
-        }, item.duration + 3000);
+        if (handled) {
+            eventBus.emit('queue_updated', this.getStatus());
+        }
+        return handled;
     }
 
     async process() {
-        if (this.current) return;
+        if (playbackManager.isBusy()) return;
         if (this.queue.length === 0) {
-            this.isProcessing = false;
             return;
         }
 
-        this.isProcessing = true;
         const item = this.queue.shift();
-        this.current = item;
-        this.currentStartedAt = Date.now();
-        this.currentEndsAt = this.currentStartedAt + item.duration;
+        eventBus.emit('queue_updated', this.getStatus());
 
-        if (item.giftData && this.broadcastFn) this.broadcastFn('gift', item.giftData);
-
-        if (item.playbackType === 'test_mapping' || item.playbackType === 'preview_effect') {
-            if (typeof this.broadcastFn !== 'function') {
-                console.warn('[QUEUE] effect_player channel unavailable; skipping test mapping');
-                this.clearCurrentAndContinue();
-                return;
-            }
-            this.startEffectPlayerPlayback(item);
-            return;
+        if (item.giftData && this.broadcastFn) {
+            this.broadcastFn('gift', item.giftData);
         }
 
-        // Hybrid Phase 2C: real TikTok/simulated live mappings stay on the old
-        // per-effect OBS source architecture until a later migration phase.
-        console.log(`[QUEUE] playbackType=${item.playbackType} → legacy triggerOBSEffect`);
-        await obsService.triggerOBSEffect(item.effectId, item.duration);
-        this.currentTimer = setTimeout(() => this.clearCurrentAndContinue(), item.duration);
+        await playbackManager.play(item, () => {
+            this.process();
+        });
     }
 }
 

@@ -33,6 +33,12 @@
       height: 100vh;
       background: transparent;
       overflow: hidden;
+      opacity: 1;
+      transition: opacity 0.4s ease;
+    }
+
+    #overlay-root.gmd-effect-playback-hidden {
+      opacity: 0;
     }
 
   </style>
@@ -1416,6 +1422,9 @@
       opacity: .6 !important;
     }
   </style>
+</head>
+<body>
+  <div id="overlay-root"></div>
   <script>
     const auraMap = {
       'Glow': 'aura-glow',
@@ -1960,6 +1969,94 @@
     window.addEventListener('resize', () => loadAndRender(true));
     loadAndRender(true);
     setInterval(() => loadAndRender(false), 700);
+
+    let isSocketConnected = false;
+
+    function setGiftMenuPlaybackVisibility(isPlaybackActive) {
+      const root = document.getElementById('overlay-root');
+      if (!root) {
+        console.warn('[DEBUG] #overlay-root not found in DOM!');
+        return;
+      }
+      console.log('[DEBUG] setGiftMenuPlaybackVisibility:', isPlaybackActive);
+      root.classList.toggle('gmd-effect-playback-hidden', Boolean(isPlaybackActive));
+    }
+
+    function shouldFadeForPlayback(data) {
+      const type = data && (data.playbackType || data.currentPlaybackType);
+      const decision = type === 'live_mapping' || type === 'test_mapping';
+      console.log('[DEBUG] shouldFadeForPlayback: type =', type, 'decision =', decision, 'data =', data);
+      return decision;
+    }
+
+    async function syncGiftMenuPlaybackVisibility() {
+      try {
+        console.log('[DEBUG] syncGiftMenuPlaybackVisibility fetching...');
+        const res = await fetch('/api/queue/status', { cache: 'no-store' });
+        if (!res.ok) {
+          console.error('[DEBUG] fetch status not OK:', res.status);
+          return setGiftMenuPlaybackVisibility(false);
+        }
+        const status = await res.json();
+        const active = status.status === 'playing' && shouldFadeForPlayback(status);
+        console.log('[DEBUG] sync status result:', status, 'active =', active);
+        setGiftMenuPlaybackVisibility(active);
+      } catch (err) {
+        console.error('[DEBUG] sync status error:', err);
+        setGiftMenuPlaybackVisibility(false);
+      }
+    }
+
+    function connectGiftMenuPlaybackSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.hostname || 'localhost'}:9001`;
+      console.log('[DEBUG] connectGiftMenuPlaybackSocket to:', wsUrl);
+      const socket = new WebSocket(wsUrl);
+
+      socket.addEventListener('open', () => {
+        isSocketConnected = true;
+        console.log('[DEBUG] socket open');
+        syncGiftMenuPlaybackVisibility();
+      });
+      socket.addEventListener('message', (message) => {
+        try {
+          const packet = JSON.parse(message.data || '{}');
+          console.log('[DEBUG] socket packet:', packet);
+          if (packet.event === 'effect_playback_started' && shouldFadeForPlayback(packet.data)) {
+            setGiftMenuPlaybackVisibility(true);
+          } else if (packet.event === 'effect_player_play_request' && shouldFadeForPlayback(packet.data)) {
+            setGiftMenuPlaybackVisibility(true);
+          } else if (packet.event === 'effect_playback_finished' && shouldFadeForPlayback(packet.data) && !Number(packet.data?.queueLength || 0)) {
+            setGiftMenuPlaybackVisibility(false);
+          } else if (packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
+            syncGiftMenuPlaybackVisibility();
+          } else if (packet.event === 'effect_queue_empty') {
+            setGiftMenuPlaybackVisibility(false);
+          }
+        } catch (_error) {
+          console.error('[DEBUG] socket message error:', _error);
+        }
+      });
+      socket.addEventListener('close', () => {
+        isSocketConnected = false;
+        console.log('[DEBUG] socket close');
+        syncGiftMenuPlaybackVisibility();
+        window.setTimeout(connectGiftMenuPlaybackSocket, 3000);
+      });
+      socket.addEventListener('error', (err) => {
+        console.error('[DEBUG] socket error:', err);
+      });
+    }
+
+    syncGiftMenuPlaybackVisibility();
+    connectGiftMenuPlaybackSocket();
+
+    // Polling fallback
+    setInterval(() => {
+      if (!isSocketConnected) {
+        syncGiftMenuPlaybackVisibility();
+      }
+    }, 800);
   </script>
 </body>
 </html>

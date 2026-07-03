@@ -121,7 +121,7 @@ app.locals.broadcastToClients = broadcastToClients;
 app.locals.isEffectPlayerReady = () => effectPlayerClients.size > 0;
 
 // Initialize services with broadcasting capability
-tiktokService.init(broadcastToClients);
+tiktokService.init(broadcastToClients, () => effectPlayerClients.size > 0);
 effectQueue.setBroadcastFn(broadcastToClients);
 
 // Connect to OBS on startup

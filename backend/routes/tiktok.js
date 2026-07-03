@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
@@ -19,6 +19,7 @@ const {
     resolveEffectDurationForUser
 } = require('../services/effectLibraryService');
 const effectQueue = require('../services/effectQueue');
+const playbackManager = require('../services/playbackManager');
 const obsService = require('../services/obsService');
 const jwt = require('jsonwebtoken');
 let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
@@ -134,7 +135,8 @@ router.post('/disconnect', authMiddleware, async (req, res) => {
 });
 
 router.post('/usage/tts', authMiddleware, (req, res) => {
-    const result = tiktokService.consumeTts(req.userId);
+    const { isTest } = req.body;
+    const result = tiktokService.consumeTts(req.userId, isTest);
     res.status(result.status).json(result.payload);
 });
 
@@ -163,7 +165,7 @@ router.get('/available-effects', authMiddleware, async (req, res) => {
 
 router.post('/map-gift', authMiddleware, async (req, res) => {
     try {
-        const { giftId, effectId, giftName, effectName, giftIcon } = req.body;
+        const { id, giftId, effectId, giftName, effectName, giftIcon, effects, playbackMode, minQuantity, maxQuantity, exactQuantity, cooldown, cooldownAction } = req.body;
         const userId = req.userId;
 
         const user = await User.findById(userId);
@@ -179,7 +181,19 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
         const maxMappings = entitlements.mappings;
 
         const currentCount = await GiftMapping.countDocuments({ userId });
-        const existing = await GiftMapping.findOne({ userId, giftId });
+        
+        let existing = null;
+        if (id) {
+            existing = await GiftMapping.findOne({ userId, _id: id });
+        } else {
+            existing = await GiftMapping.findOne({ 
+                userId, 
+                giftId,
+                minQuantity: minQuantity !== undefined ? Number(minQuantity) : 1,
+                maxQuantity: (maxQuantity !== undefined && maxQuantity !== '' && maxQuantity !== null) ? Number(maxQuantity) : null,
+                exactQuantity: (exactQuantity !== undefined && exactQuantity !== '' && exactQuantity !== null) ? Number(exactQuantity) : null
+            });
+        }
 
         if (!existing && !isAdmin && Number.isFinite(maxMappings) && currentCount >= maxMappings) {
             return res.status(403).json(upgradePayload(
@@ -189,12 +203,23 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
             ));
         }
 
+        const mappingData = {
+            effectId,
+            effectName: resolvedEffect.name || effectName,
+            giftName,
+            giftIcon,
+            effects: effects || [],
+            playbackMode: playbackMode || 'random',
+            minQuantity: minQuantity !== undefined ? Number(minQuantity) : 1,
+            maxQuantity: (maxQuantity !== undefined && maxQuantity !== '' && maxQuantity !== null) ? Number(maxQuantity) : null,
+            exactQuantity: (exactQuantity !== undefined && exactQuantity !== '' && exactQuantity !== null) ? Number(exactQuantity) : null,
+            cooldown: cooldown !== undefined ? Number(cooldown) : 0,
+            cooldownAction: cooldownAction || 'queue',
+            updatedAt: Date.now()
+        };
+
         if (existing) {
-            existing.effectId = effectId;
-            existing.effectName = resolvedEffect.name || effectName;
-            existing.giftName = giftName;
-            existing.giftIcon = giftIcon;
-            existing.updatedAt = Date.now();
+            Object.assign(existing, mappingData);
             await existing.save();
             return res.json({ success: true, mapping: existing });
         }
@@ -202,11 +227,8 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
         const mapping = await GiftMapping.create({
             userId,
             giftId,
-            effectId,
-            giftName,
-            effectName: resolvedEffect.name || effectName,
-            giftIcon,
-            isActive: true
+            isActive: true,
+            ...mappingData
         });
         return res.json({ success: true, mapping });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -271,26 +293,106 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
         }
 
-        const PORT = process.env.PORT || 9000;
-        let effectUrl = resolvedEffect.fileUrl;
-        if (!resolvedEffect.isCustom) {
-            const streamToken = jwt.sign({
-                purpose: 'effect-player-test-mapping',
+        let queued = false;
+        let effectName = mapping.effectName || effectId;
+        let finalDuration = 3;
+
+        if (mapping.effects && mapping.effects.length > 0) {
+            let selectedEffect = null;
+            const mappingIdStr = String(mapping._id);
+            if (mapping.playbackMode === 'sequential') {
+                const idx = playbackManager.sequentialIndices.get(mappingIdStr) || 0;
+                selectedEffect = mapping.effects[idx % mapping.effects.length];
+                playbackManager.sequentialIndices.set(mappingIdStr, (idx + 1) % mapping.effects.length);
+            } else {
+                const randIndex = Math.floor(Math.random() * mapping.effects.length);
+                selectedEffect = mapping.effects[randIndex];
+            }
+
+            if (selectedEffect) {
+                const selEffectId = selectedEffect.effectId;
+                const selEffectName = selectedEffect.effectName;
+                const dur = await resolveEffectDurationForUser(req.userId, selEffectId);
+                const resolvedEffect = await resolveEffectForUser(req.userId, selEffectId);
+
+                if (resolvedEffect && dur) {
+                    finalDuration = dur;
+                    effectName = resolvedEffect.name || selEffectName || selEffectId;
+
+                    let effectUrl = resolvedEffect.fileUrl;
+                    if (!resolvedEffect.isCustom) {
+                        const PORT = process.env.PORT || 9000;
+                        const streamToken = jwt.sign({
+                            purpose: 'effect-player-test-mapping',
+                            effectId: selEffectId,
+                            userId: String(req.userId)
+                        }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
+                        effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(selEffectId)}?token=${encodeURIComponent(streamToken)}`;
+                    }
+
+                    queued = await effectQueue.add({
+                        mappingId: mapping._id,
+                        effectId: selEffectId,
+                        effectName,
+                        effectUrl,
+                        duration: dur < 100 ? dur * 1000 : dur,
+                        playbackType: 'test_mapping',
+                        priority: 0,
+                        createdAt: Date.now(),
+                        userId: req.userId
+                    });
+                } else {
+                    finalDuration = 3;
+                    effectName = selEffectName || 'Unknown';
+                    queued = await effectQueue.add({
+                        mappingId: mapping._id,
+                        effects: mapping.effects,
+                        playbackMode: mapping.playbackMode || 'random',
+                        playbackType: 'test_mapping',
+                        priority: 0,
+                        createdAt: Date.now(),
+                        userId: req.userId
+                    });
+                }
+            } else {
+                finalDuration = 3;
+                queued = await effectQueue.add({
+                    mappingId: mapping._id,
+                    effects: mapping.effects,
+                    playbackMode: mapping.playbackMode || 'random',
+                    playbackType: 'test_mapping',
+                    priority: 0,
+                    createdAt: Date.now(),
+                    userId: req.userId
+                });
+            }
+        } else {
+            const PORT = process.env.PORT || 9000;
+            let effectUrl = resolvedEffect.fileUrl;
+            if (!resolvedEffect.isCustom) {
+                const streamToken = jwt.sign({
+                    purpose: 'effect-player-test-mapping',
+                    effectId,
+                    userId: String(req.userId)
+                }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
+                effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
+            }
+            finalDuration = duration;
+            effectName = resolvedEffect.name || mapping.effectName || effectId;
+
+            queued = await effectQueue.add({
+                mappingId: mapping._id,
                 effectId,
-                userId: String(req.userId)
-            }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
-            effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
+                effectName,
+                effectUrl,
+                duration: finalDuration,
+                playbackType: 'test_mapping',
+                priority: 0,
+                createdAt: Date.now(),
+                userId: req.userId
+            });
         }
 
-        const queued = await effectQueue.add({
-            effectId,
-            effectName: resolvedEffect.name || mapping.effectName || effectId,
-            effectUrl,
-            duration,
-            playbackType: 'test_mapping',
-            priority: 0,
-            createdAt: Date.now()
-        });
         if (!queued) {
             return res.status(422).json({ success: false, message: 'Không thể thêm hiệu ứng Test vào hàng đợi.' });
         }
@@ -298,7 +400,7 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
         await GiftLog.create({
             giftId: mapping.giftId,
             giftName: mapping.giftName,
-            effectId,
+            effectId: effectId || 'group',
             triggeredAt: new Date(),
             sessionId: req.userId,
             userId: req.userId,
@@ -308,8 +410,9 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
         res.json({
             success: true,
             message: 'Effect triggered on OBS.',
-            effectId,
-            duration
+            effectId: effectId || 'group',
+            effectName,
+            duration: finalDuration
         });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -353,17 +456,70 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
                 message: 'Hiệu ứng chưa có thời lượng hợp lệ. App đã bỏ qua để tránh treo queue.'
             });
         }
-        await effectQueue.add(effectId, duration, {
+        if (!obsService.isConnected()) {
+            return res.status(503).json({ success: false, triggered: false, message: 'OBS chưa kết nối.' });
+        }
+        await obsService.ensureEffectPlayerSource();
+        const sourceStatus = await obsService.getFoundationSourceStatus();
+        if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req)) {
+            return res.status(503).json({ success: false, triggered: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
+        }
+
+        const giftData = {
             giftId,
             giftName: mapping.giftName,
             nickname: userName || 'Anonymous',
-            source: 'simulate-gift'
-        }, resolvedEffect.name || mapping.effectName || effectId);
+            source: 'simulate-gift',
+            simulated: true
+        };
+
+        let queued = false;
+
+        if (mapping.effects && mapping.effects.length > 0) {
+            queued = await effectQueue.add({
+                mappingId: mapping._id,
+                effects: mapping.effects,
+                playbackMode: mapping.playbackMode || 'random',
+                playbackType: 'live_mapping',
+                priority: 100,
+                createdAt: Date.now(),
+                giftData,
+                userId: req.userId
+            });
+        } else {
+            const PORT = process.env.PORT || 9000;
+            let effectUrl = resolvedEffect.fileUrl;
+            if (!resolvedEffect.isCustom) {
+                const streamToken = jwt.sign({
+                    purpose: 'effect-player-live-mapping',
+                    effectId,
+                    userId: String(req.userId)
+                }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
+                effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
+            }
+
+            queued = await effectQueue.add({
+                mappingId: mapping._id,
+                effectId,
+                effectName: resolvedEffect.name || mapping.effectName || effectId,
+                effectUrl,
+                duration,
+                playbackType: 'live_mapping',
+                priority: 100,
+                createdAt: Date.now(),
+                giftData,
+                userId: req.userId
+            });
+        }
+
+        if (!queued) {
+            return res.status(422).json({ success: false, triggered: false, message: 'Không thể thêm hiệu ứng vào hàng đợi.' });
+        }
 
         await GiftLog.create({
             giftId,
             giftName: mapping.giftName,
-            effectId,
+            effectId: effectId || 'group',
             triggeredAt: new Date(),
             sessionId: req.userId,
             userId: req.userId,

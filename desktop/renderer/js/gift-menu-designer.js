@@ -110,17 +110,40 @@
             this.injectSharedRendererCss();
             this.render();
             this.bindEvents();
-            this.loadGiftLibrary();
-            this.loadGoalAssets();
-            this.loadGoalTemplates();
-            this.loadLayoutsList().then(() => {
-                this.loadLayout();
-            });
-            this.connectWebSocket();
+            if (this.token) {
+                this.loadGiftLibrary();
+                this.loadGoalAssets();
+                this.loadGoalTemplates();
+                this.loadLayoutsList().then(() => {
+                    this.loadLayout();
+                });
+                this.connectWebSocket();
+            }
             window.addEventListener('resize', () => {
                 this.applyZoom();
             });
             this.onViewSwitch();
+        }
+
+        loadDataIfNeeded() {
+            if (!this.token) return;
+            if (this.gifts.length === 0) {
+                this.loadGiftLibrary();
+            }
+            if (this.goalAssets.length === 0) {
+                this.loadGoalAssets();
+            }
+            if (this.customTemplates.length === 0) {
+                this.loadGoalTemplates();
+            }
+            if (this.layouts.length === 0) {
+                this.loadLayoutsList().then(() => {
+                    if (!this.currentLayoutId && this.layouts.length > 0) {
+                        this.loadLayout();
+                    }
+                });
+            }
+            this.connectWebSocket();
         }
 
         connectWebSocket() {
@@ -866,6 +889,8 @@
                 iconUrl: '',
                 layoutDirection: 'vertical',
                 gap: 10,
+                borderRadius: 8,
+                padding: 8,
                 iconSize: Math.max(10, Math.round(selectedGifts.reduce((sum, item) => sum + (Number(item.width) || 64), 0) / selectedGifts.length)),
                 textSize: 14,
                 textPosition: 'bottom',
@@ -1982,6 +2007,8 @@
                     itemExport.textSize = Number(i.textSize || 14) * avgScale;
                     itemExport.textGap = Number(i.textGap || 4) * avgScale;
                     itemExport.gap = Number(i.gap || 10) * avgScale;
+                    itemExport.borderRadius = Number(i.borderRadius !== undefined ? i.borderRadius : 8) * avgScale;
+                    itemExport.padding = Number(i.padding !== undefined ? i.padding : 8) * avgScale;
                     itemExport.loopEnabled = Boolean(i.loopEnabled);
                 }
                 return itemExport;
@@ -3788,6 +3815,11 @@
                             <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="80" data-goal-key="padding" value="${selected.padding !== undefined ? selected.padding : 8}"><span>px</span></div>
                         </div>
                         <input class="gmd-range" type="range" min="0" max="80" data-goal-key="padding" value="${selected.padding !== undefined ? selected.padding : 8}">
+                        <div class="gmd-field">
+                            <label>Bo góc (Border Radius)</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="64" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 8}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="0" max="64" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 8}">
                         <div class="gmd-field"><label>Mau chu</label><input class="gmd-color" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}"></div>
                         <div class="gmd-field gmd-toggle-row">
                             <label>Hien ten qua</label>
@@ -5367,6 +5399,8 @@
                         itemExport.textSize = Number(i.textSize || 14) * avgScale;
                         itemExport.textGap = Number(i.textGap || 4) * avgScale;
                         itemExport.gap = Number(i.gap || 10) * avgScale;
+                        itemExport.borderRadius = Number(i.borderRadius !== undefined ? i.borderRadius : 8) * avgScale;
+                        itemExport.padding = Number(i.padding !== undefined ? i.padding : 8) * avgScale;
                         itemExport.loopEnabled = Boolean(i.loopEnabled);
                     }
                     if (i.type === 'goal-list' && Array.isArray(i.goals)) {

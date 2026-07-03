@@ -126,24 +126,83 @@ class TikTokService {
                     console.error('⚠️ Gift Menu live progress sync error:', err.message);
                 });
 
-                let mapping = null;
+                let mappings = [];
                 if (this.currentLiveUserId) {
-                    mapping = await GiftMapping.findOne({ userId: this.currentLiveUserId, giftId: data.giftId, isActive: true });
+                    mappings = await GiftMapping.find({ userId: this.currentLiveUserId, giftId: data.giftId, isActive: true }).lean();
                 }
 
-                if (mapping && mapping.effectId) {
-                    const resolvedEffect = await resolveEffectForUser(this.currentLiveUserId, mapping.effectId);
-                    const duration = await resolveEffectDurationForUser(this.currentLiveUserId, mapping.effectId);
-                    if (!duration) {
-                        console.warn(`Skipping mapped effect ${mapping.effectId}: missing duration metadata`);
-                        this.broadcast('effect_warning', {
-                            effectId: mapping.effectId,
-                            giftId: data.giftId,
-                            message: 'Effect skipped because duration metadata is missing.'
-                        });
-                    } else {
-                        effectQueue.add(mapping.effectId, duration, data, resolvedEffect?.name || mapping.effectName || mapping.effectId);
-                        await GiftLog.create({ giftId: data.giftId, giftName: data.giftName, effectId: mapping.effectId, triggeredAt: new Date(), sessionId: this.currentLiveUserId, userId: this.currentLiveUserId, userName: data.nickname || data.uniqueId || 'TikTok user' }).catch(() => null);
+                const quantity = Number(data.repeatCount || 1);
+                const matchingMappings = mappings.filter(m => {
+                    if (m.exactQuantity !== undefined && m.exactQuantity !== null && m.exactQuantity > 0) {
+                        return quantity === m.exactQuantity;
+                    }
+                    const minOk = quantity >= (m.minQuantity !== undefined ? m.minQuantity : 1);
+                    const maxOk = (m.maxQuantity === undefined || m.maxQuantity === null || m.maxQuantity <= 0) || (quantity <= m.maxQuantity);
+                    return minOk && maxOk;
+                });
+
+                if (matchingMappings.length > 0) {
+                    const playbackManager = require('./playbackManager');
+                    
+                    for (const mapping of matchingMappings) {
+                        // Cooldown logic
+                        if (mapping.cooldown && mapping.cooldown > 0) {
+                            const inCooldown = playbackManager.isMappingInCooldown(mapping._id, mapping.cooldown);
+                            if (inCooldown) {
+                                if (mapping.cooldownAction === 'ignore') {
+                                    console.log(`[COOLDOWN] Mapping ${mapping._id} ignored during cooldown`);
+                                    continue;
+                                }
+                            } else {
+                                playbackManager.registerMappingTrigger(mapping._id);
+                            }
+                        }
+
+                        let queued = false;
+                        if (mapping.effects && mapping.effects.length > 0) {
+                            // Multiple effects group mapping
+                            queued = await effectQueue.add({
+                                mappingId: mapping._id,
+                                effects: mapping.effects,
+                                playbackMode: mapping.playbackMode || 'random',
+                                playbackType: 'live_mapping',
+                                priority: 100,
+                                createdAt: Date.now(),
+                                giftData: data,
+                                userId: this.currentLiveUserId
+                            });
+                        } else if (mapping.effectId) {
+                            // Legacy single effect mapping
+                            const effectId = String(mapping.effectId || '');
+                            const resolvedEffect = await resolveEffectForUser(this.currentLiveUserId, effectId);
+                            const duration = await resolveEffectDurationForUser(this.currentLiveUserId, effectId);
+                            if (duration) {
+                                queued = await effectQueue.add({
+                                    mappingId: mapping._id,
+                                    effectId,
+                                    effectName: resolvedEffect?.name || mapping.effectName || effectId,
+                                    duration,
+                                    playbackType: 'live_mapping',
+                                    priority: 100,
+                                    createdAt: Date.now(),
+                                    giftData: data,
+                                    userId: this.currentLiveUserId
+                                });
+                            }
+                        }
+
+                        if (queued) {
+                            const loggedEffectId = mapping.effects && mapping.effects.length > 0 ? 'group' : mapping.effectId;
+                            await GiftLog.create({
+                                giftId: data.giftId,
+                                giftName: data.giftName,
+                                effectId: loggedEffectId,
+                                triggeredAt: new Date(),
+                                sessionId: this.currentLiveUserId,
+                                userId: this.currentLiveUserId,
+                                userName: data.nickname || data.uniqueId || 'TikTok user'
+                            }).catch(() => null);
+                        }
                     }
                 } else {
                     this.broadcast('gift', data);
@@ -327,12 +386,12 @@ class TikTokService {
         }
     }
 
-    consumeTts(userId) {
-        if (!this.currentLiveUserId || String(userId) !== String(this.currentLiveUserId)) {
+    consumeTts(userId, isTest = false) {
+        if (!isTest && (!this.currentLiveUserId || String(userId) !== String(this.currentLiveUserId))) {
             return { allowed: false, status: 409, payload: { success: false, message: 'Hãy kết nối TikTok Live trước khi sử dụng TTS.' } };
         }
         const limit = this.liveEntitlements.ttsPerSession;
-        if (Number.isFinite(limit) && this.sessionUsage.tts >= limit) {
+        if (!isTest && Number.isFinite(limit) && this.sessionUsage.tts >= limit) {
             return {
                 allowed: false,
                 status: 403,
@@ -343,8 +402,10 @@ class TikTokService {
                 )
             };
         }
-        this.sessionUsage.tts++;
-        return { allowed: true, status: 200, payload: { success: true, remaining: Number.isFinite(limit) ? Math.max(0, limit - this.sessionUsage.tts) : null } };
+        if (!isTest) {
+            this.sessionUsage.tts++;
+        }
+        return { allowed: true, status: 200, payload: { success: true, remaining: Number.isFinite(limit) && !isTest ? Math.max(0, limit - this.sessionUsage.tts) : null } };
     }
 
     consumeComment() {

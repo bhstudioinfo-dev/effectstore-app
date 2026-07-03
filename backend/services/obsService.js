@@ -20,6 +20,9 @@ class OBSService {
             this.ensureEffectPlayerSource().catch((error) => {
                 console.warn('Unable to prepare effect_player source:', error.message || error);
             });
+            this.ensureGiftMenuOverlaySourceUrl().catch((error) => {
+                console.warn('Unable to refresh gift_menu overlay URL:', error.message || error);
+            });
         });
 
         this.obs.on('ConnectionClosed', () => {
@@ -133,6 +136,44 @@ class OBSService {
         });
         console.log('Prepared future OBS browser source: effect_player');
         return true;
+    }
+
+    async ensureGiftMenuOverlaySourceUrl() {
+        if (!this._isConnected) return false;
+
+        const PORT = process.env.PORT || 9000;
+        const sourceUrl = `http://localhost:${PORT}/gift-menu-overlay.html`;
+        const candidateSources = ['gift_menu_overlay', 'gift_menu'];
+
+        try {
+            const { inputs } = await this.obs.call('GetInputList');
+            const names = new Set(inputs.map((input) => input.inputName));
+            const sourceName = candidateSources.find((name) => names.has(name));
+            if (!sourceName) return false;
+
+            await this.obs.call('SetInputSettings', {
+                inputName: sourceName,
+                inputSettings: {
+                    url: `${sourceUrl}?t=${Date.now()}`,
+                    shutdown: false,
+                    restart_when_active: true
+                },
+                overlay: true
+            });
+
+            try {
+                await this.obs.call('PressInputPropertiesButton', {
+                    inputName: sourceName,
+                    propertyName: 'refreshnocache'
+                });
+            } catch (_e) {}
+
+            console.log(`Refreshed OBS browser source URL: ${sourceName} -> gift-menu-overlay.html`);
+            return true;
+        } catch (error) {
+            console.warn('Unable to ensure gift menu overlay source URL:', error.message || error);
+            return false;
+        }
     }
 
     async getFoundationSourceStatus() {

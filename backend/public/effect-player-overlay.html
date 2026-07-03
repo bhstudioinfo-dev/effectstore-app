@@ -95,7 +95,7 @@
 
             async function playPreview(request) {
                 clearPlayback();
-                const supportedTypes = new Set(['preview_effect', 'test_mapping']);
+                const supportedTypes = new Set(['preview_effect', 'test_mapping', 'live_mapping']);
                 if (!supportedTypes.has(request?.playbackType) || !request.effectUrl) return;
 
                 const durationValue = Number(request.duration);
