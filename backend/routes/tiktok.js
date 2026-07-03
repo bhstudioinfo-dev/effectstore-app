@@ -19,6 +19,8 @@ const {
     resolveEffectDurationForUser
 } = require('../services/effectLibraryService');
 const effectQueue = require('../services/effectQueue');
+const obsService = require('../services/obsService');
+const jwt = require('jsonwebtoken');
 let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) {}
 const giftMenuLayoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
@@ -209,6 +211,17 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
         return res.json({ success: true, mapping });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
+
+async function waitForEffectPlayerReady(req, timeoutMs = 2500) {
+    const isReady = req.app.locals.isEffectPlayerReady;
+    if (typeof isReady !== 'function') return false;
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        if (isReady()) return true;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return isReady();
+}
 router.delete('/mappings/:id', authMiddleware, async (req, res) => {
     try {
         await GiftMapping.findOneAndDelete({ _id: req.params.id, userId: req.userId });
@@ -248,7 +261,39 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                 message: 'Hiệu ứng chưa có thời lượng hợp lệ. App đã bỏ qua để tránh treo queue.'
             });
         }
-        await effectQueue.add(effectId, duration, null, resolvedEffect.name || mapping.effectName || effectId);
+
+        if (!obsService.isConnected()) {
+            return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
+        }
+        await obsService.ensureEffectPlayerSource();
+        const sourceStatus = await obsService.getFoundationSourceStatus();
+        if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req)) {
+            return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
+        }
+
+        const PORT = process.env.PORT || 9000;
+        let effectUrl = resolvedEffect.fileUrl;
+        if (!resolvedEffect.isCustom) {
+            const streamToken = jwt.sign({
+                purpose: 'effect-player-test-mapping',
+                effectId,
+                userId: String(req.userId)
+            }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
+            effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
+        }
+
+        const queued = await effectQueue.add({
+            effectId,
+            effectName: resolvedEffect.name || mapping.effectName || effectId,
+            effectUrl,
+            duration,
+            playbackType: 'test_mapping',
+            priority: 0,
+            createdAt: Date.now()
+        });
+        if (!queued) {
+            return res.status(422).json({ success: false, message: 'Không thể thêm hiệu ứng Test vào hàng đợi.' });
+        }
 
         await GiftLog.create({
             giftId: mapping.giftId,

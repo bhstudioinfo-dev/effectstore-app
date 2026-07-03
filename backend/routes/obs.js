@@ -7,6 +7,12 @@ const OBSSettings = require('../models/OBSSettings');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
+const effectQueue = require('../services/effectQueue');
+const {
+    resolveEffectForUser,
+    resolveEffectDurationForUser
+} = require('../services/effectLibraryService');
+const effectRoutes = require('./effects');
 
 async function getObsConnectionConfig() {
     try {
@@ -26,6 +32,108 @@ async function getObsConnectionConfig() {
         password: process.env.OBS_PASSWORD || 'obs123'
     };
 }
+
+function normalizeDurationMs(duration) {
+    const value = Number(duration);
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return value < 100 ? Math.round(value * 1000) : Math.round(value);
+}
+
+async function waitForEffectPlayerReady(req, timeoutMs = 2500) {
+    const isReady = req.app.locals.isEffectPlayerReady;
+    if (typeof isReady !== 'function') return false;
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        if (isReady()) return true;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return isReady();
+}
+
+router.get('/effect-player-media/:effectId', async (req, res) => {
+    try {
+        const token = String(req.query.token || '');
+        const payload = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        const allowedPurposes = new Set(['effect-player-preview', 'effect-player-test-mapping']);
+        if (!allowedPurposes.has(payload.purpose) || String(payload.effectId) !== String(req.params.effectId)) {
+            return res.status(403).json({ success: false, message: 'Liên kết xem thử không hợp lệ.' });
+        }
+        return effectRoutes.streamEffectById(req, res);
+    } catch (_error) {
+        return res.status(401).json({ success: false, message: 'Liên kết xem thử đã hết hạn hoặc không hợp lệ.' });
+    }
+});
+
+router.post('/preview-effect-player', authMiddleware, async (req, res) => {
+    try {
+        const effectId = String(req.body?.effectId || '').trim();
+        if (!effectId) return res.status(400).json({ success: false, message: 'Thiếu mã hiệu ứng.' });
+
+        const queueStatus = effectQueue.getStatus();
+        if (queueStatus.status !== 'idle') {
+            return res.status(409).json({
+                success: false,
+                code: 'EFFECT_QUEUE_BUSY',
+                message: 'Đang có hiệu ứng khác chạy, vui lòng thử lại sau.'
+            });
+        }
+
+        const effect = await resolveEffectForUser(req.userId, effectId);
+        if (!effect) {
+            return res.status(403).json({ success: false, message: 'Bạn chưa sở hữu hiệu ứng này.' });
+        }
+
+        const duration = await resolveEffectDurationForUser(req.userId, effectId);
+        const durationMs = normalizeDurationMs(duration);
+        if (!durationMs) {
+            return res.status(422).json({ success: false, message: 'Hiệu ứng chưa có thời lượng hợp lệ.' });
+        }
+
+        if (!obsService.isConnected()) {
+            return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
+        }
+
+        await obsService.ensureEffectPlayerSource();
+        const sourceStatus = await obsService.getFoundationSourceStatus();
+        if (!sourceStatus.effect_player) {
+            return res.status(503).json({ success: false, message: 'Không thể chuẩn bị nguồn effect_player trên OBS.' });
+        }
+        if (!await waitForEffectPlayerReady(req)) {
+            return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa kết nối, vui lòng thử lại.' });
+        }
+
+        const PORT = process.env.PORT || 9000;
+        let effectUrl;
+        if (effect.isCustom) {
+            effectUrl = effect.fileUrl;
+        } else {
+            const streamToken = jwt.sign({
+                purpose: 'effect-player-preview',
+                effectId,
+                userId: String(req.userId)
+            }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
+            effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
+        }
+
+        const payload = {
+            effectId,
+            effectName: effect.name,
+            effectUrl,
+            duration: durationMs,
+            playbackType: 'preview_effect',
+            startedAt: Date.now()
+        };
+        const broadcast = req.app.locals.broadcastToClients;
+        if (typeof broadcast !== 'function') {
+            return res.status(503).json({ success: false, message: 'Kênh effect_player chưa sẵn sàng.' });
+        }
+        broadcast('effect_player_play_request', payload);
+        return res.json({ success: true, duration: durationMs });
+    } catch (error) {
+        console.error('Effect player preview error:', error);
+        return res.status(500).json({ success: false, message: 'Không thể xem thử hiệu ứng trên OBS.' });
+    }
+});
 
 // Render effect HTML for OBS Browser Source
 router.get('/effect/:id', async (req, res) => {

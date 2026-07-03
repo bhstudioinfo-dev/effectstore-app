@@ -138,7 +138,7 @@ router.delete('/user/custom-effects/:localId', authMiddleware, async (req, res) 
 });
 
 // Stream video (matching old path /api/stream/effect/:effectId)
-router.get('/stream/effect/:effectId', async (req, res) => {
+async function streamEffectById(req, res) {
     try {
         const effectId = req.params.effectId;
         const effect = await Effect.findById(effectId);
@@ -190,7 +190,9 @@ router.get('/stream/effect/:effectId', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-});
+}
+
+router.get('/stream/effect/:effectId', streamEffectById);
 
 // Multer config for uploads
 const storage = multer.diskStorage({
@@ -338,3 +340,4 @@ router.put('/effects/:id/timeline', authMiddleware, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.streamEffectById = streamEffectById;

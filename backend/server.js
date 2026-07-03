@@ -75,6 +75,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/effectsto
 const WS_PORT = parseInt(process.env.WS_PORT || '9001', 10);
 let wss = null;
 const clients = new Set();
+const effectPlayerClients = new Set();
 
 try {
     wss = new WebSocket.Server({ port: WS_PORT });
@@ -88,14 +89,19 @@ try {
             try {
                 const packet = JSON.parse(raw.toString() || '{}');
                 // Phase 2A infrastructure only. These events do not trigger media.
-                if (packet.event === 'effect_player_ready' || packet.event === 'effect_player_play_finished') {
+                if (packet.event === 'effect_player_ready' || packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
+                    if (packet.event === 'effect_player_ready') effectPlayerClients.add(ws);
+                    effectQueue.handleEffectPlayerEvent(packet.event, packet.data || {});
                     broadcastToClients(packet.event, packet.data || {});
                 }
             } catch (error) {
                 console.error('⚠️ WebSocket message ignored:', error.message);
             }
         });
-        ws.on('close', () => clients.delete(ws));
+        ws.on('close', () => {
+            clients.delete(ws);
+            effectPlayerClients.delete(ws);
+        });
     });
 } catch (err) {
     console.error(`❌ WebSocket startup error on port ${WS_PORT}:`, err.message);
@@ -110,6 +116,9 @@ function broadcastToClients(event, data) {
         }
     });
 }
+
+app.locals.broadcastToClients = broadcastToClients;
+app.locals.isEffectPlayerReady = () => effectPlayerClients.size > 0;
 
 // Initialize services with broadcasting capability
 tiktokService.init(broadcastToClients);

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Effect Player</title>
     <style>
@@ -15,6 +15,14 @@
             background: transparent;
         }
         #effect-player-root { z-index: 999999; }
+        #effect-player-root video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: transparent;
+        }
         #ready-placeholder {
             position: absolute;
             left: 50%;
@@ -36,6 +44,97 @@
         (() => {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             let socket;
+            let activeVideo = null;
+            let safetyTimer = null;
+            let activeRequest = null;
+
+            function notify(event, data) {
+                if (socket?.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ event, data }));
+                }
+            }
+
+            function clearPlayback() {
+                if (safetyTimer) window.clearTimeout(safetyTimer);
+                safetyTimer = null;
+                if (activeVideo) {
+                    activeVideo.pause();
+                    activeVideo.removeAttribute('src');
+                    activeVideo.load();
+                    activeVideo.remove();
+                }
+                activeVideo = null;
+                activeRequest = null;
+            }
+
+            function finishPlayback(reason) {
+                if (!activeRequest) return;
+                const finished = activeRequest;
+                clearPlayback();
+                notify('effect_player_play_finished', {
+                    requestId: finished.requestId,
+                    effectId: finished.effectId,
+                    playbackType: finished.playbackType,
+                    reason,
+                    finishedAt: Date.now()
+                });
+            }
+
+            function failPlayback(message) {
+                if (!activeRequest) return;
+                const failed = activeRequest;
+                clearPlayback();
+                notify('effect_player_play_failed', {
+                    requestId: failed.requestId,
+                    effectId: failed.effectId,
+                    playbackType: failed.playbackType,
+                    message,
+                    failedAt: Date.now()
+                });
+            }
+
+            async function playPreview(request) {
+                clearPlayback();
+                const supportedTypes = new Set(['preview_effect', 'test_mapping']);
+                if (!supportedTypes.has(request?.playbackType) || !request.effectUrl) return;
+
+                const durationValue = Number(request.duration);
+                const durationMs = Number.isFinite(durationValue) && durationValue > 0
+                    ? (durationValue < 100 ? Math.round(durationValue * 1000) : Math.round(durationValue))
+                    : null;
+                if (!durationMs) {
+                    activeRequest = request;
+                    failPlayback('Missing valid duration');
+                    return;
+                }
+
+                activeRequest = request;
+                const video = document.createElement('video');
+                activeVideo = video;
+                video.autoplay = true;
+                video.controls = false;
+                video.playsInline = true;
+                video.preload = 'auto';
+                video.src = request.effectUrl;
+                document.getElementById('effect-player-root').appendChild(video);
+
+                video.addEventListener('ended', () => {
+                    if (video === activeVideo) finishPlayback('ended');
+                }, { once: true });
+                video.addEventListener('error', () => {
+                    if (video === activeVideo) failPlayback('Unable to load effect media');
+                }, { once: true });
+                safetyTimer = window.setTimeout(() => {
+                    if (video === activeVideo) finishPlayback('duration_timeout');
+                }, durationMs);
+
+                try {
+                    video.currentTime = 0;
+                    await video.play();
+                } catch (error) {
+                    if (video === activeVideo) failPlayback(error.message || 'Autoplay failed');
+                }
+            }
 
             function connect() {
                 socket = new WebSocket(`${protocol}//${window.location.hostname || 'localhost'}:9001`);
@@ -47,6 +146,7 @@
                         const packet = JSON.parse(message.data || '{}');
                         if (packet.event === 'effect_player_play_request') {
                             console.log('Future playback request received');
+                            playPreview(packet.data || {});
                         }
                     } catch (error) {
                         console.warn('Ignored invalid effect player message:', error.message);

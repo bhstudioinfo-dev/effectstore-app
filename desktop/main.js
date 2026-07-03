@@ -74,11 +74,11 @@ async function getMediaDurationSeconds(inputPath) {
             '-'
         ]);
         const match = result.stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/i);
-        if (!match) return CUSTOM_EFFECT_MAX_SECONDS;
+        if (!match) return null;
         const duration = (Number(match[1]) * 3600) + (Number(match[2]) * 60) + Number(match[3]);
         return Math.max(0.1, Math.min(CUSTOM_EFFECT_MAX_SECONDS, Math.round(duration * 10) / 10));
     } catch (_error) {
-        return CUSTOM_EFFECT_MAX_SECONDS;
+        return null;
     }
 }
 
@@ -434,15 +434,25 @@ ipcMain.handle('get-machine-id', () => MACHINE_ID);
 ipcMain.handle('get-app-data-path', () => appDataPath);
 ipcMain.handle('get-obs-url', () => `http://localhost:${PORT}/overlay`);
 
-function readCustomEffects() {
+async function readCustomEffects() {
     if (!fs.existsSync(customEffectsPath)) return [];
-    return fs.readdirSync(customEffectsPath, { withFileTypes: true })
+    const effects = await Promise.all(fs.readdirSync(customEffectsPath, { withFileTypes: true })
         .filter(entry => entry.isDirectory() && /^custom-[a-zA-Z0-9-]+$/.test(entry.name))
-        .map(entry => {
+        .map(async entry => {
             try {
                 const dir = path.join(customEffectsPath, entry.name);
-                const metadata = JSON.parse(fs.readFileSync(path.join(dir, 'metadata.json'), 'utf8'));
-                if (!fs.existsSync(path.join(dir, 'effect.webm'))) return null;
+                const metadataPath = path.join(dir, 'metadata.json');
+                const effectPath = path.join(dir, 'effect.webm');
+                const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+                if (!fs.existsSync(effectPath)) return null;
+                const storedDuration = Number(metadata.duration);
+                if (!Number.isFinite(storedDuration) || storedDuration <= 0) {
+                    const recoveredDuration = await getMediaDurationSeconds(effectPath);
+                    if (Number.isFinite(recoveredDuration) && recoveredDuration > 0) {
+                        metadata.duration = recoveredDuration;
+                        fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
+                    }
+                }
                 return {
                     ...metadata,
                     id: entry.name,
@@ -454,10 +464,11 @@ function readCustomEffects() {
                         : ''
                 };
             } catch (_error) { return null; }
-        }).filter(Boolean).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }));
+    return effects.filter(Boolean).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-ipcMain.handle('custom-effects:list', () => ({ success: true, effects: readCustomEffects() }));
+ipcMain.handle('custom-effects:list', async () => ({ success: true, effects: await readCustomEffects() }));
 
 ipcMain.handle('custom-effects:choose-files', async () => {
     const videoResult = await dialog.showOpenDialog(mainWindow, {
@@ -541,7 +552,7 @@ ipcMain.handle('custom-effects:save', async (_event, payload = {}) => {
             fps: 30,
             note: 'Video được tối ưu sang WebM VP9. App không tự xóa nền; nền trong suốt chỉ giữ được nếu file gốc có alpha.'
         }, null, 2), 'utf8');
-        return { success: true, effect: readCustomEffects().find(item => item.id === id) };
+        return { success: true, effect: (await readCustomEffects()).find(item => item.id === id) };
     } catch (error) { return { success: false, error: error.message }; }
 });
 

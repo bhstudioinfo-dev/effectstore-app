@@ -127,7 +127,8 @@ class OBSService {
                 fps: 30,
                 css: '',
                 shutdown: false,
-                restart_when_active: false
+                restart_when_active: false,
+                reroute_audio: true
             }
         });
         console.log('Prepared future OBS browser source: effect_player');
