@@ -1683,8 +1683,8 @@ class EffectStoreApp {
 
             if (effect.category === 'menu_template') {
                 previewHTML = `
-                            <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="background:#090d16; display:flex; align-items:center; justify-content:center; height:100%; cursor:pointer; overflow:hidden;">
-                                <div id="store-template-preview-${effect.fileUrl}" class="store-template-preview-card" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                            <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="position: relative; background:#090d16; display:flex; align-items:center; justify-content:center; height:100%; cursor:pointer; overflow:hidden;">
+                                <div id="store-template-preview-${effect.fileUrl}" class="store-template-preview-card" style="position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; overflow: hidden;">
                                     <div style="font-size:12px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></div>
                                 </div>
                             </div>
@@ -2109,7 +2109,7 @@ class EffectStoreApp {
 
         container.innerHTML = `
             <div class="gmd-preview-canvas" style="
-                position: relative;
+                position: absolute;
                 width: ${canvasW}px;
                 height: ${canvasH}px;
                 background: #0c0f1d;
@@ -2167,7 +2167,7 @@ class EffectStoreApp {
 
         container.innerHTML = `
             <div class="gmd-preview-canvas-card" style="
-                position: relative;
+                position: absolute;
                 width: ${canvasW}px;
                 height: ${canvasH}px;
                 background: #0c0f1d;
