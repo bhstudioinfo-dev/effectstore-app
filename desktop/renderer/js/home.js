@@ -1922,12 +1922,37 @@ class EffectStoreApp {
         document.getElementById('detail-desc-text').textContent = effect.description || 'Không có mô tả chi tiết.';
 
         const videoEl = document.getElementById('detail-video-player');
-        if (videoUrl) {
-            videoEl.src = videoUrl;
-            videoEl.style.display = 'block';
-            videoEl.play().catch(e => console.warn('Autoplay prevented', e));
-        } else {
+        let previewContainer = document.getElementById('detail-template-preview');
+        if (!previewContainer) {
+            previewContainer = document.createElement('div');
+            previewContainer.id = 'detail-template-preview';
+            previewContainer.className = 'detail-template-preview';
+            previewContainer.setAttribute('style', `
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #090d16;
+                border-radius: 12px;
+                overflow: hidden;
+            `);
+            videoEl.parentElement.appendChild(previewContainer);
+        }
+
+        if (effect.category === 'menu_template') {
             videoEl.style.display = 'none';
+            previewContainer.style.display = 'flex';
+            this.renderTemplatePreviewInModal(previewContainer, effect.fileUrl);
+        } else {
+            previewContainer.style.display = 'none';
+            if (videoUrl) {
+                videoEl.src = videoUrl;
+                videoEl.style.display = 'block';
+                videoEl.play().catch(e => console.warn('Autoplay prevented', e));
+            } else {
+                videoEl.style.display = 'none';
+            }
         }
 
         const btnTestTry = document.getElementById('btn-test-try');
@@ -1971,6 +1996,10 @@ class EffectStoreApp {
             videoEl.pause();
             videoEl.currentTime = 0;
         }
+        const previewContainer = document.getElementById('detail-template-preview');
+        if (previewContainer) {
+            previewContainer.innerHTML = '';
+        }
     }
 
     async useMenuTemplateFromStore(templateId) {
@@ -2013,6 +2042,73 @@ class EffectStoreApp {
         } catch (error) {
             this.showNotification('error', 'Lỗi kết nối: ' + error.message);
         }
+    }
+
+    async getTemplateLayout(templateId) {
+        if (window.giftMenuDesigner && window.giftMenuDesigner.serverTemplates) {
+            const found = window.giftMenuDesigner.serverTemplates.find(t => String(t._id || t.id) === String(templateId));
+            if (found) return found;
+        }
+        try {
+            const headers = this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {};
+            const res = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
+            const data = await res.json();
+            if (data.success && Array.isArray(data.templates)) {
+                if (window.giftMenuDesigner) window.giftMenuDesigner.serverTemplates = data.templates;
+                return data.templates.find(t => String(t._id || t.id) === String(templateId));
+            }
+        } catch (e) {
+            console.error('Failed to fetch template layout:', e);
+        }
+        return null;
+    }
+
+    async renderTemplatePreviewInModal(container, templateId) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Đang tải bản xem trước...</div>';
+        const template = await this.getTemplateLayout(templateId);
+        if (!template) {
+            container.innerHTML = '<div style="color:#ef4444; font-size:12px; text-align:center;">Không thể tải bản xem trước</div>';
+            return;
+        }
+
+        const canvasW = template.canvasSize?.width || 720;
+        const canvasH = template.canvasSize?.height || 960;
+        const containerW = container.clientWidth || 300;
+        const containerH = container.clientHeight || 450;
+
+        const scale = Math.min(containerW / canvasW, containerH / canvasH) * 0.9;
+
+        container.innerHTML = `
+            <div class="gmd-preview-canvas" style="
+                position: relative;
+                width: ${canvasW}px;
+                height: ${canvasH}px;
+                background: #0c0f1d;
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 8px;
+                transform: scale(${scale});
+                transform-origin: center;
+                overflow: hidden;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            ">
+                ${(template.items || []).map(item => {
+                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { apiBase: this.API_URL });
+                    return `
+                        <div style="
+                            position: absolute;
+                            left: ${item.x}px;
+                            top: ${item.y}px;
+                            width: ${item.width}px;
+                            height: ${item.height}px;
+                            z-index: ${item.zIndex || 1};
+                            pointer-events: none;
+                        ">
+                            ${itemHtml}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
     }
 
     saveGlobalFlashSaleTime() {
