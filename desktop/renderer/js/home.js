@@ -2061,10 +2061,6 @@ class EffectStoreApp {
     }
 
     async getTemplateLayout(templateId) {
-        if (window.giftMenuDesigner && window.giftMenuDesigner.serverTemplates) {
-            const found = window.giftMenuDesigner.serverTemplates.find(t => String(t._id || t.id) === String(templateId));
-            if (found) return found;
-        }
         try {
             const headers = this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {};
             const res = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
