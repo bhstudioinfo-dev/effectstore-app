@@ -918,7 +918,11 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
         await template.save();
 
         // Automatically sync to Effect product
-        const existingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
+        let existingEffect = await Effect.findOne({ category: 'menu_template', name: template.name });
+        if (!existingEffect) {
+            existingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
+        }
+
         if (!existingEffect) {
             const newEffect = new Effect({
                 name: template.name,
@@ -940,6 +944,7 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
             existingEffect.originalPrice = template.originalPrice;
             existingEffect.description = template.description || existingEffect.description;
             existingEffect.icon = template.icon || existingEffect.icon;
+            existingEffect.fileUrl = template._id.toString(); // Cập nhật liên kết sang template layout ID mới
             await existingEffect.save();
         }
 
