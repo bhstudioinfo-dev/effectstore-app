@@ -2108,16 +2108,16 @@ class EffectStoreApp {
 
             const itemsHtmlList = (template.items || []).map(item => {
                 try {
-                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { scale: scale, apiBase: this.API_URL });
+                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { scale: 1, apiBase: this.API_URL });
                     const itemW = item.w !== undefined ? item.w : item.width;
                     const itemH = item.h !== undefined ? item.h : item.height;
                     return `
                         <div style="
                             position: absolute;
-                            left: ${Math.round(item.x * scale)}px;
-                            top: ${Math.round(item.y * scale)}px;
-                            width: ${Math.round(itemW * scale)}px;
-                            height: ${Math.round(itemH * scale)}px;
+                            left: ${item.x}px;
+                            top: ${item.y}px;
+                            width: ${itemW}px;
+                            height: ${itemH}px;
                             z-index: ${item.zIndex || 1};
                             pointer-events: none;
                         ">
@@ -2135,9 +2135,9 @@ class EffectStoreApp {
                     position: absolute;
                     left: 50%;
                     top: 50%;
-                    transform: translate(-50%, -50%);
-                    width: ${Math.round(canvasW * scale)}px;
-                    height: ${Math.round(canvasH * scale)}px;
+                    transform: translate(-50%, -50%) scale(${scale});
+                    width: ${canvasW}px;
+                    height: ${canvasH}px;
                     background: #0c0f1d;
                     border: 1px solid rgba(255,255,255,0.1);
                     border-radius: 8px;
@@ -2181,16 +2181,16 @@ class EffectStoreApp {
 
             const itemsHtmlList = (template.items || []).map(item => {
                 try {
-                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { scale: scale, apiBase: this.API_URL });
+                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { scale: 1, apiBase: this.API_URL });
                     const itemW = item.w !== undefined ? item.w : item.width;
                     const itemH = item.h !== undefined ? item.h : item.height;
                     return `
                         <div style="
                             position: absolute;
-                            left: ${Math.round(item.x * scale)}px;
-                            top: ${Math.round(item.y * scale)}px;
-                            width: ${Math.round(itemW * scale)}px;
-                            height: ${Math.round(itemH * scale)}px;
+                            left: ${item.x}px;
+                            top: ${item.y}px;
+                            width: ${itemW}px;
+                            height: ${itemH}px;
                             z-index: ${item.zIndex || 1};
                             pointer-events: none;
                         ">
@@ -2208,9 +2208,9 @@ class EffectStoreApp {
                     position: absolute;
                     left: 50%;
                     top: 50%;
-                    transform: translate(-50%, -50%);
-                    width: ${Math.round(canvasW * scale)}px;
-                    height: ${Math.round(canvasH * scale)}px;
+                    transform: translate(-50%, -50%) scale(${scale});
+                    width: ${canvasW}px;
+                    height: ${canvasH}px;
                     background: #0c0f1d;
                     border: 1px solid rgba(255,255,255,0.05);
                     border-radius: 6px;
