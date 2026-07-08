@@ -2104,6 +2104,9 @@ class EffectStoreApp {
             } else if (view === 'gift-menu-designer') {
                 document.getElementById('page-title').textContent = '🎨 Gift Menu Designer';
                 if (rightSidebar) rightSidebar.style.display = 'none';
+                if (window.giftMenuDesigner) {
+                    window.giftMenuDesigner.onViewSwitch();
+                }
             } else {
                 document.getElementById('page-title').textContent = 'EffectStore';
             }
