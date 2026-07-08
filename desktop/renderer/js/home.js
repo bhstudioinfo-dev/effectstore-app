@@ -1683,10 +1683,8 @@ class EffectStoreApp {
 
             if (effect.category === 'menu_template') {
                 previewHTML = `
-                            <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="position: relative; background:#090d16; display:flex; align-items:center; justify-content:center; height:100%; cursor:pointer; overflow:hidden;">
-                                <div id="store-template-preview-${effect.fileUrl}" class="store-template-preview-card" style="position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; overflow: hidden;">
-                                    <div style="font-size:12px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></div>
-                                </div>
+                            <div id="store-template-preview-${effect.fileUrl}" class="store-template-preview-card" onclick="app.showEffectDetail('${effectId}')" style="position: absolute; inset: 0; background:#090d16; display:flex; align-items:center; justify-content:center; overflow: hidden; cursor: pointer; border-radius: 12px 12px 0 0;">
+                                <div style="font-size:12px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></div>
                             </div>
                         `;
             } else if (thumbUrl && videoUrl) {
@@ -2110,14 +2108,14 @@ class EffectStoreApp {
 
             const itemsHtmlList = (template.items || []).map(item => {
                 try {
-                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { apiBase: this.API_URL });
+                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { scale: scale, apiBase: this.API_URL });
                     return `
                         <div style="
                             position: absolute;
-                            left: ${item.x}px;
-                            top: ${item.y}px;
-                            width: ${item.width}px;
-                            height: ${item.height}px;
+                            left: ${Math.round(item.x * scale)}px;
+                            top: ${Math.round(item.y * scale)}px;
+                            width: ${Math.round(item.width * scale)}px;
+                            height: ${Math.round(item.height * scale)}px;
                             z-index: ${item.zIndex || 1};
                             pointer-events: none;
                         ">
@@ -2133,13 +2131,14 @@ class EffectStoreApp {
             container.innerHTML = `
                 <div class="gmd-preview-canvas" style="
                     position: absolute;
-                    width: ${canvasW}px;
-                    height: ${canvasH}px;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                    width: ${Math.round(canvasW * scale)}px;
+                    height: ${Math.round(canvasH * scale)}px;
                     background: #0c0f1d;
                     border: 1px solid rgba(255,255,255,0.1);
                     border-radius: 8px;
-                    transform: scale(${scale});
-                    transform-origin: center;
                     overflow: hidden;
                     box-shadow: 0 10px 30px rgba(0,0,0,0.6);
                 ">
@@ -2180,14 +2179,14 @@ class EffectStoreApp {
 
             const itemsHtmlList = (template.items || []).map(item => {
                 try {
-                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { apiBase: this.API_URL });
+                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { scale: scale, apiBase: this.API_URL });
                     return `
                         <div style="
                             position: absolute;
-                            left: ${item.x}px;
-                            top: ${item.y}px;
-                            width: ${item.width}px;
-                            height: ${item.height}px;
+                            left: ${Math.round(item.x * scale)}px;
+                            top: ${Math.round(item.y * scale)}px;
+                            width: ${Math.round(item.width * scale)}px;
+                            height: ${Math.round(item.height * scale)}px;
                             z-index: ${item.zIndex || 1};
                             pointer-events: none;
                         ">
@@ -2203,13 +2202,14 @@ class EffectStoreApp {
             container.innerHTML = `
                 <div class="gmd-preview-canvas-card" style="
                     position: absolute;
-                    width: ${canvasW}px;
-                    height: ${canvasH}px;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                    width: ${Math.round(canvasW * scale)}px;
+                    height: ${Math.round(canvasH * scale)}px;
                     background: #0c0f1d;
                     border: 1px solid rgba(255,255,255,0.05);
                     border-radius: 6px;
-                    transform: scale(${scale});
-                    transform-origin: center;
                     overflow: hidden;
                 ">
                     ${itemsHtmlList.join('')}
