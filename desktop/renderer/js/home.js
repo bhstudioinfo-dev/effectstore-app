@@ -2175,7 +2175,7 @@ class EffectStoreApp {
                 }
             }
 
-            const scale = Math.min(containerW / canvasW, containerH / canvasH) * 0.95;
+            const scale = Math.max(containerW / canvasW, containerH / canvasH);
 
             const itemsHtmlList = (template.items || []).map(item => {
                 try {
