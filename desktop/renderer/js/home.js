@@ -2083,44 +2083,33 @@ class EffectStoreApp {
 
     async renderTemplatePreviewInModal(container, templateId) {
         container.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Đang tải bản xem trước...</div>';
-        const template = await this.getTemplateLayout(templateId);
-        if (!template) {
-            container.innerHTML = '<div style="color:#ef4444; font-size:12px; text-align:center;">Không thể tải bản xem trước</div>';
-            return;
-        }
-
-        const canvasW = template.canvasSize?.width || 720;
-        const canvasH = template.canvasSize?.height || 960;
-        let containerW = container.clientWidth;
-        let containerH = container.clientHeight;
-        if (containerW < 20) containerW = 300;
-        if (containerH < 20) {
-            const ratio = template.aspectRatio || '9:16';
-            if (ratio === '16:9') {
-                containerH = Math.round(containerW * 9 / 16);
-            } else if (ratio === '1:1') {
-                containerH = containerW;
-            } else {
-                containerH = Math.round(containerW * 16 / 9);
+        try {
+            const template = await this.getTemplateLayout(templateId);
+            if (!template) {
+                container.innerHTML = '<div style="color:#ef4444; font-size:12px; text-align:center;">Không thể tải bản xem trước</div>';
+                return;
             }
-        }
 
-        const scale = Math.min(containerW / canvasW, containerH / canvasH) * 0.9;
+            const canvasW = template.canvasSize?.width || 720;
+            const canvasH = template.canvasSize?.height || 960;
+            let containerW = container.clientWidth;
+            let containerH = container.clientHeight;
+            if (containerW < 20) containerW = 300;
+            if (containerH < 20) {
+                const ratio = template.aspectRatio || '9:16';
+                if (ratio === '16:9') {
+                    containerH = Math.round(containerW * 9 / 16);
+                } else if (ratio === '1:1') {
+                    containerH = containerW;
+                } else {
+                    containerH = Math.round(containerW * 16 / 9);
+                }
+            }
 
-        container.innerHTML = `
-            <div class="gmd-preview-canvas" style="
-                position: absolute;
-                width: ${canvasW}px;
-                height: ${canvasH}px;
-                background: #0c0f1d;
-                border: 1px solid rgba(255,255,255,0.1);
-                border-radius: 8px;
-                transform: scale(${scale});
-                transform-origin: center;
-                overflow: hidden;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-            ">
-                ${(template.items || []).map(item => {
+            const scale = Math.min(containerW / canvasW, containerH / canvasH) * 0.9;
+
+            const itemsHtmlList = (template.items || []).map(item => {
+                try {
                     const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { apiBase: this.API_URL });
                     return `
                         <div style="
@@ -2135,49 +2124,62 @@ class EffectStoreApp {
                             ${itemHtml}
                         </div>
                     `;
-                }).join('')}
-            </div>
-        `;
+                } catch (innerErr) {
+                    console.error('Failed to render modal item:', item, innerErr);
+                    return `<!-- Error rendering item ${item.id}: ${innerErr.message} -->`;
+                }
+            });
+
+            container.innerHTML = `
+                <div class="gmd-preview-canvas" style="
+                    position: absolute;
+                    width: ${canvasW}px;
+                    height: ${canvasH}px;
+                    background: #0c0f1d;
+                    border: 1px solid rgba(255,255,255,0.1);
+                    border-radius: 8px;
+                    transform: scale(${scale});
+                    transform-origin: center;
+                    overflow: hidden;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+                ">
+                    ${itemsHtmlList.join('')}
+                </div>
+            `;
+        } catch (err) {
+            console.error('Error in renderTemplatePreviewInModal:', err);
+            container.innerHTML = '<div style="color:#ef4444; font-size:12px; text-align:center;">Lỗi: ' + err.message + '</div>';
+        }
     }
 
     async renderTemplatePreviewInCard(container, templateId) {
-        const template = await this.getTemplateLayout(templateId);
-        if (!template) {
-            container.innerHTML = `<span style="font-size:32px;">📋</span>`;
-            return;
-        }
-
-        const canvasW = template.canvasSize?.width || 720;
-        const canvasH = template.canvasSize?.height || 960;
-        let containerW = container.clientWidth;
-        let containerH = container.clientHeight;
-        if (containerW < 20) containerW = 150;
-        if (containerH < 20) {
-            const ratio = template.aspectRatio || '9:16';
-            if (ratio === '16:9') {
-                containerH = Math.round(containerW * 9 / 16);
-            } else if (ratio === '1:1') {
-                containerH = containerW;
-            } else {
-                containerH = Math.round(containerW * 16 / 9);
+        try {
+            const template = await this.getTemplateLayout(templateId);
+            if (!template) {
+                container.innerHTML = `<span style="font-size:32px;">📋</span>`;
+                return;
             }
-        }
 
-        const scale = Math.min(containerW / canvasW, containerH / canvasH) * 0.95;
+            const canvasW = template.canvasSize?.width || 720;
+            const canvasH = template.canvasSize?.height || 960;
+            let containerW = container.clientWidth;
+            let containerH = container.clientHeight;
+            if (containerW < 20) containerW = 150;
+            if (containerH < 20) {
+                const ratio = template.aspectRatio || '9:16';
+                if (ratio === '16:9') {
+                    containerH = Math.round(containerW * 9 / 16);
+                } else if (ratio === '1:1') {
+                    containerH = containerW;
+                } else {
+                    containerH = Math.round(containerW * 16 / 9);
+                }
+            }
 
-        container.innerHTML = `
-            <div class="gmd-preview-canvas-card" style="
-                position: absolute;
-                width: ${canvasW}px;
-                height: ${canvasH}px;
-                background: #0c0f1d;
-                border: 1px solid rgba(255,255,255,0.05);
-                border-radius: 6px;
-                transform: scale(${scale});
-                transform-origin: center;
-                overflow: hidden;
-            ">
-                ${(template.items || []).map(item => {
+            const scale = Math.min(containerW / canvasW, containerH / canvasH) * 0.95;
+
+            const itemsHtmlList = (template.items || []).map(item => {
+                try {
                     const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { apiBase: this.API_URL });
                     return `
                         <div style="
@@ -2192,9 +2194,31 @@ class EffectStoreApp {
                             ${itemHtml}
                         </div>
                     `;
-                }).join('')}
-            </div>
-        `;
+                } catch (innerErr) {
+                    console.error('Failed to render card item:', item, innerErr);
+                    return `<!-- Error rendering item ${item.id}: ${innerErr.message} -->`;
+                }
+            });
+
+            container.innerHTML = `
+                <div class="gmd-preview-canvas-card" style="
+                    position: absolute;
+                    width: ${canvasW}px;
+                    height: ${canvasH}px;
+                    background: #0c0f1d;
+                    border: 1px solid rgba(255,255,255,0.05);
+                    border-radius: 6px;
+                    transform: scale(${scale});
+                    transform-origin: center;
+                    overflow: hidden;
+                ">
+                    ${itemsHtmlList.join('')}
+                </div>
+            `;
+        } catch (err) {
+            console.error('Error in renderTemplatePreviewInCard:', err);
+            container.innerHTML = `<div style="font-size:10px; color:#ef4444; padding:5px; text-align:center;">Lỗi: ${err.message}</div>`;
+        }
     }
 
     saveGlobalFlashSaleTime() {
