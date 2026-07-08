@@ -5870,7 +5870,11 @@
                 }
                 randomGoal.current = (Number(randomGoal.current) || 0) + repeatCount;
             } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
-                const testNames = ['Vua Tặng Quà 👑', 'Minh Anh idol', 'Thần Donate ⚡', 'Khánh Huyền Cute', 'Anh Hai Sài Gòn'];
+                const testNames = [
+                    'Vua Tặng Quà 👑', 'Minh Anh idol', 'Thần Donate ⚡', 'Khánh Huyền Cute', 'Anh Hai Sài Gòn',
+                    'Đại Gia Phố Núi 💰', 'Hằng Nga 🌙', 'Công Tử Bạc Liêu', 'Bé Thỏ Ngọc 🐰', 'Phan Cứng BH 💎',
+                    'Lão Đại 🥃', 'Mưa Sao Băng 🌠', 'Út cưng 🌸', 'Sơn Tùng M-TP (Fake)', 'Người Đi Hóng Hớt 🍿'
+                ];
                 const nickname = testNames[Math.floor(Math.random() * testNames.length)];
                 giftId = 'galaxy';
                 giftName = 'Galaxy';
@@ -5925,7 +5929,11 @@
 
                 randomGoal.current = (Number(randomGoal.current) || 0) + repeatCount;
             } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
-                const testNames = ['Vua Tặng Quà 👑', 'Minh Anh idol', 'Thần Donate ⚡', 'Khánh Huyền Cute', 'Anh Hai Sài Gòn'];
+                const testNames = [
+                    'Vua Tặng Quà 👑', 'Minh Anh idol', 'Thần Donate ⚡', 'Khánh Huyền Cute', 'Anh Hai Sài Gòn',
+                    'Đại Gia Phố Núi 💰', 'Hằng Nga 🌙', 'Công Tử Bạc Liêu', 'Bé Thỏ Ngọc 🐰', 'Phan Cứng BH 💎',
+                    'Lão Đại 🥃', 'Mưa Sao Băng 🌠', 'Út cưng 🌸', 'Sơn Tùng M-TP (Fake)', 'Người Đi Hóng Hớt 🍿'
+                ];
                 const nickname = testNames[Math.floor(Math.random() * testNames.length)];
                 giftId = 'galaxy';
                 giftName = 'Galaxy';
