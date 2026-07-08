@@ -2091,8 +2091,19 @@ class EffectStoreApp {
 
         const canvasW = template.canvasSize?.width || 720;
         const canvasH = template.canvasSize?.height || 960;
-        const containerW = container.clientWidth || 300;
-        const containerH = container.clientHeight || 450;
+        let containerW = container.clientWidth;
+        let containerH = container.clientHeight;
+        if (containerW < 20) containerW = 300;
+        if (containerH < 20) {
+            const ratio = template.aspectRatio || '9:16';
+            if (ratio === '16:9') {
+                containerH = Math.round(containerW * 9 / 16);
+            } else if (ratio === '1:1') {
+                containerH = containerW;
+            } else {
+                containerH = Math.round(containerW * 16 / 9);
+            }
+        }
 
         const scale = Math.min(containerW / canvasW, containerH / canvasH) * 0.9;
 
@@ -2138,8 +2149,19 @@ class EffectStoreApp {
 
         const canvasW = template.canvasSize?.width || 720;
         const canvasH = template.canvasSize?.height || 960;
-        const containerW = container.clientWidth || 150;
-        const containerH = container.clientHeight || 150;
+        let containerW = container.clientWidth;
+        let containerH = container.clientHeight;
+        if (containerW < 20) containerW = 150;
+        if (containerH < 20) {
+            const ratio = template.aspectRatio || '9:16';
+            if (ratio === '16:9') {
+                containerH = Math.round(containerW * 9 / 16);
+            } else if (ratio === '1:1') {
+                containerH = containerW;
+            } else {
+                containerH = Math.round(containerW * 16 / 9);
+            }
+        }
 
         const scale = Math.min(containerW / canvasW, containerH / canvasH) * 0.95;
 
