@@ -1720,8 +1720,13 @@ class EffectStoreApp {
 
             if (isOwned) {
                 btnClass += ' btn-owned';
-                btnAction = `app.triggerEffect('${effectId}')`;
-                btnText = '▶ Xem thử trên OBS';
+                if (effect.category === 'menu_template') {
+                    btnAction = `app.useMenuTemplateFromStore('${effect.fileUrl}')`;
+                    btnText = '🛠️ Sử dụng Thiết kế';
+                } else {
+                    btnAction = `app.triggerEffect('${effectId}')`;
+                    btnText = '▶ Xem thử trên OBS';
+                }
                 borderCol = isFlashSaleActive ? '#ef4444' : 'var(--success)';
             } else if (isPending) {
                 btnClass += ' btn-pending';
@@ -1877,7 +1882,8 @@ class EffectStoreApp {
         return {
             transformation: 'Biến hình', gift: 'Quà tặng',
             background: 'Background', animation: 'Animation',
-            pk: 'PK', meme: 'Meme', team_heart: 'Tym đội'
+            pk: 'PK', meme: 'Meme', team_heart: 'Tym đội',
+            menu_template: 'Mẫu Menu Quà'
         }[cat] || cat;
     }
     formatPrice(price) { return new Intl.NumberFormat('vi-VN').format(price) + '₫'; }
@@ -1932,9 +1938,15 @@ class EffectStoreApp {
 
         const btnAddCart = document.getElementById('btn-detail-add-cart');
         if (isOwned) {
-            btnAddCart.innerHTML = '▶ Xem thử trên OBS';
-            btnAddCart.className = 'btn-add-cart btn-owned';
-            btnAddCart.onclick = () => { this.closeEffectDetailModal(); this.triggerEffect(effectId); };
+            if (effect.category === 'menu_template') {
+                btnAddCart.innerHTML = '🛠️ Sử dụng Thiết kế';
+                btnAddCart.className = 'btn-add-cart btn-owned';
+                btnAddCart.onclick = () => { this.closeEffectDetailModal(); this.useMenuTemplateFromStore(effect.fileUrl); };
+            } else {
+                btnAddCart.innerHTML = '▶ Xem thử trên OBS';
+                btnAddCart.className = 'btn-add-cart btn-owned';
+                btnAddCart.onclick = () => { this.closeEffectDetailModal(); this.triggerEffect(effectId); };
+            }
         } else if (isPending) {
             btnAddCart.innerHTML = '⏳ Đang chờ duyệt';
             btnAddCart.className = 'btn-add-cart btn-pending';
@@ -1958,6 +1970,48 @@ class EffectStoreApp {
         if (videoEl) {
             videoEl.pause();
             videoEl.currentTime = 0;
+        }
+    }
+
+    async useMenuTemplateFromStore(templateId) {
+        try {
+            this.switchView('gift-menu-designer');
+            if (window.giftMenuDesigner) {
+                await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
+            } else {
+                setTimeout(async () => {
+                    if (window.giftMenuDesigner) {
+                        await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
+                    }
+                }, 500);
+            }
+        } catch (error) {
+            this.showNotification('error', 'Lỗi: ' + error.message);
+        }
+    }
+
+    async buyMenuTemplate(templateId) {
+        try {
+            this.showNotification('info', '⏳ Đang tìm sản phẩm trên Cửa hàng...');
+            const res = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates/${templateId}/effect`, {
+                headers: { 'Authorization': `Bearer ${this.authToken}` }
+            });
+            const data = await res.json();
+            if (data.success && data.effect) {
+                this.switchView('store');
+                // Select category 'menu_template' filter button
+                const activeFilterBtn = document.querySelector(`.filter-btn-new[onclick="filterCategory('menu_template')"]`);
+                if (activeFilterBtn) {
+                    document.querySelectorAll('.filter-btn-new').forEach(btn => btn.classList.remove('active'));
+                    activeFilterBtn.classList.add('active');
+                }
+                this.renderEffects('menu_template');
+                this.showEffectDetail(data.effect._id || data.effect.id);
+            } else {
+                this.showNotification('error', 'Không tìm thấy sản phẩm này trên Cửa hàng.');
+            }
+        } catch (error) {
+            this.showNotification('error', 'Lỗi kết nối: ' + error.message);
         }
     }
 

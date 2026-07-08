@@ -634,10 +634,26 @@ router.get('/gift-menu-layouts', authMiddleware, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.get('/gift-menu-templates', async (_req, res) => {
+router.get('/gift-menu-templates', authMiddleware, async (req, res) => {
     try {
+        const user = await User.findById(req.userId);
+        const ownedEffectIds = user ? user.purchasedEffects.map(pe => pe.effectId?.toString()).filter(Boolean) : [];
+        const isAdmin = user ? (user.isAdmin || user.email === 'admin@effectstore.vn') : false;
+        const isBusiness = user ? user.subscription === 'business' : false;
+
         const templates = await GiftMenuLayout.find({ isTemplate: true }).sort({ updatedAt: -1 });
-        res.json({ success: true, templates });
+
+        const mappedTemplates = await Promise.all(templates.map(async t => {
+            const price = Number(t.price) || 0;
+            if (price === 0 || isAdmin || isBusiness) {
+                return { ...t.toObject(), isPurchased: true };
+            }
+            const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: t._id.toString() });
+            const isPurchased = correspondingEffect ? ownedEffectIds.includes(correspondingEffect._id.toString()) : false;
+            return { ...t.toObject(), isPurchased };
+        }));
+
+        res.json({ success: true, templates: mappedTemplates });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -896,10 +912,37 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
             price,
             originalPrice,
             description: String(payload.description || '').trim(),
-            icon: String(payload.icon || 'ðŸ“‹').trim() || 'ðŸ“‹',
+            icon: String(payload.icon || '📋').trim() || '📋',
             isPremium: price > 0
         });
         await template.save();
+
+        // Automatically sync to Effect product
+        const existingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
+        if (!existingEffect) {
+            const newEffect = new Effect({
+                name: template.name,
+                category: 'menu_template',
+                price: template.price,
+                originalPrice: template.originalPrice,
+                description: template.description || 'Mẫu thiết kế menu quà tặng chuyên nghiệp.',
+                icon: template.icon || '📋',
+                fileUrl: template._id.toString(),
+                previewUrl: '',
+                thumbUrl: '',
+                duration: 5,
+                isActive: true
+            });
+            await newEffect.save();
+        } else {
+            existingEffect.name = template.name;
+            existingEffect.price = template.price;
+            existingEffect.originalPrice = template.originalPrice;
+            existingEffect.description = template.description || existingEffect.description;
+            existingEffect.icon = template.icon || existingEffect.icon;
+            await existingEffect.save();
+        }
+
         res.json({ success: true, template });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -928,8 +971,17 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
                 ));
             }
         }
-        if (Number(template.price) > 0) {
-            return res.status(402).json({ success: false, error: 'Paid template checkout is not available yet' });
+        const price = Number(template.price) || 0;
+        if (price > 0) {
+            const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
+            const isBusiness = user.subscription === 'business';
+            if (!isAdmin && !isBusiness) {
+                const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
+                const hasPurchased = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
+                if (!hasPurchased) {
+                    return res.status(402).json({ success: false, error: 'Bạn chưa mua mẫu thiết kế này. Vui lòng mua tại Cửa hàng.' });
+                }
+            }
         }
 
         await GiftMenuLayout.updateMany({ userId: req.userId, isTemplate: false }, { isActive: false });
@@ -952,6 +1004,17 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
         res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
+
+router.get('/gift-menu-templates/:templateId/effect', authMiddleware, async (req, res) => {
+    try {
+        const effect = await Effect.findOne({ category: 'menu_template', fileUrl: req.params.templateId });
+        if (!effect) return res.status(404).json({ success: false, error: 'Effect product not found' });
+        res.json({ success: true, effect });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 router.get('/goal-board/layout', async (_req, res) => {
     try {
         const layout = await tiktokService.getGoalBoardLayout();

@@ -619,9 +619,11 @@
 
         async buyOrUseTemplateFromSidebar(templateId) {
             const template = (this.serverTemplates || []).find((item) => String(item._id) === String(templateId));
-            if (template && Number(template.price || 0) > 0) {
-                if (window.app && typeof window.app.showNotification === 'function') {
-                    window.app.showNotification('info', 'Thanh toán mẫu trả phí đang được hoàn thiện.');
+            if (template && Number(template.price || 0) > 0 && !template.isPurchased) {
+                if (window.app && typeof window.app.buyMenuTemplate === 'function') {
+                    window.app.buyMenuTemplate(templateId);
+                } else {
+                    alert('Chức năng thanh toán tạm thời không khả dụng.');
                 }
                 return;
             }
@@ -637,7 +639,7 @@
                 await this.loadLayoutsList();
                 await this.loadLayout();
                 if (window.app && typeof window.app.showNotification === 'function') {
-                    window.app.showNotification('success', 'Đã tạo thiết kế từ mẫu miễn phí.');
+                    window.app.showNotification('success', 'Đã tạo thiết kế từ mẫu thành công.');
                 }
             } catch (error) {
                 if (window.app && typeof window.app.showNotification === 'function') {
