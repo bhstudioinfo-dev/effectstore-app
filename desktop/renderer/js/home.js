@@ -1681,7 +1681,15 @@ class EffectStoreApp {
             const videoUrl = resolveMediaUrl(effect.previewUrl);
             const fallbackIcon = effect.icon || '🎬';
 
-            if (thumbUrl && videoUrl) {
+            if (effect.category === 'menu_template') {
+                previewHTML = `
+                            <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="background:#090d16; display:flex; align-items:center; justify-content:center; height:100%; cursor:pointer; overflow:hidden;">
+                                <div id="store-template-preview-${effect.fileUrl}" class="store-template-preview-card" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                                    <div style="font-size:12px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></div>
+                                </div>
+                            </div>
+                        `;
+            } else if (thumbUrl && videoUrl) {
                 previewHTML = `
                             <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')"
                                 onmouseenter="const v=this.querySelector('video'); if(v) { v.play().catch(e=>{}); }" 
@@ -1876,6 +1884,16 @@ class EffectStoreApp {
                 }
             });
         }, 100);
+
+        // Render mini previews for template layout cards
+        setTimeout(() => {
+            const cardPreviews = grid.querySelectorAll('.store-template-preview-card');
+            cardPreviews.forEach(async (container) => {
+                const templateId = container.id.replace('store-template-preview-', '');
+                this.renderTemplatePreviewInCard(container, templateId);
+            });
+        }, 100);
+
         console.log(`✅ Rendered ${filtered.length} effects to ${viewName}`);
     }
     getCategoryName(cat) {
@@ -2090,6 +2108,52 @@ class EffectStoreApp {
                 transform-origin: center;
                 overflow: hidden;
                 box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            ">
+                ${(template.items || []).map(item => {
+                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { apiBase: this.API_URL });
+                    return `
+                        <div style="
+                            position: absolute;
+                            left: ${item.x}px;
+                            top: ${item.y}px;
+                            width: ${item.width}px;
+                            height: ${item.height}px;
+                            z-index: ${item.zIndex || 1};
+                            pointer-events: none;
+                        ">
+                            ${itemHtml}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    async renderTemplatePreviewInCard(container, templateId) {
+        const template = await this.getTemplateLayout(templateId);
+        if (!template) {
+            container.innerHTML = `<span style="font-size:32px;">📋</span>`;
+            return;
+        }
+
+        const canvasW = template.canvasSize?.width || 720;
+        const canvasH = template.canvasSize?.height || 960;
+        const containerW = container.clientWidth || 150;
+        const containerH = container.clientHeight || 150;
+
+        const scale = Math.min(containerW / canvasW, containerH / canvasH) * 0.95;
+
+        container.innerHTML = `
+            <div class="gmd-preview-canvas-card" style="
+                position: relative;
+                width: ${canvasW}px;
+                height: ${canvasH}px;
+                background: #0c0f1d;
+                border: 1px solid rgba(255,255,255,0.05);
+                border-radius: 6px;
+                transform: scale(${scale});
+                transform-origin: center;
+                overflow: hidden;
             ">
                 ${(template.items || []).map(item => {
                     const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { apiBase: this.API_URL });
