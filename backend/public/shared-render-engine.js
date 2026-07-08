@@ -1033,12 +1033,13 @@
         const customColor = item.useCustomTextColor ? (item.textColor || '#ffffff') : color;
 
         if (effect === 'glow-neon') {
+            const glowColor = item.titleColor1 || customColor;
             extraClasses = ' gmd-title-glow-neon';
             styleInject = `
                 <style>
                     @keyframes gmdTitleGlow {
-                        0% { text-shadow: 0 0 ${roundPx(8, ctx.scale)}px ${customColor}, 0 0 ${roundPx(16, ctx.scale)}px ${customColor}; }
-                        100% { text-shadow: 0 0 ${roundPx(12, ctx.scale)}px ${customColor}, 0 0 ${roundPx(24, ctx.scale)}px ${customColor}, 0 0 ${roundPx(32, ctx.scale)}px ${customColor}; }
+                        0% { text-shadow: 0 0 ${roundPx(8, ctx.scale)}px ${glowColor}, 0 0 ${roundPx(16, ctx.scale)}px ${glowColor}; }
+                        100% { text-shadow: 0 0 ${roundPx(12, ctx.scale)}px ${glowColor}, 0 0 ${roundPx(24, ctx.scale)}px ${glowColor}, 0 0 ${roundPx(32, ctx.scale)}px ${glowColor}; }
                     }
                     .gmd-title-glow-neon {
                         animation: gmdTitleGlow 1.5s infinite alternate ease-in-out !important;
@@ -1046,11 +1047,13 @@
                 </style>
             `;
         } else if (effect === 'gold-metallic') {
+            const gold1 = item.titleColor1 || '#ffe066';
+            const gold2 = item.titleColor2 || '#d97706';
             extraClasses = ' gmd-title-gold-metallic';
-            extraStyles = `background: linear-gradient(180deg, #ffe066 0%, #f59e0b 50%, #d97706 100%) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; text-shadow: 0 ${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px rgba(0,0,0,0.6) !important; font-weight: 900 !important;`;
+            extraStyles = `background: linear-gradient(180deg, ${gold1} 0%, ${gold2} 100%) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; text-shadow: 0 ${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px rgba(0,0,0,0.6) !important; font-weight: 900 !important;`;
         } else if (effect === 'gradient-wave') {
-            const flowColor1 = customColor;
-            const flowColor2 = '#f43f5e';
+            const flowColor1 = item.titleColor1 || customColor;
+            const flowColor2 = item.titleColor2 || '#f43f5e';
             extraClasses = ' gmd-title-gradient-wave';
             styleInject = `
                 <style>
@@ -1070,13 +1073,15 @@
                 </style>
             `;
         } else if (effect === 'fire-flicker') {
+            const fire1 = item.titleColor1 || '#ff8000';
+            const fire2 = item.titleColor2 || '#f43f5e';
             extraClasses = ' gmd-title-fire-flicker';
             styleInject = `
                 <style>
                     @keyframes gmdTitleFire {
-                        0% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px ${customColor}, 0 -${roundPx(10, ctx.scale)}px ${roundPx(20, ctx.scale)}px #ff8000, 0 -${roundPx(18, ctx.scale)}px ${roundPx(40, ctx.scale)}px #f00; }
-                        50% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(5, ctx.scale)}px ${roundPx(12, ctx.scale)}px ${customColor}, 0 -${roundPx(12, ctx.scale)}px ${roundPx(24, ctx.scale)}px #ff8000, 0 -${roundPx(22, ctx.scale)}px ${roundPx(44, ctx.scale)}px #f00; }
-                        100% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px ${customColor}, 0 -${roundPx(10, ctx.scale)}px ${roundPx(20, ctx.scale)}px #ff8000, 0 -${roundPx(18, ctx.scale)}px ${roundPx(40, ctx.scale)}px #f00; }
+                        0% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px ${fire1}, 0 -${roundPx(10, ctx.scale)}px ${roundPx(20, ctx.scale)}px ${fire2}, 0 -${roundPx(18, ctx.scale)}px ${roundPx(40, ctx.scale)}px #f00; }
+                        50% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(5, ctx.scale)}px ${roundPx(12, ctx.scale)}px ${fire1}, 0 -${roundPx(12, ctx.scale)}px ${roundPx(24, ctx.scale)}px ${fire2}, 0 -${roundPx(22, ctx.scale)}px ${roundPx(44, ctx.scale)}px #f00; }
+                        100% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px ${fire1}, 0 -${roundPx(10, ctx.scale)}px ${roundPx(20, ctx.scale)}px ${fire2}, 0 -${roundPx(18, ctx.scale)}px ${roundPx(40, ctx.scale)}px #f00; }
                     }
                     .gmd-title-fire-flicker {
                         animation: gmdTitleFire 0.8s infinite alternate ease-in-out !important;

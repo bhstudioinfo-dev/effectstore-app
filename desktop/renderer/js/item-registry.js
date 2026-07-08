@@ -293,6 +293,8 @@
                 top3FrameUrl: '',
                 name: '',
                 titleEffect: 'none',
+                titleColor1: '',
+                titleColor2: '',
                 visible: true,
                 locked: false
             },
@@ -330,6 +332,8 @@
                 top3FrameUrl: '',
                 name: '',
                 titleEffect: 'none',
+                titleColor1: '',
+                titleColor2: '',
                 visible: true,
                 locked: false
             },

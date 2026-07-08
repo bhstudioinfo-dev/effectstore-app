@@ -4964,6 +4964,46 @@
                             </select>
                         </div>
 
+                        ${selected.titleEffect === 'glow-neon' ? `
+                            <div class="gmd-field">
+                                <label>Màu phát sáng Neon</label>
+                                <input class="gmd-color" type="color" data-goal-key="titleColor1" value="${selected.titleColor1 || '#eab308'}">
+                            </div>
+                        ` : ''}
+
+                        ${selected.titleEffect === 'gold-metallic' ? `
+                            <div class="gmd-field">
+                                <label>Màu vàng kim (Bắt đầu)</label>
+                                <input class="gmd-color" type="color" data-goal-key="titleColor1" value="${selected.titleColor1 || '#ffe066'}">
+                            </div>
+                            <div class="gmd-field">
+                                <label>Màu vàng kim (Kết thúc)</label>
+                                <input class="gmd-color" type="color" data-goal-key="titleColor2" value="${selected.titleColor2 || '#d97706'}">
+                            </div>
+                        ` : ''}
+
+                        ${selected.titleEffect === 'gradient-wave' ? `
+                            <div class="gmd-field">
+                                <label>Màu sóng Gradient (Bắt đầu)</label>
+                                <input class="gmd-color" type="color" data-goal-key="titleColor1" value="${selected.titleColor1 || '#eab308'}">
+                            </div>
+                            <div class="gmd-field">
+                                <label>Màu sóng Gradient (Kết thúc)</label>
+                                <input class="gmd-color" type="color" data-goal-key="titleColor2" value="${selected.titleColor2 || '#f43f5e'}">
+                            </div>
+                        ` : ''}
+
+                        ${selected.titleEffect === 'fire-flicker' ? `
+                            <div class="gmd-field">
+                                <label>Màu ánh lửa (Bắt đầu)</label>
+                                <input class="gmd-color" type="color" data-goal-key="titleColor1" value="${selected.titleColor1 || '#ff8000'}">
+                            </div>
+                            <div class="gmd-field">
+                                <label>Màu ánh lửa (Kết thúc)</label>
+                                <input class="gmd-color" type="color" data-goal-key="titleColor2" value="${selected.titleColor2 || '#f43f5e'}">
+                            </div>
+                        ` : ''}
+
                         <div class="gmd-field">
                             <label>Kiểu hiển thị</label>
                             <select class="gmd-select" data-goal-key="contribStyle">
