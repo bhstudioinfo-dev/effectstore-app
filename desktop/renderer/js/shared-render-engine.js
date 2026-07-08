@@ -1131,6 +1131,7 @@
         }
         const ctx = createContext(options);
         const contributors = Array.isArray(item.contributors) ? item.contributors : [];
+        const color = item.barColor || '#eab308';
 
         const isTable = item.contribStyle === 'podium-table';
         const size1 = isTable ? 70 : 88;
