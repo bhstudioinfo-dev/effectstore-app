@@ -37,7 +37,7 @@
       "pkPlayers": [
         {
           "name": "sấdsadsasad",
-          "score": 280000,
+          "score": 2630000,
           "color": "#ef4444",
           "giftId": "rose",
           "giftName": "Rose",
@@ -54,7 +54,7 @@
         },
         {
           "name": "ĐỘI XANH",
-          "score": 50000,
+          "score": 3750000,
           "color": "#3b82f6",
           "giftId": "coffee",
           "giftName": "Coffee",
@@ -65,10 +65,10 @@
         },
         {
           "name": "ĐỘI 3",
-          "score": 150000,
+          "score": 3350000,
           "color": "#fbbf24",
-          "giftId": "donut",
-          "giftName": "Donut",
+          "giftId": "ice_cream",
+          "giftName": "Ice Cream",
           "iconMode": "preset",
           "iconPreset": "crown",
           "auraType": "Bubble"
@@ -92,6 +92,38 @@
       "hideBg": false,
       "useCustomBg": false,
       "useCustomBgGradient": false
+    },
+    {
+      "id": "layer_top-contributors_1783504431700_694_0",
+      "name": "🏆 TOP SUPPORTERS",
+      "type": "top-contributors",
+      "x": 211,
+      "y": 327,
+      "w": 276,
+      "h": 243,
+      "zIndex": 2,
+      "visible": true,
+      "locked": false,
+      "barColor": "#eab308",
+      "limitCount": 3,
+      "showAvatar": true,
+      "showValue": true,
+      "contributors": [],
+      "groupId": "group_1783504431700_135",
+      "width": 92,
+      "height": 81,
+      "contribStyle": "podium-only",
+      "lockRatio": true,
+      "lockedW": 393,
+      "lockedH": 348,
+      "hideBg": true,
+      "top1FrameUrl": "/uploads/goal-assets/69c62ed2dad93ce88b9face4/1783504596993-916345713-vien-4.png",
+      "animationSpeed": 1,
+      "auraSpeed": 1,
+      "auraScale": 1,
+      "textPosition": "bottom",
+      "top2FrameUrl": "/uploads/goal-assets/69c62ed2dad93ce88b9face4/1783504591810-355327041-vien-2.png",
+      "top3FrameUrl": "/uploads/goal-assets/69c62ed2dad93ce88b9face4/1783504585517-288594174-vien-1.png"
     }
   ],
   "exportedItems": [
@@ -127,7 +159,7 @@
       "pkPlayers": [
         {
           "name": "sấdsadsasad",
-          "score": 280000,
+          "score": 2630000,
           "color": "#ef4444",
           "giftId": "rose",
           "giftName": "Rose",
@@ -144,7 +176,7 @@
         },
         {
           "name": "ĐỘI XANH",
-          "score": 50000,
+          "score": 3750000,
           "color": "#3b82f6",
           "giftId": "coffee",
           "giftName": "Coffee",
@@ -155,10 +187,10 @@
         },
         {
           "name": "ĐỘI 3",
-          "score": 150000,
+          "score": 3350000,
           "color": "#fbbf24",
-          "giftId": "donut",
-          "giftName": "Donut",
+          "giftId": "ice_cream",
+          "giftName": "Ice Cream",
           "iconMode": "preset",
           "iconPreset": "crown",
           "auraType": "Bubble"
@@ -185,6 +217,41 @@
       "textSize": 39,
       "textGap": 12,
       "iconTextSize": 60
+    },
+    {
+      "id": "layer_top-contributors_1783504431700_694_0",
+      "name": "🏆 TOP SUPPORTERS",
+      "type": "top-contributors",
+      "x": 93,
+      "y": 501,
+      "w": 276,
+      "h": 243,
+      "zIndex": 2,
+      "visible": true,
+      "locked": false,
+      "barColor": "#eab308",
+      "limitCount": 3,
+      "showAvatar": true,
+      "showValue": true,
+      "contributors": [],
+      "groupId": "group_1783504431700_135",
+      "width": 276,
+      "height": 243,
+      "contribStyle": "podium-only",
+      "lockRatio": true,
+      "lockedW": 393,
+      "lockedH": 348,
+      "hideBg": true,
+      "top1FrameUrl": "/uploads/goal-assets/69c62ed2dad93ce88b9face4/1783504596993-916345713-vien-4.png",
+      "animationSpeed": 1,
+      "auraSpeed": 1,
+      "auraScale": 1,
+      "textPosition": "bottom",
+      "top2FrameUrl": "/uploads/goal-assets/69c62ed2dad93ce88b9face4/1783504591810-355327041-vien-2.png",
+      "top3FrameUrl": "/uploads/goal-assets/69c62ed2dad93ce88b9face4/1783504585517-288594174-vien-1.png",
+      "textSize": 39,
+      "textGap": 12,
+      "iconTextSize": 60
     }
   ],
   "isActive": true,
@@ -196,8 +263,8 @@
   "icon": "📋",
   "isPremium": false,
   "createdAt": "2026-07-05T13:24:57.887Z",
-  "updatedAt": "2026-07-08T07:06:55.467Z",
-  "__v": 1431,
+  "updatedAt": "2026-07-08T09:56:37.014Z",
+  "__v": 1547,
   "canvasSize": {
     "width": 720,
     "height": 960
@@ -212,5 +279,5 @@
     "x": 180,
     "y": 160
   },
-  "savedAt": "2026-07-08T07:06:55.461Z"
+  "savedAt": "2026-07-08T09:56:37.008Z"
 }

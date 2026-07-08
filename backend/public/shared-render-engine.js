@@ -1022,24 +1022,106 @@
         `;
     }
 
+    function renderWidgetHeader(item, ctx, defaultTitle, color, headerClass) {
+        const titleText = item.name || defaultTitle;
+        const effect = item.titleEffect || 'none';
+        
+        let styleInject = '';
+        let extraStyles = '';
+        let extraClasses = '';
+
+        if (effect === 'glow-neon') {
+            const glowColor = item.barColor || '#eab308';
+            extraClasses = ' gmd-title-glow-neon';
+            styleInject = `
+                <style>
+                    @keyframes gmdTitleGlow {
+                        0% { text-shadow: 0 0 ${roundPx(8, ctx.scale)}px ${glowColor}, 0 0 ${roundPx(16, ctx.scale)}px ${glowColor}; }
+                        100% { text-shadow: 0 0 ${roundPx(12, ctx.scale)}px ${glowColor}, 0 0 ${roundPx(24, ctx.scale)}px ${glowColor}, 0 0 ${roundPx(32, ctx.scale)}px ${glowColor}; }
+                    }
+                    .gmd-title-glow-neon {
+                        animation: gmdTitleGlow 1.5s infinite alternate ease-in-out !important;
+                    }
+                </style>
+            `;
+        } else if (effect === 'gold-metallic') {
+            extraClasses = ' gmd-title-gold-metallic';
+            extraStyles = `background: linear-gradient(to bottom, #cfac62 0%, #edd8ad 50%, #cfac62 100%) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; text-shadow: ${roundPx(2, ctx.scale)}px ${roundPx(2, ctx.scale)}px 0px rgba(0,0,0,0.8), 0px ${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px rgba(251,191,36,0.3) !important; font-weight: 900 !important;`;
+        } else if (effect === 'gradient-wave') {
+            const flowColor1 = item.barColor || '#eab308';
+            const flowColor2 = '#a855f7';
+            extraClasses = ' gmd-title-gradient-wave';
+            styleInject = `
+                <style>
+                    @keyframes gmdTitleWave {
+                        0% { background-position: 0% 50%; }
+                        50% { background-position: 100% 50%; }
+                        100% { background-position: 0% 50%; }
+                    }
+                    .gmd-title-gradient-wave {
+                        background: linear-gradient(90deg, ${flowColor1}, ${flowColor2}, ${flowColor1}) !important;
+                        background-size: 200% auto !important;
+                        -webkit-background-clip: text !important;
+                        -webkit-text-fill-color: transparent !important;
+                        animation: gmdTitleWave 3s linear infinite !important;
+                        font-weight: 900 !important;
+                    }
+                </style>
+            `;
+        } else if (effect === 'fire-flicker') {
+            extraClasses = ' gmd-title-fire-flicker';
+            styleInject = `
+                <style>
+                    @keyframes gmdTitleFire {
+                        0% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px #ff0, 0 -${roundPx(10, ctx.scale)}px ${roundPx(20, ctx.scale)}px #ff8000, 0 -${roundPx(18, ctx.scale)}px ${roundPx(40, ctx.scale)}px #f00; }
+                        50% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(5, ctx.scale)}px ${roundPx(12, ctx.scale)}px #ff0, 0 -${roundPx(12, ctx.scale)}px ${roundPx(24, ctx.scale)}px #ff8000, 0 -${roundPx(22, ctx.scale)}px ${roundPx(44, ctx.scale)}px #f00; }
+                        100% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px #ff0, 0 -${roundPx(10, ctx.scale)}px ${roundPx(20, ctx.scale)}px #ff8000, 0 -${roundPx(18, ctx.scale)}px ${roundPx(40, ctx.scale)}px #f00; }
+                    }
+                    .gmd-title-fire-flicker {
+                        animation: gmdTitleFire 0.8s infinite alternate ease-in-out !important;
+                        color: #ff5500 !important;
+                    }
+                </style>
+            `;
+        }
+
+        return {
+            styleInject,
+            titleHTML: `<div class="${headerClass}${extraClasses}" style="font-size: ${font(ctx, item.fontSize, 34)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; ${extraStyles}">${text(ctx, titleText)}</div>`
+        };
+    }
+
     function renderTopContributors(item, options) {
+        if (item.contribStyle === 'podium-only' || item.contribStyle === 'podium-table') {
+            return renderPodium(item, options);
+        }
         const ctx = createContext(options);
         const contributors = Array.isArray(item.contributors) ? item.contributors : [];
         const sliced = contributors.slice(0, Number(item.limitCount || 3));
         const color = item.barColor || '#eab308';
+        const headerInfo = renderWidgetHeader(item, ctx, 'BANG VINH DANH', color, 'gmd-contrib-header');
         return `
+            ${headerInfo.styleInject}
             <div class="gmd-contributors-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(20, ctx.scale)}px ${color}33, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`}; padding: ${roundPx(12, ctx.scale)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; gap: ${roundPx(6, ctx.scale)}px; width: 100%;">
-                    <div class="gmd-contrib-header" style="font-size: ${font(ctx, item.fontSize, 34)}px; padding-bottom: ${roundPx(14, ctx.scale)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; border-bottom-color: ${color}4d;">BANG VINH DANH</div>
+                    ${headerInfo.titleHTML}
                     <div class="gmd-contrib-list" style="display: flex; flex-direction: column; gap: ${roundPx(6, ctx.scale)}px;">
-                        ${sliced.map((c, idx) => `
-                            <div class="gmd-contrib-item" style="font-size: ${font(ctx, item.rowFontSize, 30)}px; padding: ${roundPx(10, ctx.scale)}px ${roundPx(14, ctx.scale)}px; gap: ${roundPx(18, ctx.scale)}px; border-radius: ${roundPx(14, ctx.scale)}px;">
-                                <span class="gmd-contrib-rank" style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">#${idx + 1}</span>
-                                ${item.showAvatar !== false ? `<div class="gmd-contrib-avatar" style="width: ${roundPx(48, ctx.scale)}px; height: ${roundPx(48, ctx.scale)}px; border-radius: 50%; background: #2e3b5e; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0; background-image: url('${c.avatar || ''}'); background-size: cover;"></div>` : ''}
-                                <span class="gmd-contrib-name" style="color: ${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : ''};">${text(ctx, c.nickname || 'BH Studio')}</span>
-                                ${item.showValue !== false ? `<span class="gmd-contrib-val">${c.value || 0}</span>` : ''}
-                            </div>
-                        `).join('')}
+                        ${sliced.map((c, idx) => {
+                            const rawAvatar = c.avatar || 'https://www.w3schools.com/howto/img_avatar.png';
+                            const fullAvatarUrl = rawAvatar.startsWith('http') || rawAvatar.startsWith('data:')
+                                ? rawAvatar
+                                ? rawAvatar
+                                : `${ctx.apiBase || ''}${rawAvatar.startsWith('/') ? '' : '/'}${rawAvatar}`
+                                : 'https://www.w3schools.com/howto/img_avatar.png';
+                            return `
+                                <div class="gmd-contrib-item" style="font-size: ${font(ctx, item.rowFontSize, 30)}px; padding: ${roundPx(10, ctx.scale)}px ${roundPx(14, ctx.scale)}px; gap: ${roundPx(18, ctx.scale)}px; border-radius: ${roundPx(14, ctx.scale)}px;">
+                                    <span class="gmd-contrib-rank" style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">#${idx + 1}</span>
+                                    ${item.showAvatar !== false ? `<div class="gmd-contrib-avatar" style="width: ${roundPx(48, ctx.scale)}px; height: ${roundPx(48, ctx.scale)}px; border-radius: 50%; background: #2e3b5e; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0; background-image: url('${fullAvatarUrl}'); background-size: cover;"></div>` : ''}
+                                    <span class="gmd-contrib-name" style="color: ${item.useCustomTextColor ? (item.textColor || '#cbd5e1') : ''};">${text(ctx, c.nickname || 'BH Studio')}</span>
+                                    ${item.showValue !== false ? `<span class="gmd-contrib-val">${c.value || 0}</span>` : ''}
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             </div>
@@ -1047,29 +1129,86 @@
     }
 
     function renderPodium(item, options) {
+        if (item.contribStyle === 'list-only') {
+            return renderTopContributors(item, options);
+        }
         const ctx = createContext(options);
         const contributors = Array.isArray(item.contributors) ? item.contributors : [];
+
+        const isTable = item.contribStyle === 'podium-table';
+        const size1 = isTable ? 70 : 88;
+        const size2 = isTable ? 52 : 64;
+
         const person = (idx, rank, size) => {
             const c = contributors[idx] || {};
+            let frameUrl = item[`top${rank}FrameUrl`] || '';
+            if (frameUrl && !frameUrl.startsWith('http') && !frameUrl.startsWith('data:')) {
+                frameUrl = `${ctx.apiBase || ''}${frameUrl.startsWith('/') ? '' : '/'}${frameUrl}`;
+            }
+            const frameHtml = frameUrl
+                ? (frameUrl.toLowerCase().endsWith('.webm') || frameUrl.toLowerCase().endsWith('.mp4')
+                    ? `<video src="${frameUrl}" autoplay loop muted playsinline style="position: absolute; inset: -14%; width: 128%; height: 128%; z-index: 2; pointer-events: none; object-fit: contain;"></video>`
+                    : `<img src="${frameUrl}" style="position: absolute; inset: -14%; width: 128%; height: 128%; z-index: 2; pointer-events: none; object-fit: contain;">`
+                  )
+                : '';
+
+            const rawAvatar = c.avatar || 'https://www.w3schools.com/howto/img_avatar.png';
+            const fullAvatarUrl = rawAvatar.startsWith('http') || rawAvatar.startsWith('data:')
+                ? rawAvatar
+                : `${ctx.apiBase || ''}${rawAvatar.startsWith('/') ? '' : '/'}${rawAvatar}`;
+
             return `
                 <div class="gmd-podium-spot rank-${rank}">
-                    <div class="gmd-podium-avatar-wrap">
-                        <div class="gmd-podium-avatar" style="width: ${roundPx(size, ctx.scale)}px; height: ${roundPx(size, ctx.scale)}px; display:flex; align-items:center; justify-content:center; font-size:${roundPx(size * 0.44, ctx.scale)}px; background-image: url('${c.avatar || ''}'); background-size: cover;">${c.avatar ? '' : ''}</div>
+                    <div class="gmd-podium-avatar-wrap" style="position: relative;">
+                        <div class="gmd-podium-avatar" style="width: ${roundPx(size, ctx.scale)}px; height: ${roundPx(size, ctx.scale)}px; display:flex; align-items:center; justify-content:center; font-size:${roundPx(size * 0.44, ctx.scale)}px; background-image: url('${fullAvatarUrl}'); background-size: cover; z-index: 1;"></div>
+                        ${frameHtml}
                     </div>
-                    <div class="gmd-podium-name" style="font-size: ${font(ctx, item.rowFontSize, 22)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${text(ctx, c.nickname || 'Trong')}</div>
-                    ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${font(ctx, item.valueFontSize, 22)}px;">${c.value || 0}</div>` : ''}
+                    <div class="gmd-podium-name" style="font-size: ${font(ctx, item.rowFontSize, 22)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${text(ctx, c.nickname || 'BH Studio')}</div>
+                    ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${font(ctx, item.valueFontSize, 22)}px;">${Number(c.value || 0).toLocaleString('vi-VN')}</div>` : ''}
                 </div>
             `;
         };
+
+        const tableHTML = isTable
+            ? `
+            <div class="gmd-contrib-table" style="margin-top: ${roundPx(12, ctx.scale)}px; display: flex; flex-direction: column; gap: ${roundPx(5, ctx.scale)}px; width: 100%; box-sizing: border-box; overflow: hidden; flex: 1;">
+                ${contributors.slice(3, Number(item.limitCount || 10)).map((c, sliceIdx) => {
+                    const rankIdx = sliceIdx + 4;
+                    const valueStr = item.showValue !== false ? (Number(c.value || 0).toLocaleString('vi-VN') + ' xu') : '';
+                    const rawRowAvatar = c.avatar || 'https://www.w3schools.com/howto/img_avatar.png';
+                    const fullRowAvatarUrl = rawRowAvatar.startsWith('http') || rawRowAvatar.startsWith('data:')
+                        ? rawRowAvatar
+                        : `${ctx.apiBase || ''}${rawRowAvatar.startsWith('/') ? '' : '/'}${rawRowAvatar}`;
+                    return `
+                        <div class="gmd-contrib-row" style="display: grid; grid-template-columns: ${roundPx(50, ctx.scale)}px 1fr auto; align-items: center; padding: ${roundPx(6, ctx.scale)}px ${roundPx(10, ctx.scale)}px; border-radius: ${roundPx(8, ctx.scale)}px; background: rgba(255,255,255,0.03); border: 1.5px solid rgba(255,255,255,0.05); gap: ${roundPx(8, ctx.scale)}px; font-size: ${font(ctx, item.rowFontSize, 22)}px; box-sizing: border-box;">
+                            <div class="gmd-contrib-row-rank" style="font-weight: 800; color: ${item.useCustomTextColor ? (item.textColor || '#a855f7') : '#a855f7'};">#${rankIdx}</div>
+                            <div class="gmd-contrib-row-user" style="display: flex; align-items: center; gap: ${roundPx(6, ctx.scale)}px; min-width: 0;">
+                                ${item.showAvatar !== false ? `<div class="gmd-contrib-row-avatar" style="width: ${roundPx(24, ctx.scale)}px; height: ${roundPx(24, ctx.scale)}px; border-radius: 50%; background: #2e3b5e; border: 1.5px solid rgba(255,255,255,0.1); background-image: url('${fullRowAvatarUrl}'); background-size: cover; flex-shrink: 0;"></div>` : ''}
+                                <div class="gmd-contrib-row-name" style="font-weight: 700; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${text(ctx, c.nickname || 'BH Studio')}</div>
+                            </div>
+                            <div class="gmd-contrib-row-val" style="font-weight: 900; color: ${item.useCustomTextColor ? (item.textColor || '#fbbf24') : '#fbbf24'};">${valueStr}</div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            `
+            : '';
+
+        const paddingVal = isTable ? 12 : 18;
+        const justifyVal = isTable ? 'flex-start' : 'center';
+        const headerInfo = renderWidgetHeader(item, ctx, 'VUONG MIEN HOANG GIA', color, 'gmd-podium-header');
+
         return `
-            <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)')}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : '#eab308'}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(18, ctx.scale)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
-                <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; width: 100%;">
-                    <div class="gmd-podium-header" style="font-size: ${font(ctx, item.fontSize, 34)}px; padding-bottom: ${roundPx(8, ctx.scale)}px; color: ${item.useCustomTextColor ? (item.textColor || '#eab308') : ''};">VUONG MIEN HOANG GIA</div>
-                    <div class="gmd-podium-podium" style="gap: ${roundPx(14, ctx.scale)}px;">
-                        ${person(1, 2, 64)}
-                        ${person(0, 1, 88)}
-                        ${person(2, 3, 64)}
+            ${headerInfo.styleInject}
+            <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)')}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : '#eab308'}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(paddingVal, ctx.scale)}px; display: flex; flex-direction: column; justify-content: ${justifyVal}; height: 100%; box-sizing: border-box; width: 100%; overflow: hidden;">
+                <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box;">
+                    ${headerInfo.titleHTML}
+                    <div class="gmd-podium-podium" style="gap: ${roundPx(14, ctx.scale)}px; flex-shrink: 0;">
+                        ${person(1, 2, size2)}
+                        ${person(0, 1, size1)}
+                        ${person(2, 3, size2)}
                     </div>
+                    ${tableHTML}
                 </div>
             </div>
         `;

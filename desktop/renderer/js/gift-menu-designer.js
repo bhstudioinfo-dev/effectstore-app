@@ -1612,6 +1612,32 @@
             return null;
         }
 
+        triggerFrameUpload(rank) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/png, image/jpeg, image/gif, image/webp, video/webm';
+            input.onchange = async () => {
+                const file = input.files[0];
+                if (!file) return;
+                
+                try {
+                    const uploadedUrl = await this.uploadPlayerAvatarAsset(file);
+                    if (uploadedUrl) {
+                        const selected = this.items.find((x) => x.id === this.selectedId);
+                        if (selected) {
+                            selected[`top${rank}FrameUrl`] = uploadedUrl;
+                            this.renderCanvas();
+                            this.renderInspector();
+                            this.syncLayoutState();
+                        }
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            };
+            input.click();
+        }
+
         trySelectivePkScoreUpdate(item) {
             const domId = `gmd-item-${item.id}`;
             const el = document.getElementById(domId);
@@ -4921,23 +4947,51 @@
                 specificConfigHTML = `
                     <div class="gmd-section">
                         <h4><i class="fas fa-medal"></i> BẢNG VINH DANH</h4>
-                        ${selected.type === 'top-contributors' ? `
+                        
+                        <div class="gmd-field">
+                            <label>Tiêu đề bảng vinh danh</label>
+                            <input class="gmd-input" type="text" data-goal-key="name" value="${selected.name || ''}" placeholder="Mặc định">
+                        </div>
+
+                        <div class="gmd-field">
+                            <label>Hiệu ứng chữ tiêu đề</label>
+                            <select class="gmd-select" data-goal-key="titleEffect">
+                                <option value="none" ${selected.titleEffect === 'none' || !selected.titleEffect ? 'selected' : ''}>Không có hiệu ứng</option>
+                                <option value="glow-neon" ${selected.titleEffect === 'glow-neon' ? 'selected' : ''}>Phát sáng Neon (Glow)</option>
+                                <option value="gold-metallic" ${selected.titleEffect === 'gold-metallic' ? 'selected' : ''}>Chữ đúc Vàng 3D (Gold)</option>
+                                <option value="gradient-wave" ${selected.titleEffect === 'gradient-wave' ? 'selected' : ''}>Sóng Gradient động (Wave)</option>
+                                <option value="fire-flicker" ${selected.titleEffect === 'fire-flicker' ? 'selected' : ''}>Tia lửa bập bùng (Flame)</option>
+                            </select>
+                        </div>
+
+                        <div class="gmd-field">
+                            <label>Kiểu hiển thị</label>
+                            <select class="gmd-select" data-goal-key="contribStyle">
+                                <option value="list-only" ${selected.contribStyle === 'list-only' || (!selected.contribStyle && selected.type === 'top-contributors') ? 'selected' : ''}>Dạng danh sách (List)</option>
+                                <option value="podium-only" ${selected.contribStyle === 'podium-only' || (!selected.contribStyle && selected.type === 'podium-contributors') ? 'selected' : ''}>Chỉ hiện bục (Top 3)</option>
+                                <option value="podium-table" ${selected.contribStyle === 'podium-table' ? 'selected' : ''}>Bục & Bảng chi tiết</option>
+                            </select>
+                        </div>
+
+                        ${(selected.contribStyle === 'list-only' || selected.contribStyle === 'podium-table' || (!selected.contribStyle && selected.type === 'top-contributors')) ? `
                             <div class="gmd-field">
                                 <label>Giới hạn số người hiển thị</label>
                                 <select class="gmd-select" data-goal-key="limitCount">
-                                    <option value="3" ${Number(selected.limitCount) === 3 ? 'selected' : ''}>3 người</option>
-                                    <option value="5" ${Number(selected.limitCount) === 5 ? 'selected' : ''}>5 người</option>
-                                    <option value="10" ${Number(selected.limitCount) === 10 ? 'selected' : ''}>10 người</option>
+                                    <option value="3" ${Number(selected.limitCount || 3) === 3 ? 'selected' : ''}>3 người</option>
+                                    <option value="5" ${Number(selected.limitCount || 3) === 5 ? 'selected' : ''}>5 người</option>
+                                    <option value="10" ${Number(selected.limitCount || 3) === 10 ? 'selected' : ''}>10 người</option>
+                                    <option value="15" ${Number(selected.limitCount || 3) === 15 ? 'selected' : ''}>15 người</option>
                                 </select>
                             </div>
-                            <div class="gmd-field gmd-toggle-row">
-                                <label>Hiển thị ảnh đại diện (Avatar)</label>
-                                <label class="gmd-switch">
-                                    <input type="checkbox" data-goal-key="showAvatar" ${selected.showAvatar !== false ? 'checked' : ''}>
-                                    <span></span>
-                                </label>
-                            </div>
                         ` : ''}
+                        
+                        <div class="gmd-field gmd-toggle-row">
+                            <label>Hiển thị ảnh đại diện (Avatar)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="showAvatar" ${selected.showAvatar !== false ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
                         <div class="gmd-field gmd-toggle-row">
                             <label>Hiển thị số tiền vinh danh (Value)</label>
                             <label class="gmd-switch">
@@ -4949,6 +5003,36 @@
                             <label>Màu chủ đề bảng vinh danh</label>
                             <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#eab308'}">
                         </div>
+
+                        ${(selected.contribStyle === 'podium-only' || selected.contribStyle === 'podium-table' || (!selected.contribStyle && selected.type === 'podium-contributors')) ? `
+                            <div style="margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.06); padding-top: 10px;">
+                                <div style="font-size: 10px; font-weight: bold; color: #a855f7; margin-bottom: 6px;"><i class="fas fa-image"></i> KHUNG VIỀN AVATAR TOP 1-2-3</div>
+                                
+                                <div class="gmd-field" style="margin-bottom: 4px;">
+                                    <label style="font-size: 9px; margin-bottom: 2px;">Khung viền Top 1 (.png / .gif / .webm)</label>
+                                    <div style="display: flex; gap: 4px; align-items: center;">
+                                        <input class="gmd-input gmd-input-compact" type="text" data-goal-key="top1FrameUrl" value="${selected.top1FrameUrl || ''}" placeholder="URL khung viền" style="font-size: 10px; height: 24px; flex: 1; padding: 2px 4px;">
+                                        <button class="gmd-btn" onclick="window.giftMenuDesigner.triggerFrameUpload(1)" style="padding: 2px 6px; font-size: 11px; height: 24px;"><i class="fas fa-upload"></i></button>
+                                    </div>
+                                </div>
+
+                                <div class="gmd-field" style="margin-bottom: 4px;">
+                                    <label style="font-size: 9px; margin-bottom: 2px;">Khung viền Top 2 (.png / .gif / .webm)</label>
+                                    <div style="display: flex; gap: 4px; align-items: center;">
+                                        <input class="gmd-input gmd-input-compact" type="text" data-goal-key="top2FrameUrl" value="${selected.top2FrameUrl || ''}" placeholder="URL khung viền" style="font-size: 10px; height: 24px; flex: 1; padding: 2px 4px;">
+                                        <button class="gmd-btn" onclick="window.giftMenuDesigner.triggerFrameUpload(2)" style="padding: 2px 6px; font-size: 11px; height: 24px;"><i class="fas fa-upload"></i></button>
+                                    </div>
+                                </div>
+
+                                <div class="gmd-field" style="margin-bottom: 4px;">
+                                    <label style="font-size: 9px; margin-bottom: 2px;">Khung viền Top 3 (.png / .gif / .webm)</label>
+                                    <div style="display: flex; gap: 4px; align-items: center;">
+                                        <input class="gmd-input gmd-input-compact" type="text" data-goal-key="top3FrameUrl" value="${selected.top3FrameUrl || ''}" placeholder="URL khung viền" style="font-size: 10px; height: 24px; flex: 1; padding: 2px 4px;">
+                                        <button class="gmd-btn" onclick="window.giftMenuDesigner.triggerFrameUpload(3)" style="padding: 2px 6px; font-size: 11px; height: 24px;"><i class="fas fa-upload"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
