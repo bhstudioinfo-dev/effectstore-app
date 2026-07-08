@@ -2104,20 +2104,71 @@ class EffectStoreApp {
 
             const itemsHtmlList = (template.items || []).map(item => {
                 try {
-                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { scale: 1, apiBase: this.API_URL });
-                    const itemW = item.w !== undefined ? item.w : item.width;
-                    const itemH = item.h !== undefined ? item.h : item.height;
+                    const itemW = item.width || 120;
+                    const itemH = item.height || 180;
+
+                    if (item.type === 'gift-stack-group') {
+                        const itemHtml = window.MenuDesignerSharedRenderEngine.renderGiftStackGroup(item, {
+                            mode: 'overlay',
+                            scale: scale,
+                            apiBase: this.API_URL,
+                            escapeText: true
+                        });
+                        return `
+                            <div style="
+                                position: absolute;
+                                left: ${Math.round(item.x * scale)}px;
+                                top: ${Math.round(item.y * scale)}px;
+                                width: ${Math.round(itemW * scale)}px;
+                                height: ${Math.round(itemH * scale)}px;
+                                z-index: ${item.zIndex || 1};
+                                overflow: hidden;
+                                pointer-events: none;
+                            ">
+                                ${itemHtml}
+                            </div>
+                        `;
+                    }
+
+                    const refW = item.lockedW || item.w || 900;
+                    const refH = item.lockedH || item.h || 160;
+                    const w = item.width || (refW / 3);
+                    const h = item.height || (refH / 3);
+
+                    const scaleX = w / refW;
+                    const scaleY = h / refH;
+                    const wrapperScaleX = scaleX * scale;
+                    const wrapperScaleY = scaleY * scale;
+
+                    const widgetHTML = window.MenuDesignerSharedRenderEngine.renderByType(item, {
+                        mode: 'overlay',
+                        scale: 1,
+                        apiBase: this.API_URL,
+                        escapeText: true
+                    });
+
                     return `
                         <div style="
                             position: absolute;
-                            left: ${item.x}px;
-                            top: ${item.y}px;
-                            width: ${itemW}px;
-                            height: ${itemH}px;
+                            left: ${Math.round(item.x * scale)}px;
+                            top: ${Math.round(item.y * scale)}px;
+                            width: ${Math.round(w * scale)}px;
+                            height: ${Math.round(h * scale)}px;
                             z-index: ${item.zIndex || 1};
                             pointer-events: none;
                         ">
-                            ${itemHtml}
+                            <div class="gmd-visual-scaled-wrapper" style="
+                                width: ${refW}px;
+                                height: ${refH}px;
+                                transform: scale(${wrapperScaleX}, ${wrapperScaleY});
+                                transform-origin: top left;
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                pointer-events: none;
+                            ">
+                                ${widgetHTML}
+                            </div>
                         </div>
                     `;
                 } catch (innerErr) {
@@ -2131,9 +2182,9 @@ class EffectStoreApp {
                     position: absolute;
                     left: 50%;
                     top: 50%;
-                    transform: translate(-50%, -50%) scale(${scale});
-                    width: ${canvasW}px;
-                    height: ${canvasH}px;
+                    transform: translate(-50%, -50%);
+                    width: ${Math.round(canvasW * scale)}px;
+                    height: ${Math.round(canvasH * scale)}px;
                     background: #0c0f1d;
                     border: 1px solid rgba(255,255,255,0.1);
                     border-radius: 8px;
@@ -2177,20 +2228,71 @@ class EffectStoreApp {
 
             const itemsHtmlList = (template.items || []).map(item => {
                 try {
-                    const itemHtml = window.MenuDesignerSharedRenderEngine.renderByType(item, { scale: 1, apiBase: this.API_URL });
-                    const itemW = item.w !== undefined ? item.w : item.width;
-                    const itemH = item.h !== undefined ? item.h : item.height;
+                    const itemW = item.width || 120;
+                    const itemH = item.height || 180;
+
+                    if (item.type === 'gift-stack-group') {
+                        const itemHtml = window.MenuDesignerSharedRenderEngine.renderGiftStackGroup(item, {
+                            mode: 'overlay',
+                            scale: scale,
+                            apiBase: this.API_URL,
+                            escapeText: true
+                        });
+                        return `
+                            <div style="
+                                position: absolute;
+                                left: ${Math.round(item.x * scale)}px;
+                                top: ${Math.round(item.y * scale)}px;
+                                width: ${Math.round(itemW * scale)}px;
+                                height: ${Math.round(itemH * scale)}px;
+                                z-index: ${item.zIndex || 1};
+                                overflow: hidden;
+                                pointer-events: none;
+                            ">
+                                ${itemHtml}
+                            </div>
+                        `;
+                    }
+
+                    const refW = item.lockedW || item.w || 900;
+                    const refH = item.lockedH || item.h || 160;
+                    const w = item.width || (refW / 3);
+                    const h = item.height || (refH / 3);
+
+                    const scaleX = w / refW;
+                    const scaleY = h / refH;
+                    const wrapperScaleX = scaleX * scale;
+                    const wrapperScaleY = scaleY * scale;
+
+                    const widgetHTML = window.MenuDesignerSharedRenderEngine.renderByType(item, {
+                        mode: 'overlay',
+                        scale: 1,
+                        apiBase: this.API_URL,
+                        escapeText: true
+                    });
+
                     return `
                         <div style="
                             position: absolute;
-                            left: ${item.x}px;
-                            top: ${item.y}px;
-                            width: ${itemW}px;
-                            height: ${itemH}px;
+                            left: ${Math.round(item.x * scale)}px;
+                            top: ${Math.round(item.y * scale)}px;
+                            width: ${Math.round(w * scale)}px;
+                            height: ${Math.round(h * scale)}px;
                             z-index: ${item.zIndex || 1};
                             pointer-events: none;
                         ">
-                            ${itemHtml}
+                            <div class="gmd-visual-scaled-wrapper" style="
+                                width: ${refW}px;
+                                height: ${refH}px;
+                                transform: scale(${wrapperScaleX}, ${wrapperScaleY});
+                                transform-origin: top left;
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                pointer-events: none;
+                            ">
+                                ${widgetHTML}
+                            </div>
                         </div>
                     `;
                 } catch (innerErr) {
@@ -2204,9 +2306,9 @@ class EffectStoreApp {
                     position: absolute;
                     left: 50%;
                     top: 50%;
-                    transform: translate(-50%, -50%) scale(${scale});
-                    width: ${canvasW}px;
-                    height: ${canvasH}px;
+                    transform: translate(-50%, -50%);
+                    width: ${Math.round(canvasW * scale)}px;
+                    height: ${Math.round(canvasH * scale)}px;
                     background: #0c0f1d;
                     border: 1px solid rgba(255,255,255,0.05);
                     border-radius: 6px;
