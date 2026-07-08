@@ -1030,14 +1030,15 @@
         let extraStyles = '';
         let extraClasses = '';
 
+        const customColor = item.useCustomTextColor ? (item.textColor || '#ffffff') : color;
+
         if (effect === 'glow-neon') {
-            const glowColor = item.barColor || '#eab308';
             extraClasses = ' gmd-title-glow-neon';
             styleInject = `
                 <style>
                     @keyframes gmdTitleGlow {
-                        0% { text-shadow: 0 0 ${roundPx(8, ctx.scale)}px ${glowColor}, 0 0 ${roundPx(16, ctx.scale)}px ${glowColor}; }
-                        100% { text-shadow: 0 0 ${roundPx(12, ctx.scale)}px ${glowColor}, 0 0 ${roundPx(24, ctx.scale)}px ${glowColor}, 0 0 ${roundPx(32, ctx.scale)}px ${glowColor}; }
+                        0% { text-shadow: 0 0 ${roundPx(8, ctx.scale)}px ${customColor}, 0 0 ${roundPx(16, ctx.scale)}px ${customColor}; }
+                        100% { text-shadow: 0 0 ${roundPx(12, ctx.scale)}px ${customColor}, 0 0 ${roundPx(24, ctx.scale)}px ${customColor}, 0 0 ${roundPx(32, ctx.scale)}px ${customColor}; }
                     }
                     .gmd-title-glow-neon {
                         animation: gmdTitleGlow 1.5s infinite alternate ease-in-out !important;
@@ -1046,10 +1047,10 @@
             `;
         } else if (effect === 'gold-metallic') {
             extraClasses = ' gmd-title-gold-metallic';
-            extraStyles = `background: linear-gradient(to bottom, #cfac62 0%, #edd8ad 50%, #cfac62 100%) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; text-shadow: ${roundPx(2, ctx.scale)}px ${roundPx(2, ctx.scale)}px 0px rgba(0,0,0,0.8), 0px ${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px rgba(251,191,36,0.3) !important; font-weight: 900 !important;`;
+            extraStyles = `background: linear-gradient(180deg, #ffe066 0%, #f59e0b 50%, #d97706 100%) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; text-shadow: 0 ${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px rgba(0,0,0,0.6) !important; font-weight: 900 !important;`;
         } else if (effect === 'gradient-wave') {
-            const flowColor1 = item.barColor || '#eab308';
-            const flowColor2 = '#a855f7';
+            const flowColor1 = customColor;
+            const flowColor2 = '#f43f5e';
             extraClasses = ' gmd-title-gradient-wave';
             styleInject = `
                 <style>
@@ -1073,13 +1074,13 @@
             styleInject = `
                 <style>
                     @keyframes gmdTitleFire {
-                        0% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px #ff0, 0 -${roundPx(10, ctx.scale)}px ${roundPx(20, ctx.scale)}px #ff8000, 0 -${roundPx(18, ctx.scale)}px ${roundPx(40, ctx.scale)}px #f00; }
-                        50% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(5, ctx.scale)}px ${roundPx(12, ctx.scale)}px #ff0, 0 -${roundPx(12, ctx.scale)}px ${roundPx(24, ctx.scale)}px #ff8000, 0 -${roundPx(22, ctx.scale)}px ${roundPx(44, ctx.scale)}px #f00; }
-                        100% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px #ff0, 0 -${roundPx(10, ctx.scale)}px ${roundPx(20, ctx.scale)}px #ff8000, 0 -${roundPx(18, ctx.scale)}px ${roundPx(40, ctx.scale)}px #f00; }
+                        0% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px ${customColor}, 0 -${roundPx(10, ctx.scale)}px ${roundPx(20, ctx.scale)}px #ff8000, 0 -${roundPx(18, ctx.scale)}px ${roundPx(40, ctx.scale)}px #f00; }
+                        50% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(5, ctx.scale)}px ${roundPx(12, ctx.scale)}px ${customColor}, 0 -${roundPx(12, ctx.scale)}px ${roundPx(24, ctx.scale)}px #ff8000, 0 -${roundPx(22, ctx.scale)}px ${roundPx(44, ctx.scale)}px #f00; }
+                        100% { text-shadow: 0 -${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px #fff, 0 -${roundPx(4, ctx.scale)}px ${roundPx(10, ctx.scale)}px ${customColor}, 0 -${roundPx(10, ctx.scale)}px ${roundPx(20, ctx.scale)}px #ff8000, 0 -${roundPx(18, ctx.scale)}px ${roundPx(40, ctx.scale)}px #f00; }
                     }
                     .gmd-title-fire-flicker {
                         animation: gmdTitleFire 0.8s infinite alternate ease-in-out !important;
-                        color: #ff5500 !important;
+                        color: ${customColor} !important;
                     }
                 </style>
             `;
@@ -1087,7 +1088,7 @@
 
         return {
             styleInject,
-            titleHTML: `<div class="${headerClass}${extraClasses}" style="font-size: ${font(ctx, item.fontSize, 34)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; ${extraStyles}">${text(ctx, titleText)}</div>`
+            titleHTML: `<div class="${headerClass}${extraClasses}" style="font-size: ${font(ctx, item.fontSize, 34)}px; color: ${customColor}; ${extraStyles}">${text(ctx, titleText)}</div>`
         };
     }
 
@@ -1202,7 +1203,7 @@
         return `
             ${headerInfo.styleInject}
             <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)')}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : '#eab308'}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(paddingVal, ctx.scale)}px; display: flex; flex-direction: column; justify-content: ${justifyVal}; height: 100%; box-sizing: border-box; width: 100%; overflow: hidden;">
-                <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box;">
+                <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; width: 100%; ${isTable ? 'height: 100%;' : ''} box-sizing: border-box;">
                     ${headerInfo.titleHTML}
                     <div class="gmd-podium-podium" style="gap: ${roundPx(14, ctx.scale)}px; flex-shrink: 0;">
                         ${person(1, 2, size2)}
