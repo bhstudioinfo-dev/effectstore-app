@@ -187,7 +187,17 @@
         const activeTabs = tabs('basic', 'advanced', 'data', 'test');
         return buildResult('goal-bar', activeTabs, {
             basic: renderCommonBasic(item),
-            advanced: renderWidgetStyleAdvanced(item),
+            advanced: `
+                ${renderWidgetStyleAdvanced(item)}
+                ${section('Cài đặt viền PK', `
+                    <div class="gmd-field gmd-toggle-row">
+                        <label>Tùy chỉnh màu viền PK</label>
+                        ${toggleInput('useCustomPkBorderColor', item.useCustomPkBorderColor === true)}
+                    </div>
+                    ${field('Màu viền PK 1 (Đỏ/Glow chính)', colorInput('pkBorderColor1', item.pkBorderColor1 || '#ff003c'))}
+                    ${field('Màu viền PK 2 (Xanh/Glow phụ)', colorInput('pkBorderColor2', item.pkBorderColor2 || '#00f0ff'))}
+                `, 'fas fa-border-style')}
+            `,
             data: section('Goal Data', `
                 ${field('Gift ID', textInput('giftId', item.giftId || ''))}
                 ${field('Target', numberInput('targetCount', item.targetCount || 100, ''))}

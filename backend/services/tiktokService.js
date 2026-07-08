@@ -312,7 +312,37 @@ class TikTokService {
                             (layerGiftId === receivedGiftName) || 
                             (layerGiftName === receivedGiftName);
 
-            if (isMatch) {
+            if (layer.type === 'goal-bar' && layer.barStyle === 'pk') {
+                if (Array.isArray(layer.pkPlayers)) {
+                    let updated = false;
+                    layer.pkPlayers.forEach(player => {
+                        const pGiftId = String(player.giftId || '').toLowerCase();
+                        const pGiftName = String(player.giftName || '').toLowerCase();
+                        const isPlayerMatch = (pGiftId === receivedGiftId) || (pGiftId === receivedGiftName) || (pGiftName === receivedGiftName);
+                        if (isPlayerMatch) {
+                            const coinsSent = (diamondCount > 0 ? diamondCount : 1) * repeatCount;
+                            player.score = (Number(player.score) || 0) + coinsSent;
+                            updated = true;
+                        }
+                    });
+                    if (updated) hasUpdates = true;
+                } else {
+                    // Fallback
+                    const redGiftId = String(layer.giftId || '').toLowerCase();
+                    const redGiftName = String(layer.giftName || '').toLowerCase();
+                    const blueGiftId = String(layer.blueGiftId || 'coffee').toLowerCase();
+                    const blueGiftName = String(layer.blueGiftName || 'coffee').toLowerCase();
+                    const isRedMatch = (redGiftId === receivedGiftId) || (redGiftId === receivedGiftName) || (redGiftName === receivedGiftName);
+                    const isBlueMatch = (blueGiftId === receivedGiftId) || (blueGiftId === receivedGiftName) || (blueGiftName === receivedGiftName);
+                    if (isRedMatch) {
+                        layer.currentCount = (Number(layer.currentCount) || 0) + repeatCount;
+                        hasUpdates = true;
+                    } else if (isBlueMatch) {
+                        layer.targetCount = (Number(layer.targetCount) || 0) + repeatCount;
+                        hasUpdates = true;
+                    }
+                }
+            } else if (isMatch) {
                 if (layer.type === 'goal-bar' || layer.type === 'boss-bar' || layer.type === 'mystery-chests') {
                     layer.currentCount = (Number(layer.currentCount) || 0) + repeatCount;
                     hasUpdates = true;

@@ -1748,41 +1748,66 @@
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    padding: 12px;
+    padding: 14px;
     border-radius: 12px;
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    pointer-events: none;
+    gap: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     text-align: left;
+    backdrop-filter: blur(8px);
+    pointer-events: none;
 }
 .gmd-contrib-header {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 800;
     color: #eab308;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 6px;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 .gmd-contrib-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
 }
 .gmd-contrib-item {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 10px;
+    gap: 8px;
+    font-size: 12px;
     color: #e2e8f0;
+    padding: 4px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    transition: transform 0.2s ease;
+}
+.gmd-contrib-item:hover {
+    transform: translateX(4px);
+    background: rgba(255, 255, 255, 0.05);
 }
 .gmd-contrib-rank {
     width: auto;
     min-width: 1.8em;
     flex-shrink: 0;
-    font-weight: 800;
+    font-weight: 900;
     color: #a855f7;
+}
+.gmd-contrib-item:nth-child(1) .gmd-contrib-rank { color: #f59e0b; }
+.gmd-contrib-item:nth-child(2) .gmd-contrib-rank { color: #94a3b8; }
+.gmd-contrib-item:nth-child(3) .gmd-contrib-rank { color: #b45309; }
+.gmd-contrib-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
 }
 .gmd-contrib-name {
     flex: 1;
@@ -1791,7 +1816,7 @@
     text-overflow: ellipsis;
 }
 .gmd-contrib-val {
-    font-weight: 700;
+    font-weight: 800;
     color: #eab308;
 }
 

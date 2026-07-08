@@ -44,19 +44,22 @@ const goalAssetUpload = multer({
     }),
     limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-        const allowed = new Set(['.png', '.gif', '.webm']);
+        const allowed = new Set(['.png', '.gif', '.webm', '.jpg', '.jpeg', '.webp', '.mp4']);
         const isAllowed = allowed.has(path.extname(file.originalname || '').toLowerCase());
-        cb(isAllowed ? null : new Error('Chá»‰ há»— trá»£ PNG, GIF vÃ  WebM'), isAllowed);
+        cb(isAllowed ? null : new Error('Chỉ hỗ trợ PNG, GIF, WebM, JPG, WebP và MP4'), isAllowed);
     }
 });
 
-function detectGoalAssetType(filePath) {
+function detectGoalAssetType(filePath, ext = '') {
     const header = Buffer.alloc(12);
     const fd = fs.openSync(filePath, 'r');
     try { fs.readSync(fd, header, 0, header.length, 0); } finally { fs.closeSync(fd); }
     if (header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return '.png';
     if (header.subarray(0, 6).toString('ascii') === 'GIF87a' || header.subarray(0, 6).toString('ascii') === 'GIF89a') return '.gif';
     if (header.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))) return '.webm';
+    if (header.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) return ['.jpg', '.jpeg'].includes(ext) ? ext : '.jpg';
+    if (header.subarray(0, 4).toString('ascii') === 'RIFF' && header.subarray(8, 12).toString('ascii') === 'WEBP') return '.webp';
+    if (header.subarray(4, 8).toString('ascii') === 'ftyp') return '.mp4';
     return '';
 }
 
@@ -81,8 +84,17 @@ function runFfmpeg(args, timeoutMs = 120000) {
 
 async function optimizeGoalAsset(filePath, ext) {
     const originalSize = fs.statSync(filePath).size;
-    const thresholds = { '.png': 1024 * 1024, '.gif': 4 * 1024 * 1024, '.webm': 8 * 1024 * 1024 };
-    if (originalSize <= thresholds[ext]) return { optimized: false, originalSize, finalSize: originalSize };
+    const thresholds = {
+        '.png': 1024 * 1024,
+        '.gif': 4 * 1024 * 1024,
+        '.webm': 8 * 1024 * 1024,
+        '.jpg': 1024 * 1024,
+        '.jpeg': 1024 * 1024,
+        '.webp': 1024 * 1024,
+        '.mp4': 1024 * 1024
+    };
+    const currentThreshold = thresholds[ext] || 1024 * 1024;
+    if (originalSize <= currentThreshold) return { optimized: false, originalSize, finalSize: originalSize };
 
     const tempPath = `${filePath}.optimized${ext}`;
     let args = [];
@@ -92,7 +104,15 @@ async function optimizeGoalAsset(filePath, ext) {
         args = ['-i', filePath, '-vf', "fps=20,scale='min(960,iw)':-2:flags=lanczos", '-loop', '0', tempPath];
     } else if (ext === '.webm') {
         args = ['-i', filePath, '-vf', "scale='min(1920,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease:flags=lanczos", '-an', '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-crf', '36', '-b:v', '0', '-deadline', 'good', '-cpu-used', '4', tempPath];
+    } else if (ext === '.jpg' || ext === '.jpeg') {
+        args = ['-i', filePath, '-vf', "scale='min(1200,iw)':-2", '-q:v', '4', tempPath];
+    } else if (ext === '.webp') {
+        args = ['-i', filePath, '-vf', "scale='min(1200,iw)':-2", tempPath];
+    } else if (ext === '.mp4') {
+        args = ['-i', filePath, '-vf', "scale='min(1280,iw)':-2", '-c:v', 'libx264', '-crf', '28', '-an', tempPath];
     }
+
+    if (args.length === 0) return { optimized: false, originalSize, finalSize: originalSize };
 
     const success = await runFfmpeg(args);
     if (!success || !fs.existsSync(tempPath)) {
@@ -694,6 +714,28 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             if (!renamedLayout) return res.status(404).json({ success: false, error: 'Layout not found' });
             if (renamedLayout.isActive) {
                 fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(renamedLayout, null, 2), 'utf8');
+                
+                // Sync rename with Goal Board layout
+                const goalBoardLayoutPath = path.join(__dirname, '..', 'uploads', 'goal-board-layout.json');
+                const goalBoardLayout = {
+                    version: renamedLayout.version || 2,
+                    savedAt: renamedLayout.savedAt || new Date().toISOString(),
+                    aspectRatio: renamedLayout.aspectRatio || '9:16',
+                    canvas: renamedLayout.canvasSize ? { width: renamedLayout.canvasSize.width, height: renamedLayout.canvasSize.height } : { width: 1080, height: 1920 },
+                    layers: renamedLayout.items || []
+                };
+                try {
+                    fs.writeFileSync(goalBoardLayoutPath, JSON.stringify(goalBoardLayout, null, 2), 'utf8');
+                } catch (err) {
+                    console.error('Failed to sync goal board layout file:', err);
+                }
+                tiktokService.setGoalBoardLayout(goalBoardLayout);
+                if (req.app.locals.broadcastToClients) {
+                    req.app.locals.broadcastToClients('goal_board_layout_update', {
+                        type: 'goal_board_layout_update',
+                        layout: goalBoardLayout
+                    });
+                }
             }
             return res.json({ success: true, layout: renamedLayout });
         }
@@ -734,6 +776,31 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
         layout.exportedItems = Array.isArray(payload.exportedItems) ? payload.exportedItems : [];
         await layout.save();
         fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
+
+        // Sync with Goal Board layout
+        const goalBoardLayoutPath = path.join(__dirname, '..', 'uploads', 'goal-board-layout.json');
+        const goalBoardLayout = {
+            version: layout.version || 2,
+            savedAt: layout.savedAt || new Date().toISOString(),
+            aspectRatio: layout.aspectRatio || '9:16',
+            canvas: layout.canvasSize ? { width: layout.canvasSize.width, height: layout.canvasSize.height } : { width: 1080, height: 1920 },
+            layers: layout.items || []
+        };
+        try {
+            fs.writeFileSync(goalBoardLayoutPath, JSON.stringify(goalBoardLayout, null, 2), 'utf8');
+        } catch (err) {
+            console.error('Failed to sync goal board layout file:', err);
+        }
+        tiktokService.setGoalBoardLayout(goalBoardLayout);
+
+        // Broadcast layout update to Goal Board overlays
+        if (req.app.locals.broadcastToClients) {
+            req.app.locals.broadcastToClients('goal_board_layout_update', {
+                type: 'goal_board_layout_update',
+                layout: goalBoardLayout
+            });
+        }
+
         res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -884,6 +951,15 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
         fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
         res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+router.get('/goal-board/layout', async (_req, res) => {
+    try {
+        const layout = await tiktokService.getGoalBoardLayout();
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.json({ success: true, layout });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 

@@ -123,6 +123,9 @@
                 barStyle: 'solid',
                 fontSize: 38,
                 subtitleFontSize: 24,
+                useCustomPkBorderColor: false,
+                pkBorderColor1: '#ff003c',
+                pkBorderColor2: '#00f0ff',
                 visible: true,
                 locked: false
             },
