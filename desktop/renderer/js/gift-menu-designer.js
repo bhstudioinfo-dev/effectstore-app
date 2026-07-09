@@ -579,11 +579,12 @@
                 const data = await res.json();
                 if (data.success && Array.isArray(data.templates)) {
                     this.serverTemplates = data.templates;
-                    if (data.templates.length === 0) {
+                    const purchasedOnly = data.templates.filter(t => t.isPurchased === true);
+                    if (purchasedOnly.length === 0) {
                         listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;">Không có mẫu đã mua nào</div>';
                         return;
                     }
-                    listEl.innerHTML = data.templates.map(t => {
+                    listEl.innerHTML = purchasedOnly.map(t => {
                         const price = Math.max(0, Number(t.price) || 0);
                         const isOwned = Boolean(t.isPurchased) || price === 0;
                         const actionText = isOwned ? 'Sử dụng' : `Mua ${price.toLocaleString('vi-VN')}đ`;

@@ -652,8 +652,7 @@ router.get('/gift-menu-templates', authMiddleware, async (req, res) => {
             return { ...t.toObject(), isPurchased };
         }));
 
-        const purchasedTemplates = mappedTemplates.filter(t => t.isPurchased === true);
-        res.json({ success: true, templates: purchasedTemplates });
+        res.json({ success: true, templates: mappedTemplates });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
