@@ -2816,7 +2816,11 @@
                 const libTab = e.target.closest('.gmd-lib-tab-btn');
                 if (libTab) {
                     const tabName = libTab.dataset.tabName;
-                    this.mount.querySelectorAll('.gmd-lib-tab-btn').forEach(b => b.classList.toggle('active', b === libTab));
+                    this.mount.querySelectorAll('.gmd-lib-tab-btn').forEach(b => {
+                        b.classList.toggle('active', b === libTab);
+                        b.style.borderBottomColor = b === libTab ? '#3b82f6' : 'transparent';
+                        b.style.color = b === libTab ? '#fff' : '#888';
+                    });
 
                     const myLibContent = this.mount.querySelector('#gmd-my-library-content');
                     const tmplContent = this.mount.querySelector('#gmd-templates-content');
