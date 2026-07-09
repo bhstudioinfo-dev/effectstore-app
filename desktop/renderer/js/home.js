@@ -1890,7 +1890,7 @@ class EffectStoreApp {
                 const templateId = container.id.replace('store-template-preview-', '');
                 this.renderTemplatePreviewInCard(container, templateId);
             });
-        }, 100);
+        }, 400);
 
         console.log(`✅ Rendered ${filtered.length} effects to ${viewName}`);
     }
@@ -2236,7 +2236,7 @@ class EffectStoreApp {
             }
             let containerW = container.clientWidth;
             let containerH = container.clientHeight;
-            if (containerW < 20) containerW = 150;
+            if (containerW < 100) containerW = 180;
             if (containerH < 20) {
                 const ratio = template.aspectRatio || '9:16';
                 if (ratio === '16:9') {
