@@ -756,13 +756,37 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             return res.json({ success: true, layout: renamedLayout });
         }
 
-        const designerViolation = validateDesignerItems(payload.items, entitlements) ||
-            validateDesignerItems(payload.exportedItems, entitlements);
-        if (designerViolation) return res.status(403).json(designerViolation);
+        let layout = null;
+        if (payload.id || payload._id) {
+            layout = await GiftMenuLayout.findOne({ _id: payload.id || payload._id, userId: req.userId });
+        } else {
+            layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
+        }
 
-        let layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
-        if (!layout && (payload._id || payload.id)) {
-            layout = await GiftMenuLayout.findOne({ _id: payload._id || payload.id, userId: req.userId });
+        let hasPurchasedParent = false;
+        if (layout && layout.parentTemplateId) {
+            const template = await GiftMenuLayout.findOne({ _id: layout.parentTemplateId, isTemplate: true });
+            if (template) {
+                const price = Number(template.price) || 0;
+                if (price === 0) {
+                    hasPurchasedParent = true;
+                } else {
+                    const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
+                    const isBusiness = user.subscription === 'business';
+                    if (isAdmin || isBusiness) {
+                        hasPurchasedParent = true;
+                    } else {
+                        const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
+                        hasPurchasedParent = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
+                    }
+                }
+            }
+        }
+
+        if (!hasPurchasedParent) {
+            const designerViolation = validateDesignerItems(payload.items, entitlements) ||
+                validateDesignerItems(payload.exportedItems, entitlements);
+            if (designerViolation) return res.status(403).json(designerViolation);
         }
         if (!layout) {
             if (Number.isFinite(entitlements.layouts)) {
@@ -944,7 +968,7 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
             existingEffect.originalPrice = template.originalPrice;
             existingEffect.description = template.description || existingEffect.description;
             existingEffect.icon = template.icon || existingEffect.icon;
-            existingEffect.fileUrl = template._id.toString(); // Cập nhật liên kết sang template layout ID mới
+            existingEffect.fileUrl = template._id.toString();
             await existingEffect.save();
         }
 
@@ -958,34 +982,38 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
         if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+        
+        const price = Number(template.price) || 0;
+        let hasPurchased = false;
+        if (price > 0) {
+            const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
+            const isBusiness = user.subscription === 'business';
+            if (isAdmin || isBusiness) {
+                hasPurchased = true;
+            } else {
+                const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
+                hasPurchased = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
+            }
+        }
+
         const entitlements = getEntitlements(user);
         if (entitlements.designerLevel === 'lite' && String(template.category || '').toLowerCase() !== 'basic') {
-            return res.status(403).json(upgradePayload(
-                'templates',
-                'NÃ¢ng cáº¥p Basic Ä‘á»ƒ sá»­ dá»¥ng nhiá»u máº«u menu chuyÃªn nghiá»‡p.',
-                entitlements
-            ));
+            if (!hasPurchased) {
+                return res.status(403).json(upgradePayload(
+                    'templates',
+                    'Nâng cấp Basic để sử dụng nhiều mẫu menu chuyên nghiệp.',
+                    entitlements
+                ));
+            }
         }
         if (Number.isFinite(entitlements.layouts)) {
             const layoutCount = await GiftMenuLayout.countDocuments({ userId: req.userId, isTemplate: false });
             if (layoutCount >= entitlements.layouts) {
                 return res.status(403).json(upgradePayload(
                     'layouts',
-                    `GÃ³i ${entitlements.label} chá»‰ lÆ°u Ä‘Æ°á»£c ${entitlements.layouts} thiáº¿t káº¿ menu.`,
+                    `Gói ${entitlements.label} chỉ lưu được ${entitlements.layouts} thiết kế menu.`,
                     entitlements
                 ));
-            }
-        }
-        const price = Number(template.price) || 0;
-        if (price > 0) {
-            const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
-            const isBusiness = user.subscription === 'business';
-            if (!isAdmin && !isBusiness) {
-                const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
-                const hasPurchased = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
-                if (!hasPurchased) {
-                    return res.status(402).json({ success: false, error: 'Bạn chưa mua mẫu thiết kế này. Vui lòng mua tại Cửa hàng.' });
-                }
             }
         }
 
@@ -1002,7 +1030,8 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
             items: template.items,
             exportedItems: template.exportedItems,
             isActive: true,
-            isTemplate: false
+            isTemplate: false,
+            parentTemplateId: template._id
         });
         await layout.save();
         fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
@@ -1068,8 +1097,8 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
             return res.status(403).json(upgradePayload(
                 'menuAssets',
                 entitlements.menuAssets === 0
-                    ? 'NÃ¢ng cáº¥p Basic Ä‘á»ƒ táº£i áº£nh/video riÃªng vÃ o menu.'
-                    : `Báº¡n Ä‘Ã£ dÃ¹ng háº¿t ${entitlements.menuAssets} tÃ i nguyÃªn menu cá»§a gÃ³i ${entitlements.label}.`,
+                    ? 'Nâng cấp Basic để tải ảnh/video riêng vào menu.'
+                    : `Bạn đã dùng hết ${entitlements.menuAssets} tài nguyên menu của gói ${entitlements.label}.`,
                 entitlements
             ));
         }
@@ -1078,7 +1107,7 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
         const detectedExt = detectGoalAssetType(req.file.path);
         if (!detectedExt || detectedExt !== ext) {
             try { fs.unlinkSync(req.file.path); } catch (_e) {}
-            return res.status(400).json({ success: false, error: 'File khÃ´ng Ä‘Ãºng Ä‘á»‹nh dáº¡ng PNG, GIF hoáº·c WebM' });
+            return res.status(400).json({ success: false, error: 'File không đúng định dạng PNG, GIF hoặc WebM' });
         }
         const optimization = await optimizeGoalAsset(req.file.path, ext);
         const maxFinalSize = { '.png': 8 * 1024 * 1024, '.gif': 12 * 1024 * 1024, '.webm': 20 * 1024 * 1024 }[ext];

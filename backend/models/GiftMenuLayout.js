@@ -19,6 +19,7 @@ const GiftMenuLayoutSchema = new mongoose.Schema({
     description: { type: String, default: '' },
     icon: { type: String, default: '📋' },
     isPremium: { type: Boolean, default: false },
+    parentTemplateId: { type: mongoose.Schema.Types.ObjectId, ref: 'GiftMenuLayout', required: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('GiftMenuLayout', GiftMenuLayoutSchema);
