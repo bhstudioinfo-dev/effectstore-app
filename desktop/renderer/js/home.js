@@ -402,6 +402,8 @@ class EffectStoreApp {
         if (subtitle) subtitle.textContent = 'BH Studio sẽ tư vấn giải pháp phù hợp cho team và doanh nghiệp của bạn.';
         if (descLabel) descLabel.textContent = 'Nhu cầu vận hành *';
         if (desc) desc.placeholder = 'Số máy, số phòng Live, quy mô team và nhu cầu tích hợp...';
+    }
+
     startAdminPendingPaymentsPoll() {
         if (this.adminPollInterval) clearInterval(this.adminPollInterval);
         
