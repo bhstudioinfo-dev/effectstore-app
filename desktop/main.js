@@ -178,6 +178,11 @@ function createWindow() {
         console.log('❌ HTML load failed:', errorDesc);
     });
     
+    // Clear cache to ensure changes are always loaded fresh
+    if (mainWindow && mainWindow.webContents && mainWindow.webContents.session) {
+        mainWindow.webContents.session.clearCache().catch(e => console.error('Failed to clear cache:', e));
+    }
+
     // Load HTML file - path chính xác
     const htmlPath = path.join(__dirname, 'renderer', 'index.html');
     console.log('📂 Loading from:', htmlPath);
