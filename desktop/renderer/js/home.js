@@ -2224,15 +2224,21 @@ class EffectStoreApp {
             container._resizeObserver.disconnect();
         }
 
-        const observer = new ResizeObserver(async (entries) => {
+        const observer = new ResizeObserver((entries) => {
             for (let entry of entries) {
-                const width = entry.contentRect.width || container.clientWidth;
-                const height = entry.contentRect.height || container.clientHeight;
+                const width = Math.round(entry.contentRect.width || container.clientWidth);
+                const height = Math.round(entry.contentRect.height || container.clientHeight);
                 if (width < 30) continue;
 
-                observer.disconnect();
-                await this.drawTemplatePreview(container, templateId, width, height);
-                observer.observe(container);
+                if (container._lastW === width && container._lastH === height) {
+                    continue;
+                }
+                container._lastW = width;
+                container._lastH = height;
+
+                requestAnimationFrame(async () => {
+                    await this.drawTemplatePreview(container, templateId, width, height);
+                });
             }
         });
 
