@@ -763,6 +763,14 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
         }
 
+        if (layout && !layout.parentTemplateId) {
+            const matchTemplate = await GiftMenuLayout.findOne({ name: layout.name, isTemplate: true });
+            if (matchTemplate) {
+                layout.parentTemplateId = matchTemplate._id;
+                await layout.save();
+            }
+        }
+
         let hasPurchasedParent = false;
         if (layout && layout.parentTemplateId) {
             const template = await GiftMenuLayout.findOne({ _id: layout.parentTemplateId, isTemplate: true });
@@ -985,7 +993,9 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
         
         const price = Number(template.price) || 0;
         let hasPurchased = false;
-        if (price > 0) {
+        if (price === 0) {
+            hasPurchased = true;
+        } else {
             const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
             const isBusiness = user.subscription === 'business';
             if (isAdmin || isBusiness) {
