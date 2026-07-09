@@ -644,8 +644,7 @@ router.get('/gift-menu-templates', authMiddleware, async (req, res) => {
         const templates = await GiftMenuLayout.find({ isTemplate: true }).sort({ updatedAt: -1 });
 
         const mappedTemplates = await Promise.all(templates.map(async t => {
-            const price = Number(t.price) || 0;
-            if (price === 0 || isAdmin || isBusiness) {
+            if (isAdmin || isBusiness) {
                 return { ...t.toObject(), isPurchased: true };
             }
             const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: t._id.toString() });
@@ -985,15 +984,22 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
         
         const price = Number(template.price) || 0;
         let hasPurchased = false;
+        const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
         if (price === 0) {
             hasPurchased = true;
+            if (correspondingEffect) {
+                const alreadyOwned = user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString());
+                if (!alreadyOwned) {
+                    user.purchasedEffects.push({ effectId: correspondingEffect._id, purchasedAt: new Date() });
+                    await user.save();
+                }
+            }
         } else {
             const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
             const isBusiness = user.subscription === 'business';
             if (isAdmin || isBusiness) {
                 hasPurchased = true;
             } else {
-                const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
                 hasPurchased = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
             }
         }
