@@ -1690,238 +1690,219 @@ class EffectStoreApp {
     }
 
     _renderGrid(grid, effects, filter, search, viewName) {
-        let filtered = effects || [];
-        if (filter && filter !== 'all') {
-            if (filter === 'free') {
-                filtered = filtered.filter(e => Number(e.price) === 0);
-            } else {
-                filtered = filtered.filter(e => e.category === filter);
-            }
-        }
-        if (search) {
-            filtered = filtered.filter(e => e.name.toLowerCase().includes(search.toLowerCase()));
-        }
-
-        grid.innerHTML = '';
-        if (filtered.length === 0) {
-            grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;padding:80px 20px;"><div class="empty-icon" style="font-size:64px;margin-bottom:20px;">${viewName === 'library' ? '📚' : '🔍'}</div><h3 style="color:var(--text-secondary);font-size:18px;margin-bottom:10px;">${viewName === 'library' ? 'Chưa có hiệu ứng nào' : 'Không tìm thấy hiệu ứng'}</h3><p style="color:var(--text-muted);">${viewName === 'library' ? 'Hãy mua hiệu ứng từ cửa hàng để sở hữu' : 'Thử tìm với từ khóa khác'}</p></div>`;
-            return;
-        }
-
-        grid.innerHTML = filtered.map(effect => {
-            if (!effect) return '';
-            const effectId = effect._id || effect.id || effect;
-            if (typeof effect !== 'object') {
-                // Trường hợp dữ liệu thô chưa được populate
-                return `<div class="effect-card pending" style="padding:20px; text-align:center; color:var(--text-muted);">
-                            <div style="font-size:24px; margin-bottom:10px;">⏳</div>
-                            <div style="font-size:12px;">Đang tải dữ liệu hiệu ứng...</div>
-                            <div style="font-size:10px; opacity:0.5; margin-top:5px;">ID: ${effect}</div>
-                        </div>`;
-            }
-
-            // Logic sở hữu:
-            // 1. Admin sở hữu tất cả
-            // 2. Gói Business sở hữu tất cả
-            // 3. User đã mua lẻ (có trong ownedEffects)
-            const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
-            const isBusiness = this.currentUser && this.currentUser.subscription === 'business';
-            const hasPurchased = this.ownedEffects.some(e => (e.id || e._id) === effectId);
-
-            const isOwned = isAdmin || isBusiness || hasPurchased;
-            const isPending = this.pendingPaymentEffects.includes(effectId);
-
-            // ✅ XỬ LÝ PREVIEW: Thumb -> Video on Hover
-            let previewHTML = '';
-            const resolveMediaUrl = value => !value ? '' : (/^https?:\/\//i.test(value) ? value : `${this.API_URL}${value}`);
-            const thumbUrl = resolveMediaUrl(effect.thumbUrl);
-            const videoUrl = resolveMediaUrl(effect.previewUrl);
-            const fallbackIcon = effect.icon || '🎬';
-
-            if (effect.category === 'menu_template') {
-                previewHTML = `
-                            <div id="store-template-preview-${effect.fileUrl}" class="store-template-preview-card" onclick="app.showEffectDetail('${effectId}')" style="position: absolute; inset: 0; background:#090d16; display:flex; align-items:center; justify-content:center; overflow: hidden; cursor: pointer; border-radius: 12px 12px 0 0;">
-                                <div style="font-size:12px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></div>
-                            </div>
-                        `;
-            } else if (thumbUrl && videoUrl) {
-                previewHTML = `
-                            <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')"
-                                onmouseenter="const v=this.querySelector('video'); if(v) { v.play().catch(e=>{}); }" 
-                                onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
-                                <img src="${thumbUrl}" class="effect-thumb-img" onerror="app.handleThumbError(this)">
-                                <video src="${videoUrl}" class="effect-video" muted loop playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
-                            </div>
-                        `;
-            } else if (videoUrl) {
-                previewHTML = `
-                            <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')">
-                                <video src="${videoUrl}" class="effect-video" style="opacity:1;" muted loop autoplay playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
-                            </div>
-                        `;
-            } else {
-                previewHTML = `<div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="display:flex;align-items:center;justify-content:center;height:100%;font-size:64px;cursor:pointer;">${fallbackIcon}</div>`;
-            }
-
-            // Xác định trạng thái và nội dung nút
-            let btnClass = 'btn-add-cart';
-            let btnAction = `app.addToCart('${effectId}')`;
-            let btnText = '🛒 Thêm vào giỏ';
-            let borderCol = 'transparent';
-
-            const isInCart = this.cart.some(item => (item.id || item._id) === effectId);
-
-            // Kiểm tra Flash Sale còn hiệu lực không
-            let isFlashSaleActive = false;
-            if (effect.isFlashSale && viewName === 'store') {
-                const now = new Date();
-                const endsAt = effect.flashSaleEndsAt ? new Date(effect.flashSaleEndsAt) : null;
-                if (endsAt && endsAt > now) {
-                    isFlashSaleActive = true;
+        const cacheKey = `_hasRendered_${viewName}_${(effects || []).length}`;
+        
+        if (!grid[cacheKey]) {
+            grid[cacheKey] = true;
+            // Clear other cache keys
+            Object.keys(grid).forEach(k => {
+                if (k.startsWith('_hasRendered_') && k !== cacheKey) {
+                    delete grid[k];
                 }
-            }
+            });
 
-            if (isOwned) {
-                btnClass += ' btn-owned';
-                if (effect.category === 'menu_template') {
-                    btnAction = `app.useMenuTemplateFromStore('${effect.fileUrl}')`;
-                    btnText = '🛠️ Sử dụng Thiết kế';
-                } else {
-                    btnAction = `app.triggerEffect('${effectId}')`;
-                    btnText = '▶ Xem thử trên OBS';
-                }
-                borderCol = isFlashSaleActive ? '#ef4444' : 'var(--success)';
-            } else if (isPending) {
-                btnClass += ' btn-pending';
-                btnAction = 'void(0)';
-                btnText = '⏳ Đang chờ duyệt';
-                borderCol = 'rgba(212, 175, 55, 0.5)';
-            } else if (isInCart) {
-                btnClass += ' btn-in-cart';
-                btnAction = 'app.openCart()';
-                btnText = '🛒 Đã trong giỏ';
-                borderCol = '#ec4899';
-            } else if (isFlashSaleActive) {
-                borderCol = '#ef4444';
-                btnClass = 'btn-flash-sale';
-                btnText = '⚡ MUA NGAY (GIÁ SỐC)';
-            }
-
-            if (effect.isCustom) {
-                btnAction = `app.triggerEffect('${effectId}')`;
-                btnText = '▶ Xem thử trên OBS';
-            }
-
-            let flashSaleBadge = '';
-            let originalPriceHTML = '';
-            let countdownHTML = '';
-
-            let currentPrice = effect.price;
-            let origPrice = effect.originalPrice || effect.price;
-
-            if (isFlashSaleActive) {
-                if (effect.flashSalePrice > 0) {
-                    currentPrice = effect.flashSalePrice;
-                    origPrice = effect.price;
-                }
-                const discount = Math.round((1 - currentPrice / origPrice) * 100);
-                const endsAt = effect.flashSaleEndsAt;
-
-                let countdownHTML = '';
-                if (endsAt) {
-                    countdownHTML = `<div class="fs-card-timer fs-mini-timer" data-ends="${endsAt}">
-                                <span class="fs-time-block time-h">00</span>
-                                <span class="fs-time-sep">:</span>
-                                <span class="fs-time-block time-m">00</span>
-                                <span class="fs-time-sep">:</span>
-                                <span class="fs-time-block time-s">00</span>
-                                <span class="fs-time-text" style="display: none;">--:--:--</span>
+            grid.innerHTML = (effects || []).map(effect => {
+                if (!effect) return '';
+                const effectId = effect._id || effect.id || effect;
+                if (typeof effect !== 'object') {
+                    return `<div class="effect-card pending" style="padding:20px; text-align:center; color:var(--text-muted);">
+                                <div style="font-size:24px; margin-bottom:10px;">⏳</div>
+                                <div style="font-size:12px;">Đang tải dữ liệu hiệu ứng...</div>
+                                <div style="font-size:10px; opacity:0.5; margin-top:5px;">ID: ${effect}</div>
                             </div>`;
                 }
 
-                // Nút thanh toán
-                let activeBtnClass = 'btn-fs-buy';
-                let activeBtnAction = `app.addToCart('${effectId}')`;
-                let activeBtnText = '<i class="fas fa-shopping-cart"></i> MUA NGAY';
+                const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
+                const isBusiness = this.currentUser && this.currentUser.subscription === 'business';
+                const hasPurchased = this.ownedEffects.some(e => (e.id || e._id) === effectId);
 
-                if (isInCart) {
-                    activeBtnClass = 'btn-add-cart btn-in-cart';
-                    activeBtnAction = 'app.openCart()';
-                    activeBtnText = '🛒 Đã trong giỏ';
-                } else if (isOwned) {
-                    activeBtnClass = 'btn-add-cart btn-owned';
-                    activeBtnAction = `app.triggerEffect('${effectId}')`;
-                    activeBtnText = '▶ Xem thử trên OBS';
-                } else if (isPending) {
-                    activeBtnClass = 'btn-add-cart btn-pending';
-                    activeBtnAction = 'void(0)';
-                    activeBtnText = '⏳ Đang chờ duyệt';
+                const isOwned = isAdmin || isBusiness || hasPurchased;
+                const isPending = this.pendingPaymentEffects.includes(effectId);
+
+                let previewHTML = '';
+                const resolveMediaUrl = value => !value ? '' : (/^https?:\/\//i.test(value) ? value : `${this.API_URL}${value}`);
+                const thumbUrl = resolveMediaUrl(effect.thumbUrl);
+                const videoUrl = resolveMediaUrl(effect.previewUrl);
+                const fallbackIcon = effect.icon || '🎬';
+
+                if (effect.category === 'menu_template') {
+                    previewHTML = `
+                                <div id="store-template-preview-${effect.fileUrl}" class="store-template-preview-card" onclick="app.showEffectDetail('${effectId}')" style="position: absolute; inset: 0; background:#090d16; display:flex; align-items:center; justify-content:center; overflow: hidden; cursor: pointer; border-radius: 12px 12px 0 0;">
+                                    <div style="font-size:12px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></div>
+                                </div>
+                            `;
+                } else if (thumbUrl && videoUrl) {
+                    previewHTML = `
+                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')"
+                                    onmouseenter="const v=this.querySelector('video'); if(v) { v.play().catch(e=>{}); }" 
+                                    onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
+                                    <img src="${thumbUrl}" class="effect-thumb-img" onerror="app.handleThumbError(this)">
+                                    <video src="${videoUrl}" class="effect-video" muted loop playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
+                                </div>
+                            `;
+                } else if (videoUrl) {
+                    previewHTML = `
+                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')">
+                                    <video src="${videoUrl}" class="effect-video" style="opacity:1;" muted loop autoplay playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
+                                </div>
+                            `;
+                } else {
+                    previewHTML = `<div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="display:flex;align-items:center;justify-content:center;height:100%;font-size:64px;cursor:pointer;">${fallbackIcon}</div>`;
                 }
 
-                return `<div class="effect-card flash-sale-card" style="position: relative; border: 2px solid #ff3e3e; box-shadow: 0 0 20px rgba(255,62,62,0.3); animation: borderPulse 2s infinite;">
-                            <div style="position: absolute; top: -12px; left: 0; right: 0; display: flex; justify-content: center; z-index: 11;">
-                                <div style="background: linear-gradient(90deg, #ff3e3e, #ff8c00); box-shadow: 0 4px 12px rgba(255,62,62,0.5); border-radius: 8px; padding: 4px 12px; color: white; font-weight: 900; font-size: 11px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.2);">
-                                    <i class="fas fa-bolt"></i> FLASH SALE <span style="background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 4px; margin-left: 4px;">-${discount}%</span>
+                let btnClass = 'btn-add-cart';
+                let btnAction = `app.addToCart('${effectId}')`;
+                let btnText = '🛒 Thêm vào giỏ';
+                let borderCol = 'transparent';
+
+                const isInCart = this.cart.some(item => (item.id || item._id) === effectId);
+
+                let isFlashSaleActive = false;
+                if (effect.isFlashSale && viewName === 'store') {
+                    const now = new Date();
+                    const endsAt = effect.flashSaleEndsAt ? new Date(effect.flashSaleEndsAt) : null;
+                    if (endsAt && endsAt > now) {
+                        isFlashSaleActive = true;
+                    }
+                }
+
+                if (isOwned) {
+                    btnClass += ' btn-owned';
+                    if (effect.category === 'menu_template') {
+                        btnAction = `app.useMenuTemplateFromStore('${effect.fileUrl}')`;
+                        btnText = '🛠️ Sử dụng Thiết kế';
+                    } else {
+                        btnAction = `app.triggerEffect('${effectId}')`;
+                        btnText = '▶ Xem thử trên OBS';
+                    }
+                    borderCol = isFlashSaleActive ? '#ef4444' : 'var(--success)';
+                } else if (isPending) {
+                    btnClass += ' btn-pending';
+                    btnAction = 'void(0)';
+                    btnText = '⏳ Đang chờ duyệt';
+                    borderCol = 'rgba(212, 175, 55, 0.5)';
+                } else if (isInCart) {
+                    btnClass += ' btn-in-cart';
+                    btnAction = 'app.openCart()';
+                    btnText = '🛒 Đã trong giỏ';
+                    borderCol = '#ec4899';
+                } else if (isFlashSaleActive) {
+                    borderCol = '#ef4444';
+                    btnClass = 'btn-flash-sale';
+                    btnText = '⚡ MUA NGAY (GIÁ SỐC)';
+                }
+
+                if (effect.isCustom) {
+                    btnAction = `app.triggerEffect('${effectId}')`;
+                    btnText = '▶ Xem thử trên OBS';
+                }
+
+                let originalPriceHTML = '';
+                let currentPrice = effect.price;
+                let origPrice = effect.originalPrice || effect.price;
+
+                if (isFlashSaleActive) {
+                    if (effect.flashSalePrice > 0) {
+                        currentPrice = effect.flashSalePrice;
+                        origPrice = effect.price;
+                    }
+                    const discount = Math.round((1 - currentPrice / origPrice) * 100);
+                    const endsAt = effect.flashSaleEndsAt;
+
+                    let countdownHTML = '';
+                    if (endsAt) {
+                        countdownHTML = `<div class="fs-card-timer fs-mini-timer" data-ends="${endsAt}">
+                                    <span class="fs-time-block time-h">00</span>
+                                    <span class="fs-time-sep">:</span>
+                                    <span class="fs-time-block time-m">00</span>
+                                    <span class="fs-time-sep">:</span>
+                                    <span class="fs-time-block time-s">00</span>
+                                    <span class="fs-time-text" style="display: none;">--:--:--</span>
+                                </div>`;
+                    }
+
+                    let activeBtnClass = 'btn-fs-buy';
+                    let activeBtnAction = `app.addToCart('${effectId}')`;
+                    let activeBtnText = '<i class="fas fa-shopping-cart"></i> MUA NGAY';
+
+                    if (isInCart) {
+                        activeBtnClass = 'btn-add-cart btn-in-cart';
+                        activeBtnAction = 'app.openCart()';
+                        activeBtnText = '🛒 Đã trong giỏ';
+                    } else if (isOwned) {
+                        activeBtnClass = 'btn-add-cart btn-owned';
+                        activeBtnAction = `app.triggerEffect('${effectId}')`;
+                        activeBtnText = '▶ Xem thử trên OBS';
+                    } else if (isPending) {
+                        activeBtnClass = 'btn-add-cart btn-pending';
+                        activeBtnAction = 'void(0)';
+                        activeBtnText = '⏳ Đang chờ duyệt';
+                    }
+
+                    return `<div class="effect-card flash-sale-card" style="position: relative; border: 2px solid #ff3e3e; box-shadow: 0 0 20px rgba(255,62,62,0.35); animation: borderPulse 2s infinite;" data-cat="${effect.category}" data-price="${currentPrice}" data-name="${effect.name}">
+                                <div style="position: absolute; top: -12px; left: 0; right: 0; display: flex; justify-content: center; z-index: 11;">
+                                    <div style="background: linear-gradient(90deg, #ff3e3e, #ff8c00); box-shadow: 0 4px 12px rgba(255,62,62,0.5); border-radius: 8px; padding: 4px 12px; color: white; font-weight: 900; font-size: 11px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.2);">
+                                        <i class="fas fa-bolt"></i> FLASH SALE <span style="background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 4px; margin-left: 4px;">-${discount}%</span>
+                                    </div>
                                 </div>
-                            </div>
+                                ${effect.isTrending ? `<div class="hot-badge" style="position:absolute; top:10px; right:10px; background:linear-gradient(45deg, #f093fb 0%, #f5576c 100%); color:white; padding:4px 8px; border-radius:8px; font-size:10px; font-weight:bold; z-index:10; box-shadow:0 4px 15px rgba(245,87,108,0.4);"><i class="fas fa-fire"></i> HOT</div>` : ''}
+                                
+                                <div class="effect-thumbnail">
+                                    ${previewHTML}
+                                </div>
+
+                                <div class="effect-info">
+                                    <div class="effect-name" style="font-weight: 700; color: white;">${effect.name}</div>
+                                    <div class="effect-price-row" style="margin-bottom: 5px;">
+                                        <div style="display: flex; align-items: baseline; gap: 8px;">
+                                            <span class="price-current" style="color: #ffcc00; font-weight: 900; font-size: 26px; text-shadow: 0 0 20px rgba(255,204,0,0.6); letter-spacing: -0.5px;">${this.formatPrice(currentPrice)}</span>
+                                            <span class="price-original" style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 13px; font-weight: 500;">${this.formatPrice(origPrice)}</span>
+                                        </div>
+                                        <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
+                                    </div>
+                                    ${countdownHTML}
+                                    <button class="${activeBtnClass}" onclick="${activeBtnAction}">${activeBtnText}</button>
+                                </div>
+                            </div>`;
+                }
+
+                if (effect.originalPrice && effect.originalPrice > effect.price) {
+                    originalPriceHTML = `<span class="price-original" style="text-decoration: line-through; color: #9ca3af; font-size: 11px; margin-left: 6px; font-weight: 500; opacity: 0.6;">${this.formatPrice(effect.originalPrice)}</span>`;
+                }
+
+                const cardClass = `effect-card ${isOwned ? 'owned' : ''} ${isPending ? 'pending' : ''}`;
+                const priceColor = 'var(--accent)';
+
+                return `<div class="${cardClass}" style="position: relative;" data-cat="${effect.category}" data-price="${currentPrice}" data-name="${effect.name}">
                             ${effect.isTrending ? `<div class="hot-badge" style="position:absolute; top:10px; right:10px; background:linear-gradient(45deg, #f093fb 0%, #f5576c 100%); color:white; padding:4px 8px; border-radius:8px; font-size:10px; font-weight:bold; z-index:10; box-shadow:0 4px 15px rgba(245,87,108,0.4);"><i class="fas fa-fire"></i> HOT</div>` : ''}
-                            
                             <div class="effect-thumbnail">
                                 ${previewHTML}
                             </div>
-
                             <div class="effect-info">
-                                <div class="effect-name" style="font-weight: 700; color: white;">${effect.name}</div>
+                                <div class="effect-name">${effect.name || 'Hiệu ứng không tên'}</div>
+                                ${viewName === 'library' ? `
                                 <div class="effect-price-row" style="margin-bottom: 5px;">
-                                    <div style="display: flex; align-items: baseline; gap: 8px;">
-                                        <span class="price-current" style="color: #ffcc00; font-weight: 900; font-size: 26px; text-shadow: 0 0 20px rgba(255,204,0,0.6); letter-spacing: -0.5px;">${this.formatPrice(currentPrice)}</span>
-                                        <span class="price-original" style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 13px; font-weight: 500;">${this.formatPrice(origPrice)}</span>
+                                    <div style="display: flex; align-items: baseline;">
+                                        <span class="price-current" style="color: var(--success); font-weight: 600; font-size: 13px;"><i class="fas fa-check-circle" style="margin-right: 4px;"></i> Đã sở hữu</span>
                                     </div>
                                     <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
                                 </div>
-                                ${countdownHTML}
-                                <button class="${activeBtnClass}" onclick="${activeBtnAction}">${activeBtnText}</button>
+                                ` : `
+                                <div class="effect-price-row" style="margin-bottom: 5px;">
+                                    <div style="display: flex; align-items: baseline;">
+                                        <span class="price-current" style="color: ${priceColor}; font-weight: 800; font-size: 15px;">${this.formatPrice(currentPrice)}</span>
+                                        ${originalPriceHTML}
+                                    </div>
+                                    <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
+                                </div>
+                                `}
+                                <button class="${btnClass}" onclick="${btnAction}">${btnText}</button>
+                                ${effect.isCustom && viewName === 'library' ? `<button onclick="app.deletePersonalEffect('${effectId}')" style="margin-top:7px;width:100%;padding:7px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#fca5a5;cursor:pointer;">Xóa khỏi máy</button>` : ''}
                             </div>
                         </div>`;
-            }
+            }).join('');
 
-            if (effect.originalPrice && effect.originalPrice > effect.price) {
-                originalPriceHTML = `<span class="price-original" style="text-decoration: line-through; color: #9ca3af; font-size: 11px; margin-left: 6px; font-weight: 500; opacity: 0.6;">${this.formatPrice(effect.originalPrice)}</span>`;
-            }
-
-            const cardClass = `effect-card ${isOwned ? 'owned' : ''} ${isPending ? 'pending' : ''}`;
-            const priceColor = 'var(--accent)';
-
-            return `<div class="${cardClass}" style="position: relative;">
-                        ${effect.isTrending ? `<div class="hot-badge" style="position:absolute; top:10px; right:10px; background:linear-gradient(45deg, #f093fb 0%, #f5576c 100%); color:white; padding:4px 8px; border-radius:8px; font-size:10px; font-weight:bold; z-index:10; box-shadow:0 4px 15px rgba(245,87,108,0.4);"><i class="fas fa-fire"></i> HOT</div>` : ''}
-                        <div class="effect-thumbnail">
-                            ${previewHTML}
-                        </div>
-                        <div class="effect-info">
-                            <div class="effect-name">${effect.name || 'Hiệu ứng không tên'}</div>
-                            ${viewName === 'library' ? `
-                            <div class="effect-price-row" style="margin-bottom: 5px;">
-                                <div style="display: flex; align-items: baseline;">
-                                    <span class="price-current" style="color: var(--success); font-weight: 600; font-size: 13px;"><i class="fas fa-check-circle" style="margin-right: 4px;"></i> Đã sở hữu</span>
-                                </div>
-                                <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
-                            </div>
-                            ` : `
-                            <div class="effect-price-row" style="margin-bottom: 5px;">
-                                <div style="display: flex; align-items: baseline;">
-                                    <span class="price-current" style="color: ${priceColor}; font-weight: 800; font-size: 15px;">${this.formatPrice(currentPrice)}</span>
-                                    ${originalPriceHTML}
-                                </div>
-                                <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
-                            </div>
-                            `}
-                            <button class="${btnClass}" onclick="${btnAction}">${btnText}</button>
-                            ${effect.isCustom && viewName === 'library' ? `<button onclick="app.deletePersonalEffect('${effectId}')" style="margin-top:7px;width:100%;padding:7px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#fca5a5;cursor:pointer;">Xóa khỏi máy</button>` : ''}
-                        </div>
-                    </div>`;
-        }).join('');
-        // Xử lý hover cho videos - Fix lỗi AbortError
-        setTimeout(() => {
+            // Hover handles
             const containers = grid.querySelectorAll('.effect-thumb-container');
             containers.forEach(container => {
                 const video = container.querySelector('video');
@@ -1938,18 +1919,54 @@ class EffectStoreApp {
                     });
                 }
             });
-        }, 100);
 
-        // Render mini previews for template layout cards
-        setTimeout(() => {
+            // Card template previews rendering
             const cardPreviews = grid.querySelectorAll('.store-template-preview-card');
-            cardPreviews.forEach(async (container) => {
+            cardPreviews.forEach(container => {
                 const templateId = container.id.replace('store-template-preview-', '');
                 this.renderTemplatePreviewInCard(container, templateId);
             });
-        }, 400);
+        }
 
-        console.log(`✅ Rendered ${filtered.length} effects to ${viewName}`);
+        // Apply DOM visibility filtering based on filter & search query
+        const cards = grid.querySelectorAll('.effect-card');
+        let visibleCount = 0;
+        cards.forEach(card => {
+            const cat = card.getAttribute('data-cat');
+            const price = Number(card.getAttribute('data-price')) || 0;
+            const name = (card.getAttribute('data-name') || '').toLowerCase();
+
+            let match = true;
+            if (filter && filter !== 'all') {
+                if (filter === 'free') {
+                    match = (price === 0);
+                } else {
+                    match = (cat === filter);
+                }
+            }
+            if (match && search) {
+                match = name.includes(search.toLowerCase());
+            }
+
+            card.style.display = match ? 'flex' : 'none';
+            if (match) visibleCount++;
+        });
+
+        // Toggle Empty state view
+        let emptyState = grid.querySelector('.empty-state');
+        if (visibleCount === 0) {
+            if (!emptyState) {
+                emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+                emptyState.style.cssText = 'grid-column:1/-1;text-align:center;padding:80px 20px;';
+                emptyState.innerHTML = `<div class="empty-icon" style="font-size:64px;margin-bottom:20px;">${viewName === 'library' ? '📚' : '🔍'}</div><h3 style="color:var(--text-secondary);font-size:18px;margin-bottom:10px;">${viewName === 'library' ? 'Chưa có hiệu ứng nào' : 'Không tìm thấy hiệu ứng'}</h3><p style="color:var(--text-muted);">${viewName === 'library' ? 'Hãy mua hiệu ứng từ cửa hàng để sở hữu' : 'Thử tìm với từ khóa khác'}</p>`;
+                grid.appendChild(emptyState);
+            } else {
+                emptyState.style.display = 'block';
+            }
+        } else {
+            if (emptyState) emptyState.style.display = 'none';
+        }
     }
     getCategoryName(cat) {
         return {
