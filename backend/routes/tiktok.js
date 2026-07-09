@@ -1083,12 +1083,13 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
         const assetCount = fs.existsSync(userDir)
             ? fs.readdirSync(userDir, { withFileTypes: true }).filter(entry => entry.isFile()).length
             : 0;
-        if (Number.isFinite(entitlements.menuAssets) && assetCount > entitlements.menuAssets) {
+        const allowedAssets = entitlements.menuAssets === 0 ? 5 : entitlements.menuAssets;
+        if (Number.isFinite(allowedAssets) && assetCount >= allowedAssets) {
             if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
             return res.status(403).json(upgradePayload(
                 'menuAssets',
                 entitlements.menuAssets === 0
-                    ? 'Nâng cấp Basic để tải ảnh/video riêng vào menu.'
+                    ? 'Bạn đã đạt giới hạn 5 tài nguyên thử nghiệm của tài khoản Free. Vui lòng nâng cấp Basic để lưu và sử dụng!'
                     : `Bạn đã dùng hết ${entitlements.menuAssets} tài nguyên menu của gói ${entitlements.label}.`,
                 entitlements
             ));

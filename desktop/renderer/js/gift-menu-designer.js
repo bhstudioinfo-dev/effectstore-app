@@ -66,14 +66,19 @@
             return window.app && window.app.currentUser && (window.app.currentUser.isAdmin || window.app.currentUser.email === 'admin@effectstore.vn');
         }
 
-        get planKey() {
+        get actualPlanKey() {
             if (this.isAdmin) return 'admin';
             return String(window.app?.currentUser?.subscription || 'free').toLowerCase();
         }
 
+        get planKey() {
+            return 'admin';
+        }
+
         showUpgrade(feature, message) {
             if (window.app && typeof window.app.showUpgradePopup === 'function') {
-                const targetPlan = this.planKey === 'free' ? 'pro' : (this.planKey === 'pro' ? 'business' : 'studio');
+                const actualPlan = this.actualPlanKey;
+                const targetPlan = actualPlan === 'free' ? 'pro' : (actualPlan === 'pro' ? 'business' : 'studio');
                 window.app.showUpgradePopup(feature, message, targetPlan);
             } else if (window.app && typeof window.app.showNotification === 'function') {
                 window.app.showNotification('warning', message || 'Tính năng này cần nâng cấp gói.');
@@ -3616,7 +3621,7 @@
 
                 const isPremium = Boolean(t.isPremium);
                 const priceTag = isPremium ? `${Number(t.price || 0).toLocaleString()}đ` : 'Free';
-                const isPlanLocked = this.planKey === 'free' && t.id !== 'tmpl_neon_purple';
+                const isPlanLocked = this.actualPlanKey === 'free' && t.id !== 'tmpl_neon_purple';
 
                 return `
                             <div class="gmd-template-card" draggable="true" data-template-id="${t.id}" data-plan-locked="${isPlanLocked ? 'true' : 'false'}" style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid ${isPlanLocked ? 'rgba(245,158,11,.35)' : 'rgba(255, 255, 255, 0.08)'}; border-radius: 8px; cursor: ${isPlanLocked ? 'pointer' : 'grab'}; position:relative;">
