@@ -2201,6 +2201,9 @@ class EffectStoreApp {
                     transform-origin: center;
                     width: ${canvasW}px;
                     height: ${canvasH}px;
+                    flex-shrink: 0;
+                    max-width: none;
+                    max-height: none;
                     ${checkerboardStyle}
                     border: 1px solid rgba(255,255,255,0.1);
                     border-radius: 8px;
@@ -2341,6 +2344,9 @@ class EffectStoreApp {
                     transform-origin: center;
                     width: ${canvasW}px;
                     height: ${canvasH}px;
+                    flex-shrink: 0;
+                    max-width: none;
+                    max-height: none;
                     ${checkerboardStyle}
                     border: 1px solid rgba(255,255,255,0.05);
                     border-radius: 6px;
