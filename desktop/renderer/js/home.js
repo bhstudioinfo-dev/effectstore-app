@@ -2084,15 +2084,21 @@ class EffectStoreApp {
                 return;
             }
 
-            const canvasW = template.canvasSize?.width || 720;
+            let canvasW = template.canvasSize?.width || 720;
             let canvasH = template.canvasSize?.height || 960;
-            const ratio = template.aspectRatio || '9:16';
-            if (ratio === '9:16') {
-                canvasH = Math.round(canvasW * 16 / 9);
-            } else if (ratio === '16:9') {
-                canvasH = Math.round(canvasW * 9 / 16);
-            } else if (ratio === '1:1') {
-                canvasH = canvasW;
+            const useExported = Array.isArray(template.exportedItems) && template.exportedItems.length > 0;
+            if (useExported && template.exportSize) {
+                canvasW = template.exportSize.width || 1080;
+                canvasH = template.exportSize.height || 1920;
+            } else {
+                const ratio = template.aspectRatio || '9:16';
+                if (ratio === '9:16') {
+                    canvasH = Math.round(canvasW * 16 / 9);
+                } else if (ratio === '16:9') {
+                    canvasH = Math.round(canvasW * 9 / 16);
+                } else if (ratio === '1:1') {
+                    canvasH = canvasW;
+                }
             }
             let containerW = container.clientWidth;
             let containerH = container.clientHeight;
@@ -2255,15 +2261,21 @@ class EffectStoreApp {
                 return;
             }
 
-            const canvasW = template.canvasSize?.width || 720;
+            let canvasW = template.canvasSize?.width || 720;
             let canvasH = template.canvasSize?.height || 960;
-            const ratio = template.aspectRatio || '9:16';
-            if (ratio === '9:16') {
-                canvasH = Math.round(canvasW * 16 / 9);
-            } else if (ratio === '16:9') {
-                canvasH = Math.round(canvasW * 9 / 16);
-            } else if (ratio === '1:1') {
-                canvasH = canvasW;
+            const useExported = Array.isArray(template.exportedItems) && template.exportedItems.length > 0;
+            if (useExported && template.exportSize) {
+                canvasW = template.exportSize.width || 1080;
+                canvasH = template.exportSize.height || 1920;
+            } else {
+                const ratio = template.aspectRatio || '9:16';
+                if (ratio === '9:16') {
+                    canvasH = Math.round(canvasW * 16 / 9);
+                } else if (ratio === '16:9') {
+                    canvasH = Math.round(canvasW * 9 / 16);
+                } else if (ratio === '1:1') {
+                    canvasH = canvasW;
+                }
             }
 
             const scale = Math.max(containerW / canvasW, containerH / canvasH);
