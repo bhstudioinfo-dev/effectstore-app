@@ -2154,45 +2154,75 @@ class EffectStoreApp {
                         `;
                     }
 
-                    const refW = item.lockedW || item.w || 900;
-                    const refH = item.lockedH || item.h || 160;
-                    const w = item.width || (refW / 3);
-                    const h = item.height || (refH / 3);
+                    const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'];
+                    if (customWidgetTypes.includes(item.type)) {
+                        const refW = item.lockedW || item.w || 900;
+                        const refH = item.lockedH || item.h || 160;
+                        const w = item.width || (refW / 3);
+                        const h = item.height || (refH / 3);
 
-                    const scaleX = w / refW;
-                    const scaleY = h / refH;
+                        const scaleX = w / refW;
+                        const scaleY = h / refH;
 
-                    const widgetHTML = window.MenuDesignerSharedRenderEngine.renderByType(item, {
-                        mode: 'overlay',
-                        scale: 1,
-                        apiBase: this.API_URL,
-                        escapeText: true
-                    });
+                        const widgetHTML = window.MenuDesignerSharedRenderEngine.renderByType(item, {
+                            mode: 'overlay',
+                            scale: 1,
+                            apiBase: this.API_URL,
+                            escapeText: true
+                        });
 
-                    return `
-                        <div style="
-                            position: absolute;
-                            left: ${item.x}px;
-                            top: ${item.y}px;
-                            width: ${w}px;
-                            height: ${h}px;
-                            z-index: ${item.zIndex || 1};
-                            pointer-events: none;
-                        ">
-                            <div class="gmd-visual-scaled-wrapper" style="
-                                width: ${refW}px;
-                                height: ${refH}px;
-                                transform: scale(${scaleX}, ${scaleY});
-                                transform-origin: top left;
+                        return `
+                            <div style="
                                 position: absolute;
-                                top: 0;
-                                left: 0;
+                                left: ${item.x}px;
+                                top: ${item.y}px;
+                                width: ${w}px;
+                                height: ${h}px;
+                                z-index: ${item.zIndex || 1};
                                 pointer-events: none;
                             ">
-                                ${widgetHTML}
+                                <div class="gmd-visual-scaled-wrapper" style="
+                                    width: ${refW}px;
+                                    height: ${refH}px;
+                                    transform: scale(${scaleX}, ${scaleY});
+                                    transform-origin: top left;
+                                    position: absolute;
+                                    top: 0;
+                                    left: 0;
+                                    pointer-events: none;
+                                ">
+                                    ${widgetHTML}
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        const left = Number(item.x) || 0;
+                        const top = Number(item.y) || 0;
+                        const width = Number(item.width) || 84;
+                        const height = Number(item.height) || 84;
+
+                        const giftHTML = window.MenuDesignerSharedRenderEngine.renderByType(item, {
+                            mode: 'overlay',
+                            scale: 1,
+                            apiBase: this.API_URL,
+                            escapeText: true
+                        });
+
+                        return `
+                            <div style="
+                                position: absolute;
+                                left: ${left}px;
+                                top: ${top}px;
+                                width: ${width}px;
+                                height: ${height}px;
+                                transform: rotate(${Number(item.rotation) || 0}deg);
+                                z-index: ${Number(item.zIndex) || 1};
+                                pointer-events: none;
+                            ">
+                                ${giftHTML}
+                            </div>
+                        `;
+                    }
                 } catch (innerErr) {
                     console.error('Failed to render modal item:', item, innerErr);
                     return `<!-- Error rendering item ${item.id}: ${innerErr.message} -->`;
@@ -2318,45 +2348,75 @@ class EffectStoreApp {
                         `;
                     }
 
-                    const refW = item.lockedW || item.w || 900;
-                    const refH = item.lockedH || item.h || 160;
-                    const w = item.width || (refW / 3);
-                    const h = item.height || (refH / 3);
+                    const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'];
+                    if (customWidgetTypes.includes(item.type)) {
+                        const refW = item.lockedW || item.w || 900;
+                        const refH = item.lockedH || item.h || 160;
+                        const w = item.width || (refW / 3);
+                        const h = item.height || (refH / 3);
 
-                    const scaleX = w / refW;
-                    const scaleY = h / refH;
+                        const scaleX = w / refW;
+                        const scaleY = h / refH;
 
-                    const widgetHTML = window.MenuDesignerSharedRenderEngine.renderByType(item, {
-                        mode: 'overlay',
-                        scale: 1,
-                        apiBase: this.API_URL,
-                        escapeText: true
-                    });
+                        const widgetHTML = window.MenuDesignerSharedRenderEngine.renderByType(item, {
+                            mode: 'overlay',
+                            scale: 1,
+                            apiBase: this.API_URL,
+                            escapeText: true
+                        });
 
-                    return `
-                        <div style="
-                            position: absolute;
-                            left: ${item.x}px;
-                            top: ${item.y}px;
-                            width: ${w}px;
-                            height: ${h}px;
-                            z-index: ${item.zIndex || 1};
-                            pointer-events: none;
-                        ">
-                            <div class="gmd-visual-scaled-wrapper" style="
-                                width: ${refW}px;
-                                height: ${refH}px;
-                                transform: scale(${scaleX}, ${scaleY});
-                                transform-origin: top left;
+                        return `
+                            <div style="
                                 position: absolute;
-                                top: 0;
-                                left: 0;
+                                left: ${item.x}px;
+                                top: ${item.y}px;
+                                width: ${w}px;
+                                height: ${h}px;
+                                z-index: ${item.zIndex || 1};
                                 pointer-events: none;
                             ">
-                                ${widgetHTML}
+                                <div class="gmd-visual-scaled-wrapper" style="
+                                    width: ${refW}px;
+                                    height: ${refH}px;
+                                    transform: scale(${scaleX}, ${scaleY});
+                                    transform-origin: top left;
+                                    position: absolute;
+                                    top: 0;
+                                    left: 0;
+                                    pointer-events: none;
+                                ">
+                                    ${widgetHTML}
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        const left = Number(item.x) || 0;
+                        const top = Number(item.y) || 0;
+                        const width = Number(item.width) || 84;
+                        const height = Number(item.height) || 84;
+
+                        const giftHTML = window.MenuDesignerSharedRenderEngine.renderByType(item, {
+                            mode: 'overlay',
+                            scale: 1,
+                            apiBase: this.API_URL,
+                            escapeText: true
+                        });
+
+                        return `
+                            <div style="
+                                position: absolute;
+                                left: ${left}px;
+                                top: ${top}px;
+                                width: ${width}px;
+                                height: ${height}px;
+                                transform: rotate(${Number(item.rotation) || 0}deg);
+                                z-index: ${Number(item.zIndex) || 1};
+                                pointer-events: none;
+                            ">
+                                ${giftHTML}
+                            </div>
+                        `;
+                    }
                 } catch (innerErr) {
                     console.error('Failed to render card item:', item, innerErr);
                     return `<!-- Error rendering item ${item.id}: ${innerErr.message} -->`;
