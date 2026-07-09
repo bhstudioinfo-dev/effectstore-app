@@ -101,6 +101,7 @@ class EffectStoreApp {
 
                 this.pollSystemStatus();
                 setInterval(() => this.pollSystemStatus(), 5000);
+                this.startAdminPendingPaymentsPoll();
                 this.startFlashSaleTimer();
                 if (new URLSearchParams(window.location.search).get('pricing') === '1') {
                     setTimeout(() => this.showPricing(), 150);
@@ -347,6 +348,7 @@ class EffectStoreApp {
                 this.updateUI();
                 this.pollSystemStatus();
                 setInterval(() => this.pollSystemStatus(), 5000);
+                this.startAdminPendingPaymentsPoll();
             } else {
                 this.showNotification('error', data.error || data.message || 'Đăng nhập thất bại');
             }
@@ -400,6 +402,59 @@ class EffectStoreApp {
         if (subtitle) subtitle.textContent = 'BH Studio sẽ tư vấn giải pháp phù hợp cho team và doanh nghiệp của bạn.';
         if (descLabel) descLabel.textContent = 'Nhu cầu vận hành *';
         if (desc) desc.placeholder = 'Số máy, số phòng Live, quy mô team và nhu cầu tích hợp...';
+    startAdminPendingPaymentsPoll() {
+        if (this.adminPollInterval) clearInterval(this.adminPollInterval);
+        
+        const check = async () => {
+            const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
+            if (!isAdmin || !this.authToken) {
+                const banner = document.getElementById('admin-pending-payments-banner');
+                if (banner) banner.style.display = 'none';
+                return;
+            }
+
+            try {
+                const res = await fetch(`${this.API_URL}/api/admin/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success && data.stats) {
+                    const count = data.stats.pendingPayments || 0;
+                    const banner = document.getElementById('admin-pending-payments-banner');
+                    const countSpan = document.getElementById('admin-banner-pending-count');
+                    
+                    if (count > 0) {
+                        if (banner) {
+                            banner.style.display = 'flex';
+                            if (countSpan) countSpan.textContent = count;
+                        }
+                        
+                        const lastCount = parseInt(localStorage.getItem('es_last_pending_count') || '0');
+                        if (count > lastCount) {
+                            const modal = document.getElementById('admin-alert-modal');
+                            const modalCount = document.getElementById('admin-modal-pending-count');
+                            if (modal) {
+                                if (modalCount) modalCount.textContent = count;
+                                modal.style.display = 'flex';
+                            }
+                        }
+                        localStorage.setItem('es_last_pending_count', count.toString());
+                    } else {
+                        if (banner) banner.style.display = 'none';
+                        localStorage.setItem('es_last_pending_count', '0');
+                    }
+                }
+            } catch (err) {
+                console.error('Error polling admin pending payments:', err);
+            }
+        };
+
+        check();
+        this.adminPollInterval = setInterval(check, 10000);
     }
 
     async pollSystemStatus() {

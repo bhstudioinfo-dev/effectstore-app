@@ -517,6 +517,32 @@
             <!-- Element này để JS cập nhật tiêu đề, đang ẩn đi -->
             <div id="page-title" style="display:none;"></div>
 
+            <!-- Warning Banner for Admin (hiện khi có payment cần duyệt) -->
+            <style>
+                @keyframes pulseGlow {
+                    0% { box-shadow: 0 0 15px rgba(255, 78, 80, 0.4); }
+                    100% { box-shadow: 0 0 30px rgba(255, 78, 80, 0.8); }
+                }
+                @keyframes scaleUp {
+                    0% { transform: scale(0.9); opacity: 0; }
+                    100% { transform: scale(1); opacity: 1; }
+                }
+                @keyframes bounceAlert {
+                    0% { transform: translateY(0); }
+                    100% { transform: translateY(-10px); }
+                }
+            </style>
+            <div id="admin-pending-payments-banner" class="admin-warning-banner" style="display: none; background: linear-gradient(90deg, #ff4e50, #f9d423); color: #000; padding: 12px 20px; border-radius: 12px; font-weight: 800; align-items: center; justify-content: space-between; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(255, 78, 80, 0.4); animation: pulseGlow 2s infinite alternate;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 20px;">⚠️</span>
+                    <div>
+                        <div style="font-size: 14px;">CÓ YÊU CẦU DUYỆT CHUYỂN KHOẢN MỚI!</div>
+                        <div style="font-size: 11px; opacity: 0.8; font-weight: 500;">Có <span id="admin-banner-pending-count">0</span> giao dịch đang chờ bạn xác nhận.</div>
+                    </div>
+                </div>
+                <button onclick="switchView('admin')" style="background: #000; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;">Duyệt Ngay</button>
+            </div>
+
             <!-- ===== SYSTEM STATUS CARDS ===== -->
             <div class="system-status-container">
                 <!-- TIKTOK -->
@@ -2026,6 +2052,17 @@
                 <button onclick="app.updateEffect()" class="pro-btn" style="width:100%; padding:14px; font-size: 15px;">
                     <i class="fas fa-save"></i> Lưu Thay Đổi
                 </button>
+            </div>
+        </div>
+    <!-- Admin Alert Modal -->
+    <div id="admin-alert-modal" class="modal-new-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+        <div class="modal-new-content" style="background: #111827; border: 2px solid #ef4444; border-radius: 20px; padding: 30px; width: 450px; text-align: center; color: #fff; box-shadow: 0 10px 40px rgba(239, 68, 68, 0.5); animation: scaleUp 0.3s ease-out;">
+            <div style="font-size: 64px; margin-bottom: 20px; animation: bounceAlert 1s infinite alternate;">🚨</div>
+            <h2 style="color: #ef4444; margin-bottom: 12px; font-size: 24px; font-weight: 900; text-shadow: 0 0 10px rgba(239,68,68,0.5);">XÁC NHẬN CHUYỂN KHOẢN!</h2>
+            <p style="color: #d1d5db; font-size: 15px; line-height: 1.5; margin-bottom: 24px;">Hệ thống phát hiện có <b id="admin-modal-pending-count" style="color:#fbbf24; font-size: 18px;">0</b> giao dịch mua hàng hoặc gia hạn đang chờ xác nhận từ bạn.</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button onclick="document.getElementById('admin-alert-modal').style.display='none'" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 12px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; min-width: 120px;">Để sau</button>
+                <button onclick="document.getElementById('admin-alert-modal').style.display='none'; switchView('admin');" style="background: linear-gradient(135deg, #ef4444, #f59e0b); color: #fff; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); transition: all 0.2s; min-width: 140px;">Xử lý ngay</button>
             </div>
         </div>
     </div>
