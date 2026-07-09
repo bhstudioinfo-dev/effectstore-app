@@ -766,18 +766,13 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
         if (layout && layout.parentTemplateId) {
             const template = await GiftMenuLayout.findOne({ _id: layout.parentTemplateId, isTemplate: true });
             if (template) {
-                const price = Number(template.price) || 0;
-                if (price === 0) {
+                const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
+                const isBusiness = user.subscription === 'business';
+                if (isAdmin || isBusiness) {
                     hasPurchasedParent = true;
                 } else {
-                    const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
-                    const isBusiness = user.subscription === 'business';
-                    if (isAdmin || isBusiness) {
-                        hasPurchasedParent = true;
-                    } else {
-                        const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
-                        hasPurchasedParent = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
-                    }
+                    const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
+                    hasPurchasedParent = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
                 }
             }
         }
@@ -985,23 +980,12 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
         const price = Number(template.price) || 0;
         let hasPurchased = false;
         const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
-        if (price === 0) {
+        const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
+        const isBusiness = user.subscription === 'business';
+        if (isAdmin || isBusiness) {
             hasPurchased = true;
-            if (correspondingEffect) {
-                const alreadyOwned = user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString());
-                if (!alreadyOwned) {
-                    user.purchasedEffects.push({ effectId: correspondingEffect._id, purchasedAt: new Date() });
-                    await user.save();
-                }
-            }
         } else {
-            const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
-            const isBusiness = user.subscription === 'business';
-            if (isAdmin || isBusiness) {
-                hasPurchased = true;
-            } else {
-                hasPurchased = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
-            }
+            hasPurchased = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
         }
 
         const entitlements = getEntitlements(user);
