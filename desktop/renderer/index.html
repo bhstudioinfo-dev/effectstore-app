@@ -2033,12 +2033,19 @@
     <!-- Load JavaScript -->
 
 
-    <script src="js/home.js?v=10"></script>
-    <script src="js/item-registry.js?v=1.0.0"></script>
-    <script src="js/coordinate-engine.js?v=1.0.0"></script>
-    <script src="js/shared-render-engine.js?v=1.0.10"></script>
-    <script src="js/inspector-engine.js?v=1.0.0"></script>
-    <script src="js/gift-menu-designer.js?v=1.0.6" charset="UTF-8"></script>
+    <script>
+        const scripts = [
+            'js/home.js',
+            'js/item-registry.js',
+            'js/coordinate-engine.js',
+            'js/shared-render-engine.js',
+            'js/inspector-engine.js',
+            'js/gift-menu-designer.js'
+        ];
+        scripts.forEach(src => {
+            document.write('<script src="' + src + '?v=' + Date.now() + '"' + (src.includes('gift-menu-designer') ? ' charset="UTF-8"' : '') + '><\/script>');
+        });
+    </script>
 </body>
 
 </html>
