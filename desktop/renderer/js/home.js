@@ -2119,7 +2119,8 @@ class EffectStoreApp {
                 background-position: 0 0, 10px 10px;
             `;
 
-            const itemsHtmlList = (template.items || []).map(item => {
+            const items = Array.isArray(template.exportedItems) && template.exportedItems.length > 0 ? template.exportedItems : (template.items || []);
+            const itemsHtmlList = items.map(item => {
                 try {
                     const itemW = item.width || 120;
                     const itemH = item.height || 180;
@@ -2276,7 +2277,8 @@ class EffectStoreApp {
                 background-position: 0 0, 10px 10px;
             `;
 
-            const itemsHtmlList = (template.items || []).map(item => {
+            const items = Array.isArray(template.exportedItems) && template.exportedItems.length > 0 ? template.exportedItems : (template.items || []);
+            const itemsHtmlList = items.map(item => {
                 try {
                     const itemW = item.width || 120;
                     const itemH = item.height || 180;
