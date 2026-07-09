@@ -377,7 +377,7 @@
                             <section class="gmd-panel gmd-my-library">
                                 <div class="gmd-lib-tabs" style="display:flex; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:6px;">
                                     <button class="gmd-lib-tab-btn active" data-tab-name="my-library" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid #3b82f6; color:#fff; cursor:pointer; font-weight:600; font-size:12px;">Thư viện</button>
-                                    <button class="gmd-lib-tab-btn" data-tab-name="templates" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid transparent; color:#888; cursor:pointer; font-weight:600; font-size:12px;">Mẫu thiết kế</button>
+                                    <button class="gmd-lib-tab-btn" data-tab-name="templates" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid transparent; color:#888; cursor:pointer; font-weight:600; font-size:12px;">Mẫu đã mua</button>
                                 </div>
                                 <div id="gmd-my-library-content">
                                     <div class="gmd-my-library-top">
@@ -389,9 +389,9 @@
                                 </div>
                                 <div id="gmd-templates-content" style="display:none;">
                                     <div class="gmd-my-library-top">
-                                        <h4>Mẫu từ Admin</h4>
+                                        <h4>Mẫu đã mua</h4>
                                     </div>
-                                    <div class="gmd-subline">Click để dùng hoặc mua</div>
+                                    <div class="gmd-subline">Click để dùng</div>
                                     <div class="gmd-templates-list" id="gmd-templates-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;"></div>
                                 </div>
                             </section>
@@ -580,7 +580,7 @@
                 if (data.success && Array.isArray(data.templates)) {
                     this.serverTemplates = data.templates;
                     if (data.templates.length === 0) {
-                        listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;">Không có mẫu thiết kế nào</div>';
+                        listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;">Không có mẫu đã mua nào</div>';
                         return;
                     }
                     listEl.innerHTML = data.templates.map(t => {
@@ -601,7 +601,7 @@
                         `;
                     }).join('');
                 } else {
-                    listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#ef4444;">Lỗi tải mẫu thiết kế</div>';
+                    listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#ef4444;">Lỗi tải mẫu đã mua</div>';
                 }
             } catch (err) {
                 console.error(err);

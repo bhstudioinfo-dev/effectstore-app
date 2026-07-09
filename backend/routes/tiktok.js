@@ -653,7 +653,8 @@ router.get('/gift-menu-templates', authMiddleware, async (req, res) => {
             return { ...t.toObject(), isPurchased };
         }));
 
-        res.json({ success: true, templates: mappedTemplates });
+        const purchasedTemplates = mappedTemplates.filter(t => t.isPurchased === true);
+        res.json({ success: true, templates: purchasedTemplates });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -698,18 +699,9 @@ router.get('/gift-menu-layout', authMiddleware, async (req, res) => {
                 await layout.save();
             }
         }
-        if (!layout) {
-            layout = new GiftMenuLayout({
-                userId: req.userId,
-                name: 'Menu máº·c Ä‘á»‹nh',
-                aspectRatio: '9:16',
-                items: [],
-                exportedItems: [],
-                isActive: true
-            });
-            await layout.save();
+        if (layout) {
+            fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
         }
-        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
         res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -802,18 +794,18 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
                 if (layoutCount >= entitlements.layouts) {
                     return res.status(403).json(upgradePayload(
                         'layouts',
-                        `GÃ³i ${entitlements.label} chá»‰ lÆ°u Ä‘Æ°á»£c ${entitlements.layouts} thiáº¿t káº¿ menu.`,
+                        `Gói ${entitlements.label} chỉ lưu được ${entitlements.layouts} thiết kế menu.`,
                         entitlements
                     ));
                 }
             }
             layout = new GiftMenuLayout({
                 userId: req.userId,
-                name: payload.name || 'Menu máº·c Ä‘á»‹nh',
+                name: payload.name || 'Menu mặc định',
                 isActive: true
             });
         }
-        layout.name = payload.name || layout.name || 'Menu máº·c Ä‘á»‹nh';
+        layout.name = payload.name || layout.name || 'Menu mặc định';
         layout.version = Number(payload.version) || 2;
         layout.savedAt = payload.savedAt ? new Date(payload.savedAt) : new Date();
         layout.aspectRatio = payload.aspectRatio || '9:16';
