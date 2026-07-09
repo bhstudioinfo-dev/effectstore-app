@@ -2119,13 +2119,32 @@ class EffectStoreApp {
 
     async getTemplateLayout(templateId) {
         try {
-            const headers = this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {};
-            const res = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
-            const data = await res.json();
-            if (data.success && Array.isArray(data.templates)) {
-                if (window.giftMenuDesigner) window.giftMenuDesigner.serverTemplates = data.templates;
-                return data.templates.find(t => String(t._id || t.id) === String(templateId));
+            if (this._templatesCache && this._templatesCache.length > 0) {
+                return this._templatesCache.find(t => String(t._id || t.id) === String(templateId));
             }
+            if (this._fetchingTemplatesPromise) {
+                const templates = await this._fetchingTemplatesPromise;
+                return templates ? templates.find(t => String(t._id || t.id) === String(templateId)) : null;
+            }
+            this._fetchingTemplatesPromise = (async () => {
+                try {
+                    const headers = this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {};
+                    const res = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.templates)) {
+                        this._templatesCache = data.templates;
+                        if (window.giftMenuDesigner) window.giftMenuDesigner.serverTemplates = data.templates;
+                        return data.templates;
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch templates:', e);
+                } finally {
+                    this._fetchingTemplatesPromise = null;
+                }
+                return null;
+            })();
+            const templates = await this._fetchingTemplatesPromise;
+            return templates ? templates.find(t => String(t._id || t.id) === String(templateId)) : null;
         } catch (e) {
             console.error('Failed to fetch template layout:', e);
         }
