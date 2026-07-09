@@ -2220,6 +2220,27 @@ class EffectStoreApp {
     }
 
     async renderTemplatePreviewInCard(container, templateId) {
+        if (container._resizeObserver) {
+            container._resizeObserver.disconnect();
+        }
+
+        const observer = new ResizeObserver(async (entries) => {
+            for (let entry of entries) {
+                const width = entry.contentRect.width || container.clientWidth;
+                const height = entry.contentRect.height || container.clientHeight;
+                if (width < 30) continue;
+
+                observer.disconnect();
+                await this.drawTemplatePreview(container, templateId, width, height);
+                observer.observe(container);
+            }
+        });
+
+        container._resizeObserver = observer;
+        observer.observe(container);
+    }
+
+    async drawTemplatePreview(container, templateId, containerW, containerH) {
         try {
             const template = await this.getTemplateLayout(templateId);
             if (!template) {
@@ -2236,19 +2257,6 @@ class EffectStoreApp {
                 canvasH = Math.round(canvasW * 9 / 16);
             } else if (ratio === '1:1') {
                 canvasH = canvasW;
-            }
-            let containerW = container.clientWidth;
-            let containerH = container.clientHeight;
-            if (containerW < 100) containerW = 180;
-            if (containerH < 20) {
-                const ratio = template.aspectRatio || '9:16';
-                if (ratio === '16:9') {
-                    containerH = Math.round(containerW * 9 / 16);
-                } else if (ratio === '1:1') {
-                    containerH = containerW;
-                } else {
-                    containerH = Math.round(containerW * 16 / 9);
-                }
             }
 
             const scale = Math.max(containerW / canvasW, containerH / canvasH);
@@ -2356,7 +2364,7 @@ class EffectStoreApp {
                 </div>
             `;
         } catch (err) {
-            console.error('Error in renderTemplatePreviewInCard:', err);
+            console.error('Error in drawTemplatePreview:', err);
             container.innerHTML = `<div style="font-size:10px; color:#ef4444; padding:5px; text-align:center;">Lỗi: ${err.message}</div>`;
         }
     }
