@@ -28,8 +28,14 @@ const PORT = process.env.PORT || 9000;
 // ========================================
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+    maxAge: '1y',
+    immutable: true
+}));
+app.use('/assets', express.static(path.join(__dirname, 'assets'), {
+    maxAge: '1y',
+    immutable: true
+}));
 app.use('/overlay', express.static(path.join(__dirname, '..', 'frontend', 'overlay'), {
     etag: false,
     lastModified: false,

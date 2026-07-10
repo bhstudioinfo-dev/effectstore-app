@@ -4866,8 +4866,18 @@
                 const centerIcon = selected.centerIcon || '❤️';
                 specificConfigHTML = `
                     <div class="gmd-section">
-                        <h4><i class="fas fa-cog"></i> CẤU HÌNH VÒNG TRÒN</h4>
+                        <h4><i class="fas fa-cog"></i> CẤU HÌNH TIẾN TRÌNH</h4>
                         ${makeCustomGiftSelect('Chọn quà mục tiêu', selected.giftId)}
+                        <div class="gmd-field">
+                            <label>Hình dạng tiến trình</label>
+                            <select class="gmd-select" data-goal-key="progressShape">
+                                <option value="circle" ${selected.progressShape === 'circle' || !selected.progressShape ? 'selected' : ''}>Vòng tròn ⭕</option>
+                                <option value="heart" ${selected.progressShape === 'heart' ? 'selected' : ''}>Hình trái tim ❤️</option>
+                                <option value="square" ${selected.progressShape === 'square' ? 'selected' : ''}>Hình vuông ⏹️</option>
+                                <option value="hexagon" ${selected.progressShape === 'hexagon' ? 'selected' : ''}>Hình lục giác ⬡</option>
+                                <option value="star" ${selected.progressShape === 'star' ? 'selected' : ''}>Hình ngôi sao ⭐</option>
+                            </select>
+                        </div>
                         <div class="gmd-field">
                             <label>Số lượng mục tiêu (Target)</label>
                             <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 100}">
@@ -4877,7 +4887,7 @@
                             <input class="gmd-input" type="number" data-goal-key="currentCount" value="${selected.currentCount || 0}">
                         </div>
                         <div class="gmd-field">
-                            <label>Icon ở tâm vòng tròn</label>
+                            <label>Icon ở tâm/giữa</label>
                             <select class="gmd-select" data-goal-key="centerIcon">
                                 <option value="❤️" ${centerIcon === '❤️' ? 'selected' : ''}>Trái tim ❤️</option>
                                 <option value="⭐" ${centerIcon === '⭐' ? 'selected' : ''}>Ngôi sao ⭐</option>
@@ -4891,7 +4901,7 @@
                             <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}">
                         </div>
                         <div class="gmd-field">
-                            <label>Màu vòng tròn (Circle Color)</label>
+                            <label>Màu viền tiến trình</label>
                             <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#ff007f'}">
                         </div>
                     </div>

@@ -259,7 +259,10 @@ function startLocalServer() {
         dotfiles: 'deny',
         index: false
     }));
-    expressApp.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+    expressApp.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+        maxAge: '1y',
+        immutable: true
+    }));
     
     expressApp.get('/overlay', (req, res) => {
         res.sendFile(path.join(__dirname, 'renderer', 'overlay.html'));

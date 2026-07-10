@@ -913,9 +913,37 @@
         const target = Number(item.targetCount || 100);
         const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
         const color = item.barColor || '#ff007f';
-        const r = 50;
-        const circ = 2 * Math.PI * r;
-        const strokeOffset = circ - (pct / 100) * circ;
+        const shape = item.progressShape || 'circle';
+
+        let pathMarkup = '';
+        let svgRotation = 'rotate(-90deg)';
+
+        if (shape === 'circle') {
+            const r = 50;
+            const circ = 2 * Math.PI * r;
+            const strokeOffset = circ - (pct / 100) * circ;
+            pathMarkup = `
+                <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" />
+                <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${color}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}" stroke-linecap="round" style="transition: stroke-dashoffset 0.3s ease; filter: drop-shadow(0 0 ${roundPx(8, ctx.scale)}px ${color});" />
+            `;
+        } else {
+            svgRotation = 'none';
+            let d = '';
+            if (shape === 'heart') {
+                d = "M 60,30 C 60,30 48,12 28,12 C 14,12 8,24 8,42 C 8,68 60,108 60,108 C 60,108 112,68 112,42 C 112,24 106,12 92,12 C 72,12 60,30 60,30 Z";
+            } else if (shape === 'square') {
+                d = "M 60,10 L 110,10 L 110,110 L 10,110 L 10,10 Z";
+            } else if (shape === 'hexagon') {
+                d = "M 60,10 L 103.3,35 L 103.3,85 L 60,110 L 16.7,85 L 16.7,35 Z";
+            } else if (shape === 'star') {
+                d = "M 60,10 L 75,45 L 112,45 L 82,67 L 93,103 L 60,80 L 27,103 L 38,67 L 8,45 L 45,45 Z";
+            }
+            pathMarkup = `
+                <path d="${d}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" stroke-linejoin="round" />
+                <path d="${d}" fill="transparent" stroke="${color}" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - pct}" style="transition: stroke-dashoffset 0.3s ease; filter: drop-shadow(0 0 ${roundPx(8, ctx.scale)}px ${color});" />
+            `;
+        }
+
         const icon = item.centerIcon || 'heart';
         const giftIcon = icon === 'gift-icon' ? giftIconFromLibrary(item, ctx.gifts, ctx.apiBase) : '';
         const innerIcon = item.iconDisplayMode === 'text'
@@ -930,9 +958,8 @@
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display:flex; flex-direction:column; align-items:center; width:100%; position:relative;">
                     <div style="font-size: ${font(ctx, item.fontSize, 24)}px; font-weight: 900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 ${roundPx(10, ctx.scale)}px ${color}80; margin-bottom: ${roundPx(8, ctx.scale)}px;">${pct}%</div>
                     <div style="position: relative; width: ${roundPx(120, ctx.scale)}px; height: ${roundPx(120, ctx.scale)}px; display: flex; align-items: center; justify-content: center;">
-                        <svg width="${roundPx(120, ctx.scale)}" height="${roundPx(120, ctx.scale)}" viewBox="0 0 120 120" style="transform: rotate(-90deg);">
-                            <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" />
-                            <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${color}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}" stroke-linecap="round" style="transition: stroke-dashoffset 0.3s ease; filter: drop-shadow(0 0 ${roundPx(8, ctx.scale)}px ${color});" />
+                        <svg width="${roundPx(120, ctx.scale)}" height="${roundPx(120, ctx.scale)}" viewBox="0 0 120 120" style="transform: ${svgRotation};">
+                            ${pathMarkup}
                         </svg>
                         <div style="position: absolute; display: flex; align-items: center; justify-content: center;">${innerIcon}</div>
                     </div>
