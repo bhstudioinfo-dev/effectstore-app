@@ -108,6 +108,7 @@
             if (publishBtn) {
                 publishBtn.style.display = this.isAdmin ? 'inline-block' : 'none';
             }
+            this.loadDataIfNeeded();
         }
 
         init() {
@@ -132,22 +133,14 @@
 
         loadDataIfNeeded() {
             if (!this.token) return;
-            if (this.gifts.length === 0) {
-                this.loadGiftLibrary();
-            }
-            if (this.goalAssets.length === 0) {
-                this.loadGoalAssets();
-            }
-            if (this.customTemplates.length === 0) {
-                this.loadGoalTemplates();
-            }
-            if (this.layouts.length === 0) {
-                this.loadLayoutsList().then(() => {
-                    if (!this.currentLayoutId && this.layouts.length > 0) {
-                        this.loadLayout();
-                    }
-                });
-            }
+            this.loadGiftLibrary();
+            this.loadGoalAssets();
+            this.loadGoalTemplates();
+            this.loadLayoutsList().then(() => {
+                if (!this.currentLayoutId && this.layouts.length > 0) {
+                    this.loadLayout();
+                }
+            });
             this.connectWebSocket();
         }
 
