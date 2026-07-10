@@ -128,12 +128,19 @@
             
             let refW = item.lockedW || item.w || 900;
             let refH = item.lockedH || item.h || 160;
+            if (item.type === 'boss-bar') { refW = 840; refH = 180; }
+            else if (item.type === 'combo') { refW = 800; refH = 220; }
+            else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
+            else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
+            else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
+            else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
+            else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
+
             let isWidget = false;
-            
-            if (['goal-bar', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'goal-list'].includes(item.type)) {
+            if (['goal-bar', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'goal-list', 'goal-circle'].includes(item.type)) {
                 isWidget = true;
             }
-            
+
             let el = document.getElementById(`layer_${item.id}`);
             const exists = !!el;
             if (!exists) {
@@ -142,7 +149,7 @@
                 el.className = 'gmd-item';
                 stage.appendChild(el);
             }
-            
+
             // Convert logical units (1080x1920) to absolute responsive pixels
             el.style.left = `${Math.round(item.x * sx)}px`;
             el.style.top = `${Math.round(item.y * sy)}px`;
@@ -150,50 +157,70 @@
             el.style.height = `${Math.round(item.h * sy)}px`;
             el.style.zIndex = String(item.zIndex || 1);
 
+            const structuralState = {
+                id: item.id,
+                type: item.type,
+                name: item.name,
+                giftId: item.giftId,
+                giftName: item.giftName,
+                targetCount: item.targetCount,
+                centerIcon: item.centerIcon,
+                subtitleText: item.subtitleText,
+                barColor: item.barColor,
+                barColorGradientTo: item.barColorGradientTo,
+                useBarGradient: item.useBarGradient,
+                progressShape: item.progressShape,
+                progressEffect: item.progressEffect,
+                showPercentage: item.showPercentage,
+                pctFontSize: item.pctFontSize,
+                fontSize: item.fontSize,
+                subtitleFontSize: item.subtitleFontSize,
+                numberFontSize: item.numberFontSize,
+                contentOffsetY: item.contentOffsetY,
+                hideBg: item.hideBg,
+                useCustomBg: item.useCustomBg,
+                bgColor: item.bgColor,
+                useCustomTextColor: item.useCustomTextColor,
+                textColor: item.textColor,
+                lockRatio: item.lockRatio,
+                w: item.w,
+                h: item.h,
+                goals: Array.isArray(item.goals) ? item.goals.map(g => ({ id: g.id, text: g.text, target: g.target, giftId: g.giftId })) : undefined,
+                pkPlayers: Array.isArray(item.pkPlayers) ? item.pkPlayers.map(p => ({ name: p.name, giftId: p.giftId, target: p.target })) : undefined,
+            };
+            const contentSignature = JSON.stringify(structuralState);
+
             let widgetHTML = '';
             let skipHTMLUpdate = false;
 
-            if (item.type === 'media-asset') {
-                const isVideo = item.isWebM || (item.assetUrl && item.assetUrl.endsWith('.webm')) || (item.assetUrl && item.assetUrl.endsWith('.mp4'));
-                const opacity = item.opacity !== undefined ? item.opacity : 1;
-                const fitMode = item.fitMode || 'contain';
-                const assetSrc = item.assetUrl ? (item.assetUrl.startsWith('http') ? item.assetUrl : `${apiBase}${item.assetUrl}`) : '';
-                
-                if (exists) {
-                    if (isVideo) {
-                        const videoEl = el.querySelector('video');
-                        if (videoEl && (videoEl.src === assetSrc || videoEl.getAttribute('src') === item.assetUrl)) {
-                            videoEl.style.objectFit = fitMode;
-                            videoEl.style.opacity = String(opacity);
-                            skipHTMLUpdate = true;
-                        }
-                    } else {
-                        const imgEl = el.querySelector('img');
-                        if (imgEl && (imgEl.src === assetSrc || imgEl.getAttribute('src') === item.assetUrl)) {
-                            imgEl.style.objectFit = fitMode;
-                            imgEl.style.opacity = String(opacity);
-                            skipHTMLUpdate = true;
-                        }
-                    }
-                }
+            if (exists && el.dataset.contentSignature === contentSignature) {
+                patchWidgetDOM(el, item);
+                skipHTMLUpdate = true;
+            } else {
+                el.dataset.contentSignature = contentSignature;
+            }
 
-                if (!skipHTMLUpdate) {
+            if (!skipHTMLUpdate) {
+                if (item.type === 'media-asset') {
+                    const isVideo = item.isWebM || (item.assetUrl && item.assetUrl.endsWith('.webm')) || (item.assetUrl && item.assetUrl.endsWith('.mp4'));
+                    const opacity = item.opacity !== undefined ? item.opacity : 1;
+                    const fitMode = item.fitMode || 'contain';
+                    const assetSrc = item.assetUrl ? (item.assetUrl.startsWith('http') ? item.assetUrl : `${apiBase}${item.assetUrl}`) : '';
+                    
                     widgetHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
                         ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: 1, apiBase: apiBase, escapeText: true, gifts: giftsLibrary })
                         : '';
+                } else {
+                    // Determine layout-specific scale
+                    // For non-widget text, scale font size
+                    const renderScale = (item.type === 'text' || item.type === 'gift') ? s : 1;
+                    widgetHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
+                        ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: renderScale, apiBase: apiBase, escapeText: true, gifts: giftsLibrary })
+                        : '';
                 }
-            } else {
-                // Determine layout-specific scale
-                // For non-widget text, scale font size
-                const renderScale = (item.type === 'text' || item.type === 'gift') ? s : 1;
-                widgetHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
-                    ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: renderScale, apiBase: apiBase, escapeText: true, gifts: giftsLibrary })
-                    : '';
-            }
 
-            let finalVisualHTML = '';
-            if (isWidget) {
-                if (item.lockRatio) {
+                let finalVisualHTML = '';
+                if (isWidget) {
                     const scaleX = (item.w * sx) / refW;
                     const scaleY = (item.h * sy) / refH;
                     finalVisualHTML = `
@@ -202,17 +229,9 @@
                         </div>
                     `;
                 } else {
-                    finalVisualHTML = `
-                        <div class="gmd-visual-scaled-wrapper" style="width: ${item.w}px; height: ${item.h}px; transform: scale(${sx}, ${sy}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
-                            ${widgetHTML}
-                        </div>
-                    `;
+                    finalVisualHTML = widgetHTML;
                 }
-            } else {
-                finalVisualHTML = widgetHTML;
-            }
 
-            if (!skipHTMLUpdate) {
                 el.innerHTML = `
                     <div class="gmd-visual" style="width:100%; height:100%; position: relative; overflow: visible;">
                         ${finalVisualHTML}
@@ -222,6 +241,56 @@
             
             stage.appendChild(el);
         });
+    }
+
+    function patchWidgetDOM(container, item) {
+        if (item.type === 'goal-circle') {
+            const current = Number(item.currentCount || 0);
+            const target = Number(item.targetCount || 100);
+            const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+
+            // 1. Update percentage text
+            const pctEl = container.querySelector('.gmd-pct-text');
+            if (pctEl) {
+                pctEl.textContent = `${pct}%`;
+            }
+
+            // 2. Update SVG progress path/circle stroke-dashoffset
+            const progressPath = container.querySelector('.gmd-progress-path');
+            if (progressPath) {
+                if (progressPath.tagName === 'circle') {
+                    const r = Number(progressPath.getAttribute('r') || 50);
+                    const circ = 2 * Math.PI * r;
+                    const strokeOffset = circ - (pct / 100) * circ;
+                    progressPath.style.strokeDashoffset = strokeOffset;
+                } else {
+                    // For paths (heart, square, hexagon, star)
+                    progressPath.style.strokeDashoffset = 100 - pct;
+                }
+            }
+
+            // 3. Update current/target score text
+            const countEl = container.querySelector('.gmd-count-text');
+            if (countEl) {
+                countEl.textContent = `${current}/${target}`;
+            }
+        } else if (item.type === 'goal-bar') {
+            const current = Number(item.currentCount || 0);
+            const target = Number(item.targetCount || 100);
+            const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+
+            // 1. Update bar width
+            const barInner = container.querySelector('.gmd-goal-bar-inner');
+            if (barInner) {
+                barInner.style.width = `${pct}%`;
+            }
+
+            // 2. Update current/target score text
+            const countEl = container.querySelector('.gmd-count-text');
+            if (countEl) {
+                countEl.textContent = `${current}/${target}`;
+            }
+        }
     }
 
     // HTML escape helper
