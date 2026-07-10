@@ -1098,15 +1098,13 @@
                     } else if (item.type && item.type !== 'gift') {
                         let refW = item.lockedW || item.w || 900;
                         let refH = item.lockedH || item.h || 160;
-                        if (!item.lockRatio) {
-                            if (item.type === 'boss-bar') { refW = 840; refH = 180; }
-                            else if (item.type === 'combo') { refW = 800; refH = 220; }
-                            else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
-                            else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
-                            else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
-                            else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
-                            else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
-                        }
+                        if (item.type === 'boss-bar') { refW = 840; refH = 180; }
+                        else if (item.type === 'combo') { refW = 800; refH = 220; }
+                        else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
+                        else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
+                        else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
+                        else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
+                        else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
 
                         const scaleX = item.width / refW;
                         const scaleY = item.height / refH;
