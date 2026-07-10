@@ -952,7 +952,7 @@
             : (giftIcon
             ? (isVideoAsset(giftIcon)
                 ? `<video src="${giftIcon}" autoplay loop muted playsinline style="width: ${roundPx(44, ctx.scale)}px; height: ${roundPx(44, ctx.scale)}px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color});"></video>`
-                : `<img src="${giftIcon}" style="width: ${roundPx(44, ctx.scale)}px; height: ${roundPx(44, ctx.scale)}px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color});">`)
+                : `<div style="width: ${roundPx(44, ctx.scale)}px; height: ${roundPx(44, ctx.scale)}px; border-radius: 50%; background-image: url('${giftIcon}'); background-size: contain; background-repeat: no-repeat; background-position: center; filter: drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color}); display: inline-block;"></div>`)
             : `<span style="font-size: ${roundPx(32, ctx.scale)}px; filter: drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color});">${text(ctx, icon)}</span>`);
         return `
             <div class="gmd-goal-circle-widget" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; background:${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(10,15,30,0.5) 0%, #0a0a14 100%)')}; border:${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : 'rgba(255,255,255,0.08)'}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(16, ctx.scale)}px; box-shadow:${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.37)`};">
