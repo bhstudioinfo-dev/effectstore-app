@@ -4920,10 +4920,30 @@
                             <label>Dòng phụ hiển thị (Subtitle Text)</label>
                             <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}">
                         </div>
+                        <div class="gmd-field gmd-toggle-row" style="margin-top: 6px;">
+                            <label style="font-size: 11px;">Màu tiến trình Gradient</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="useBarGradient" ${selected.useBarGradient ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.useBarGradient ? `
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px;">
+                            <div class="gmd-field" style="margin: 0;">
+                                <label style="font-size: 9px; margin-bottom: 2px;">Màu đầu</label>
+                                <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#ff007f'}">
+                            </div>
+                            <div class="gmd-field" style="margin: 0;">
+                                <label style="font-size: 9px; margin-bottom: 2px;">Màu cuối</label>
+                                <input class="gmd-color" type="color" data-goal-key="barColorGradientTo" value="${selected.barColorGradientTo || '#7c3aed'}">
+                            </div>
+                        </div>
+                        ` : `
                         <div class="gmd-field">
                             <label>Màu viền tiến trình</label>
                             <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#ff007f'}">
                         </div>
+                        `}
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
@@ -5876,7 +5896,7 @@
             });
 
             this.renderCanvas();
-            if (key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage') {
+            if (key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage' || key === 'useBarGradient') {
                 this.renderInspector();
             }
             if (pushHist) {

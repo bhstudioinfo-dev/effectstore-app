@@ -917,8 +917,25 @@
         const shape = item.progressShape || 'circle';
         const effect = item.progressEffect || 'none';
 
+        const useGrad = item.useBarGradient === true;
+        const color2 = item.barColorGradientTo || '#7c3aed';
+
         const showPct = item.showPercentage !== false;
         const pctSize = item.pctFontSize !== undefined ? Number(item.pctFontSize) : 24;
+
+        let strokeColor = color;
+        let defsMarkup = '';
+        if (useGrad) {
+            strokeColor = `url(#gmd-grad-${item.id})`;
+            defsMarkup = `
+                <defs>
+                    <linearGradient id="gmd-grad-${item.id}" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="${color}" />
+                        <stop offset="100%" stop-color="${color2}" />
+                    </linearGradient>
+                </defs>
+            `;
+        }
 
         let pathMarkup = '';
         let svgRotation = 'rotate(-90deg)';
@@ -958,8 +975,9 @@
             const strokeOffset = circ - (pct / 100) * circ;
             pathMarkup = `
                 ${styleMarkup}
+                ${defsMarkup}
                 <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" />
-                <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${color}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}" stroke-linecap="round" class="${shapeEffectClass}" style="${pathStyle}" />
+                <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${strokeColor}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}" stroke-linecap="round" class="${shapeEffectClass}" style="${pathStyle}" />
             `;
         } else {
             svgRotation = 'none';
@@ -975,8 +993,9 @@
             }
             pathMarkup = `
                 ${styleMarkup}
+                ${defsMarkup}
                 <path d="${d}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" stroke-linejoin="round" />
-                <path d="${d}" fill="transparent" stroke="${color}" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - pct}" class="${shapeEffectClass}" style="${pathStyle}" />
+                <path d="${d}" fill="transparent" stroke="${strokeColor}" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - pct}" class="${shapeEffectClass}" style="${pathStyle}" />
             `;
         }
 
