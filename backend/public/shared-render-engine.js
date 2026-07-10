@@ -950,11 +950,26 @@
                     0% { filter: hue-rotate(0deg) drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color}); }
                     100% { filter: hue-rotate(360deg) drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color}); }
                 }
+                @keyframes gmd-svg-spin-${item.id} {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                @keyframes gmd-svg-flicker-${item.id} {
+                    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { filter: drop-shadow(0 0 ${roundPx(8, ctx.scale)}px ${color}); opacity: 1; }
+                    20%, 24%, 55% { filter: drop-shadow(0 0 ${roundPx(2, ctx.scale)}px ${color}); opacity: 0.7; }
+                }
                 .gmd-path-pulse-${item.id} {
                     animation: gmd-svg-pulse-${item.id} 2s ease-in-out infinite;
                 }
                 .gmd-path-rainbow-${item.id} {
                     animation: gmd-svg-rainbow-${item.id} 4s linear infinite;
+                }
+                .gmd-path-spin-${item.id} {
+                    animation: gmd-svg-spin-${item.id} 6s linear infinite;
+                    transform-origin: 60px 60px;
+                }
+                .gmd-path-flicker-${item.id} {
+                    animation: gmd-svg-flicker-${item.id} 3s linear infinite;
                 }
             </style>
         `;
@@ -965,6 +980,10 @@
             shapeEffectClass = `gmd-path-pulse-${item.id}`;
         } else if (effect === 'rainbow') {
             shapeEffectClass = `gmd-path-rainbow-${item.id}`;
+        } else if (effect === 'spin') {
+            shapeEffectClass = `gmd-path-spin-${item.id}`;
+        } else if (effect === 'flicker') {
+            shapeEffectClass = `gmd-path-flicker-${item.id}`;
         } else {
             pathStyle += ` filter: drop-shadow(0 0 ${roundPx(8, ctx.scale)}px ${color});`;
         }

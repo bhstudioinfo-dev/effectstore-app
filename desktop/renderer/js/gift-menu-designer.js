@@ -4896,6 +4896,8 @@
                                 <option value="none" ${selected.progressEffect === 'none' || !selected.progressEffect ? 'selected' : ''}>Tĩnh (Không hiệu ứng)</option>
                                 <option value="pulse" ${selected.progressEffect === 'pulse' ? 'selected' : ''}>Phát sáng nhịp thở 🌟</option>
                                 <option value="rainbow" ${selected.progressEffect === 'rainbow' ? 'selected' : ''}>Dòng chảy cầu vồng 🌈</option>
+                                <option value="spin" ${selected.progressEffect === 'spin' ? 'selected' : ''}>Vòng xoay vũ trụ 🔄</option>
+                                <option value="flicker" ${selected.progressEffect === 'flicker' ? 'selected' : ''}>Nhấp nháy Neon ⚡</option>
                             </select>
                         </div>
                         <div class="gmd-field">
