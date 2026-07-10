@@ -1466,6 +1466,11 @@
             this.renderInspector();
         }
 
+        toggleInspectorTest() {
+            this.inspectorTestExpanded = this.inspectorTestExpanded === undefined ? false : !this.inspectorTestExpanded;
+            this.renderInspector();
+        }
+
         toggleInspectorTeam(idx) {
             if (!this.expandedTeams) {
                 this.expandedTeams = {};
@@ -4627,9 +4632,16 @@
                                 <button class="gmd-btn" onclick="window.giftMenuDesigner.resetTimer()" style="flex: 1; height: 26px; font-size: 11px; padding: 2px 4px; background: rgba(255, 255, 255, 0.05); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer;"><i class="fas fa-undo"></i> Đặt lại</button>
                             </div>
                             ` : ''}
+                        </div>
+                    </div>
 
-
-
+                    <!-- PHẦN 3: TEST THỬ TRÊN APP -->
+                    <div class="gmd-section">
+                        <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorTest()">
+                            <span><i class="fas fa-flask"></i> PHẦN 3: TEST THỬ TRÊN APP</span>
+                            <i class="fas ${this.inspectorTestExpanded !== false ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                        </h4>
+                        <div style="display: ${this.inspectorTestExpanded !== false ? 'block' : 'none'};">
                             ${simulatorHTML}
                         </div>
                     </div>
@@ -5576,113 +5588,172 @@
                 </div>
             ` : '';
 
+            // Build the three parts HTML
+            // PHẦN 1: KÍCH THƯỚC & VỊ TRÍ
+            const part1HTML = `
+                <div class="gmd-section">
+                    <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorSize()">
+                        <span><i class="fas fa-ruler-combined"></i> PHẦN 1: KÍCH THƯỚC & VỊ TRÍ</span>
+                        <i class="fas ${this.inspectorSizeExpanded !== false ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                    </h4>
+                    <div style="display: ${this.inspectorSizeExpanded !== false ? 'block' : 'none'};">
+                        <div class="gmd-field"><label>Vị trí X / Y (Logical)</label></div>
+                        <div class="gmd-row">
+                            <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="x" value="${logical.x}"><span>px</span></div>
+                            <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="y" value="${logical.y}"><span>px</span></div>
+                        </div>
+                        <div class="gmd-row" style="margin-top: 8px;">
+                            <div class="gmd-field" style="margin-bottom: 4px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                                    <label style="margin: 0; font-size: 11px;">Rộng (W)</label>
+                                    <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 80px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="w" value="${logical.w}"><span>px</span></div>
+                                </div>
+                                <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="100" max="1080" data-goal-key="w" value="${logical.w}">
+                            </div>
+                            <div class="gmd-field" style="margin-bottom: 4px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                                    <label style="margin: 0; font-size: 11px;">Cao (H)</label>
+                                    <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 80px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="h" value="${logical.h}"><span>px</span></div>
+                                </div>
+                                <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="30" max="1920" data-goal-key="h" value="${logical.h}">
+                            </div>
+                        </div>
+                        ${selected.type === 'gift-stack-group' ? `
+                        <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Khóa tỷ lệ (Aspect Ratio)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="lockRatio" ${selected.lockRatio ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ` : ''}
+                        ${selected.type !== 'gift-stack-group' ? `
+                        <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Khóa tỷ lệ (Aspect Ratio)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="lockRatio" ${selected.lockRatio ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        <div class="gmd-field" style="margin-top: 8px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                                <label style="margin: 0; font-size: 11px;">Vị trí nội dung (Dọc)</label>
+                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="contentOffsetY" value="${selected.contentOffsetY !== undefined ? selected.contentOffsetY : 0}"><span>px</span></div>
+                            </div>
+                            <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="-300" max="300" data-goal-key="contentOffsetY" value="${selected.contentOffsetY !== undefined ? selected.contentOffsetY : 0}">
+                        </div>
+                        ` : ''}
+
+                        ${selected.type !== 'gift-stack-group' ? `
+                        <!-- Hide Background -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Ẩn viền và nền bảng</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="hideBg" ${selected.hideBg ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+
+                        <!-- Custom BG Color -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Tự chọn màu nền bảng</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="useCustomBg" ${selected.useCustomBg ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.useCustomBg ? `
+                        <div class="gmd-field" style="margin-top: 4px;">
+                            <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu nền bảng</label>
+                            <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="bgColor" value="${selected.bgColor || '#0a0a14'}">
+                        </div>
+                        ` : ''}
+                        ` : ''}
+
+                        ${selected.type !== 'gift-stack-group' ? `
+                        <!-- Custom Text Color -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Tự chọn màu chữ</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="useCustomTextColor" ${selected.useCustomTextColor ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.useCustomTextColor ? `
+                        <div class="gmd-field" style="margin-top: 4px;">
+                            <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu chữ</label>
+                            <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}">
+                        </div>
+                        ` : ''}
+                        ` : ''}
+                        <div class="gmd-field" style="margin-top: 10px;">
+                            <div style="display:flex; gap:10px;">
+                                <button class="gmd-btn" data-action="duplicate"><i class="far fa-clone"></i> Nhân bản</button>
+                                <button class="gmd-btn" data-action="delete"><i class="far fa-trash-alt"></i> Xóa</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // PHẦN 2: TÍNH NĂNG NÂNG CAO
+            let part2HTML = '';
+            if (selected.type === 'gift-stack-group') {
+                part2HTML = `
+                    <div class="gmd-section">
+                        <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorAdvanced()">
+                            <span><i class="fas fa-crown"></i> PHẦN 2: TÍNH NĂNG NÂNG CAO</span>
+                            <i class="fas ${this.inspectorAdvancedExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                        </h4>
+                        <div style="display: ${this.inspectorAdvancedExpanded ? 'block' : 'none'};">
+                            ${stackChildrenControlsHTML}
+                            ${stackAdvancedControlsHTML}
+                        </div>
+                    </div>
+                `;
+            } else if (specificConfigHTML) {
+                part2HTML = `
+                    <div class="gmd-section">
+                        <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorAdvanced()">
+                            <span><i class="fas fa-crown"></i> PHẦN 2: TÍNH NĂNG NÂNG CAO</span>
+                            <i class="fas ${this.inspectorAdvancedExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                        </h4>
+                        <div style="display: ${this.inspectorAdvancedExpanded ? 'block' : 'none'};">
+                            ${specificConfigHTML}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // PHẦN 3: TEST THỬ TRÊN APP
+            let part3HTML = '';
+            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'combo'].includes(selected.type)) {
+                part3HTML = `
+                    <div class="gmd-section">
+                        <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorTest()">
+                            <span><i class="fas fa-flask"></i> PHẦN 3: TEST THỬ TRÊN APP</span>
+                            <i class="fas ${this.inspectorTestExpanded !== false ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                        </h4>
+                        <div style="display: ${this.inspectorTestExpanded !== false ? 'block' : 'none'};">
+                            <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.</p>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: #8b5cf6; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.sendSimulatedGift('${selected.id}')"><i class="fas fa-play"></i> Gửi quà Test</button>
+                                <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem('${selected.id}')"><i class="fas fa-undo"></i> Reset lại đầu</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
             inspector.innerHTML = `
                 <div class="gmd-selected-card">
                     <div style="font-size: 20px;">${selected.type === 'media-asset' ? '🖼️' : '📊'}</div>
                     <input class="gmd-title-input" data-goal-key="name" value="${this.escapeHtml(selected.name)}">
                     <button class="gmd-delete-btn" data-action="delete"><i class="fas fa-trash"></i></button>
                 </div>
-                
-                <div class="gmd-section">
-                    <h4><i class="fas fa-ruler-combined"></i> KÍCH THƯỚC & VỊ TRÍ</h4>
-                    <div class="gmd-field"><label>Vị trí X / Y (Logical)</label></div>
-                    <div class="gmd-row">
-                        <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="x" value="${logical.x}"><span>px</span></div>
-                        <div class="gmd-inline-input"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="y" value="${logical.y}"><span>px</span></div>
-                    </div>
-                    <div class="gmd-row" style="margin-top: 8px;">
-                        <div class="gmd-field" style="margin-bottom: 4px;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                                <label style="margin: 0; font-size: 11px;">Rộng (W)</label>
-                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 80px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="w" value="${logical.w}"><span>px</span></div>
-                            </div>
-                            <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="100" max="1080" data-goal-key="w" value="${logical.w}">
-                        </div>
-                        <div class="gmd-field" style="margin-bottom: 4px;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                                <label style="margin: 0; font-size: 11px;">Cao (H)</label>
-                                <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 80px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="h" value="${logical.h}"><span>px</span></div>
-                            </div>
-                            <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="30" max="1920" data-goal-key="h" value="${logical.h}">
-                        </div>
-                    </div>
-                    ${selected.type === 'gift-stack-group' ? `
-                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
-                        <label style="font-size: 11px;">Khóa tỷ lệ (Aspect Ratio)</label>
-                        <label class="gmd-switch">
-                            <input type="checkbox" data-goal-key="lockRatio" ${selected.lockRatio ? 'checked' : ''}>
-                            <span></span>
-                        </label>
-                    </div>
-                    ` : ''}
-                    ${selected.type !== 'gift-stack-group' ? `
-                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
-                        <label style="font-size: 11px;">Khóa tỷ lệ (Aspect Ratio)</label>
-                        <label class="gmd-switch">
-                            <input type="checkbox" data-goal-key="lockRatio" ${selected.lockRatio ? 'checked' : ''}>
-                            <span></span>
-                        </label>
-                    </div>
-                    <div class="gmd-field" style="margin-top: 8px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                            <label style="margin: 0; font-size: 11px;">Vị trí nội dung (Dọc)</label>
-                            <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="contentOffsetY" value="${selected.contentOffsetY !== undefined ? selected.contentOffsetY : 0}"><span>px</span></div>
-                        </div>
-                        <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="-300" max="300" data-goal-key="contentOffsetY" value="${selected.contentOffsetY !== undefined ? selected.contentOffsetY : 0}">
-                    </div>
-                    ` : ''}
-
-                    ${selected.type !== 'gift-stack-group' ? `
-                    <!-- Hide Background -->
-                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
-                        <label style="font-size: 11px;">Ẩn viền và nền bảng</label>
-                        <label class="gmd-switch">
-                            <input type="checkbox" data-goal-key="hideBg" ${selected.hideBg ? 'checked' : ''}>
-                            <span></span>
-                        </label>
-                    </div>
-
-                    <!-- Custom BG Color -->
-                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
-                        <label style="font-size: 11px;">Tự chọn màu nền bảng</label>
-                        <label class="gmd-switch">
-                            <input type="checkbox" data-goal-key="useCustomBg" ${selected.useCustomBg ? 'checked' : ''}>
-                            <span></span>
-                        </label>
-                    </div>
-                    ${selected.useCustomBg ? `
-                    <div class="gmd-field" style="margin-top: 4px;">
-                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu nền bảng</label>
-                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="bgColor" value="${selected.bgColor || '#0a0a14'}">
-                    </div>
-                    ` : ''}
-                    ` : ''}
-
-                    ${selected.type !== 'gift-stack-group' ? `
-                    <!-- Custom Text Color -->
-                    <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
-                        <label style="font-size: 11px;">Tự chọn màu chữ</label>
-                        <label class="gmd-switch">
-                            <input type="checkbox" data-goal-key="useCustomTextColor" ${selected.useCustomTextColor ? 'checked' : ''}>
-                            <span></span>
-                        </label>
-                    </div>
-                    ${selected.useCustomTextColor ? `
-                    <div class="gmd-field" style="margin-top: 4px;">
-                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu chữ</label>
-                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}">
-                    </div>
-                    ` : ''}
-                    ` : ''}
-                    <div class="gmd-field" style="margin-top: 10px;">
-                        <div style="display:flex; gap:10px;">
-                            <button class="gmd-btn" data-action="duplicate"><i class="far fa-clone"></i> Nhân bản</button>
-                            <button class="gmd-btn" data-action="delete"><i class="far fa-trash-alt"></i> Xóa</button>
-                        </div>
-                    </div>
-                </div>
-                
-                ${selected.type === 'gift-stack-group' ? `${stackChildrenControlsHTML}${stackAdvancedControlsHTML}` : `${testButtonHTML}${specificConfigHTML}`}
+                ${part1HTML}
+                ${part2HTML}
+                ${part3HTML}
             `;
         }
 
