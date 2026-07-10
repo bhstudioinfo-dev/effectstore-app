@@ -915,17 +915,51 @@
         const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
         const color = item.barColor || '#ff007f';
         const shape = item.progressShape || 'circle';
+        const effect = item.progressEffect || 'none';
+
+        const showPct = item.showPercentage !== false;
+        const pctSize = item.pctFontSize !== undefined ? Number(item.pctFontSize) : 24;
 
         let pathMarkup = '';
         let svgRotation = 'rotate(-90deg)';
+
+        const styleMarkup = `
+            <style>
+                @keyframes gmd-svg-pulse-${item.id} {
+                    0%, 100% { filter: drop-shadow(0 0 ${roundPx(4, ctx.scale)}px ${color}); opacity: 0.85; }
+                    50% { filter: drop-shadow(0 0 ${roundPx(14, ctx.scale)}px ${color}); opacity: 1; }
+                }
+                @keyframes gmd-svg-rainbow-${item.id} {
+                    0% { filter: hue-rotate(0deg) drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color}); }
+                    100% { filter: hue-rotate(360deg) drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color}); }
+                }
+                .gmd-path-pulse-${item.id} {
+                    animation: gmd-svg-pulse-${item.id} 2s ease-in-out infinite;
+                }
+                .gmd-path-rainbow-${item.id} {
+                    animation: gmd-svg-rainbow-${item.id} 4s linear infinite;
+                }
+            </style>
+        `;
+
+        let shapeEffectClass = '';
+        let pathStyle = `transition: stroke-dashoffset 0.3s ease;`;
+        if (effect === 'pulse') {
+            shapeEffectClass = `gmd-path-pulse-${item.id}`;
+        } else if (effect === 'rainbow') {
+            shapeEffectClass = `gmd-path-rainbow-${item.id}`;
+        } else {
+            pathStyle += ` filter: drop-shadow(0 0 ${roundPx(8, ctx.scale)}px ${color});`;
+        }
 
         if (shape === 'circle') {
             const r = 50;
             const circ = 2 * Math.PI * r;
             const strokeOffset = circ - (pct / 100) * circ;
             pathMarkup = `
+                ${styleMarkup}
                 <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" />
-                <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${color}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}" stroke-linecap="round" style="transition: stroke-dashoffset 0.3s ease; filter: drop-shadow(0 0 ${roundPx(8, ctx.scale)}px ${color});" />
+                <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${color}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}" stroke-linecap="round" class="${shapeEffectClass}" style="${pathStyle}" />
             `;
         } else {
             svgRotation = 'none';
@@ -940,8 +974,9 @@
                 d = "M 60,10 L 75,45 L 112,45 L 82,67 L 93,103 L 60,80 L 27,103 L 38,67 L 8,45 L 45,45 Z";
             }
             pathMarkup = `
+                ${styleMarkup}
                 <path d="${d}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" stroke-linejoin="round" />
-                <path d="${d}" fill="transparent" stroke="${color}" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - pct}" style="transition: stroke-dashoffset 0.3s ease; filter: drop-shadow(0 0 ${roundPx(8, ctx.scale)}px ${color});" />
+                <path d="${d}" fill="transparent" stroke="${color}" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - pct}" class="${shapeEffectClass}" style="${pathStyle}" />
             `;
         }
 
@@ -957,7 +992,7 @@
         return `
             <div class="gmd-goal-circle-widget" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; background:${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(10,15,30,0.5) 0%, #0a0a14 100%)')}; border:${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : 'rgba(255,255,255,0.08)'}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(16, ctx.scale)}px; box-shadow:${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.37)`};">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display:flex; flex-direction:column; align-items:center; width:100%; position:relative;">
-                    <div style="font-size: ${font(ctx, item.fontSize, 24)}px; font-weight: 900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 ${roundPx(10, ctx.scale)}px ${color}80; margin-bottom: ${roundPx(8, ctx.scale)}px;">${pct}%</div>
+                    ${showPct ? `<div style="font-size: ${font(ctx, pctSize, 24)}px; font-weight: 900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 ${roundPx(10, ctx.scale)}px ${color}80; margin-bottom: ${roundPx(8, ctx.scale)}px;">${pct}%</div>` : ''}
                     <div style="position: relative; width: ${roundPx(120, ctx.scale)}px; height: ${roundPx(120, ctx.scale)}px; display: flex; align-items: center; justify-content: center;">
                         <svg width="${roundPx(120, ctx.scale)}" height="${roundPx(120, ctx.scale)}" viewBox="0 0 120 120" style="transform: ${svgRotation};">
                             ${pathMarkup}

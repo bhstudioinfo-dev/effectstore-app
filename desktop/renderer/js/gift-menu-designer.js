@@ -4891,6 +4891,14 @@
                             </select>
                         </div>
                         <div class="gmd-field">
+                            <label>Hiệu ứng tiến trình</label>
+                            <select class="gmd-select" data-goal-key="progressEffect">
+                                <option value="none" ${selected.progressEffect === 'none' || !selected.progressEffect ? 'selected' : ''}>Tĩnh (Không hiệu ứng)</option>
+                                <option value="pulse" ${selected.progressEffect === 'pulse' ? 'selected' : ''}>Phát sáng nhịp thở 🌟</option>
+                                <option value="rainbow" ${selected.progressEffect === 'rainbow' ? 'selected' : ''}>Dòng chảy cầu vồng 🌈</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field">
                             <label>Số lượng mục tiêu (Target)</label>
                             <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 100}">
                         </div>
@@ -4919,6 +4927,14 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field gmd-toggle-row" style="margin-top: 6px; margin-bottom: 8px;">
+                            <label style="font-size: 11px;">Hiển thị % tiến trình</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="showPercentage" ${selected.showPercentage !== false ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.showPercentage !== false ? makeCompactFontSizeField('Cỡ chữ % tiến trình', 'pctFontSize', 24) : ''}
                         ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 24)}
                         ${makeCompactFontSizeField('Cỡ chữ Dòng phụ', 'subtitleFontSize', 16)}
                         ${makeCompactFontSizeField('Cỡ chữ Điểm số (Value)', 'numberFontSize', 16)}
@@ -5860,7 +5876,7 @@
             });
 
             this.renderCanvas();
-            if (key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle') {
+            if (key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage') {
                 this.renderInspector();
             }
             if (pushHist) {
