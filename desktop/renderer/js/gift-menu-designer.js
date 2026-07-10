@@ -6066,6 +6066,135 @@
                     ]
                 },
                 {
+                    id: 'tmpl_circular_heart_goal',
+                    name: 'Vòng tròn mục tiêu ❤️',
+                    tag: 'Vòng tròn',
+                    category: 'goal-circle',
+                    tags: ['circle', 'progress', 'heart'],
+                    isPremium: false,
+                    layers: [
+                        {
+                            id: 'circular_heart_goal_widget',
+                            name: 'MỤC TIÊU ❤️',
+                            type: 'goal-circle',
+                            x: 90,
+                            y: 100,
+                            w: 280,
+                            h: 320,
+                            width: 280,
+                            height: 320,
+                            zIndex: 1,
+                            visible: true,
+                            locked: false,
+                            lockRatio: true,
+                            giftId: 'rose',
+                            giftName: 'Rose',
+                            targetCount: 500,
+                            currentCount: 310,
+                            centerIcon: '❤️',
+                            subtitleText: '01:41:01 OFFLINE',
+                            barColor: '#ff007f',
+                            fontSize: 24,
+                            subtitleFontSize: 16,
+                            numberFontSize: 16
+                        }
+                    ]
+                },
+                {
+                    id: 'tmpl_multi_goal_list',
+                    name: '🎯 Mục tiêu hôm nay (Danh sách)',
+                    tag: 'Danh sách',
+                    category: 'multi-goal',
+                    tags: ['list', 'multi', 'daily-goal'],
+                    isPremium: false,
+                    layers: [
+                        {
+                            id: 'multi_goal_list_widget',
+                            name: '🎯 MỤC TIÊU HÔM NAY',
+                            type: 'goal-list',
+                            x: 90,
+                            y: 500,
+                            w: 900,
+                            h: 480,
+                            zIndex: 1,
+                            visible: true,
+                            locked: false,
+                            barColor: '#38bdf8',
+                            goals: [
+                                { giftId: 'rose', giftName: 'Rose', current: 150, target: 500, icon: '/assets/gift-icons/Rose.png' },
+                                { giftId: 'tiktok', giftName: 'TikTok', current: 32, target: 100, icon: '/assets/gift-icons/TikTok.png' },
+                                { giftId: 'corgi', giftName: 'Corgi', current: 3, target: 10, icon: '/assets/gift-icons/Corgi.png' }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: 'tmpl_boss_challenge_gaming',
+                    name: 'Thách đấu Boss 🐉',
+                    tag: 'Boss HP',
+                    category: 'boss-challenge',
+                    tags: ['boss', 'challenge', 'gaming'],
+                    isPremium: false,
+                    layers: [
+                        {
+                            id: 'boss_challenge_widget',
+                            name: '🐉 BOSS HP CHALLENGE',
+                            type: 'boss-bar',
+                            x: 90,
+                            y: 800,
+                            w: 900,
+                            h: 160,
+                            zIndex: 1,
+                            visible: true,
+                            locked: false,
+                            giftId: 'rose',
+                            giftName: 'Rose',
+                            bossName: 'Hỏa Long Vương 🐉',
+                            bossSub: 'Rose tấn công Boss!',
+                            targetCount: 1000,
+                            currentCount: 1000,
+                            barColor: '#ef4444',
+                            barHeight: 24,
+                            barStyle: 'candy-stripe',
+                            fontSize: 38,
+                            subtitleFontSize: 26
+                        }
+                    ]
+                },
+                {
+                    id: 'tmpl_lucky_mystery_box',
+                    name: 'Lucky Mystery Box 🎁',
+                    tag: 'Mystery Box',
+                    category: 'mystery-box',
+                    tags: ['lucky', 'mystery', 'box'],
+                    isPremium: false,
+                    layers: [
+                        {
+                            id: 'lucky_mystery_box_widget',
+                            name: '🎁 MỞ KHÓA HỘP QUÀ KỲ BÍ',
+                            type: 'mystery-chests',
+                            x: 90,
+                            y: 800,
+                            w: 900,
+                            h: 240,
+                            zIndex: 1,
+                            visible: true,
+                            locked: false,
+                            giftId: 'rose',
+                            giftName: 'Rose',
+                            targetCount: 500,
+                            currentCount: 350,
+                            subtitleText: 'Tích lũy Rose mở khóa hộp quà',
+                            barColor: '#a855f7',
+                            glowColor: '#fb7185',
+                            barHeight: 24,
+                            barStyle: 'glow-pulse',
+                            fontSize: 32,
+                            subtitleFontSize: 20
+                        }
+                    ]
+                },
+                {
                     id: 'tmpl_top_supporters_board',
                     name: 'Top Supporters Board',
                     tag: 'Honors',
