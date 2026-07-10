@@ -761,26 +761,9 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             }
         }
 
-        let hasPurchasedParent = false;
-        if (layout && layout.parentTemplateId) {
-            const template = await GiftMenuLayout.findOne({ _id: layout.parentTemplateId, isTemplate: true });
-            if (template) {
-                const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
-                const isBusiness = user.subscription === 'business';
-                if (isAdmin || isBusiness) {
-                    hasPurchasedParent = true;
-                } else {
-                    const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
-                    hasPurchasedParent = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
-                }
-            }
-        }
-
-        if (!hasPurchasedParent) {
-            const designerViolation = validateDesignerItems(payload.items, entitlements) ||
-                validateDesignerItems(payload.exportedItems, entitlements);
-            if (designerViolation) return res.status(403).json(designerViolation);
-        }
+        const designerViolation = validateDesignerItems(payload.items, entitlements) ||
+            validateDesignerItems(payload.exportedItems, entitlements);
+        if (designerViolation) return res.status(403).json(designerViolation);
         if (!layout) {
             if (Number.isFinite(entitlements.layouts)) {
                 const layoutCount = await GiftMenuLayout.countDocuments({ userId: req.userId, isTemplate: false });

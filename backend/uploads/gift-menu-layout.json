@@ -1,8 +1,9 @@
 {
-  "_id": "6a3027f9dd49dcaebd505c21",
-  "userId": "69c62ed2dad93ce88b9face4",
+  "_id": "6a505489746e6023d8877c7b",
+  "userId": "6a4fbca194f78287b9f59ca5",
   "name": "1",
-  "isActive": true,
+  "version": 2,
+  "savedAt": "2026-07-10T02:10:17.306Z",
   "aspectRatio": "9:16",
   "canvasSize": {
     "width": 720,
@@ -139,7 +140,11 @@
       "fontSize": 24,
       "subtitleFontSize": 16,
       "numberFontSize": 16,
-      "groupId": "group_1783257633639_552"
+      "groupId": "group_1783257633639_552",
+      "animationSpeed": 1,
+      "auraSpeed": 1,
+      "auraScale": 1,
+      "textPosition": "bottom"
     },
     {
       "id": "stack_1782664140107_129",
@@ -530,6 +535,10 @@
       "subtitleFontSize": 16,
       "numberFontSize": 16,
       "groupId": "group_1783257633639_552",
+      "animationSpeed": 1,
+      "auraSpeed": 1,
+      "auraScale": 1,
+      "textPosition": "bottom",
       "textSize": 39,
       "textGap": 12,
       "iconTextSize": 60
@@ -807,15 +816,16 @@
       "borderRadius": 24
     }
   ],
-  "updatedAt": "2026-07-08T14:33:58.174Z",
-  "__v": 755,
-  "savedAt": "2026-07-05T13:21:50.559Z",
-  "category": "all",
+  "isActive": true,
   "isTemplate": false,
+  "category": "all",
+  "price": 0,
+  "originalPrice": 0,
   "description": "",
   "icon": "📋",
   "isPremium": false,
-  "originalPrice": 0,
-  "price": 0,
-  "version": 2
+  "parentTemplateId": "6a4e66f5f6854c2edeb9ba78",
+  "createdAt": "2026-07-10T02:10:17.310Z",
+  "updatedAt": "2026-07-10T02:10:17.310Z",
+  "__v": 0
 }

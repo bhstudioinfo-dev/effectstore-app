@@ -995,7 +995,7 @@
                 ${styleMarkup}
                 ${defsMarkup}
                 <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" />
-                <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${strokeColor}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}" stroke-linecap="round" class="${shapeEffectClass}" style="${pathStyle}" />
+                <circle cx="60" cy="60" r="${r}" fill="transparent" stroke="${strokeColor}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${strokeOffset}" stroke-linecap="round" class="gmd-progress-path ${shapeEffectClass}" style="${pathStyle}" />
             `;
         } else {
             svgRotation = 'none';
@@ -1013,7 +1013,7 @@
                 ${styleMarkup}
                 ${defsMarkup}
                 <path d="${d}" fill="transparent" stroke="rgba(255,255,255,0.08)" stroke-width="8" stroke-linejoin="round" />
-                <path d="${d}" fill="transparent" stroke="${strokeColor}" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - pct}" class="${shapeEffectClass}" style="${pathStyle}" />
+                <path d="${d}" fill="transparent" stroke="${strokeColor}" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - pct}" class="gmd-progress-path ${shapeEffectClass}" style="${pathStyle}" />
             `;
         }
 
@@ -1029,7 +1029,7 @@
         return `
             <div class="gmd-goal-circle-widget" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; background:${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(10,15,30,0.5) 0%, #0a0a14 100%)')}; border:${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : 'rgba(255,255,255,0.08)'}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(16, ctx.scale)}px; box-shadow:${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.37)`};">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display:flex; flex-direction:column; align-items:center; width:100%; position:relative;">
-                    ${showPct ? `<div style="font-size: ${font(ctx, pctSize, 24)}px; font-weight: 900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 ${roundPx(10, ctx.scale)}px ${color}80; margin-bottom: ${roundPx(8, ctx.scale)}px;">${pct}%</div>` : ''}
+                    ${showPct ? `<div class="gmd-pct-text" style="font-size: ${font(ctx, pctSize, 24)}px; font-weight: 900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 ${roundPx(10, ctx.scale)}px ${color}80; margin-bottom: ${roundPx(8, ctx.scale)}px;">${pct}%</div>` : ''}
                     <div style="position: relative; width: ${roundPx(120, ctx.scale)}px; height: ${roundPx(120, ctx.scale)}px; display: flex; align-items: center; justify-content: center;">
                         <svg width="${roundPx(120, ctx.scale)}" height="${roundPx(120, ctx.scale)}" viewBox="0 0 120 120" style="transform: ${svgRotation};">
                             ${pathMarkup}
@@ -1037,7 +1037,7 @@
                         <div style="position: absolute; display: flex; align-items: center; justify-content: center;">${innerIcon}</div>
                     </div>
                     <div style="font-size: ${font(ctx, item.fontSize, 24)}px; font-weight: 800; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; margin-top: ${roundPx(12, ctx.scale)}px; text-align: center; line-height: 1.2;">${text(ctx, item.name || item.giftName || 'Goal')}</div>
-                    <div style="font-size: ${font(ctx, item.numberFontSize, 16)}px; font-weight: 800; color: ${color}; text-shadow: 0 0 ${roundPx(8, ctx.scale)}px ${color}60; margin-top: ${roundPx(4, ctx.scale)}px;">${current}/${target}</div>
+                    <div class="gmd-count-text" style="font-size: ${font(ctx, item.numberFontSize, 16)}px; font-weight: 800; color: ${color}; text-shadow: 0 0 ${roundPx(8, ctx.scale)}px ${color}60; margin-top: ${roundPx(4, ctx.scale)}px;">${current}/${target}</div>
                     ${item.subtitleText ? `<div style="font-size: ${font(ctx, item.subtitleFontSize, 16)}px; color: ${item.useCustomTextColor ? (item.textColor || '#94a3b8') : '#94a3b8'}; margin-top: ${roundPx(4, ctx.scale)}px; text-align: center; font-weight: 600; line-height: 1.2;">${text(ctx, item.subtitleText)}</div>` : ''}
                 </div>
             </div>

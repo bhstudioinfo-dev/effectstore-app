@@ -1079,48 +1079,76 @@
                 const visualContainer = el.querySelector('.gmd-visual-container');
                 const selectionOverlay = el.querySelector('.gmd-selection-overlay');
 
-                // Content Signature determines when to regenerate the widget inner DOM
-                const contentSignature = JSON.stringify({
+                // Structure signature excluding count/contributors state to avoid resetting CSS animations
+                const structuralState = {
                     id: item.id,
+                    type: item.type,
                     width: item.width,
                     height: item.height,
-                    item: item
-                });
+                    name: item.name,
+                    giftId: item.giftId,
+                    giftName: item.giftName,
+                    targetCount: item.targetCount,
+                    centerIcon: item.centerIcon,
+                    subtitleText: item.subtitleText,
+                    barColor: item.barColor,
+                    barColorGradientTo: item.barColorGradientTo,
+                    useBarGradient: item.useBarGradient,
+                    progressShape: item.progressShape,
+                    progressEffect: item.progressEffect,
+                    showPercentage: item.showPercentage,
+                    pctFontSize: item.pctFontSize,
+                    fontSize: item.fontSize,
+                    subtitleFontSize: item.subtitleFontSize,
+                    numberFontSize: item.numberFontSize,
+                    contentOffsetY: item.contentOffsetY,
+                    hideBg: item.hideBg,
+                    useCustomBg: item.useCustomBg,
+                    bgColor: item.bgColor,
+                    useCustomTextColor: item.useCustomTextColor,
+                    textColor: item.textColor,
+                    lockRatio: item.lockRatio,
+                    goals: Array.isArray(item.goals) ? item.goals.map(g => ({ id: g.id, text: g.text, target: g.target, giftId: g.giftId })) : undefined,
+                    pkPlayers: Array.isArray(item.pkPlayers) ? item.pkPlayers.map(p => ({ name: p.name, giftId: p.giftId, target: p.target })) : undefined,
+                };
+                const contentSignature = JSON.stringify(structuralState);
 
-                if (visualContainer && visualContainer.dataset.contentSignature !== contentSignature) {
-                    visualContainer.dataset.contentSignature = contentSignature;
+                if (visualContainer) {
+                    const hasStructureChanged = visualContainer.dataset.contentSignature !== contentSignature;
+                    if (hasStructureChanged) {
+                        visualContainer.dataset.contentSignature = contentSignature;
 
-                    if (item.type === 'gift-stack-group') {
-                        const groupHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderGiftStackGroup === 'function'
-                            ? this.sharedRenderEngine.renderGiftStackGroup(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true })
-                            : '';
-                        visualContainer.innerHTML = groupHTML;
-                    } else if (item.type && item.type !== 'gift') {
-                        let refW = item.lockedW || item.w || 900;
-                        let refH = item.lockedH || item.h || 160;
-                        if (item.type === 'boss-bar') { refW = 840; refH = 180; }
-                        else if (item.type === 'combo') { refW = 800; refH = 220; }
-                        else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
-                        else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
-                        else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
-                        else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
-                        else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
+                        if (item.type === 'gift-stack-group') {
+                            const groupHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderGiftStackGroup === 'function'
+                                ? this.sharedRenderEngine.renderGiftStackGroup(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true })
+                                : '';
+                            visualContainer.innerHTML = groupHTML;
+                        } else if (item.type && item.type !== 'gift') {
+                            let refW = item.lockedW || item.w || 900;
+                            let refH = item.lockedH || item.h || 160;
+                            if (item.type === 'boss-bar') { refW = 840; refH = 180; }
+                            else if (item.type === 'combo') { refW = 800; refH = 220; }
+                            else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
+                            else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
+                            else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
+                            else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
+                            else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
 
-                        const scaleX = item.width / refW;
-                        const scaleY = item.height / refH;
+                            const scaleX = item.width / refW;
+                            const scaleY = item.height / refH;
 
-                        const widgetHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
-                            ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
-                            : '';
+                            const widgetHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                                ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
+                                : '';
 
-                        visualContainer.innerHTML = `
-                            <div class="gmd-visual" style="width:100%; height:100%; position: relative; overflow: visible;">
-                                <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${scaleX}, ${scaleY}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
-                                    ${widgetHTML}
+                            visualContainer.innerHTML = `
+                                <div class="gmd-visual" style="width:100%; height:100%; position: relative; overflow: visible;">
+                                    <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${scaleX}, ${scaleY}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
+                                        ${widgetHTML}
+                                    </div>
                                 </div>
-                            </div>
-                        `;
-                    } else {
+                            `;
+                        } else {
                         const auraShapeVars = this.getAuraShapeVars(item.auraShape);
                         const lightSweepOverlay = '';
                         const labelBgStyle = this.getGiftLabelBackgroundStyle(item);
@@ -1140,7 +1168,12 @@
                             ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;text-align:${item.textAlign || 'center'};${labelBgStyle}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;">${this.escapeHtml(item.name)}</div>${item.subtext ? `<div style="font-size:${Math.max(5, Math.round((Number(item.textSize) || 13) * .78))}px;opacity:.8;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:2px;">${this.escapeHtml(item.subtext)}</div>` : ''}</div>` : ''}
                         `;
                     }
+                    visualContainer.dataset.itemState = JSON.stringify(item);
+                } else {
+                    this.patchWidgetDOM(visualContainer, item);
+                    visualContainer.dataset.itemState = JSON.stringify(item);
                 }
+            }
 
                 // Selection overlay updates independently (no visual container redraw, no animation reset!)
                 const selectionSignature = JSON.stringify({
@@ -1174,6 +1207,56 @@
             });
 
             this.applyZoom();
+        }
+
+        patchWidgetDOM(container, item) {
+            if (item.type === 'goal-circle') {
+                const current = Number(item.currentCount || 0);
+                const target = Number(item.targetCount || 100);
+                const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+
+                // 1. Update percentage text
+                const pctEl = container.querySelector('.gmd-pct-text');
+                if (pctEl) {
+                    pctEl.textContent = `${pct}%`;
+                }
+
+                // 2. Update SVG progress path/circle stroke-dashoffset
+                const progressPath = container.querySelector('.gmd-progress-path');
+                if (progressPath) {
+                    if (progressPath.tagName === 'circle') {
+                        const r = Number(progressPath.getAttribute('r') || 50);
+                        const circ = 2 * Math.PI * r;
+                        const strokeOffset = circ - (pct / 100) * circ;
+                        progressPath.style.strokeDashoffset = strokeOffset;
+                    } else {
+                        // For paths (heart, square, hexagon, star)
+                        progressPath.style.strokeDashoffset = 100 - pct;
+                    }
+                }
+
+                // 3. Update current/target score text
+                const countEl = container.querySelector('.gmd-count-text');
+                if (countEl) {
+                    countEl.textContent = `${current}/${target}`;
+                }
+            } else if (item.type === 'goal-bar') {
+                const current = Number(item.currentCount || 0);
+                const target = Number(item.targetCount || 100);
+                const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+
+                // 1. Update bar width
+                const barInner = container.querySelector('.gmd-goal-bar-inner');
+                if (barInner) {
+                    barInner.style.width = `${pct}%`;
+                }
+
+                // 2. Update current/target score text
+                const countEl = container.querySelector('.gmd-count-text');
+                if (countEl) {
+                    countEl.textContent = `${current}/${target}`;
+                }
+            }
         }
 
         getAuraShapeVars(shape) {
