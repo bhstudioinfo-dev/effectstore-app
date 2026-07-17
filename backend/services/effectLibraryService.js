@@ -81,11 +81,12 @@ async function getUserAvailableEffects(userId) {
 
     const purchased = [];
     if (isAdminUser(user)) {
-        const allEffects = await Effect.find({ isActive: true }).sort({ uses: -1 }).lean().catch(() => []);
+        const allEffects = await Effect.find({ isActive: true, category: { $ne: 'menu_template' } }).sort({ uses: -1 }).lean().catch(() => []);
         purchased.push(...allEffects.map((effect) => normalizePurchasedEffect(effect, user._id, true)).filter(Boolean));
     } else {
         purchased.push(
             ...(user.purchasedEffects || [])
+                .filter((item) => item?.effectId && item.effectId.category !== 'menu_template')
                 .map((item) => normalizePurchasedEffect(item?.effectId, user._id, true))
                 .filter(Boolean)
         );
@@ -112,6 +113,7 @@ async function resolveEffectForUser(userId, effectId) {
 
     if (isAdminUser(user)) {
         const effect = await Effect.findById(id).lean().catch(() => null);
+        if (effect && effect.category === 'menu_template') return null;
         return normalizePurchasedEffect(effect, user._id, true);
     }
 
@@ -119,6 +121,7 @@ async function resolveEffectForUser(userId, effectId) {
         return toEffectId(item?.effectId?._id || item?.effectId) === id;
     });
 
+    if (purchased?.effectId?.category === 'menu_template') return null;
     return purchased ? normalizePurchasedEffect(purchased.effectId, user._id, true) : null;
 }
 

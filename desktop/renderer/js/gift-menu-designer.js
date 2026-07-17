@@ -15,6 +15,7 @@
             this.layouts = [];
             this.currentLayoutId = null;
             this.currentLayoutName = '';
+            this._templateDraft = false;
             this.zoomLevel = 1;
             this.panX = 0;
             this.panY = 0;
@@ -32,6 +33,10 @@
             this.coordinateEngine = window.MenuDesignerCoordinateEngine || null;
             this.sharedRenderEngine = window.MenuDesignerSharedRenderEngine || null;
             this.inspectorEngine = window.MenuDesignerInspectorEngine || null;
+            this._autoSaveTimer = null;
+            this._saveInFlight = false;
+            this._saveQueuedRequest = null;
+            this._saveQueuedResolvers = [];
             this.auraOptions = [
                 { value: 'None', label: 'Không có' },
                 { value: 'Glow', label: 'Glow (Tỏa sáng)' },
@@ -44,6 +49,7 @@
             ];
 
             this.goalAssets = [];
+            this.goalFramePresets = [];
             this.customTemplates = [];
 
             // Close custom selects when clicking outside
@@ -137,7 +143,7 @@
             this.loadGoalAssets();
             this.loadGoalTemplates();
             this.loadLayoutsList().then(() => {
-                if (!this.currentLayoutId && this.layouts.length > 0) {
+                if (!this.currentLayoutId && !this._templateDraft && this.layouts.length > 0) {
                     this.loadLayout();
                 }
             });
@@ -585,7 +591,7 @@
                     listEl.innerHTML = purchasedOnly.map(t => {
                         const price = Math.max(0, Number(t.price) || 0);
                         const isOwned = Boolean(t.isPurchased) || price === 0;
-                        const actionText = isOwned ? 'Sử dụng' : `Mua ${price.toLocaleString('vi-VN')}đ`;
+                        const actionText = t.isUsed ? 'Đã sử dụng' : (isOwned ? 'Sử dụng' : `Mua ${price.toLocaleString('vi-VN')}đ`);
                         const bgStyle = isOwned ? 'background:#10b981;' : 'background:#8b5cf6;';
                         return `
                             <div class="gmd-tmpl-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px; gap:8px;">
@@ -617,6 +623,10 @@
         }
 
         async buyOrUseTemplateFromSidebar(templateId) {
+            if (!this._usingTemplateIds) this._usingTemplateIds = new Set();
+            const templateKey = String(templateId);
+            if (this._usingTemplateIds.has(templateKey)) return;
+
             const template = (this.serverTemplates || []).find((item) => String(item._id) === String(templateId));
             if (template && Number(template.price || 0) > 0 && !template.isPurchased) {
                 if (window.app && typeof window.app.buyMenuTemplate === 'function') {
@@ -626,6 +636,14 @@
                 }
                 return;
             }
+            this._usingTemplateIds.add(templateKey);
+            const useButtons = Array.from(this.mount.querySelectorAll('.gmd-btn-use-tmpl'))
+                .filter((button) => String(button.dataset.templateId) === templateKey);
+            useButtons.forEach((button) => {
+                button.disabled = true;
+                button.dataset.originalText = button.textContent;
+                button.textContent = 'Đang mở...';
+            });
             try {
                 const headers = { 'Content-Type': 'application/json' };
                 if (this.token) headers.Authorization = `Bearer ${this.token}`;
@@ -637,13 +655,22 @@
                 }
                 await this.loadLayoutsList();
                 await this.loadLayout();
+                await this.loadTemplatesList();
                 if (window.app && typeof window.app.showNotification === 'function') {
-                    window.app.showNotification('success', 'Đã tạo thiết kế từ mẫu thành công.');
+                    window.app.showNotification('success', data.reused ? 'Đã mở thiết kế bạn từng sử dụng.' : 'Đã thêm mẫu vào thư viện của bạn.');
                 }
+                return data;
             } catch (error) {
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('error', `Không thể sử dụng mẫu: ${error.message}`);
                 }
+            } finally {
+                this._usingTemplateIds.delete(templateKey);
+                useButtons.forEach((button) => {
+                    button.disabled = false;
+                    button.textContent = button.dataset.originalText || 'Sử dụng';
+                    delete button.dataset.originalText;
+                });
             }
         }
 
@@ -848,6 +875,7 @@
                     height: Math.round(iconSize),
                     showName: group.showName !== false,
                     textSize: group.textSize,
+                    subtextSize: group.subtextSize,
                     textPosition: group.textPosition || 'bottom',
                     textGap: group.textGap,
                     textColor: group.textColor
@@ -894,6 +922,7 @@
                 padding: 8,
                 iconSize: Math.max(10, Math.round(selectedGifts.reduce((sum, item) => sum + (Number(item.width) || 64), 0) / selectedGifts.length)),
                 textSize: 14,
+                subtextSize: 10,
                 textPosition: 'bottom',
                 textGap: 4,
                 textColor: '#ffffff',
@@ -917,7 +946,7 @@
                 borderEffectSpeed: 2,
                 borderGlowIntensity: 0.55,
                 loopEnabled: false,
-                loopDirection: 'vertical',
+                loopDirection: 'bottom-to-top',
                 loopSpeed: 15,
                 children: orderedChildren,
                 x: bounds.x,
@@ -1108,6 +1137,75 @@
                     useCustomTextColor: item.useCustomTextColor,
                     textColor: item.textColor,
                     lockRatio: item.lockRatio,
+                    animationType: item.animationType,
+                    animationSpeed: item.animationSpeed,
+                    auraType: item.auraType,
+                    auraColor: item.auraColor,
+                    auraShape: item.auraShape,
+                    auraSpeed: item.auraSpeed,
+                    auraScale: item.auraScale,
+                    borderEffect: item.borderEffect,
+                    borderEffectSpeed: item.borderEffectSpeed,
+                    borderGlowIntensity: item.borderGlowIntensity,
+                    panelEffect: item.panelEffect,
+                    panelEffectSpeed: item.panelEffectSpeed,
+                    panelGlowIntensity: item.panelGlowIntensity,
+                    showPanel: item.showPanel,
+                    panelFillType: item.panelFillType,
+                    panelColor: item.panelColor,
+                    panelGradientFrom: item.panelGradientFrom,
+                    panelGradientTo: item.panelGradientTo,
+                    panelGradientAngle: item.panelGradientAngle,
+                    showBorder: item.showBorder,
+                    borderFillType: item.borderFillType,
+                    borderColor: item.borderColor,
+                    borderGradientFrom: item.borderGradientFrom,
+                    borderGradientTo: item.borderGradientTo,
+                    borderGradientAngle: item.borderGradientAngle,
+                    borderRadius: item.borderRadius,
+                    padding: item.padding,
+                    layoutDirection: item.layoutDirection,
+                    childAlign: item.childAlign,
+                    iconSize: item.iconSize,
+                    gap: item.gap,
+                    textPosition: item.textPosition,
+                    textSize: item.textSize,
+                    subtextSize: item.subtextSize,
+                    textGap: item.textGap,
+                    loopEnabled: item.loopEnabled,
+                    loopDirection: item.loopDirection,
+                    loopSpeed: item.loopSpeed,
+                    children: Array.isArray(item.children) ? item.children.map(child => ({
+                        id: child.id,
+                        giftId: child.giftId,
+                        name: child.name,
+                        giftName: child.giftName,
+                        iconUrl: child.iconUrl,
+                        icon: child.icon,
+                        iconDisplayMode: child.iconDisplayMode,
+                        iconText: child.iconText,
+                        iconTextColor: child.iconTextColor,
+                        iconTextSize: child.iconTextSize,
+                        subtext: child.subtext,
+                        showName: child.showName,
+                        textPosition: child.textPosition,
+                        textSize: child.textSize,
+                        textColor: child.textColor,
+                        textGap: child.textGap,
+                        textAlign: child.textAlign,
+                        showTextBg: child.showTextBg,
+                        textBgStyle: child.textBgStyle,
+                        textBgColor: child.textBgColor,
+                        textBgGradientFrom: child.textBgGradientFrom,
+                        textBgGradientTo: child.textBgGradientTo,
+                        animationType: child.animationType,
+                        animationSpeed: child.animationSpeed,
+                        auraType: child.auraType,
+                        auraColor: child.auraColor,
+                        auraShape: child.auraShape,
+                        auraSpeed: child.auraSpeed,
+                        auraScale: child.auraScale
+                    })) : undefined,
                     goals: Array.isArray(item.goals) ? item.goals.map(g => ({ id: g.id, text: g.text, target: g.target, giftId: g.giftId })) : undefined,
                     pkPlayers: Array.isArray(item.pkPlayers) ? item.pkPlayers.map(p => ({ name: p.name, giftId: p.giftId, target: p.target })) : undefined,
                 };
@@ -1136,14 +1234,48 @@
 
                             const scaleX = item.width / refW;
                             const scaleY = item.height / refH;
+                            // Only preserve the preset's 900x560 ratio while the user has
+                            // explicitly locked it. When unlocked, width and height must be
+                            // independent so the board itself fills the requested bounds.
+                            const isPodiumBoard = item.type === 'top-contributors' || item.type === 'podium-contributors';
+                            const savedBoardRatio = Number(item.lockedW) > 0 && Number(item.lockedH) > 0
+                                ? Number(item.lockedW) / Number(item.lockedH)
+                                : (900 / 560);
+                            const hasCustomBoardRatio = isPodiumBoard && Math.abs(savedBoardRatio - (900 / 560)) > 0.01;
+                            const preserveContentRatio = isPodiumBoard && item.lockRatio !== false && !hasCustomBoardRatio;
+                            const contentScaleX = preserveContentRatio ? Math.min(scaleX, scaleY) : scaleX;
+                            const contentScaleY = preserveContentRatio ? Math.min(scaleX, scaleY) : scaleY;
+                            const contentLeft = preserveContentRatio ? Math.max(0, (item.width - refW * contentScaleX) / 2) : 0;
+                            const contentTop = preserveContentRatio ? Math.max(0, (item.height - refH * contentScaleY) / 2) : 0;
 
                             const widgetHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
                                 ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
                                 : '';
 
-                            visualContainer.innerHTML = `
+                            const isFlexiblePodium = isPodiumBoard && (item.lockRatio === false || hasCustomBoardRatio);
+                            // The visible podium only occupies the center portion of the 900x560
+                            // design. Fit against that footprint so trimming empty board space does
+                            // not immediately shrink the title and avatars.
+                            const podiumContentScale = Math.min(item.width / 620, item.height / 330);
+                            const podiumContentLeft = (item.width / 2) - ((refW * podiumContentScale) / 2);
+                            const podiumContentTop = (item.height / 2) - ((refH * podiumContentScale) / 2);
+                            const transparentWidgetHTML = isFlexiblePodium && this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                                ? this.sharedRenderEngine.renderByType({ ...item, hideBg: true }, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
+                                : '';
+
+                            visualContainer.innerHTML = isFlexiblePodium ? `
+                                <div class="gmd-visual" style="width:100%; height:100%; position:relative; overflow:visible;">
+                                    <style>.gmd-board-bg-only > .gmd-podium-widget > * { visibility:hidden !important; }</style>
+                                    <div class="gmd-visual-scaled-wrapper" style="z-index:1; width:${refW}px; height:${refH}px; transform:scale(${podiumContentScale}); transform-origin:top left; position:absolute; top:${podiumContentTop}px; left:${podiumContentLeft}px; pointer-events:none;">
+                                        ${transparentWidgetHTML}
+                                    </div>
+                                    <div class="gmd-visual-scaled-wrapper gmd-board-bg-only" style="z-index:0; width:${refW}px; height:${refH}px; transform:scale(${scaleX}, ${scaleY}); transform-origin:top left; position:absolute; inset:0 auto auto 0; pointer-events:none;">
+                                        ${widgetHTML}
+                                    </div>
+                                </div>
+                            ` : `
                                 <div class="gmd-visual" style="width:100%; height:100%; position: relative; overflow: visible;">
-                                    <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${scaleX}, ${scaleY}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
+                                    <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${contentScaleX}, ${contentScaleY}); transform-origin: top left; position: absolute; top: ${contentTop}px; left: ${contentLeft}px; pointer-events: none;">
                                         ${widgetHTML}
                                     </div>
                                 </div>
@@ -1594,6 +1726,7 @@
                 selected.pkPlayers = selected.pkPlayers.slice(0, count);
             }
 
+            this.invalidateItemVisual(selected);
             this.renderCanvas();
             this.renderInspector();
             this.syncLayoutState();
@@ -1613,6 +1746,7 @@
             }
 
             player[key] = (key === 'score' || key === 'pointMultiplier' || key === 'animationSpeed' || key === 'auraSpeed' || key === 'auraScale' || key === 'fontSize' || key === 'scoreFontSize' || key === 'headerOffsetX' || key === 'headerOffsetY') ? Number(value) : value;
+            this.invalidateItemVisual(item);
             this.renderCanvas();
 
             if (pushHist) {
@@ -1625,7 +1759,12 @@
         }
 
         syncLayoutState() {
-            this.saveLayout(false, false);
+            if (this._templateDraft) return;
+            if (this._autoSaveTimer) clearTimeout(this._autoSaveTimer);
+            this._autoSaveTimer = setTimeout(() => {
+                this._autoSaveTimer = null;
+                this.saveLayout(false, false);
+            }, 300);
         }
 
         triggerPlayerAvatarUpload(playerIndex) {
@@ -1667,7 +1806,7 @@
             }
         }
 
-        async uploadPlayerAvatarAsset(file) {
+        async uploadPlayerAvatarAsset(file, assetKind = '') {
             if (!file) return null;
             const ext = `.${String(file.name || '').split('.').pop().toLowerCase()}`;
             if (!['.png', '.gif', '.jpg', '.jpeg', '.webp', '.webm', '.mp4'].includes(ext)) {
@@ -1679,6 +1818,7 @@
             const isVideo = ['.webm', '.mp4'].includes(ext);
             const uploadFile = isVideo ? file : await this.optimizeImageUpload(file, 256);
             const formData = new FormData();
+            if (assetKind) formData.append('assetKind', assetKind);
             formData.append('assetFile', uploadFile);
 
             try {
@@ -1693,6 +1833,7 @@
                 if (data.success && data.asset) {
                     return data.asset.url;
                 }
+                if (this.handlePlanLimit(data, 'avatarFrames')) return null;
             } catch (err) {
                 console.error(err);
             }
@@ -1700,6 +1841,10 @@
         }
 
         triggerFrameUpload(rank) {
+            if (!['business', 'studio', 'admin'].includes(this.planKey)) {
+                this.showUpgrade('avatarFrames', 'Nâng cấp Pro để tải khung viền avatar riêng.');
+                return;
+            }
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/png, image/jpeg, image/gif, image/webp, video/webm';
@@ -1708,11 +1853,13 @@
                 if (!file) return;
                 
                 try {
-                    const uploadedUrl = await this.uploadPlayerAvatarAsset(file);
+                    const uploadedUrl = await this.uploadPlayerAvatarAsset(file, 'avatar-frame');
                     if (uploadedUrl) {
                         const selected = this.items.find((x) => x.id === this.selectedId);
                         if (selected) {
                             selected[`top${rank}FrameUrl`] = uploadedUrl;
+                            await this.loadGoalAssets();
+                            this.invalidateItemVisual(selected);
                             this.renderCanvas();
                             this.renderInspector();
                             this.syncLayoutState();
@@ -1833,6 +1980,32 @@
             return true;
         }
 
+        trySelectiveContributorUpdate(item) {
+            if (!item || !['top-contributors', 'podium-contributors'].includes(item.type)) return false;
+            const root = document.getElementById(`gmd-item-${item.id}`);
+            if (!root || !root.querySelector('.gmd-podium-podium')) return false;
+            const contributors = Array.isArray(item.contributors) ? item.contributors : [];
+            const rankToIndex = { 1: 0, 2: 1, 3: 2 };
+            Object.entries(rankToIndex).forEach(([rank, index]) => {
+                const spot = root.querySelector(`.gmd-podium-spot.rank-${rank}`);
+                if (!spot) return;
+                const contributor = contributors[index] || {};
+                const nameEl = spot.querySelector('.gmd-podium-name');
+                const valueEl = spot.querySelector('.gmd-podium-value');
+                const avatarEl = spot.querySelector('.gmd-podium-avatar');
+                if (nameEl) nameEl.textContent = contributor.nickname || 'BH Studio';
+                if (valueEl) valueEl.textContent = Number(contributor.value || 0).toLocaleString('vi-VN');
+                if (avatarEl) {
+                    const rawAvatar = contributor.avatar || 'https://www.w3schools.com/howto/img_avatar.png';
+                    const avatarUrl = /^(?:https?:|data:|blob:)/i.test(rawAvatar)
+                        ? rawAvatar
+                        : `${this.apiBase}${String(rawAvatar).startsWith('/') ? '' : '/'}${rawAvatar}`;
+                    avatarEl.style.backgroundImage = `url("${avatarUrl.replace(/"/g, '%22')}")`;
+                }
+            });
+            return true;
+        }
+
         testPkPlayerScore(playerIdx, addPoints) {
             const selected = this.items.find((x) => x.id === this.selectedId);
             if (!selected || !Array.isArray(selected.pkPlayers)) return;
@@ -1894,6 +2067,7 @@
                 selected.timerStartedAt = 0;
             }
 
+            this.invalidateItemVisual(selected);
             this.renderCanvas();
             this.renderInspector();
             this.syncLayoutState();
@@ -1909,6 +2083,7 @@
             selected.timerRunning = false;
             selected.timerStartedAt = 0;
 
+            this.invalidateItemVisual(selected);
             this.renderCanvas();
             this.renderInspector();
             this.syncLayoutState();
@@ -1946,6 +2121,7 @@
             } else {
                 child[key] = value;
             }
+            this.invalidateItemVisual(item);
             this.renderCanvas();
 
             if (pushHist) {
@@ -2399,6 +2575,45 @@
         }
 
         async saveLayout(showToast = true, forcePromptName = false) {
+            if (this._autoSaveTimer) {
+                clearTimeout(this._autoSaveTimer);
+                this._autoSaveTimer = null;
+            }
+
+            if (this._saveInFlight) {
+                this._saveQueuedRequest = {
+                    showToast: Boolean(showToast) || Boolean(this._saveQueuedRequest && this._saveQueuedRequest.showToast),
+                    forcePromptName: Boolean(forcePromptName) || Boolean(this._saveQueuedRequest && this._saveQueuedRequest.forcePromptName)
+                };
+                return new Promise((resolve) => {
+                    this._saveQueuedResolvers.push(resolve);
+                });
+            }
+
+            this._saveInFlight = true;
+            let result = false;
+            try {
+                result = await this._performSaveLayout(showToast, forcePromptName);
+            } catch (err) {
+                console.error('❌ Failed to save layout:', err);
+                result = false;
+            } finally {
+                this._saveInFlight = false;
+            }
+
+            if (this._saveQueuedRequest) {
+                const queuedRequest = this._saveQueuedRequest;
+                const queuedResolvers = this._saveQueuedResolvers.splice(0);
+                this._saveQueuedRequest = null;
+                const queuedResult = await this.saveLayout(queuedRequest.showToast, queuedRequest.forcePromptName);
+                queuedResolvers.forEach((resolve) => resolve(queuedResult));
+            }
+
+            return result;
+        }
+
+        async _performSaveLayout(showToast = true, forcePromptName = false) {
+            const savingTemplateDraft = Boolean(this._templateDraft);
             let nameToSave = this.currentLayoutName || 'Menu mới';
             if (forcePromptName || !this.currentLayoutId || this.currentLayoutName === 'Menu mặc định' || this.currentLayoutName === 'New Menu') {
                 const name = await this.showPromptModal('Nhập tên thiết kế để lưu:', this.currentLayoutName || 'Menu mới');
@@ -2480,6 +2695,7 @@
                     })) : [];
                     itemExport.iconSize = Number(i.iconSize || 64) * avgScale;
                     itemExport.textSize = Number(i.textSize || 14) * avgScale;
+                    itemExport.subtextSize = Number(i.subtextSize || Math.max(4, Math.round(Number(i.textSize || 14) * 0.78))) * avgScale;
                     itemExport.textGap = Number(i.textGap || 4) * avgScale;
                     itemExport.gap = Number(i.gap || 10) * avgScale;
                     itemExport.borderRadius = Number(i.borderRadius !== undefined ? i.borderRadius : 8) * avgScale;
@@ -2490,6 +2706,7 @@
             });
             const payload = {
                 id: this.currentLayoutId || undefined,
+                createNew: savingTemplateDraft,
                 name: nameToSave,
                 version: 2,
                 savedAt: new Date().toISOString(),
@@ -2508,6 +2725,7 @@
                 if (res.ok && data && data.success && data.layout) {
                     this.currentLayoutId = data.layout._id;
                     this.currentLayoutName = data.layout.name;
+                    this._templateDraft = false;
                     localStorage.setItem('giftMenuDesignerLayoutV2', JSON.stringify(payload));
                 } else {
                     if (this.handlePlanLimit(data, 'layouts')) return false;
@@ -2584,10 +2802,14 @@
             this.renderMyLibrary();
         }
 
-        async loadLayout() {
-            let payload = null;
-            let loadedFromDb = false;
-            if (this.token) {
+        async loadLayout(sourcePayload = null, asTemplateDraft = false) {
+            if (asTemplateDraft && this._autoSaveTimer) {
+                clearTimeout(this._autoSaveTimer);
+                this._autoSaveTimer = null;
+            }
+            let payload = sourcePayload;
+            let loadedFromDb = Boolean(sourcePayload);
+            if (!payload && this.token) {
                 try {
                     const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
                     const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout`, { headers });
@@ -2609,6 +2831,7 @@
                 }
                 this.currentLayoutId = null;
                 this.currentLayoutName = '';
+                this._templateDraft = false;
                 this.items = [];
                 this.clearSelection();
                 this.renderCanvas();
@@ -2616,7 +2839,8 @@
                 this.renderMyLibrary();
                 return;
             }
-            this.currentLayoutId = payload._id || null;
+            this.currentLayoutId = asTemplateDraft ? null : (payload._id || null);
+            this._templateDraft = Boolean(asTemplateDraft);
             this.currentLayoutName = payload.name || 'Menu mặc định';
             this.aspectRatio = payload.aspectRatio || '9:16';
             this.items = Array.isArray(payload.items) ? payload.items.map((item, idx) => {
@@ -2637,6 +2861,7 @@
                     normalized.gap = item.gap !== undefined ? Number(item.gap) : 10;
                     normalized.iconSize = item.iconSize !== undefined ? Number(item.iconSize) : 64;
                     normalized.textSize = item.textSize !== undefined ? Number(item.textSize) : 14;
+                    normalized.subtextSize = item.subtextSize !== undefined ? Number(item.subtextSize) : Math.max(4, Math.round(normalized.textSize * 0.78));
                     normalized.textPosition = item.textPosition || 'bottom';
                     normalized.textGap = item.textGap !== undefined ? Number(item.textGap) : 4;
                     normalized.textColor = item.textColor || '#ffffff';
@@ -2660,7 +2885,9 @@
                     normalized.borderEffectSpeed = item.borderEffectSpeed !== undefined ? Number(item.borderEffectSpeed) : 2;
                     normalized.borderGlowIntensity = item.borderGlowIntensity !== undefined ? Number(item.borderGlowIntensity) : 0.55;
                     normalized.loopEnabled = Boolean(item.loopEnabled);
-                    normalized.loopDirection = item.loopDirection === 'horizontal' ? 'horizontal' : 'vertical';
+                    normalized.loopDirection = normalized.layoutDirection === 'horizontal'
+                        ? (item.loopDirection === 'left-to-right' ? 'left-to-right' : 'right-to-left')
+                        : (item.loopDirection === 'top-to-bottom' ? 'top-to-bottom' : 'bottom-to-top');
                     normalized.loopSpeed = item.loopSpeed !== undefined ? Number(item.loopSpeed) : 15;
                 }
                 return normalized;
@@ -4011,6 +4238,7 @@
         async loadGoalAssets() {
             if (!this.token) {
                 this.goalAssets = [];
+                this.goalFramePresets = [];
                 if (this.leftPanelTab === 'assets') {
                     this.renderAssetsList();
                 }
@@ -4021,12 +4249,31 @@
                 const res = await fetch(`${this.apiBase}/api/tiktok/goal-board/assets`, { headers });
                 const data = await res.json();
                 this.goalAssets = Array.isArray(data.assets) ? data.assets : [];
+                this.goalFramePresets = Array.isArray(data.framePresets) ? data.framePresets : [];
                 if (this.leftPanelTab === 'assets') {
                     this.renderAssetsList();
                 }
             } catch (_e) {
                 this.goalAssets = [];
+                this.goalFramePresets = [];
             }
+        }
+
+        renderAvatarFrameOptions(selectedUrl = '') {
+            const options = [
+                ...(this.goalFramePresets || []).map(asset => ({ ...asset, label: `Mẫu chung · ${asset.name}` })),
+                ...(this.goalAssets || []).map(asset => ({ ...asset, label: `Của tôi · ${asset.name}` }))
+            ].filter(asset => /vien/i.test(String(asset.name || '')));
+            const unique = new Map(options.filter(asset => asset && asset.url).map(asset => [asset.url, asset]));
+            if (selectedUrl && !unique.has(selectedUrl)) {
+                unique.set(selectedUrl, { url: selectedUrl, label: 'Khung đang sử dụng' });
+            }
+            return [
+                '<option value="">Không dùng khung</option>',
+                ...Array.from(unique.values()).map(asset =>
+                    `<option value="${this.escapeHtml(asset.url)}" ${asset.url === selectedUrl ? 'selected' : ''}>${this.escapeHtml(asset.label || asset.name)}</option>`
+                )
+            ].join('');
         }
 
         getGiftLabelBackgroundStyle(item) {
@@ -4518,6 +4765,20 @@
                             </div>
 
                             <div class="gmd-field gmd-toggle-row" style="margin-top: 6px;">
+                                <label style="font-size: 11px;">Hiển thị chữ đối kháng</label>
+                                <label class="gmd-switch">
+                                    <input type="checkbox" data-goal-key="showVs" ${selected.showVs !== false ? 'checked' : ''}>
+                                    <span></span>
+                                </label>
+                            </div>
+                            ${selected.showVs !== false ? `
+                            <div class="gmd-field" style="margin-top: 4px;">
+                                <label style="font-size: 11px;">Nội dung chữ đối kháng</label>
+                                <input class="gmd-input" type="text" maxlength="20" data-goal-key="vsText" value="${this.escapeHtml(selected.vsText || 'VS')}" placeholder="VS" style="font-size: 11px; height: 26px; padding: 2px 6px;">
+                            </div>
+                            ` : ''}
+
+                            <div class="gmd-field gmd-toggle-row" style="margin-top: 6px;">
                                 <label style="font-size: 11px;">Tùy chỉnh màu viền PK</label>
                                 <label class="gmd-switch">
                                     <input type="checkbox" data-goal-key="useCustomPkBorderColor" ${selected.useCustomPkBorderColor ? 'checked' : ''}>
@@ -4833,6 +5094,28 @@
                                 <option value="horizontal" ${selected.layoutDirection === 'horizontal' ? 'selected' : ''}>Ngang</option>
                             </select>
                         </div>
+                        <div style="margin:8px 0 12px;padding:10px;border:1px solid rgba(168,85,247,.22);border-radius:9px;background:rgba(168,85,247,.05);">
+                            <div class="gmd-field gmd-toggle-row" style="margin-top:0;">
+                                <label>Bat cuon</label>
+                                <label class="gmd-switch"><input type="checkbox" data-goal-key="loopEnabled" ${selected.loopEnabled ? 'checked' : ''}><span></span></label>
+                            </div>
+                            <div class="gmd-field">
+                                <label>Huong cuon</label>
+                                <select class="gmd-select" data-goal-key="loopDirection">
+                                    ${selected.layoutDirection === 'horizontal' ? `
+                                    <option value="right-to-left" ${selected.loopDirection !== 'left-to-right' ? 'selected' : ''}>Phải → Trái</option>
+                                    <option value="left-to-right" ${selected.loopDirection === 'left-to-right' ? 'selected' : ''}>Trái → Phải</option>
+                                    ` : `
+                                    <option value="bottom-to-top" ${selected.loopDirection !== 'top-to-bottom' ? 'selected' : ''}>Dưới → Trên</option>
+                                    <option value="top-to-bottom" ${selected.loopDirection === 'top-to-bottom' ? 'selected' : ''}>Trên → Dưới</option>
+                                    `}
+                                </select>
+                            </div>
+                            <div class="gmd-field" style="margin-bottom:0;">
+                                <label>Toc do cuon</label>
+                                <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="1" max="60" data-goal-key="loopSpeed" value="${selected.loopSpeed !== undefined ? selected.loopSpeed : 15}"><span>s</span></div>
+                            </div>
+                        </div>
                         <div class="gmd-field">
                             <label>Khoang cach qua</label>
                             <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="120" data-goal-key="gap" value="${selected.gap !== undefined ? selected.gap : 10}"><span>px</span></div>
@@ -4845,9 +5128,14 @@
                         <input class="gmd-range" type="range" min="10" max="180" data-goal-key="iconSize" value="${selected.iconSize !== undefined ? selected.iconSize : 64}">
                         <div class="gmd-field">
                             <label>Kich thuoc chu</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="8" max="72" data-goal-key="textSize" value="${selected.textSize !== undefined ? selected.textSize : 14}"><span>px</span></div>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="4" max="72" data-goal-key="textSize" value="${selected.textSize !== undefined ? selected.textSize : 14}"><span>px</span></div>
                         </div>
-                        <input class="gmd-range" type="range" min="8" max="72" data-goal-key="textSize" value="${selected.textSize !== undefined ? selected.textSize : 14}">
+                        <input class="gmd-range" type="range" min="4" max="72" data-goal-key="textSize" value="${selected.textSize !== undefined ? selected.textSize : 14}">
+                        <div class="gmd-field">
+                            <label>Kich thuoc ten phu</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="4" max="72" data-goal-key="subtextSize" value="${selected.subtextSize !== undefined ? selected.subtextSize : Math.max(4, Math.round(Number(selected.textSize || 14) * 0.78))}"><span>px</span></div>
+                        </div>
+                        <input class="gmd-range" type="range" min="4" max="72" data-goal-key="subtextSize" value="${selected.subtextSize !== undefined ? selected.subtextSize : Math.max(4, Math.round(Number(selected.textSize || 14) * 0.78))}">
                         <div class="gmd-field">
                             <label>Vi tri chu</label>
                             <select class="gmd-select" data-goal-key="textPosition">
@@ -4877,22 +5165,6 @@
                             <label>Hien ten qua</label>
                             <label class="gmd-switch"><input type="checkbox" data-goal-key="showName" ${selected.showName !== false ? 'checked' : ''}><span></span></label>
                         </div>
-                        <div class="gmd-field gmd-toggle-row">
-                            <label>Bat cuon</label>
-                            <label class="gmd-switch"><input type="checkbox" data-goal-key="loopEnabled" ${selected.loopEnabled ? 'checked' : ''}><span></span></label>
-                        </div>
-                        <div class="gmd-field">
-                            <label>Huong cuon</label>
-                            <select class="gmd-select" data-goal-key="loopDirection">
-                                <option value="vertical" ${(selected.loopDirection || 'vertical') === 'vertical' ? 'selected' : ''}>Doc</option>
-                                <option value="horizontal" ${selected.loopDirection === 'horizontal' ? 'selected' : ''}>Ngang</option>
-                            </select>
-                        </div>
-                        <div class="gmd-field">
-                            <label>Toc do cuon</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="1" max="60" data-goal-key="loopSpeed" value="${selected.loopSpeed !== undefined ? selected.loopSpeed : 15}"><span>s</span></div>
-                        </div>
-                        <div style="font-size:11px;color:#94a3b8;line-height:1.4;margin:8px 0;">Khi bật cuộn, danh sách quà sẽ lặp liên tục theo hướng đã chọn.</div>
                         <button class="gmd-btn" data-action="ungroup-stack" style="width:100%; border-color: rgba(239,68,68,.4); color:#fca5a5;"><i class="fas fa-object-ungroup"></i> Bo gop</button>
                         <div style="font-size:11px;color:#94a3b8;line-height:1.4;margin-top:8px;">${Array.isArray(selected.children) ? selected.children.length : 0} gift trong nhom.</div>
                     </div>
@@ -5197,15 +5469,25 @@
                                 <div class="gmd-field" style="margin-bottom: 4px;">
                                     <label style="font-size: 9px; margin-bottom: 2px;">Khung viền Top 1 (.png / .gif / .webm)</label>
                                     <div style="display: flex; gap: 4px; align-items: center;">
-                                        <input class="gmd-input gmd-input-compact" type="text" data-goal-key="top1FrameUrl" value="${selected.top1FrameUrl || ''}" placeholder="URL khung viền" style="font-size: 10px; height: 24px; flex: 1; padding: 2px 4px;">
+                                        <select class="gmd-select" data-goal-key="top1FrameUrl" style="font-size:10px;height:26px;flex:1;min-width:0;">${this.renderAvatarFrameOptions(selected.top1FrameUrl || '')}</select>
                                         <button class="gmd-btn" onclick="window.giftMenuDesigner.triggerFrameUpload(1)" style="padding: 2px 6px; font-size: 11px; height: 24px;"><i class="fas fa-upload"></i></button>
                                     </div>
+                                </div>
+                                <div class="gmd-field" style="margin-bottom:6px;">
+                                    <label style="font-size:9px;margin-bottom:2px;">Hiệu ứng riêng cho Top 1</label>
+                                    <select class="gmd-select" data-goal-key="top1Effect" style="font-size:10px;height:26px;">
+                                        <option value="none" ${!selected.top1Effect || selected.top1Effect === 'none' ? 'selected' : ''}>Không có hiệu ứng</option>
+                                        <option value="light-sweep" ${selected.top1Effect === 'light-sweep' ? 'selected' : ''}>Light Sweep (Quét sáng)</option>
+                                        <option value="pulse" ${selected.top1Effect === 'pulse' ? 'selected' : ''}>Pulse (Nhịp đập)</option>
+                                        <option value="light-sweep-pulse" ${selected.top1Effect === 'light-sweep-pulse' ? 'selected' : ''}>Light Sweep + Pulse</option>
+                                        <option value="shake" ${selected.top1Effect === 'shake' ? 'selected' : ''}>Shake (Rung nhẹ)</option>
+                                    </select>
                                 </div>
 
                                 <div class="gmd-field" style="margin-bottom: 4px;">
                                     <label style="font-size: 9px; margin-bottom: 2px;">Khung viền Top 2 (.png / .gif / .webm)</label>
                                     <div style="display: flex; gap: 4px; align-items: center;">
-                                        <input class="gmd-input gmd-input-compact" type="text" data-goal-key="top2FrameUrl" value="${selected.top2FrameUrl || ''}" placeholder="URL khung viền" style="font-size: 10px; height: 24px; flex: 1; padding: 2px 4px;">
+                                        <select class="gmd-select" data-goal-key="top2FrameUrl" style="font-size:10px;height:26px;flex:1;min-width:0;">${this.renderAvatarFrameOptions(selected.top2FrameUrl || '')}</select>
                                         <button class="gmd-btn" onclick="window.giftMenuDesigner.triggerFrameUpload(2)" style="padding: 2px 6px; font-size: 11px; height: 24px;"><i class="fas fa-upload"></i></button>
                                     </div>
                                 </div>
@@ -5213,10 +5495,20 @@
                                 <div class="gmd-field" style="margin-bottom: 4px;">
                                     <label style="font-size: 9px; margin-bottom: 2px;">Khung viền Top 3 (.png / .gif / .webm)</label>
                                     <div style="display: flex; gap: 4px; align-items: center;">
-                                        <input class="gmd-input gmd-input-compact" type="text" data-goal-key="top3FrameUrl" value="${selected.top3FrameUrl || ''}" placeholder="URL khung viền" style="font-size: 10px; height: 24px; flex: 1; padding: 2px 4px;">
+                                        <select class="gmd-select" data-goal-key="top3FrameUrl" style="font-size:10px;height:26px;flex:1;min-width:0;">${this.renderAvatarFrameOptions(selected.top3FrameUrl || '')}</select>
                                         <button class="gmd-btn" onclick="window.giftMenuDesigner.triggerFrameUpload(3)" style="padding: 2px 6px; font-size: 11px; height: 24px;"><i class="fas fa-upload"></i></button>
                                     </div>
                                 </div>
+                                <div class="gmd-field" style="margin-top:8px;">
+                                    <label>Khoảng cách giữa Top 1–2–3</label>
+                                    <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="-240" max="120" data-goal-key="podiumGap" value="${selected.podiumGap !== undefined ? selected.podiumGap : 14}"><span>px</span></div>
+                                </div>
+                                <input class="gmd-range" type="range" min="-240" max="120" data-goal-key="podiumGap" value="${selected.podiumGap !== undefined ? selected.podiumGap : 14}">
+                                <div class="gmd-field">
+                                    <label>Khoảng cách tiêu đề với bục</label>
+                                    <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="100" data-goal-key="podiumHeaderGap" value="${selected.podiumHeaderGap !== undefined ? selected.podiumHeaderGap : 8}"><span>px</span></div>
+                                </div>
+                                <input class="gmd-range" type="range" min="0" max="100" data-goal-key="podiumHeaderGap" value="${selected.podiumHeaderGap !== undefined ? selected.podiumHeaderGap : 8}">
                             </div>
                         ` : ''}
                     </div>
@@ -5890,7 +6182,7 @@
                 return;
             }
 
-            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'iconSize', 'gap', 'textSize', 'textGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'bgColorGradientAngle'].includes(key)) {
+            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'iconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'bgColorGradientAngle'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
                     const previousW = Math.max(1, Number(item.w) || Number(item.width) || 1);
@@ -5935,7 +6227,7 @@
                 } else {
                     item[key] = numVal;
                 }
-            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg' || key === 'showName' || key === 'loopEnabled' || key === 'showPanel' || key === 'showBorder' || key === 'useCustomPkBorderColor' || key === 'timerRunning' || key === 'showTimer' || key === 'useCustomBgGradient') {
+            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg' || key === 'showName' || key === 'showVs' || key === 'loopEnabled' || key === 'showPanel' || key === 'showBorder' || key === 'useCustomPkBorderColor' || key === 'timerRunning' || key === 'showTimer' || key === 'useCustomBgGradient') {
                 item[key] = Boolean(value);
                 if (key === 'lockRatio') {
                     if (item.lockRatio) {
@@ -5948,6 +6240,9 @@
                 }
             } else {
                 item[key] = value;
+                if (key === 'layoutDirection') {
+                    item.loopDirection = value === 'horizontal' ? 'right-to-left' : 'bottom-to-top';
+                }
                 if (key === 'giftId') {
                     const cleanVal = String(value).trim();
                     const gift = this.gifts.find(g => String(g.id).toLowerCase() === cleanVal.toLowerCase());
@@ -5978,13 +6273,23 @@
                 }
             });
 
+            this.invalidateItemVisual(item);
             this.renderCanvas();
-            if (key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage' || key === 'useBarGradient') {
+            if (key === 'layoutDirection' || key === 'showVs' || key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage' || key === 'useBarGradient') {
                 this.renderInspector();
             }
             if (pushHist) {
                 this.pushHistory('update-goal-item');
             }
+        }
+
+        invalidateItemVisual(item) {
+            if (!item || !item.id) return;
+            const itemElement = document.getElementById(`gmd-item-${item.id}`);
+            const visualContainer = itemElement && itemElement.querySelector('.gmd-visual-container');
+            if (!visualContainer) return;
+            delete visualContainer.dataset.contentSignature;
+            delete visualContainer.dataset.itemState;
         }
 
         updateGoalListItem(idx, field, value) {
@@ -6108,7 +6413,10 @@
                 item.comboCount = repeatCount;
             }
 
-            this.renderCanvas();
+            if (!this.trySelectiveContributorUpdate(item)) {
+                this.invalidateItemVisual(item);
+                this.renderCanvas();
+            }
             this.renderInspector();
         }
 
@@ -6188,7 +6496,10 @@
                 item.comboCount = item._originalComboCount;
             }
 
-            this.renderCanvas();
+            if (!this.trySelectiveContributorUpdate(item)) {
+                this.invalidateItemVisual(item);
+                this.renderCanvas();
+            }
             this.renderInspector();
 
         }
@@ -6349,6 +6660,8 @@
                             locked: false,
                             barColor: '#eab308',
                             limitCount: 3,
+                            contribStyle: 'podium-only',
+                            hideBg: true,
                             showAvatar: true,
                             showValue: true,
                             contributors: [
@@ -6470,6 +6783,7 @@
                         })) : [];
                         itemExport.iconSize = Number(i.iconSize || 64) * avgScale;
                         itemExport.textSize = Number(i.textSize || 14) * avgScale;
+                        itemExport.subtextSize = Number(i.subtextSize || Math.max(4, Math.round(Number(i.textSize || 14) * 0.78))) * avgScale;
                         itemExport.textGap = Number(i.textGap || 4) * avgScale;
                         itemExport.gap = Number(i.gap || 10) * avgScale;
                         itemExport.borderRadius = Number(i.borderRadius !== undefined ? i.borderRadius : 8) * avgScale;

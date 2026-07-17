@@ -1552,6 +1552,10 @@
           if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
             let refW = item.lockedW || item.w || 900;
             let refH = item.lockedH || item.h || 160;
+            if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
+              refW = 900;
+              refH = 560;
+            }
 
             el.style.left = `${Math.round(offsetX + (item.x || 0) * s)}px`;
             el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
@@ -1561,15 +1565,43 @@
 
             const scaleX = (item.width || refW / 3) / refW;
             const scaleY = (item.height || refH / 3) / refH;
-            const wrapperScaleX = scaleX * s;
-            const wrapperScaleY = scaleY * s;
+            // Match Designer semantics: an unlocked board may use independent width/height.
+            const isPodiumBoard = item.type === 'top-contributors' || item.type === 'podium-contributors';
+            const savedBoardRatio = Number(item.lockedW) > 0 && Number(item.lockedH) > 0
+              ? Number(item.lockedW) / Number(item.lockedH)
+              : (900 / 560);
+            const hasCustomBoardRatio = isPodiumBoard && Math.abs(savedBoardRatio - (900 / 560)) > 0.01;
+            const preserveContentRatio = isPodiumBoard && item.lockRatio !== false && !hasCustomBoardRatio;
+            const uniformScale = Math.min(scaleX, scaleY);
+            const wrapperScaleX = (preserveContentRatio ? uniformScale : scaleX) * s;
+            const wrapperScaleY = (preserveContentRatio ? uniformScale : scaleY) * s;
+            const contentLeft = preserveContentRatio ? Math.max(0, (((item.width || refW / 3) - refW * uniformScale) / 2) * s) : 0;
+            const contentTop = preserveContentRatio ? Math.max(0, (((item.height || refH / 3) - refH * uniformScale) / 2) * s) : 0;
 
             const widgetHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
               ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary })
               : '';
 
-            el.innerHTML = `
-              <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${wrapperScaleX}, ${wrapperScaleY}); transform-origin: top left; position: absolute; top: 0; left: 0; pointer-events: none;">
+            const isFlexiblePodium = isPodiumBoard && (item.lockRatio === false || hasCustomBoardRatio);
+            const boardWidth = item.width || refW / 3;
+            const boardHeight = item.height || refH / 3;
+            const podiumContentScale = Math.min(boardWidth / 620, boardHeight / 330);
+            const podiumContentLeft = ((boardWidth / 2) - ((refW * podiumContentScale) / 2)) * s;
+            const podiumContentTop = ((boardHeight / 2) - ((refH * podiumContentScale) / 2)) * s;
+            const transparentWidgetHTML = isFlexiblePodium && window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
+              ? window.MenuDesignerSharedRenderEngine.renderByType({ ...item, hideBg: true }, { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary })
+              : '';
+
+            el.innerHTML = isFlexiblePodium ? `
+              <style>.gmd-board-bg-only > .gmd-podium-widget > * { visibility:hidden !important; }</style>
+              <div class="gmd-visual-scaled-wrapper" style="z-index:1; width:${refW}px; height:${refH}px; transform:scale(${podiumContentScale * s}); transform-origin:top left; position:absolute; top:${podiumContentTop}px; left:${podiumContentLeft}px; pointer-events:none;">
+                ${transparentWidgetHTML}
+              </div>
+              <div class="gmd-visual-scaled-wrapper gmd-board-bg-only" style="z-index:0; width:${refW}px; height:${refH}px; transform:scale(${scaleX * s}, ${scaleY * s}); transform-origin:top left; position:absolute; inset:0 auto auto 0; pointer-events:none;">
+                ${widgetHTML}
+              </div>
+            ` : `
+              <div class="gmd-visual-scaled-wrapper" style="width: ${refW}px; height: ${refH}px; transform: scale(${wrapperScaleX}, ${wrapperScaleY}); transform-origin: top left; position: absolute; top: ${contentTop}px; left: ${contentLeft}px; pointer-events: none;">
                 ${widgetHTML}
               </div>
             `;

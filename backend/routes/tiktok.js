@@ -630,7 +630,23 @@ router.get('/gifts-library', async (req, res) => {
 router.get('/gift-menu-layouts', authMiddleware, async (req, res) => {
     try {
         const layouts = await GiftMenuLayout.find({ userId: req.userId, isTemplate: false }).sort({ updatedAt: -1 });
-        res.json({ success: true, layouts });
+        const templates = await GiftMenuLayout.find({ isTemplate: true }).select('_id name');
+        const templateIdByName = new Map(templates.map(template => [String(template.name || '').trim().toLowerCase(), String(template._id)]));
+        const uniqueLayouts = [];
+        const seenTemplateIds = new Set();
+
+        for (const layout of layouts) {
+            const inferredTemplateId = layout.parentTemplateId
+                ? String(layout.parentTemplateId)
+                : templateIdByName.get(String(layout.name || '').trim().toLowerCase());
+            if (inferredTemplateId) {
+                if (seenTemplateIds.has(inferredTemplateId)) continue;
+                seenTemplateIds.add(inferredTemplateId);
+            }
+            uniqueLayouts.push(layout);
+        }
+
+        res.json({ success: true, layouts: uniqueLayouts });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -642,14 +658,23 @@ router.get('/gift-menu-templates', authMiddleware, async (req, res) => {
         const isBusiness = user ? user.subscription === 'business' : false;
 
         const templates = await GiftMenuLayout.find({ isTemplate: true }).sort({ updatedAt: -1 });
+        const userLayouts = await GiftMenuLayout.find({ userId: req.userId, isTemplate: false }).select('_id name parentTemplateId');
+        const usedTemplateIds = new Set(userLayouts.filter(layout => layout.parentTemplateId).map(layout => String(layout.parentTemplateId)));
+        const usedTemplateNames = new Set(userLayouts.map(layout => String(layout.name || '').trim().toLowerCase()));
 
         const mappedTemplates = await Promise.all(templates.map(async t => {
+            const normalizedName = String(t.name || '').trim().toLowerCase();
+            const usedLayout = userLayouts.find(layout =>
+                String(layout.parentTemplateId || '') === String(t._id) ||
+                String(layout.name || '').trim().toLowerCase() === normalizedName
+            );
+            const isUsed = usedTemplateIds.has(String(t._id)) || usedTemplateNames.has(normalizedName);
             if (isAdmin || isBusiness) {
-                return { ...t.toObject(), isPurchased: true };
+                return { ...t.toObject(), isPurchased: true, isUsed, usedLayoutId: usedLayout?._id || null };
             }
             const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: t._id.toString() });
             const isPurchased = correspondingEffect ? ownedEffectIds.includes(correspondingEffect._id.toString()) : false;
-            return { ...t.toObject(), isPurchased };
+            return { ...t.toObject(), isPurchased, isUsed, usedLayoutId: usedLayout?._id || null };
         }));
 
         res.json({ success: true, templates: mappedTemplates });
@@ -749,7 +774,7 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
         let layout = null;
         if (payload.id || payload._id) {
             layout = await GiftMenuLayout.findOne({ _id: payload.id || payload._id, userId: req.userId });
-        } else {
+        } else if (!payload.createNew) {
             layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
         }
 
@@ -775,22 +800,40 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
                     ));
                 }
             }
+            if (payload.createNew) {
+                await GiftMenuLayout.updateMany(
+                    { userId: req.userId, isTemplate: false },
+                    { $set: { isActive: false } }
+                );
+            }
             layout = new GiftMenuLayout({
                 userId: req.userId,
                 name: payload.name || 'Menu mặc định',
                 isActive: true
             });
         }
-        layout.name = payload.name || layout.name || 'Menu mặc định';
-        layout.version = Number(payload.version) || 2;
-        layout.savedAt = payload.savedAt ? new Date(payload.savedAt) : new Date();
-        layout.aspectRatio = payload.aspectRatio || '9:16';
-        layout.canvasSize = payload.canvasSize || undefined;
-        layout.safeArea = payload.safeArea || undefined;
-        layout.exportSize = payload.exportSize || undefined;
-        layout.items = Array.isArray(payload.items) ? payload.items : [];
-        layout.exportedItems = Array.isArray(payload.exportedItems) ? payload.exportedItems : [];
-        await layout.save();
+        const layoutUpdate = {
+            name: payload.name || layout.name || 'Menu mặc định',
+            version: Number(payload.version) || 2,
+            savedAt: payload.savedAt ? new Date(payload.savedAt) : new Date(),
+            aspectRatio: payload.aspectRatio || '9:16',
+            canvasSize: payload.canvasSize || undefined,
+            safeArea: payload.safeArea || undefined,
+            exportSize: payload.exportSize || undefined,
+            items: Array.isArray(payload.items) ? payload.items : [],
+            exportedItems: Array.isArray(payload.exportedItems) ? payload.exportedItems : []
+        };
+        if (layout.isNew) {
+            Object.assign(layout, layoutUpdate);
+            await layout.save();
+        } else {
+            layout = await GiftMenuLayout.findOneAndUpdate(
+                { _id: layout._id, userId: req.userId },
+                { $set: layoutUpdate },
+                { new: true, runValidators: true }
+            );
+            if (!layout) return res.status(404).json({ success: false, error: 'Layout not found' });
+        }
         fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
 
         // Sync with Goal Board layout
@@ -970,6 +1013,14 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
             hasPurchased = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
         }
 
+        if (price > 0 && !hasPurchased) {
+            return res.status(403).json({
+                success: false,
+                purchaseRequired: true,
+                error: 'Bạn cần mua mẫu menu này trước khi sử dụng.'
+            });
+        }
+
         const entitlements = getEntitlements(user);
         if (entitlements.designerLevel === 'lite' && String(template.category || '').toLowerCase() !== 'basic') {
             if (!hasPurchased) {
@@ -980,6 +1031,94 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
                 ));
             }
         }
+
+        const templateLayoutFilter = {
+            userId: req.userId,
+            isTemplate: false,
+            parentTemplateId: template._id
+        };
+        let linkedLayout = await GiftMenuLayout.findOne(templateLayoutFilter).sort({ isActive: -1, updatedAt: -1 });
+
+        // Link one legacy copy by name before attempting to create anything.
+        if (!linkedLayout) {
+            linkedLayout = await GiftMenuLayout.findOneAndUpdate(
+                {
+                    userId: req.userId,
+                    isTemplate: false,
+                    name: template.name,
+                    $or: [
+                        { parentTemplateId: { $exists: false } },
+                        { parentTemplateId: null }
+                    ]
+                },
+                { $set: { parentTemplateId: template._id } },
+                { new: true, sort: { isActive: -1, updatedAt: -1 } }
+            );
+        }
+
+        if (!linkedLayout && Number.isFinite(entitlements.layouts)) {
+            const layoutCount = await GiftMenuLayout.countDocuments({ userId: req.userId, isTemplate: false });
+            if (layoutCount >= entitlements.layouts) {
+                return res.status(403).json(upgradePayload(
+                    'layouts',
+                    `Gói ${entitlements.label} chỉ lưu được ${entitlements.layouts} thiết kế menu.`,
+                    entitlements
+                ));
+            }
+        }
+
+        // Atomic upsert makes repeated clicks idempotent for this user/template pair.
+        const activeLayout = await GiftMenuLayout.findOneAndUpdate(
+            templateLayoutFilter,
+            {
+                $set: { isActive: true },
+                $setOnInsert: {
+                    userId: req.userId,
+                    name: template.name,
+                    version: template.version || 2,
+                    savedAt: new Date(),
+                    aspectRatio: template.aspectRatio,
+                    canvasSize: template.canvasSize,
+                    safeArea: template.safeArea,
+                    exportSize: template.exportSize,
+                    items: template.items,
+                    exportedItems: template.exportedItems,
+                    isTemplate: false,
+                    parentTemplateId: template._id
+                }
+            },
+            { new: true, upsert: true, setDefaultsOnInsert: true, sort: { updatedAt: -1 } }
+        );
+        await GiftMenuLayout.updateMany(
+            { userId: req.userId, isTemplate: false, _id: { $ne: activeLayout._id } },
+            { $set: { isActive: false } }
+        );
+        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(activeLayout, null, 2), 'utf8');
+        return res.json({ success: true, layout: activeLayout, reused: Boolean(linkedLayout) });
+
+        const existingLayout = await GiftMenuLayout.findOne({
+            userId: req.userId,
+            isTemplate: false,
+            $or: [
+                { parentTemplateId: template._id },
+                { parentTemplateId: { $exists: false }, name: template.name },
+                { parentTemplateId: null, name: template.name }
+            ]
+        }).sort({ isActive: -1, updatedAt: -1 });
+        if (existingLayout) {
+            await GiftMenuLayout.updateMany(
+                { userId: req.userId, isTemplate: false, _id: { $ne: existingLayout._id } },
+                { $set: { isActive: false } }
+            );
+            const activeLayout = await GiftMenuLayout.findOneAndUpdate(
+                { _id: existingLayout._id, userId: req.userId },
+                { $set: { isActive: true, parentTemplateId: template._id } },
+                { new: true }
+            );
+            fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(activeLayout, null, 2), 'utf8');
+            return res.json({ success: true, layout: activeLayout, reused: true });
+        }
+
         if (Number.isFinite(entitlements.layouts)) {
             const layoutCount = await GiftMenuLayout.countDocuments({ userId: req.userId, isTemplate: false });
             if (layoutCount >= entitlements.layouts) {
@@ -1038,7 +1177,17 @@ router.get('/goal-board/assets', authMiddleware, async (req, res) => {
     try {
         const userId = String(req.userId);
         const userDir = path.join(goalAssetDir, userId);
+        const sharedFrameDir = path.join(goalAssetDir, '_shared-frames');
         fs.mkdirSync(userDir, { recursive: true });
+        fs.mkdirSync(sharedFrameDir, { recursive: true });
+        const readAssets = (dir, urlPrefix, scope) => fs.readdirSync(dir, { withFileTypes: true })
+            .filter((entry) => entry.isFile())
+            .map((entry) => ({
+                name: entry.name.replace(/^\d+-\d+-/, ''),
+                url: `${urlPrefix}/${entry.name}`,
+                type: path.extname(entry.name).toLowerCase() === '.webm' ? 'video' : 'image',
+                scope
+            }));
         const assets = fs.readdirSync(userDir, { withFileTypes: true })
             .filter((entry) => entry.isFile())
             .map((entry) => ({
@@ -1046,7 +1195,25 @@ router.get('/goal-board/assets', authMiddleware, async (req, res) => {
                 url: `/uploads/goal-assets/${userId}/${entry.name}`,
                 type: path.extname(entry.name).toLowerCase() === '.webm' ? 'video' : 'image'
             }));
-        res.json({ success: true, assets });
+        const adminUsers = await User.find({
+            $or: [
+                { isAdmin: true },
+                { hasAdminUI: true },
+                { email: 'admin@effectstore.vn' }
+            ]
+        }).select('_id');
+        const legacyAdminFrames = adminUsers.flatMap(admin => {
+            const adminId = String(admin._id);
+            const adminDir = path.join(goalAssetDir, adminId);
+            if (!fs.existsSync(adminDir)) return [];
+            return readAssets(adminDir, `/uploads/goal-assets/${adminId}`, 'shared')
+                .filter(asset => /vien/i.test(asset.name));
+        });
+        const framePresets = [
+            ...readAssets(sharedFrameDir, '/uploads/goal-assets/_shared-frames', 'shared').filter(asset => /vien/i.test(asset.name)),
+            ...legacyAdminFrames
+        ].filter((asset, index, list) => list.findIndex(other => other.url === asset.url) === index);
+        res.json({ success: true, assets, framePresets });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -1062,6 +1229,16 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
             return res.status(404).json({ success: false, error: 'User not found' });
         }
         const entitlements = getEntitlements(user);
+        const isFrameUpload = String(req.body?.assetKind || '') === 'avatar-frame';
+        const canUploadFrames = ['advanced', 'studio'].includes(entitlements.designerLevel);
+        if (isFrameUpload && !canUploadFrames) {
+            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            return res.status(403).json(upgradePayload(
+                'avatarFrames',
+                'Nâng cấp Pro để tải khung viền avatar riêng.',
+                entitlements
+            ));
+        }
         const userDir = path.join(goalAssetDir, String(req.userId));
         const assetCount = fs.existsSync(userDir)
             ? fs.readdirSync(userDir, { withFileTypes: true }).filter(entry => entry.isFile()).length
@@ -1090,11 +1267,20 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
             try { fs.unlinkSync(req.file.path); } catch (_e) {}
             return res.status(413).json({ success: false, error: 'File váº«n quÃ¡ náº·ng sau tá»‘i Æ°u. Vui lÃ²ng giáº£m Ä‘á»™ phÃ¢n giáº£i hoáº·c thá»i lÆ°á»£ng.' });
         }
+        let publicUrl = `/uploads/goal-assets/${req.userId}/${req.file.filename}`;
+        if (isFrameUpload && (user.isAdmin || user.hasAdminUI || user.email === 'admin@effectstore.vn')) {
+            const sharedFrameDir = path.join(goalAssetDir, '_shared-frames');
+            fs.mkdirSync(sharedFrameDir, { recursive: true });
+            const sharedPath = path.join(sharedFrameDir, req.file.filename);
+            fs.renameSync(req.file.path, sharedPath);
+            req.file.path = sharedPath;
+            publicUrl = `/uploads/goal-assets/_shared-frames/${req.file.filename}`;
+        }
         res.json({
             success: true,
             asset: {
                 name: req.file.originalname,
-                url: `/uploads/goal-assets/${req.userId}/${req.file.filename}`,
+                url: publicUrl,
                 type: ext === '.webm' ? 'video' : 'image',
                 format: ext.slice(1),
                 optimized: optimization.optimized,

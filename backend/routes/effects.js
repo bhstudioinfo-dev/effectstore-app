@@ -62,11 +62,13 @@ router.get('/user/effects', authMiddleware, async (req, res) => {
         const isAdmin = !!(user.isAdmin || user.hasAdminUI || user.email === 'admin@effectstore.vn');
         
         if (isAdmin) {
-            const effects = await Effect.find({ isActive: true }).sort({ createdAt: -1 });
+            const effects = await Effect.find({ isActive: true, category: { $ne: 'menu_template' } }).sort({ createdAt: -1 });
             return res.json({ success: true, effects, libraryType: 'admin_all' });
         }
 
-        const ownedEffects = user.purchasedEffects.map(pe => pe.effectId).filter(Boolean);
+        const ownedEffects = user.purchasedEffects
+            .map(pe => pe.effectId)
+            .filter(effect => effect && effect.category !== 'menu_template');
         res.json({ success: true, effects: ownedEffects, libraryType: 'purchased' });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

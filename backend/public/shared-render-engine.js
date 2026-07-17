@@ -1,4 +1,6 @@
 (function () {
+    let renderInstanceSequence = 0;
+
     function safeText(value) {
         return String(value || '').replace(/[&<>"']/g, (char) => ({
             '&': '&amp;',
@@ -345,10 +347,10 @@
                             </div>
                         </div>
  
-                        <!-- VS Trực Quan -->
-                        <div style="font-size: ${font(ctx, Math.round(p1NameSize * 1.3), 38)}px; font-weight: 950; color: #ffffff; text-shadow: 0 0 ${roundPx(12, ctx.scale)}px rgba(255,255,255,0.45); padding: 0 ${roundPx(16, ctx.scale)}px; display: flex; align-items: center; justify-content: center; font-style: italic; transform: translateY(${roundPx(vsOffsetY, ctx.scale)}px); transition: transform 0.2s ease;">
-                            VS
-                        </div>
+                        <!-- Chữ đối kháng -->
+                        ${item.showVs !== false ? `<div class="gmd-pk-vs-text" style="font-size: ${font(ctx, Math.round(p1NameSize * 1.3), 38)}px; font-weight: 950; color: #ffffff; text-shadow: 0 0 ${roundPx(12, ctx.scale)}px rgba(255,255,255,0.45); padding: 0 ${roundPx(16, ctx.scale)}px; display: flex; align-items: center; justify-content: center; font-style: italic; transform: translateY(${roundPx(vsOffsetY, ctx.scale)}px); transition: transform 0.2s ease;">
+                            ${text(ctx, item.vsText || 'VS')}
+                        </div>` : ''}
  
                         <!-- Đội Xanh (Phải) -->
                         <div style="display: flex; flex: 1; min-width: 0; justify-content: flex-end; text-align: right; transform: translate(${roundPx(p2OffsetX, ctx.scale)}px, ${roundPx(p2OffsetY, ctx.scale)}px) scale(${p2Scale}); transition: transform 0.2s ease, all 0.3s ease; z-index: ${p2ZIndex};">
@@ -1150,7 +1152,7 @@
             const gold1 = item.titleColor1 || '#ffe066';
             const gold2 = item.titleColor2 || '#d97706';
             extraClasses = ' gmd-title-gold-metallic';
-            extraStyles = `background: linear-gradient(180deg, ${gold1} 0%, ${gold2} 100%) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; text-shadow: 0 ${roundPx(2, ctx.scale)}px ${roundPx(4, ctx.scale)}px rgba(0,0,0,0.6) !important; font-weight: 900 !important;`;
+            extraStyles = `background: linear-gradient(180deg, #fff8c7 0%, ${gold1} 18%, #f7c948 38%, #9a5708 51%, #ffd970 62%, ${gold2} 82%, #6b3505 100%) !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; -webkit-text-stroke: ${Math.max(0.35, 0.55 * ctx.scale).toFixed(2)}px rgba(92,49,3,.72); text-shadow: none !important; filter: drop-shadow(0 ${roundPx(1, ctx.scale)}px 0 rgba(255,239,153,.45)) drop-shadow(0 ${roundPx(2.5, ctx.scale)}px ${roundPx(1.5, ctx.scale)}px rgba(45,20,0,.72)); font-weight: 900 !important; letter-spacing: ${Math.max(0.2, 0.35 * ctx.scale).toFixed(2)}px;`;
         } else if (effect === 'gradient-wave') {
             const flowColor1 = item.titleColor1 || customColor;
             const flowColor2 = item.titleColor2 || '#f43f5e';
@@ -1248,6 +1250,12 @@
 
         const person = (idx, rank, size) => {
             const c = contributors[idx] || {};
+            const podiumGap = Number(item.podiumGap !== undefined ? item.podiumGap : 14);
+            const rankOffset = rank === 2 ? -podiumGap : (rank === 3 ? podiumGap : 0);
+            const topEffect = rank === 1 ? String(item.top1Effect || 'none') : 'none';
+            const topEffectAnimation = topEffect === 'shake'
+                ? 'animation:gmdShake .7s ease-in-out infinite;'
+                : (topEffect === 'pulse' || topEffect === 'light-sweep-pulse' ? 'animation:gmdPulse 1.4s ease-in-out infinite;' : '');
             let frameUrl = item[`top${rank}FrameUrl`] || '';
             if (frameUrl && !frameUrl.startsWith('http') && !frameUrl.startsWith('data:')) {
                 frameUrl = `${ctx.apiBase || ''}${frameUrl.startsWith('/') ? '' : '/'}${frameUrl}`;
@@ -1265,10 +1273,11 @@
                 : `${ctx.apiBase || ''}${rawAvatar.startsWith('/') ? '' : '/'}${rawAvatar}`;
 
             return `
-                <div class="gmd-podium-spot rank-${rank}">
-                    <div class="gmd-podium-avatar-wrap" style="position: relative;">
+                <div class="gmd-podium-spot rank-${rank}" style="transform: translateX(${roundPx(rankOffset, ctx.scale)}px);">
+                    <div class="gmd-podium-avatar-wrap" style="position: relative; ${topEffectAnimation}">
                         <div class="gmd-podium-avatar" style="width: ${roundPx(size, ctx.scale)}px; height: ${roundPx(size, ctx.scale)}px; display:flex; align-items:center; justify-content:center; font-size:${roundPx(size * 0.44, ctx.scale)}px; background-image: url('${fullAvatarUrl}'); background-size: cover; z-index: 1;"></div>
                         ${frameHtml}
+                        ${topEffect === 'light-sweep' || topEffect === 'light-sweep-pulse' ? `<span style="position:absolute;inset:-14%;border-radius:50%;z-index:3;pointer-events:none;background:linear-gradient(110deg,transparent 28%,rgba(255,255,255,.72) 49%,transparent 70%);background-size:250% 100%;animation:gmdTextLightSweep 1.8s linear infinite;mix-blend-mode:screen;"></span>` : ''}
                     </div>
                     <div class="gmd-podium-name" style="font-size: ${font(ctx, item.rowFontSize, 22)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${text(ctx, c.nickname || 'BH Studio')}</div>
                     ${item.showValue !== false ? `<div class="gmd-podium-value" style="font-size: ${font(ctx, item.valueFontSize, 22)}px;">${Number(c.value || 0).toLocaleString('vi-VN')}</div>` : ''}
@@ -1310,7 +1319,7 @@
             <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)')} !important; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : '#eab308'}`} !important; box-shadow: ${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(217, 70, 239, 0.25), 0 ${roundPx(12, ctx.scale)}px ${roundPx(48, ctx.scale)}px rgba(0,0,0,0.7)`} !important; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(paddingVal, ctx.scale)}px; display: flex; flex-direction: column; justify-content: ${justifyVal}; height: 100%; box-sizing: border-box; width: 100%; overflow: hidden;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; width: 100%; ${isTable ? 'height: 100%;' : ''} box-sizing: border-box;">
                     ${headerInfo.titleHTML}
-                    <div class="gmd-podium-podium" style="gap: ${roundPx(14, ctx.scale)}px; flex-shrink: 0; flex: none !important;">
+                    <div class="gmd-podium-podium" style="gap: 0; margin-top: ${roundPx(item.podiumHeaderGap !== undefined ? item.podiumHeaderGap : 8, ctx.scale)}px; justify-content: center; flex-shrink: 0; flex: none !important;">
                         ${person(1, 2, size2)}
                         ${person(0, 1, size1)}
                         ${person(2, 3, size2)}
@@ -1367,13 +1376,16 @@
         const ctx = createContext(options);
         const children = Array.isArray(item.children) ? item.children : [];
         const isLoop = item.loopEnabled === true;
-        const loopDir = item.loopDirection || 'vertical';
+        const direction = item.layoutDirection === 'horizontal' ? 'horizontal' : 'vertical';
+        const loopDir = direction === 'horizontal'
+            ? (item.loopDirection === 'left-to-right' ? 'left-to-right' : 'right-to-left')
+            : (item.loopDirection === 'top-to-bottom' ? 'top-to-bottom' : 'bottom-to-top');
         const loopSpeed = item.loopSpeed !== undefined ? item.loopSpeed : 15;
         const childrenToRender = isLoop && children.length > 0 ? Array(6).fill(children).flat() : children;
-        const direction = item.layoutDirection === 'horizontal' ? 'horizontal' : 'vertical';
         const textPosition = item.textPosition || 'bottom';
         const iconSize = length(ctx, item.iconSize, 64);
         const textSize = font(ctx, item.textSize, 14);
+        const subtextSize = font(ctx, item.subtextSize, Math.max(4, Math.round((Number(item.textSize) || 14) * 0.78)));
         const textGap = length(ctx, item.textGap, 4);
         const gap = length(ctx, item.gap, 10);
         const flexDirection = direction === 'horizontal' ? 'row' : 'column';
@@ -1399,7 +1411,7 @@
         const renderedH = Math.max(1, Number(item.height || item.h || 100) * ctx.scale);
         const radiusPx = Math.round(Number(item.borderRadius || 8) * ctx.scale);
         const paddingPx = Math.round(Number(item.padding !== undefined ? item.padding : 8) * ctx.scale);
-        const borderId = `gmd_stack_border_${String(item.id || 'group').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+        const borderId = `gmd_stack_border_${String(item.id || 'group').replace(/[^a-zA-Z0-9_-]/g, '_')}_${ctx.mode}_${++renderInstanceSequence}`;
         const borderStroke = item.borderFillType === 'gradient' ? `url(#${borderId})` : (item.borderColor || '#22d3ee');
         const borderWidth = Math.max(1, effectPx(2));
         const runningFrom = item.borderGradientFrom || item.borderColor || '#22d3ee';
@@ -1480,8 +1492,10 @@
                     animation: gmdMagicLiquidMorph2 8s ease-in-out infinite !important;
                     z-index: 1 !important;
                 }
-                @keyframes gmdStackMarqueeHorizontal_${item.id || 'group'} { 0% { transform: translateX(0); } 100% { transform: translateX(-16.6667%); } }
-                @keyframes gmdStackMarqueeVertical_${item.id || 'group'} { 0% { transform: translateY(0); } 100% { transform: translateY(-16.6667%); } }
+                @keyframes gmdStackMarqueeRightToLeft_${item.id || 'group'} { 0% { transform: translateX(0); } 100% { transform: translateX(-16.6667%); } }
+                @keyframes gmdStackMarqueeLeftToRight_${item.id || 'group'} { 0% { transform: translateX(-16.6667%); } 100% { transform: translateX(0); } }
+                @keyframes gmdStackMarqueeBottomToTop_${item.id || 'group'} { 0% { transform: translateY(0); } 100% { transform: translateY(-16.6667%); } }
+                @keyframes gmdStackMarqueeTopToBottom_${item.id || 'group'} { 0% { transform: translateY(-16.6667%); } 100% { transform: translateY(0); } }
             </style>
             <div class="gmd-stack-group-viewport gmd-stack-panel-${panelEffect}" style="--stack-panel-speed:${panelSpeed}s;--stack-panel-glow:${panelGlow};width:100%;height:100%;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;background:${panelBg};border:1px solid transparent;border-radius:${radiusPx}px;box-shadow:${shadow};box-sizing:border-box;padding:${paddingPx}px;">
                 ${item.showPanel !== false && panelEffect !== 'none' ? `<span class="gmd-stack-panel-effect" style="position:absolute;pointer-events:none;z-index:1;border-radius:inherit;${panelEffect === 'light-sweep' ? `top:0;bottom:0;left:-55%;width:55%;background:linear-gradient(105deg, transparent 22%, rgba(255,255,255,${0.15 + panelGlow * 0.55}) 50%, transparent 78%);animation:gmdStackLightSweep var(--stack-panel-speed) ease-in-out infinite;` : ''}${panelEffect === 'breathing' ? `inset:0;background:radial-gradient(circle at 50% 45%, rgba(255,255,255,${0.08 + panelGlow * 0.28}), transparent 68%);animation:gmdStackBreathing var(--stack-panel-speed) ease-in-out infinite;` : ''}${panelEffect === 'energy-flow' ? `inset:0;background:linear-gradient(90deg, transparent, rgba(255,255,255,${0.06 + panelGlow * 0.18}), transparent, rgba(168,85,247,${0.08 + panelGlow * 0.22}), transparent);background-size:200% 100%;animation:gmdStackEnergyFlow var(--stack-panel-speed) linear infinite;` : ''}${panelEffect === 'glass-shine' ? `inset:0;background:linear-gradient(145deg, rgba(255,255,255,${0.12 + panelGlow * 0.22}), transparent 34%, transparent 68%, rgba(255,255,255,${0.05 + panelGlow * 0.12}));` : ''}"></span>` : ''}
@@ -1522,10 +1536,8 @@
                     </svg>
                 ` : ''}
                 <div class="gmd-stack-group-track" style="display:flex;flex-direction:${flexDirection};align-items:${item.childAlign === 'left' ? 'flex-start' : (item.childAlign === 'right' ? 'flex-end' : 'center')};gap:${isLoop ? 0 : gap}px;position:relative;z-index:2;${
-                    isLoop 
-                        ? (loopDir === 'horizontal' 
-                            ? `width:max-content;height:100%;animation:gmdStackMarqueeHorizontal_${item.id || 'group'} ${loopSpeed}s linear infinite;`
-                            : `width:100%;height:max-content;animation:gmdStackMarqueeVertical_${item.id || 'group'} ${loopSpeed}s linear infinite;`)
+                    isLoop
+                        ? `${direction === 'horizontal' ? 'width:max-content;height:100%;' : 'width:100%;height:max-content;'}animation:${direction === 'horizontal' ? (loopDir === 'left-to-right' ? 'gmdStackMarqueeLeftToRight' : 'gmdStackMarqueeRightToLeft') : (loopDir === 'top-to-bottom' ? 'gmdStackMarqueeTopToBottom' : 'gmdStackMarqueeBottomToTop')}_${item.id || 'group'} ${loopSpeed}s linear infinite;`
                         : 'width:100%;height:100%;justify-content:center;'
                 }">
                     ${childrenToRender.map((child) => {
@@ -1607,7 +1619,7 @@
                                 ${item.showName !== false ? `
                                     <div class="gmd-stack-group-text-wrap pos-${textPosition}" style="order:${labelOrder};${labelMargin}display:flex;flex-direction:column;align-items:${alignVal};justify-content:center;${labelBgStyle}">
                                         <div class="gmd-stack-group-label" style="font-size:${textSize}px;color:${item.textColor || '#ffffff'};font-weight:800;line-height:1.15;text-align:${textAlign};white-space:nowrap;text-shadow:0 2px 8px rgba(0,0,0,.62);">${name}</div>
-                                        ${subtext ? `<div class="gmd-stack-group-subtext" style="font-size:${Math.max(8, Math.round(textSize * 0.78))}px;color:${item.textColor || '#ffffff'};opacity:0.8;font-weight:600;line-height:1.15;text-align:${textAlign};white-space:nowrap;margin-top:${effectPx(2)}px;text-shadow:0 1px 4px rgba(0,0,0,.5);">${subtext}</div>` : ''}
+                                        ${subtext ? `<div class="gmd-stack-group-subtext" style="font-size:${subtextSize}px;color:${item.textColor || '#ffffff'};opacity:0.8;font-weight:600;line-height:1.15;text-align:${textAlign};white-space:nowrap;margin-top:${effectPx(2)}px;text-shadow:0 1px 4px rgba(0,0,0,.5);">${subtext}</div>` : ''}
                                     </div>
                                 ` : ''}
                             </div>

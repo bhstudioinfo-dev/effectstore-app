@@ -574,6 +574,22 @@ class EffectStoreApp {
             const response = await fetch(this.API_URL + '/api/effects');
             const data = await response.json();
             this.effects = data.effects || [];
+            this.menuTemplateUsage = new Map();
+            if (this.authToken) {
+                try {
+                    const templateResponse = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, {
+                        headers: { 'Authorization': `Bearer ${this.authToken}` }
+                    });
+                    const templateData = await templateResponse.json();
+                    if (templateData.success && Array.isArray(templateData.templates)) {
+                        templateData.templates.forEach(template => {
+                            this.menuTemplateUsage.set(String(template._id), Boolean(template.isUsed));
+                        });
+                    }
+                } catch (templateError) {
+                    console.warn('Could not load menu template usage:', templateError);
+                }
+            }
             if (this.currentView === 'store') this.renderEffects();
         } catch (error) { console.error('Error loading effects:', error); this.effects = []; if (this.currentView === 'store') this.renderEffects(); }
     }
@@ -1690,7 +1706,10 @@ class EffectStoreApp {
     }
 
     _renderGrid(grid, effects, filter, search, viewName) {
-        const cacheKey = `_hasRendered_${viewName}_${(effects || []).length}`;
+        const usageSignature = this.menuTemplateUsage
+            ? Array.from(this.menuTemplateUsage.entries()).filter(([, used]) => used).map(([id]) => id).sort().join(',')
+            : '';
+        const cacheKey = `_hasRendered_${viewName}_${(effects || []).length}_${usageSignature}`;
         
         if (!grid[cacheKey]) {
             grid[cacheKey] = true;
@@ -1770,7 +1789,8 @@ class EffectStoreApp {
                     btnClass += ' btn-owned';
                     if (effect.category === 'menu_template') {
                         btnAction = `app.useMenuTemplateFromStore('${effect.fileUrl}')`;
-                        btnText = '🛠️ Sử dụng Thiết kế';
+                        const wasUsed = Boolean(this.menuTemplateUsage && this.menuTemplateUsage.get(String(effect.fileUrl)));
+                        btnText = wasUsed ? '✅ Đã sử dụng' : '🛠️ Sử dụng Thiết kế';
                     } else {
                         btnAction = `app.triggerEffect('${effectId}')`;
                         btnText = '▶ Xem thử trên OBS';
@@ -2054,7 +2074,8 @@ class EffectStoreApp {
         const btnAddCart = document.getElementById('btn-detail-add-cart');
         if (isOwned) {
             if (effect.category === 'menu_template') {
-                btnAddCart.innerHTML = '🛠️ Sử dụng Thiết kế';
+                const wasUsed = Boolean(this.menuTemplateUsage && this.menuTemplateUsage.get(String(effect.fileUrl)));
+                btnAddCart.innerHTML = wasUsed ? '✅ Đã sử dụng' : '🛠️ Sử dụng Thiết kế';
                 btnAddCart.className = 'btn-add-cart btn-owned';
                 btnAddCart.onclick = () => { this.closeEffectDetailModal(); this.useMenuTemplateFromStore(effect.fileUrl); };
             } else {
@@ -2096,11 +2117,19 @@ class EffectStoreApp {
         try {
             this.switchView('gift-menu-designer');
             if (window.giftMenuDesigner) {
-                await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
+                const result = await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
+                if (result && result.success) {
+                    if (!this.menuTemplateUsage) this.menuTemplateUsage = new Map();
+                    this.menuTemplateUsage.set(String(templateId), true);
+                }
             } else {
                 setTimeout(async () => {
                     if (window.giftMenuDesigner) {
-                        await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
+                        const result = await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
+                        if (result && result.success) {
+                            if (!this.menuTemplateUsage) this.menuTemplateUsage = new Map();
+                            this.menuTemplateUsage.set(String(templateId), true);
+                        }
                     }
                 }, 500);
             }
