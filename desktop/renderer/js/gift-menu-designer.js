@@ -1139,6 +1139,10 @@
                     fontSize: item.fontSize,
                     subtitleFontSize: item.subtitleFontSize,
                     numberFontSize: item.numberFontSize,
+                    titleEffect: item.titleEffect,
+                    rowFontSize: item.rowFontSize,
+                    subtitleFontSize: item.subtitleFontSize,
+                    valueFontSize: item.valueFontSize,
                     contentOffsetY: item.contentOffsetY,
                     hideBg: item.hideBg,
                     useCustomBg: item.useCustomBg,
@@ -1270,7 +1274,13 @@
 
                             const isFlexiblePodium = isPodiumBoard && (item.lockRatio === false || hasCustomBoardRatio);
                             const isTalentBoard = item.type === 'talent-live' || item.type === 'talent-leaderboard';
-                            const talentContentScale = isTalentBoard ? Math.max(0.25, item.height / refH) : 1;
+                            const talentCount = isTalentBoard && item.talentCompetition ? Math.min(Number(item.talentCompetition.maxRanking) || 8, (item.talentCompetition.participants || []).length || 1) : 0;
+                            const talentRequiredHeight = 100 + (talentCount * 28);
+                            // Talent boards may be taller than the base design. Let the
+                            // content scale up with the board height so the border and
+                            // all configured rows fill the resized board instead of
+                            // leaving a short, wide panel.
+                            const talentContentScale = isTalentBoard ? Math.max(0.25, Math.min(item.height / refH, item.height / talentRequiredHeight)) : 1;
                             const talentContentWidth = isTalentBoard ? Math.max(240, item.width / talentContentScale) : refW;
                             // The visible podium only occupies the center portion of the 900x560
                             // design. Fit against that footprint so trimming empty board space does

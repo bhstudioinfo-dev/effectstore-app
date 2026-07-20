@@ -1994,3 +1994,7 @@ html, body {
 .gmd-talent-ranking-widget > .gmd-talent-podium > div { max-width: 190px; }
 .gmd-talent-ranking-list-only { align-self: stretch; }
 .gmd-talent-ranking-list-only > div { width: 100%; box-sizing: border-box; }
+.gmd-talent-ranking-list-only > div { padding: 2px 8px !important; gap: 5px !important; }
+.gmd-talent-ranking-list-only > div > span { line-height: 1 !important; }
+.gmd-talent-live-widget, .gmd-talent-ranking-widget { border-width: 3px !important; }
+.gmd-talent-ranking-widget { height: 100% !important; box-sizing: border-box !important; }

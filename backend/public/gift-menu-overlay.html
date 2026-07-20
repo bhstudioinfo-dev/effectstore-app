@@ -1588,7 +1588,11 @@
             const boardWidth = item.width || refW / 3;
             const boardHeight = item.height || refH / 3;
             const isTalentBoard = item.type === 'talent-live' || item.type === 'talent-leaderboard';
-            const talentContentScale = isTalentBoard ? Math.max(0.25, boardHeight / refH) : 1;
+            const talentCount = isTalentBoard && item.talentCompetition ? Math.min(Number(item.talentCompetition.maxRanking) || 8, (item.talentCompetition.participants || []).length || 1) : 0;
+            const talentRequiredHeight = 100 + (talentCount * 28);
+            // Keep OBS in lockstep with the Designer: a resized Talent board may
+            // scale above the base reference size so its border encloses every row.
+            const talentContentScale = isTalentBoard ? Math.max(0.25, Math.min(boardHeight / refH, boardHeight / talentRequiredHeight)) : 1;
             const talentContentWidth = isTalentBoard ? Math.max(240, boardWidth / talentContentScale) : refW;
             const podiumContentScale = Math.min(boardWidth / 620, boardHeight / 330);
             const podiumContentLeft = ((boardWidth / 2) - ((refW * podiumContentScale) / 2)) * s;
@@ -1614,6 +1618,18 @@
                 ${widgetHTML}
               </div>
             `;
+            if (item.type === 'talent-leaderboard') {
+              const rankingWidget = el.querySelector('.gmd-talent-ranking-widget');
+              const rankingList = el.querySelector('.gmd-talent-ranking-list-only');
+              const title = el.querySelector('.gmd-talent-ranking-widget > div');
+              const effect = item.titleEffect || 'glow';
+              if (title) {
+                if (!document.getElementById('gmd-talent-title-effects')) { const style = document.createElement('style'); style.id = 'gmd-talent-title-effects'; style.textContent = '@keyframes gmdTalentTitlePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}@keyframes gmdTalentTitleRainbow{0%{color:#f472b6}50%{color:#fbbf24}100%{color:#22d3ee}}'; document.head.appendChild(style); }
+                title.style.textShadow = effect === 'none' ? 'none' : effect === 'neon' ? '0 0 8px #22d3ee,0 0 22px #a855f7' : effect === 'fire' ? '0 0 10px #ef4444,0 0 24px #f59e0b' : '0 0 14px #fbbf24';
+                title.style.color = effect === 'fire' ? '#fbbf24' : effect === 'neon' ? '#67e8f9' : '';
+                title.style.animation = effect === 'pulse' ? 'gmdTalentTitlePulse 1.4s ease-in-out infinite' : effect === 'rainbow' ? 'gmdTalentTitleRainbow 2.4s linear infinite' : '';
+              }
+            }
           } else {
             // STANDARD GIFT RENDERING
             const left = offsetX + (Number(item.x) || 0) * s;
