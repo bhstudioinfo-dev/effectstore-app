@@ -9,14 +9,37 @@ const path = require('path');
 const fs = require('fs');
 const { encryptVideo, streamDecryptedVideo } = require('../utils/encrypt-video');
 const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
+const { isValidResourceId } = require('../utils/accessControl');
+const { getUserAvailableEffects, resolveEffectForUser } = require('../services/effectLibraryService');
+const { issueEffectAccessToken, buildEffectStreamUrl, verifyEffectAccessToken } = require('../services/effectAccessToken');
+const { paths: dataPaths } = require('../config/dataPaths');
 
 // Ensure directories
-const encryptedEffectsDir = path.join(__dirname, '..', 'effects', 'encrypted');
-const previewsDir = path.join(__dirname, '..', 'uploads', 'previews');
-const thumbsDir = path.join(__dirname, '..', 'uploads', 'thumbs');
+const encryptedEffectsDir = dataPaths.encryptedEffectsDir;
+const previewsDir = dataPaths.previewsDir;
+const thumbsDir = dataPaths.thumbsDir;
+
+function sanitizeEffectForCatalog(effect, userId = null) {
+    const value = effect?.toObject ? effect.toObject() : { ...(effect || {}) };
+    delete value.previewFilePath;
+    delete value.encryptedFilePath;
+    delete value.thumbFilePath;
+    delete value.fileSize;
+    delete value.timeline;
+    value.previewUrl = null;
+    if (value.category !== 'menu_template') value.fileUrl = null;
+    if (userId && value.category !== 'menu_template') {
+        const effectId = String(value._id || value.id || '');
+        if (effectId) {
+            const token = issueEffectAccessToken({ effectId, userId, purpose: 'catalog-preview', expiresIn: '10m' });
+            value.previewUrl = buildEffectStreamUrl(effectId, token);
+        }
+    }
+    return value;
+}
 
 // Get all effects
-router.get('/effects', async (req, res) => {
+router.get('/effects', authMiddleware, async (req, res) => {
     try {
         const { category, search } = req.query;
         let query = { isActive: true };
@@ -24,7 +47,7 @@ router.get('/effects', async (req, res) => {
         if (search) query.name = { $regex: search, $options: 'i' };
         
         const effects = await Effect.find(query).sort({ uses: -1 });
-        res.json({ success: true, effects });
+        res.json({ success: true, effects: effects.map((effect) => sanitizeEffectForCatalog(effect, req.userId)) });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -36,7 +59,7 @@ router.get('/effects/trending', async (req, res) => {
         const effects = await Effect.find({ isActive: true })
             .sort({ uses: -1 })
             .limit(5);
-        res.json({ success: true, effects });
+        res.json({ success: true, effects: effects.map(sanitizeEffectForCatalog) });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -45,9 +68,12 @@ router.get('/effects/trending', async (req, res) => {
 // Get single effect
 router.get('/effects/item/:id', async (req, res) => {
     try {
+        if (!isValidResourceId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid effect ID' });
+        }
         const effect = await Effect.findById(req.params.id);
         if (!effect) return res.status(404).json({ success: false, message: 'Effect not found' });
-        res.json({ success: true, effect });
+        res.json({ success: true, effect: sanitizeEffectForCatalog(effect) });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -56,20 +82,14 @@ router.get('/effects/item/:id', async (req, res) => {
 // Get user effects
 router.get('/user/effects', authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.userId).populate('purchasedEffects.effectId');
+        const user = await User.findById(req.userId).select('isAdmin');
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-        const isAdmin = !!(user.isAdmin || user.hasAdminUI || user.email === 'admin@effectstore.vn');
-        
-        if (isAdmin) {
-            const effects = await Effect.find({ isActive: true, category: { $ne: 'menu_template' } }).sort({ createdAt: -1 });
-            return res.json({ success: true, effects, libraryType: 'admin_all' });
-        }
-
-        const ownedEffects = user.purchasedEffects
-            .map(pe => pe.effectId)
-            .filter(effect => effect && effect.category !== 'menu_template');
-        res.json({ success: true, effects: ownedEffects, libraryType: 'purchased' });
+        const effects = await getUserAvailableEffects(req.userId);
+        return res.json({
+            success: true,
+            effects,
+            libraryType: user.isAdmin === true ? 'admin_all' : 'purchased'
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -143,6 +163,7 @@ router.delete('/user/custom-effects/:localId', authMiddleware, async (req, res) 
 async function streamEffectById(req, res) {
     try {
         const effectId = req.params.effectId;
+        if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
         const effect = await Effect.findById(effectId);
         if (!effect) return res.status(404).json({ error: 'Not found' });
 
@@ -171,7 +192,10 @@ async function streamEffectById(req, res) {
 
         // Fallback 3: Try encrypted path
         if (!streamPath || !fs.existsSync(streamPath)) {
-            if (effect.encryptedFilePath) streamPath = effect.encryptedFilePath;
+            if (effect.encryptedFilePath) {
+                const migratedEncryptedPath = path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath));
+                streamPath = fs.existsSync(migratedEncryptedPath) ? migratedEncryptedPath : effect.encryptedFilePath;
+            }
         }
 
         if (!streamPath || !fs.existsSync(streamPath)) {
@@ -181,9 +205,11 @@ async function streamEffectById(req, res) {
         }
 
         if (streamPath.includes('encrypted')) {
+            res.setHeader('Cache-Control', 'private, no-store');
             streamDecryptedVideo(streamPath, req, res);
         } else {
             const stats = fs.statSync(streamPath);
+            res.setHeader('Cache-Control', 'private, no-store');
             res.setHeader('Content-Type', 'video/webm');
             res.setHeader('Content-Length', stats.size);
             const stream = fs.createReadStream(streamPath);
@@ -194,14 +220,47 @@ async function streamEffectById(req, res) {
     }
 }
 
-router.get('/stream/effect/:effectId', streamEffectById);
+async function authorizeEffectStream(req, res, next) {
+    try {
+        const effectId = req.params.effectId;
+        if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
+        const payload = verifyEffectAccessToken(req.query.token, effectId);
+        if (payload.purpose === 'catalog-preview') {
+            const catalogEffect = await Effect.findOne({ _id: effectId, isActive: true }).select('_id category').lean();
+            if (!catalogEffect || catalogEffect.category === 'menu_template') {
+                return res.status(403).json({ error: 'Effect preview access denied' });
+            }
+        } else if (payload.purpose !== 'legacy-obs-effect') {
+            const effect = await resolveEffectForUser(payload.userId, effectId);
+            if (!effect) return res.status(403).json({ error: 'Effect access denied' });
+        }
+        req.effectAccess = payload;
+        return next();
+    } catch (_error) {
+        return res.status(401).json({ error: 'Invalid or expired effect token' });
+    }
+}
+
+router.get('/stream/effect/:effectId', authorizeEffectStream, streamEffectById);
 
 // Multer config for uploads
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/temp/'),
+    destination: (_req, _file, cb) => cb(null, dataPaths.tempDir),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname))
 });
-const upload = multer({ storage });
+const upload = multer({
+    storage,
+    limits: { fileSize: 500 * 1024 * 1024, files: 2, fields: 30 },
+    fileFilter: (_req, file, callback) => {
+        const extension = path.extname(file.originalname || '').toLowerCase();
+        const allowedByField = {
+            effectFile: new Set(['.webm', '.mov', '.mp4']),
+            thumb: new Set(['.png', '.jpg', '.jpeg', '.webp'])
+        };
+        const allowed = allowedByField[file.fieldname]?.has(extension) === true;
+        callback(allowed ? null : new Error('Unsupported effect upload.'), allowed);
+    }
+});
 
 // Helper for video duration
 function getVideoDuration(filePath) {
@@ -273,6 +332,9 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
 // Update Effect (Admin)
 router.post('/effects/:id/update', authMiddleware, adminMiddleware, upload.any(), async (req, res) => {
     try {
+        if (!isValidResourceId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid effect ID' });
+        }
         const { name, category, price, originalPrice, fakeUses, isTrending, isFlashSale, flashSalePrice, flashSaleEndsAt, description, icon } = req.body;
         const effect = await Effect.findById(req.params.id);
         if (!effect) return res.status(404).json({ success: false, error: 'Effect not found' });
@@ -309,6 +371,9 @@ router.post('/effects/:id/update', authMiddleware, adminMiddleware, upload.any()
 // Delete Effect (Admin)
 router.delete('/effects/:id', authMiddleware, adminMiddleware, async (req, res) => {
     try {
+        if (!isValidResourceId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid effect ID' });
+        }
         const effect = await Effect.findById(req.params.id);
         if (effect) {
             if (effect.previewFilePath && fs.existsSync(effect.previewFilePath)) fs.unlinkSync(effect.previewFilePath);
@@ -322,14 +387,20 @@ router.delete('/effects/:id', authMiddleware, adminMiddleware, async (req, res) 
 // Timeline Routes
 router.get('/effects/:id/timeline', authMiddleware, async (req, res) => {
     try {
-        const effect = await Effect.findById(req.params.id);
+        if (!isValidResourceId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid effect ID' });
+        }
+        const effect = await resolveEffectForUser(req.userId, req.params.id);
         if (!effect) return res.status(404).json({ error: 'Effect not found' });
         res.json({ success: true, timeline: effect.timeline || {}, isComposite: effect.isComposite || false });
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-router.put('/effects/:id/timeline', authMiddleware, async (req, res) => {
+router.put('/effects/:id/timeline', authMiddleware, adminMiddleware, async (req, res) => {
     try {
+        if (!isValidResourceId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid effect ID' });
+        }
         const { timeline, config, isComposite } = req.body;
         const effect = await Effect.findById(req.params.id);
         if (!effect) return res.status(404).json({ success: false, error: 'Effect not found' });
@@ -341,5 +412,13 @@ router.put('/effects/:id/timeline', authMiddleware, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+router.use((error, _req, res, next) => {
+    if (error instanceof multer.MulterError || error?.message === 'Unsupported effect upload.') {
+        return res.status(400).json({ success: false, error: error.message });
+    }
+    return next(error);
+});
+
 module.exports = router;
 module.exports.streamEffectById = streamEffectById;
+module.exports.sanitizeEffectForCatalog = sanitizeEffectForCatalog;

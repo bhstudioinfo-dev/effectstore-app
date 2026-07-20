@@ -1,129 +1,207 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const Payment = require('../models/Payment');
 const User = require('../models/User');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
-const multer = require('multer');
-const path = require('path');
+const { isValidResourceId } = require('../utils/accessControl');
+const { calculateOrder, approvePayment } = require('../services/paymentService');
+const { paths: dataPaths } = require('../config/dataPaths');
 
-const upload = multer({ dest: 'uploads/temp/' });
-
-// Create Payment QR
-router.post('/create-qr', async (req, res) => {
-    try {
-        const { amount, effectIds, userId, userName } = req.body;
-        const bankInfo = { 
-            bankCode: 'TCB',
-            accountNumber: '7698689999', 
-            accountName: 'HUYNH BAO HUNG', 
-            amount 
-        };
-        const orderId = `DH${Date.now()}${Math.floor(Math.random() * 1000)}`;
-        
-        const namePart = userName ? userName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toUpperCase() : (userId || 'KHACH');
-        const description = `${namePart} CHUYEN KHOAN`;
-        
-        const qrCodeUrl = `https://img.vietqr.io/image/${bankInfo.bankCode}-${bankInfo.accountNumber}-qr_only.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&t=${Date.now()}`;
-        
-        res.json({ success: true, qrCode: qrCodeUrl, orderId: orderId, bankInfo: { ...bankInfo, description } });
-    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
-});
-
-// Confirm Payment (Upload Proof)
-router.post('/confirm', upload.single('proof'), async (req, res) => {
-    try {
-        const { userId, effectIds, amount, noProof, orderId } = req.body;
-        const hasProof = req.file || noProof === 'true';
-        if (!hasProof) return res.status(400).json({ success: false, message: 'Thiếu ảnh chuyển khoản!' });
-        
-        let parsedEffectIds = [];
-        try { parsedEffectIds = JSON.parse(effectIds || '[]'); } catch (e) { parsedEffectIds = effectIds ? effectIds.split(',') : []; }
-        
-        await Payment.create({ 
-            userId, 
-            orderId,
-            effectIds: parsedEffectIds, 
-            proofImage: req.file ? `/uploads/temp/${req.file.filename}` : null, 
-            amount: parseFloat(amount) || 0, 
-            hasProof: !!req.file, 
-            status: 'pending' 
-        });
-        
-        res.json({ success: true, message: 'Đã gửi yêu cầu thanh toán!' });
-    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
-});
-
-// Check Status
-router.get('/status/:orderId', async (req, res) => {
-    try {
-        const payment = await Payment.findOne({ orderId: req.params.orderId });
-        if (!payment) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
-        res.json({ success: true, status: payment.status });
-    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
-});
-
-// Compatibility webhook endpoint (no-op acknowledge)
-router.post('/sepay-webhook', async (req, res) => {
-    try {
-        res.json({ success: true, received: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+const proofDirectory = dataPaths.tempDir;
+fs.mkdirSync(proofDirectory, { recursive: true });
+const upload = multer({
+    dest: proofDirectory,
+    limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 5 },
+    fileFilter: (_req, file, callback) => {
+        const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
+        callback(allowed.has(file.mimetype) ? null : new Error('Unsupported proof image type.'), allowed.has(file.mimetype));
     }
 });
 
-// Admin: List Payments
-router.get('/admin/payments', authMiddleware, adminMiddleware, async (req, res) => {
+function removeUploadedFile(file) {
+    if (file?.path && fs.existsSync(file.path)) {
+        try { fs.unlinkSync(file.path); } catch (_error) {}
+    }
+}
+
+function isValidProofImage(filePath) {
+    const header = fs.readFileSync(filePath).subarray(0, 12);
+    const isJpeg = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+    const isPng = header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    const isWebp = header.subarray(0, 4).toString('ascii') === 'RIFF' && header.subarray(8, 12).toString('ascii') === 'WEBP';
+    return isJpeg || isPng || isWebp;
+}
+
+function createOrderId() {
+    return `DH${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+}
+
+function bankConfiguration(amount, orderId) {
+    const bankCode = process.env.BANK_CODE || 'TCB';
+    const accountNumber = process.env.BANK_ACCOUNT_NUMBER || '7698689999';
+    const accountName = process.env.BANK_ACCOUNT_NAME || 'HUYNH BAO HUNG';
+    const description = `ES ${orderId}`;
+    return { bankCode, bank: bankCode, accountNumber, accountName, amount, description };
+}
+
+function safeProofUrl(payment) {
+    if (!payment?.proofImage) return null;
+    return `/api/payment/admin/proof/${encodeURIComponent(path.basename(payment.proofImage))}`;
+}
+
+router.post('/create-qr', authMiddleware, async (req, res) => {
     try {
-        const payments = await Payment.find().sort({ createdAt: -1 });
-        res.json({ success: true, payments });
-    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+        const user = await User.findById(req.userId).select('purchasedEffects isActive');
+        if (!user || user.isActive === false) return res.status(404).json({ success: false, error: 'User not found' });
+        const order = await calculateOrder(req.body?.effectIds, user);
+        const orderId = createOrderId();
+        const payment = await Payment.create({
+            userId: String(req.userId),
+            orderId,
+            effectIds: order.effectIds,
+            amount: order.amount,
+            hasProof: false,
+            proofImage: null,
+            status: 'created'
+        });
+        const bankInfo = bankConfiguration(payment.amount, orderId);
+        const qrCode = `https://img.vietqr.io/image/${bankInfo.bankCode}-${bankInfo.accountNumber}-qr_only.png?amount=${payment.amount}&addInfo=${encodeURIComponent(bankInfo.description)}`;
+        return res.status(201).json({ success: true, qrCode, orderId, amount: payment.amount, bankInfo });
+    } catch (error) {
+        return res.status(error.status || 500).json({ success: false, error: error.status ? error.message : 'Unable to create payment order.' });
+    }
 });
 
-// Admin: Approve Payment
+router.post('/confirm', authMiddleware, upload.single('proof'), async (req, res) => {
+    try {
+        const orderId = String(req.body?.orderId || '').trim();
+        const payment = await Payment.findOne({ orderId, userId: String(req.userId) });
+        if (!payment) {
+            removeUploadedFile(req.file);
+            return res.status(404).json({ success: false, message: 'Payment order not found.' });
+        }
+        if (!['created', 'pending'].includes(payment.status)) {
+            removeUploadedFile(req.file);
+            return res.status(409).json({ success: false, message: 'Payment order can no longer be changed.' });
+        }
+        if (process.env.NODE_ENV === 'production' && !req.file) {
+            return res.status(400).json({ success: false, message: 'Payment proof is required.' });
+        }
+        if (req.file && !isValidProofImage(req.file.path)) {
+            removeUploadedFile(req.file);
+            return res.status(400).json({ success: false, message: 'Invalid proof image.' });
+        }
+        if (payment.proofImage) {
+            const previousPath = path.join(proofDirectory, path.basename(payment.proofImage));
+            if (fs.existsSync(previousPath)) removeUploadedFile({ path: previousPath });
+        }
+        payment.proofImage = req.file ? `/uploads/temp/${req.file.filename}` : null;
+        payment.hasProof = Boolean(req.file);
+        payment.status = 'pending';
+        await payment.save();
+        return res.json({ success: true, message: 'Payment confirmation submitted.' });
+    } catch (_error) {
+        removeUploadedFile(req.file);
+        return res.status(500).json({ success: false, error: 'Unable to confirm payment.' });
+    }
+});
+
+router.get('/status/:orderId', authMiddleware, async (req, res) => {
+    try {
+        const payment = await Payment.findOne({ orderId: req.params.orderId, userId: String(req.userId) }).select('status');
+        if (!payment) return res.status(404).json({ success: false, message: 'Payment order not found.' });
+        return res.json({ success: true, status: payment.status });
+    } catch (_error) {
+        return res.status(500).json({ success: false, error: 'Unable to load payment status.' });
+    }
+});
+
+router.post('/sepay-webhook', async (req, res) => {
+    try {
+        const secret = String(process.env.SEPAY_WEBHOOK_SECRET || '');
+        const supplied = String(req.headers['x-webhook-secret'] || req.headers.authorization?.replace(/^Apikey\s+/i, '') || '');
+        if (!secret) return res.status(503).json({ success: false, error: 'Webhook is not configured.' });
+        const validSecret = supplied.length === secret.length && crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(secret));
+        if (!validSecret) return res.status(401).json({ success: false, error: 'Invalid webhook signature.' });
+
+        const content = String(req.body?.content || req.body?.description || '').toUpperCase();
+        const orderId = content.match(/DH[A-Z0-9]+/)?.[0];
+        const transferAmount = Number(req.body?.transferAmount ?? req.body?.transfer_amount ?? req.body?.amount);
+        if (!orderId || !Number.isFinite(transferAmount)) {
+            return res.status(400).json({ success: false, error: 'Invalid webhook payload.' });
+        }
+        const payment = await Payment.findOne({ orderId });
+        if (!payment) return res.status(404).json({ success: false, error: 'Payment order not found.' });
+        if (payment.status === 'approved') return res.json({ success: true, duplicate: true });
+        if (!['created', 'pending'].includes(payment.status) || transferAmount < payment.amount) {
+            return res.status(409).json({ success: false, error: 'Payment does not match the order.' });
+        }
+        const approved = await approvePayment(payment._id, ['created', 'pending']);
+        if (!approved) return res.status(409).json({ success: false, error: 'Payment is already being processed.' });
+        return res.json({ success: true, orderId, status: 'approved' });
+    } catch (_error) {
+        return res.status(500).json({ success: false, error: 'Webhook processing failed.' });
+    }
+});
+
+router.get('/admin/payments', authMiddleware, adminMiddleware, async (_req, res) => {
+    try {
+        const payments = await Payment.find().sort({ createdAt: -1 }).lean();
+        const safePayments = payments.map((payment) => ({ ...payment, proofImage: safeProofUrl(payment) }));
+        return res.json({ success: true, payments: safePayments });
+    } catch (_error) {
+        return res.status(500).json({ success: false, error: 'Unable to load payments.' });
+    }
+});
+
+router.get('/admin/proof/:filename', authMiddleware, adminMiddleware, (req, res) => {
+    const filename = path.basename(req.params.filename);
+    const filePath = path.join(proofDirectory, filename);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'Proof image not found.' });
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.sendFile(filePath);
+});
+
 router.post('/admin/approve', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const { paymentId } = req.body;
-        const payment = await Payment.findById(paymentId);
-        if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
-        
-        payment.status = 'approved';
-        await payment.save();
-        
-        let user = await User.findById(payment.userId);
-        if (!user) user = await User.findOne({ machineId: payment.userId });
-        
-        if (user) {
-            for (const effectId of payment.effectIds) {
-                if (effectId === 'SUBSCRIPTION_PRO' || effectId === 'SUBSCRIPTION_BUSINESS') {
-                    user.subscription = effectId === 'SUBSCRIPTION_PRO' ? 'pro' : 'business';
-                    const now = new Date();
-                    user.subscriptionExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-                } else {
-                    const exists = user.purchasedEffects.find(e => e.effectId?.toString() === effectId);
-                    if (!exists) {
-                        user.purchasedEffects.push({ effectId, purchasedAt: new Date() });
-                    }
-                }
-            }
-            user.totalSpent = (user.totalSpent || 0) + payment.amount;
-            await user.save();
-        }
-        
-        res.json({ success: true, message: 'Đã duyệt thanh toán thành công!' });
-    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+        const paymentId = req.body?.paymentId;
+        if (!isValidResourceId(paymentId)) return res.status(400).json({ success: false, error: 'Invalid payment ID' });
+        const payment = await approvePayment(paymentId, ['pending']);
+        if (!payment) return res.status(409).json({ success: false, message: 'Payment is not pending or is already being processed.' });
+        return res.json({ success: true, message: 'Payment approved.' });
+    } catch (_error) {
+        return res.status(500).json({ success: false, error: 'Unable to approve payment.' });
+    }
 });
 
-// Admin: Reject Payment
 router.post('/admin/reject', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const { paymentId } = req.body;
-        const payment = await Payment.findById(paymentId);
-        if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
-        
-        payment.status = 'rejected';
-        await payment.save();
-        res.json({ success: true, message: 'Đã từ chối thanh toán' });
-    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+        const paymentId = req.body?.paymentId;
+        if (!isValidResourceId(paymentId)) return res.status(400).json({ success: false, error: 'Invalid payment ID' });
+        const payment = await Payment.findOneAndUpdate(
+            { _id: paymentId, status: { $in: ['created', 'pending'] } },
+            { $set: { status: 'rejected' } },
+            { new: true }
+        );
+        if (!payment) return res.status(409).json({ success: false, message: 'Payment can no longer be rejected.' });
+        return res.json({ success: true, message: 'Payment rejected.' });
+    } catch (_error) {
+        return res.status(500).json({ success: false, error: 'Unable to reject payment.' });
+    }
+});
+
+router.use((error, req, res, next) => {
+    if (error instanceof multer.MulterError || error?.message === 'Unsupported proof image type.') {
+        removeUploadedFile(req.file);
+        return res.status(400).json({ success: false, error: error.message });
+    }
+    return next(error);
 });
 
 module.exports = router;
+module.exports.createOrderId = createOrderId;
+module.exports.isValidProofImage = isValidProofImage;

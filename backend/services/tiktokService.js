@@ -9,6 +9,7 @@ const { getEntitlements, upgradePayload } = require('../config/planEntitlements'
 const { resolveEffectForUser, resolveEffectDurationForUser } = require('./effectLibraryService');
 const fs = require('fs');
 const path = require('path');
+const { paths: dataPaths } = require('../config/dataPaths');
 
 const FALLBACK_GIFTS = [
     { giftId: '5655', giftName: 'Rose', diamondCount: 1, iconUrl: '/assets/gift-icons/Rose.png', source: 'fallback-preview' },
@@ -26,6 +27,7 @@ class TikTokService {
         this.tiktokClient = null;
         this.lastRoomId = null;
         this.reconnectTimer = null;
+        this.reconnectAttempts = 0;
         this.currentLiveUserId = null;
         this.broadcastFn = null;
         this.liveStats = { gifts: 0, likes: 0, chats: 0, viewers: 0, isLive: false };
@@ -55,16 +57,19 @@ class TikTokService {
     normalizeGiftFromEvent(data = {}) {
         const giftId = this.normalizeGiftId(data.giftId || data.id);
         if (!giftId) return null;
+        const userDetails = data.userDetails || data.user || {};
+        const profilePictureUrls = userDetails.profilePictureUrls || userDetails.profilePictureURL || userDetails.profilePictureUrlList || [];
+        const profilePictureUrl = Array.isArray(profilePictureUrls) ? (profilePictureUrls[0] || '') : profilePictureUrls;
         return {
             giftId,
-            giftName: data.giftName || data.name || data.label || `Gift ${giftId}`,
+            giftName: data.giftName || data.name || data.label || data.gift?.name || `Gift ${giftId}`,
             diamondCount: Number(data.diamondCount || data.diamond || data.coins || 0),
             iconUrl: this.extractIconUrl(data),
             repeatCount: Number(data.repeatCount || 1),
-            userId: data.userId || data.user?.userId || '',
-            uniqueId: data.uniqueId || data.user?.uniqueId || '',
-            nickname: data.nickname || data.user?.nickname || '',
-            avatarUrl: data.profilePictureUrl || data.user?.profilePictureUrl || '',
+            userId: data.userId || userDetails.userId || '',
+            uniqueId: data.uniqueId || userDetails.uniqueId || '',
+            nickname: data.nickname || userDetails.nickname || userDetails.displayName || '',
+            avatarUrl: data.profilePictureUrl || userDetails.profilePictureUrl || profilePictureUrl || '',
             source: 'tiktok-live'
         };
     }
@@ -87,7 +92,14 @@ class TikTokService {
 
     async connect(roomId, userId = null, preserveSession = false) {
         try {
-            if (this.tiktokClient) this.tiktokClient.stop();
+            if (this.reconnectTimer) {
+                clearTimeout(this.reconnectTimer);
+                this.reconnectTimer = null;
+            }
+            if (this.tiktokClient) {
+                this.lastRoomId = null;
+                try { await this.tiktokClient.stop(); } catch (_error) {}
+            }
             this.lastRoomId = roomId;
             this.currentLiveUserId = userId;
             const liveUser = userId ? await User.findById(userId).lean().catch(() => null) : null;
@@ -100,6 +112,7 @@ class TikTokService {
             this.tiktokClient.on('connected', () => {
                 console.log(`Connected to TikTok Live: ${roomId}`);
                 this.liveStats.isLive = true;
+                this.reconnectAttempts = 0;
                 this.broadcast('stats', this.liveStats);
                 this.broadcast('gift_catalog_update', { type: 'gift_catalog_update', gifts: this.getGiftCatalogState().gifts });
             });
@@ -109,8 +122,7 @@ class TikTokService {
                 this.liveStats.isLive = false;
                 this.broadcast('stats', this.liveStats);
                 if (this.lastRoomId) {
-                    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-                    this.reconnectTimer = setTimeout(() => this.connect(this.lastRoomId, this.currentLiveUserId, true), 15000);
+                    this.scheduleReconnect();
                 }
             });
 
@@ -239,12 +251,33 @@ class TikTokService {
     }
 
     async disconnect() {
+        this.lastRoomId = null;
+        this.currentLiveUserId = null;
+        this.reconnectAttempts = 0;
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
         if (this.tiktokClient) {
-            this.tiktokClient.stop();
+            try { await this.tiktokClient.stop(); } catch (_error) {}
             this.tiktokClient = null;
             this.liveStats.isLive = false;
             this.broadcast('stats', this.liveStats);
         }
+    }
+
+    scheduleReconnect() {
+        if (!this.lastRoomId || this.reconnectTimer) return;
+        const roomId = this.lastRoomId;
+        const userId = this.currentLiveUserId;
+        const delay = Math.min(60000, 5000 * (2 ** Math.min(this.reconnectAttempts, 4)));
+        this.reconnectAttempts += 1;
+        this.reconnectTimer = setTimeout(async () => {
+            this.reconnectTimer = null;
+            if (!this.lastRoomId || this.lastRoomId !== roomId) return;
+            const connected = await this.connect(roomId, userId, true);
+            if (!connected && this.lastRoomId === roomId) this.scheduleReconnect();
+        }, delay);
     }
 
     isConnected() {
@@ -262,7 +295,7 @@ class TikTokService {
     async getGoalBoardLayout() {
         if (this.goalBoardLayout) return this.goalBoardLayout;
 
-        const goalBoardLayoutPath = path.join(__dirname, '..', 'uploads', 'goal-board-layout.json');
+        const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
         try {
             if (fs.existsSync(goalBoardLayoutPath)) {
                 const raw = fs.readFileSync(goalBoardLayoutPath, 'utf8');
@@ -402,7 +435,7 @@ class TikTokService {
         });
 
         if (hasUpdates) {
-            const goalBoardLayoutPath = path.join(__dirname, '..', 'uploads', 'goal-board-layout.json');
+            const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
             try {
                 fs.writeFileSync(goalBoardLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
             } catch (err) {
@@ -461,7 +494,7 @@ class TikTokService {
         const gift = this.normalizeGiftFromEvent(giftEvent);
         if (!gift) return;
 
-        const giftMenuLayoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
+        const giftMenuLayoutPath = dataPaths.giftMenuLayoutPath;
         let layout = null;
         try {
             if (fs.existsSync(giftMenuLayoutPath)) {
@@ -528,9 +561,57 @@ class TikTokService {
             return changed;
         };
 
+        const updateTalentCompetitions = (collections) => {
+            const talentItems = collections
+                .flatMap((items) => Array.isArray(items) ? items : [])
+                .filter((item) => item && ['talent-live', 'talent-leaderboard'].includes(item.type) && item.visible !== false && item.talentCompetition);
+            const groups = new Map();
+            talentItems.forEach((item) => {
+                const competitionId = String(item.talentCompetition.id || item.talentCompetitionId || 'default');
+                if (!groups.has(competitionId)) groups.set(competitionId, []);
+                groups.get(competitionId).push(item);
+            });
+
+            let changed = false;
+            groups.forEach((items) => {
+                const competition = items[0].talentCompetition;
+                if (!competition || competition.status !== 'running' || !Array.isArray(competition.participants)) return;
+                const durationSeconds = Math.max(0, Number(competition.durationSeconds) || 0);
+                const startedAt = competition.startedAt ? new Date(competition.startedAt).getTime() : 0;
+                if (durationSeconds > 0 && startedAt && Date.now() - startedAt >= durationSeconds * 1000) {
+                    competition.status = 'finished';
+                    competition.remainingSeconds = 0;
+                    competition.startedAt = null;
+                    items.forEach((item) => { item.talentCompetition = JSON.parse(JSON.stringify(competition)); });
+                    changed = true;
+                    return;
+                }
+                const activeTalent = competition.participants.find((person) => person && person.id === competition.activeTalentId);
+                if (!activeTalent) return;
+
+                const points = Math.max(0, totalDiamonds);
+                if (points <= 0) return;
+                activeTalent.score = (Number(activeTalent.score) || 0) + points;
+                activeTalent.roundScore = (Number(activeTalent.roundScore) || 0) + points;
+                competition.eventFeed = [{
+                    nickname: senderNickname,
+                    giftName: gift.giftName || 'quà tặng',
+                    points,
+                    at: new Date().toISOString()
+                }, ...(Array.isArray(competition.eventFeed) ? competition.eventFeed : [])].slice(0, 5);
+
+                items.forEach((item) => {
+                    item.talentCompetition = JSON.parse(JSON.stringify(competition));
+                });
+                changed = true;
+            });
+            return changed;
+        };
+
         const itemsChanged = updateItems(layout.items);
         const exportedChanged = updateItems(layout.exportedItems);
-        if (!itemsChanged && !exportedChanged) return;
+        const talentChanged = updateTalentCompetitions([layout.items, layout.exportedItems]);
+        if (!itemsChanged && !exportedChanged && !talentChanged) return;
 
         layout.savedAt = new Date().toISOString();
         fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
@@ -539,7 +620,21 @@ class TikTokService {
             items: Array.isArray(layout.items) ? layout.items : []
         });
     }
-}
 
+    async shutdown() {
+        this.lastRoomId = null;
+        this.currentLiveUserId = null;
+        this.reconnectAttempts = 0;
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+        if (this.tiktokClient) {
+            try { await this.tiktokClient.stop(); } catch (_error) {}
+            this.tiktokClient = null;
+        }
+        this.liveStats.isLive = false;
+    }
+}
 
 module.exports = new TikTokService();

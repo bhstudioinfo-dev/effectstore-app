@@ -151,7 +151,7 @@
         
         <!-- Upload Section -->
         <div class="card">
-            <h2 style="margin-bottom: 20px;">📤 Upload Banner Mới</h2>
+            <h2 style="margin-bottom: 20px;">📤 Thêm ảnh quảng bá mới</h2>
             
             <div class="upload-section" id="uploadSection" onclick="document.getElementById('fileInput').click()">
                 <div class="upload-icon">📁</div>
@@ -166,7 +166,7 @@
             <!-- Preview -->
             <div class="preview-section" id="previewSection">
                 <h3 style="margin-bottom: 15px;">👁️ Xem trước:</h3>
-                <img id="previewImage" class="banner-preview" alt="Preview">
+                <img id="previewImage" class="banner-preview" alt="Xem trước ảnh quảng bá">
                 
                 <div class="actions">
                     <button class="btn btn-secondary" onclick="cancelUpload()">❌ Hủy</button>
@@ -178,7 +178,7 @@
         <!-- Current Banner -->
         <div class="card current-banner" id="currentBannerCard" style="display: none;">
             <h2 style="margin-bottom: 15px;">🖼️ Banner Hiện Tại</h2>
-            <img id="currentBannerImage" alt="Current Banner">
+            <img id="currentBannerImage" alt="Ảnh quảng bá hiện tại">
             
             <div class="actions">
                 <button class="btn btn-danger" onclick="deleteBanner()">🗑️ Xóa Banner</button>
@@ -251,10 +251,10 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    showNotification('success', 'Upload banner thành công!');
+                    showNotification('success', 'Đã thêm ảnh quảng bá thành công!');
                     loadCurrentBanner();
                 } else {
-                    showNotification('error', data.message || 'Upload thất bại');
+                    showNotification('error', data.message || 'Không thể thêm ảnh quảng bá. Vui lòng thử lại.');
                 }
 
             } catch (err) {

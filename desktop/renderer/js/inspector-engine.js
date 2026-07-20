@@ -80,42 +80,42 @@
     }
 
     function renderCommonBasic(item) {
-        return section('Kich thuoc & vi tri', `
+        return section('Kích thước và vị trí', `
             <div class="gmd-row">
                 ${numberInput('x', item.x ?? 0)}
                 ${numberInput('y', item.y ?? 0)}
             </div>
-            ${field('Width', numberInput('width', item.width ?? item.w ?? 0))}
-            ${field('Height', numberInput('height', item.height ?? item.h ?? 0))}
-            ${field('Layer Order', numberInput('zIndex', item.zIndex ?? 1, '#'))}
+            ${field('Chiều rộng', numberInput('width', item.width ?? item.w ?? 0))}
+            ${field('Chiều cao', numberInput('height', item.height ?? item.h ?? 0))}
+            ${field('Thứ tự lớp', numberInput('zIndex', item.zIndex ?? 1, '#'))}
         `, 'fas fa-ruler-combined');
     }
 
     function renderWidgetStyleAdvanced(item) {
-        return section('Hien thi nang cao', `
+        return section('Hiển thị nâng cao', `
             <div class="gmd-field gmd-toggle-row">
-                <label>An nen</label>
+                <label>Ẩn nền</label>
                 ${toggleInput('hideBg', item.hideBg === true)}
             </div>
             <div class="gmd-field gmd-toggle-row">
-                <label>Dung nen rieng</label>
+                <label>Dùng nền riêng</label>
                 ${toggleInput('useCustomBg', item.useCustomBg === true)}
             </div>
-            ${field('Mau nen', colorInput('bgColor', item.bgColor || '#0a0a14'))}
+            ${field('Màu nền', colorInput('bgColor', item.bgColor || '#0a0a14'))}
             <div class="gmd-field gmd-toggle-row">
-                <label>Dung mau chu rieng</label>
+                <label>Dùng màu chữ riêng</label>
                 ${toggleInput('useCustomTextColor', item.useCustomTextColor === true)}
             </div>
-            ${field('Mau chu', colorInput('textColor', item.textColor || '#ffffff'))}
-            ${field('Content Offset Y', numberInput('contentOffsetY', item.contentOffsetY || 0))}
+            ${field('Màu chữ', colorInput('textColor', item.textColor || '#ffffff'))}
+            ${field('Dịch nội dung theo chiều dọc', numberInput('contentOffsetY', item.contentOffsetY || 0))}
         `, 'fas fa-wand-magic-sparkles');
     }
 
     function renderGoalTestPanel(item) {
-        return section('Test', `
+        return section('Phát thử', `
             <div style="display:flex; gap:8px;">
-                <button class="gmd-btn primary" data-inspector-action="test-goal" data-item-id="${esc(item.id)}">Test</button>
-                <button class="gmd-btn" data-inspector-action="reset-goal" data-item-id="${esc(item.id)}">Reset</button>
+                <button class="gmd-btn primary" data-inspector-action="test-goal" data-item-id="${esc(item.id)}">Phát thử</button>
+                <button class="gmd-btn" data-inspector-action="reset-goal" data-item-id="${esc(item.id)}">Đặt lại</button>
             </div>
         `, 'fas fa-flask');
     }
@@ -125,24 +125,24 @@
         return buildResult('gift', activeTabs, {
             basic: `
                 ${renderCommonBasic(item)}
-                ${section('Chu', `
+                ${section('Chữ', `
                     <div class="gmd-field gmd-toggle-row">
-                        <label>Hien thi ten</label>
+                        <label>Hiển thị tên</label>
                         ${toggleInput('showName', item.showName !== false)}
                     </div>
-                    ${field('Ten', textInput('name', item.name || ''))}
-                    ${field('Co chu', numberInput('textSize', item.textSize || 13))}
-                    ${field('Mau chu', colorInput('textColor', item.textColor || '#f7cb64'))}
-                    ${field('Gap', numberInput('textGap', item.textGap || 4))}
+                    ${field('Tên', textInput('name', item.name || ''))}
+                    ${field('Cỡ chữ', numberInput('textSize', item.textSize || 13))}
+                    ${field('Màu chữ', colorInput('textColor', item.textColor || '#f7cb64'))}
+                    ${field('Khoảng cách', numberInput('textGap', item.textGap || 4))}
                 `, 'fas fa-font')}
             `,
-            advanced: section('Hieu ung', `
-                ${field('Animation', selectInput('animationType', item.animationType || 'None', ['None', 'Pulse', 'Bounce', 'Float', 'Zoom', 'Shake']))}
-                ${field('Animation Speed', numberInput('animationSpeed', item.animationSpeed || 1, 's', 'step="0.1"'))}
-                ${field('Aura', selectInput('auraType', item.auraType || 'None', ['None', 'Glow', 'Bubble', 'Magic Ring', 'Neon Frame', 'Light Sweep', 'Fire Aura', 'Electric Aura']))}
-                ${field('Aura Color', colorInput('auraColor', item.auraColor || '#d7b2ff'))}
-                ${field('Aura Speed', numberInput('auraSpeed', item.auraSpeed || 1, 's', 'step="0.1"'))}
-                ${field('Aura Scale', numberInput('auraScale', item.auraScale || 1, 'x', 'step="0.05"'))}
+            advanced: section('Hiệu ứng', `
+                ${field('Chuyển động', selectInput('animationType', item.animationType || 'None', [{value:'None',label:'Không có'},{value:'Pulse',label:'Nhịp đập'},{value:'Bounce',label:'Nảy'},{value:'Float',label:'Trôi nhẹ'},{value:'Zoom',label:'Phóng to, thu nhỏ'},{value:'Shake',label:'Rung'}]))}
+                ${field('Tốc độ chuyển động', numberInput('animationSpeed', item.animationSpeed || 1, 's', 'step="0.1"'))}
+                ${field('Hào quang', selectInput('auraType', item.auraType || 'None', [{value:'None',label:'Không có'},{value:'Glow',label:'Phát sáng'},{value:'Bubble',label:'Bong bóng'},{value:'Magic Ring',label:'Vòng phép thuật'},{value:'Neon Frame',label:'Khung neon'},{value:'Light Sweep',label:'Ánh sáng quét'},{value:'Fire Aura',label:'Hào quang lửa'},{value:'Electric Aura',label:'Hào quang điện'}]))}
+                ${field('Màu hào quang', colorInput('auraColor', item.auraColor || '#d7b2ff'))}
+                ${field('Tốc độ hào quang', numberInput('auraSpeed', item.auraSpeed || 1, 's', 'step="0.1"'))}
+                ${field('Kích thước hào quang', numberInput('auraScale', item.auraScale || 1, 'x', 'step="0.05"'))}
             `, 'fas fa-sparkles')
         });
     }
@@ -152,16 +152,16 @@
         return buildResult('text', activeTabs, {
             basic: `
                 ${renderCommonBasic(item)}
-                ${section('Noi dung', `
-                    ${field('Text', textInput('text', item.text || ''))}
-                    ${field('Font Size', numberInput('fontSize', item.fontSize || 36))}
-                    ${field('Color', colorInput('color', item.color || '#ffffff'))}
-                    ${field('Align', selectInput('textAlign', item.textAlign || 'center', ['left', 'center', 'right']))}
+                ${section('Nội dung', `
+                    ${field('Văn bản', textInput('text', item.text || ''))}
+                    ${field('Cỡ chữ', numberInput('fontSize', item.fontSize || 36))}
+                    ${field('Màu chữ', colorInput('color', item.color || '#ffffff'))}
+                    ${field('Căn chữ', selectInput('textAlign', item.textAlign || 'center', [{value:'left',label:'Trái'},{value:'center',label:'Giữa'},{value:'right',label:'Phải'}]))}
                 `, 'fas fa-font')}
             `,
-            advanced: section('Text Style', `
-                ${field('Font Weight', selectInput('fontWeight', item.fontWeight || 'bold', ['normal', '600', 'bold', '800', '900']))}
-                ${field('Text Shadow', textInput('textShadow', item.textShadow || 'none'))}
+            advanced: section('Kiểu chữ', `
+                ${field('Độ đậm', selectInput('fontWeight', item.fontWeight || 'bold', ['normal', '600', 'bold', '800', '900']))}
+                ${field('Bóng chữ', textInput('textShadow', item.textShadow || 'none'))}
             `, 'fas fa-wand-magic-sparkles')
         });
     }
@@ -171,14 +171,14 @@
         return buildResult('media-asset', activeTabs, {
             basic: `
                 ${renderCommonBasic(item)}
-                ${section('Media', `
-                    ${field('Name', textInput('name', item.name || ''))}
-                    ${field('Asset URL', textInput('assetUrl', item.assetUrl || ''))}
+                ${section('Ảnh hoặc video', `
+                    ${field('Tên', textInput('name', item.name || ''))}
+                    ${field('Địa chỉ tệp', textInput('assetUrl', item.assetUrl || ''))}
                 `, 'fas fa-photo-video')}
             `,
-            advanced: section('Display', `
-                ${field('Opacity', numberInput('opacity', item.opacity ?? 1, 'x', 'step="0.05" min="0" max="1"'))}
-                ${field('Fit Mode', selectInput('fitMode', item.fitMode || 'contain', ['contain', 'cover', 'fill']))}
+            advanced: section('Hiển thị', `
+                ${field('Độ trong suốt', numberInput('opacity', item.opacity ?? 1, 'x', 'step="0.05" min="0" max="1"'))}
+                ${field('Cách vừa khung', selectInput('fitMode', item.fitMode || 'contain', [{value:'contain',label:'Hiện toàn bộ'},{value:'cover',label:'Phủ kín khung'},{value:'fill',label:'Kéo đầy khung'}]))}
             `, 'fas fa-sliders-h')
         });
     }
@@ -198,12 +198,12 @@
                     ${field('Màu viền PK 2 (Xanh/Glow phụ)', colorInput('pkBorderColor2', item.pkBorderColor2 || '#00f0ff'))}
                 `, 'fas fa-border-style')}
             `,
-            data: section('Goal Data', `
-                ${field('Gift ID', textInput('giftId', item.giftId || ''))}
-                ${field('Target', numberInput('targetCount', item.targetCount || 100, ''))}
-                ${field('Current', numberInput('currentCount', item.currentCount || 0, ''))}
-                ${field('Bar Color', colorInput('barColor', item.barColor || '#ff007f'))}
-                ${field('Bar Height', numberInput('barHeight', item.barHeight ?? 54))}
+            data: section('Dữ liệu mục tiêu', `
+                ${field('Mã quà', textInput('giftId', item.giftId || ''))}
+                ${field('Mục tiêu', numberInput('targetCount', item.targetCount || 100, ''))}
+                ${field('Hiện tại', numberInput('currentCount', item.currentCount || 0, ''))}
+                ${field('Màu thanh', colorInput('barColor', item.barColor || '#ff007f'))}
+                ${field('Chiều cao thanh', numberInput('barHeight', item.barHeight ?? 54))}
             `, 'fas fa-database'),
             test: renderGoalTestPanel(item)
         });
@@ -214,12 +214,12 @@
         return buildResult('goal-circle', activeTabs, {
             basic: renderCommonBasic(item),
             advanced: renderWidgetStyleAdvanced(item),
-            data: section('Circle Goal Data', `
-                ${field('Gift ID', textInput('giftId', item.giftId || ''))}
-                ${field('Target', numberInput('targetCount', item.targetCount || 100, ''))}
-                ${field('Current', numberInput('currentCount', item.currentCount || 0, ''))}
-                ${field('Center Icon', textInput('centerIcon', item.centerIcon || 'gift-icon'))}
-                ${field('Circle Color', colorInput('barColor', item.barColor || '#ff007f'))}
+            data: section('Dữ liệu mục tiêu tròn', `
+                ${field('Mã quà', textInput('giftId', item.giftId || ''))}
+                ${field('Mục tiêu', numberInput('targetCount', item.targetCount || 100, ''))}
+                ${field('Hiện tại', numberInput('currentCount', item.currentCount || 0, ''))}
+                ${field('Biểu tượng ở giữa', textInput('centerIcon', item.centerIcon || 'gift-icon'))}
+                ${field('Màu vòng tròn', colorInput('barColor', item.barColor || '#ff007f'))}
             `, 'fas fa-database'),
             test: renderGoalTestPanel(item)
         });
@@ -230,12 +230,12 @@
         return buildResult('boss-bar', activeTabs, {
             basic: renderCommonBasic(item),
             advanced: renderWidgetStyleAdvanced(item),
-            data: section('Boss Data', `
-                ${field('Boss Name', textInput('bossName', item.bossName || 'BOSS HP'))}
-                ${field('Boss Sub', textInput('bossSub', item.bossSub || ''))}
-                ${field('Target HP', numberInput('targetCount', item.targetCount || 100, ''))}
-                ${field('Current HP', numberInput('currentCount', item.currentCount || 0, ''))}
-                ${field('Bar Color', colorInput('barColor', item.barColor || '#ef4444'))}
+            data: section('Dữ liệu quái thú', `
+                ${field('Tên quái thú', textInput('bossName', item.bossName || 'BOSS HP'))}
+                ${field('Dòng mô tả phụ', textInput('bossSub', item.bossSub || ''))}
+                ${field('Máu tối đa', numberInput('targetCount', item.targetCount || 100, ''))}
+                ${field('Máu hiện tại', numberInput('currentCount', item.currentCount || 0, ''))}
+                ${field('Màu thanh', colorInput('barColor', item.barColor || '#ef4444'))}
             `, 'fas fa-database'),
             test: renderGoalTestPanel(item)
         });
@@ -246,11 +246,11 @@
         return buildResult('combo', activeTabs, {
             basic: renderCommonBasic(item),
             advanced: renderWidgetStyleAdvanced(item),
-            data: section('Combo Data', `
-                ${field('Combo Count', numberInput('comboCount', item.comboCount || 0, ''))}
-                ${field('Title', textInput('name', item.name || 'COMBO DANG CHAY!'))}
-                ${field('Subtitle', textInput('subtitleText', item.subtitleText || ''))}
-                ${field('Theme Color', colorInput('barColor', item.barColor || '#ef4444'))}
+            data: section('Dữ liệu chuỗi quà', `
+                ${field('Số quà liên tiếp', numberInput('comboCount', item.comboCount || 0, ''))}
+                ${field('Tiêu đề', textInput('name', item.name || 'COMBO ĐANG CHẠY!'))}
+                ${field('Dòng phụ', textInput('subtitleText', item.subtitleText || ''))}
+                ${field('Màu chủ đạo', colorInput('barColor', item.barColor || '#ef4444'))}
             `, 'fas fa-database'),
             test: renderGoalTestPanel(item)
         });
@@ -261,12 +261,12 @@
         return buildResult('mystery-chests', activeTabs, {
             basic: renderCommonBasic(item),
             advanced: renderWidgetStyleAdvanced(item),
-            data: section('Mystery Data', `
-                ${field('Gift ID', textInput('giftId', item.giftId || ''))}
-                ${field('Target', numberInput('targetCount', item.targetCount || 100, ''))}
-                ${field('Current', numberInput('currentCount', item.currentCount || 0, ''))}
-                ${field('Bar Color', colorInput('barColor', item.barColor || '#a855f7'))}
-                ${field('Glow Color', colorInput('glowColor', item.glowColor || '#fb7185'))}
+            data: section('Dữ liệu rương bí ẩn', `
+                ${field('Mã quà', textInput('giftId', item.giftId || ''))}
+                ${field('Mục tiêu', numberInput('targetCount', item.targetCount || 100, ''))}
+                ${field('Hiện tại', numberInput('currentCount', item.currentCount || 0, ''))}
+                ${field('Màu thanh', colorInput('barColor', item.barColor || '#a855f7'))}
+                ${field('Màu phát sáng', colorInput('glowColor', item.glowColor || '#fb7185'))}
             `, 'fas fa-database'),
             test: renderGoalTestPanel(item)
         });
@@ -277,17 +277,17 @@
         return buildResult('top-contributors', activeTabs, {
             basic: renderCommonBasic(item),
             advanced: renderWidgetStyleAdvanced(item),
-            data: section('Leaderboard Data', `
-                ${field('Limit', numberInput('limitCount', item.limitCount || 3, ''))}
+            data: section('Dữ liệu bảng xếp hạng', `
+                ${field('Số người hiển thị', numberInput('limitCount', item.limitCount || 3, ''))}
                 <div class="gmd-field gmd-toggle-row">
-                    <label>Show Avatar</label>
+                    <label>Hiển thị ảnh đại diện</label>
                     ${toggleInput('showAvatar', item.showAvatar !== false)}
                 </div>
                 <div class="gmd-field gmd-toggle-row">
-                    <label>Show Value</label>
+                    <label>Hiển thị giá trị</label>
                     ${toggleInput('showValue', item.showValue !== false)}
                 </div>
-                ${field('Theme Color', colorInput('barColor', item.barColor || '#eab308'))}
+                ${field('Màu chủ đạo', colorInput('barColor', item.barColor || '#eab308'))}
             `, 'fas fa-database'),
             test: renderGoalTestPanel(item)
         });
@@ -299,23 +299,23 @@
             basic: renderCommonBasic(item),
             advanced: `
                 ${renderWidgetStyleAdvanced(item)}
-                ${section('Scroll', `
+                ${section('Cuộn danh sách', `
                     <div class="gmd-field gmd-toggle-row">
-                        <label>Auto Scroll</label>
+                        <label>Tự động cuộn</label>
                         ${toggleInput('autoScroll', item.autoScroll === true)}
                     </div>
-                    ${field('Auto Scroll Speed', numberInput('autoScrollSpeed', item.autoScrollSpeed || 15, 's'))}
+                    ${field('Tốc độ tự động cuộn', numberInput('autoScrollSpeed', item.autoScrollSpeed || 15, 's'))}
                     <div class="gmd-field gmd-toggle-row">
-                        <label>Shimmer</label>
+                        <label>Hiệu ứng lấp lánh</label>
                         ${toggleInput('shimmerEffect', item.shimmerEffect !== false)}
                     </div>
                 `, 'fas fa-scroll')}
             `,
-            data: section('Goal List Data', `
-                ${field('Footer Text', textInput('footerText', item.footerText || ''))}
-                ${field('Bar Color', colorInput('barColor', item.barColor || '#ff007f'))}
-                ${field('Icon Size', numberInput('iconSize', item.iconSize ?? 28))}
-                ${field('Bar Height', numberInput('barHeight', item.barHeight ?? 12))}
+            data: section('Dữ liệu danh sách mục tiêu', `
+                ${field('Dòng chân trang', textInput('footerText', item.footerText || ''))}
+                ${field('Màu thanh', colorInput('barColor', item.barColor || '#ff007f'))}
+                ${field('Cỡ biểu tượng', numberInput('iconSize', item.iconSize ?? 28))}
+                ${field('Chiều cao thanh', numberInput('barHeight', item.barHeight ?? 12))}
             `, 'fas fa-database'),
             test: renderGoalTestPanel(item)
         });
@@ -330,84 +330,84 @@
         const activeTabs = tabs('basic', 'advanced', 'data');
         return buildResult('gift-stack-group', activeTabs, {
             basic: renderCommonBasic(item),
-            advanced: section('Stack Layout', `
-                ${field('Direction', selectInput('layoutDirection', item.layoutDirection || 'vertical', [
-                    { value: 'vertical', label: 'Vertical' },
-                    { value: 'horizontal', label: 'Horizontal' }
+            advanced: section('Bố cục nhóm quà', `
+                ${field('Hướng sắp xếp', selectInput('layoutDirection', item.layoutDirection || 'vertical', [
+                    { value: 'vertical', label: 'Dọc' },
+                    { value: 'horizontal', label: 'Ngang' }
                 ]))}
-                ${field('Gap', numberInput('gap', item.gap ?? 10))}
-                ${field('Icon Size', numberInput('iconSize', item.iconSize ?? 64))}
-                ${field('Text Size', numberInput('textSize', item.textSize ?? 14))}
-                ${field('Text Position', selectInput('textPosition', item.textPosition || 'bottom', [
-                    { value: 'bottom', label: 'Bottom' },
-                    { value: 'top', label: 'Top' },
-                    { value: 'left', label: 'Left' },
-                    { value: 'right', label: 'Right' }
+                ${field('Khoảng cách', numberInput('gap', item.gap ?? 10))}
+                ${field('Cỡ biểu tượng', numberInput('iconSize', item.iconSize ?? 64))}
+                ${field('Cỡ chữ', numberInput('textSize', item.textSize ?? 14))}
+                ${field('Vị trí chữ', selectInput('textPosition', item.textPosition || 'bottom', [
+                    { value: 'bottom', label: 'Dưới' },
+                    { value: 'top', label: 'Trên' },
+                    { value: 'left', label: 'Trái' },
+                    { value: 'right', label: 'Phải' }
                 ]))}
-                ${field('Text Gap', numberInput('textGap', item.textGap ?? 4))}
-                ${field('Text Color', colorInput('textColor', item.textColor || '#ffffff'))}
+                ${field('Khoảng cách chữ', numberInput('textGap', item.textGap ?? 4))}
+                ${field('Màu chữ', colorInput('textColor', item.textColor || '#ffffff'))}
                 <div class="gmd-field gmd-toggle-row">
-                    <label>Bat vien</label>
+                    <label>Bật viền</label>
                     ${toggleInput('showBorder', item.showBorder !== false)}
                 </div>
-                ${field('Kieu vien', selectInput('borderFillType', item.borderFillType || 'solid', [
-                    { value: 'solid', label: 'Mau don' },
-                    { value: 'gradient', label: 'Gradient' }
+                ${field('Kiểu viền', selectInput('borderFillType', item.borderFillType || 'solid', [
+                    { value: 'solid', label: 'Màu đơn' },
+                    { value: 'gradient', label: 'Chuyển màu' }
                 ]))}
-                ${field('Mau vien', colorInput('borderColor', item.borderColor || '#22d3ee'))}
-                ${field('Mau vien 1', colorInput('borderGradientFrom', item.borderGradientFrom || '#22d3ee'))}
-                ${field('Mau vien 2', colorInput('borderGradientTo', item.borderGradientTo || '#a855f7'))}
-                ${field('Goc gradient vien', numberInput('borderGradientAngle', item.borderGradientAngle ?? 135, 'deg'))}
-                ${field('Hieu ung vien', selectInput('borderEffect', item.borderEffect || 'none', [
-                    { value: 'none', label: 'Khong' },
-                    { value: 'glow', label: 'Glow' },
-                    { value: 'pulse', label: 'Pulse' },
-                    { value: 'running-light', label: 'Running Light' },
-                    { value: 'dashed-march', label: 'Dashed March' }
+                ${field('Màu viền', colorInput('borderColor', item.borderColor || '#22d3ee'))}
+                ${field('Màu viền 1', colorInput('borderGradientFrom', item.borderGradientFrom || '#22d3ee'))}
+                ${field('Màu viền 2', colorInput('borderGradientTo', item.borderGradientTo || '#a855f7'))}
+                ${field('Góc chuyển màu viền', numberInput('borderGradientAngle', item.borderGradientAngle ?? 135, 'deg'))}
+                ${field('Hiệu ứng viền', selectInput('borderEffect', item.borderEffect || 'none', [
+                    { value: 'none', label: 'Không có' },
+                    { value: 'glow', label: 'Phát sáng' },
+                    { value: 'pulse', label: 'Nhịp đập' },
+                    { value: 'running-light', label: 'Ánh sáng chạy' },
+                    { value: 'dashed-march', label: 'Nét đứt chuyển động' }
                 ]))}
-                ${field('Toc do vien', numberInput('borderEffectSpeed', item.borderEffectSpeed ?? 2, 's'))}
-                ${field('Do sang vien', numberInput('borderGlowIntensity', item.borderGlowIntensity ?? 0.55, 'x'))}
+                ${field('Tốc độ viền', numberInput('borderEffectSpeed', item.borderEffectSpeed ?? 2, 's'))}
+                ${field('Độ sáng viền', numberInput('borderGlowIntensity', item.borderGlowIntensity ?? 0.55, 'x'))}
                 <div class="gmd-field gmd-toggle-row">
-                    <label>Bat bang</label>
+                    <label>Bật bảng nền</label>
                     ${toggleInput('showPanel', item.showPanel !== false)}
                 </div>
-                ${field('Kieu bang', selectInput('panelFillType', item.panelFillType || 'solid', [
-                    { value: 'solid', label: 'Mau don' },
-                    { value: 'gradient', label: 'Gradient' }
+                ${field('Kiểu bảng nền', selectInput('panelFillType', item.panelFillType || 'solid', [
+                    { value: 'solid', label: 'Màu đơn' },
+                    { value: 'gradient', label: 'Chuyển màu' }
                 ]))}
-                ${field('Mau bang', colorInput('panelColor', item.panelColor || '#0a0a14'))}
-                ${field('Mau gradient 1', colorInput('panelGradientFrom', item.panelGradientFrom || '#3b1f48'))}
-                ${field('Mau gradient 2', colorInput('panelGradientTo', item.panelGradientTo || '#0a0a14'))}
-                ${field('Goc gradient', numberInput('panelGradientAngle', item.panelGradientAngle ?? 135, 'deg'))}
-                ${field('Hieu ung bang', selectInput('panelEffect', item.panelEffect || 'none', [
-                    { value: 'none', label: 'Khong' },
-                    { value: 'light-sweep', label: 'Light Sweep' },
-                    { value: 'breathing', label: 'Breathing' },
-                    { value: 'energy-flow', label: 'Energy Flow' },
-                    { value: 'glass-shine', label: 'Glass Shine' }
+                ${field('Màu bảng nền', colorInput('panelColor', item.panelColor || '#0a0a14'))}
+                ${field('Màu chuyển 1', colorInput('panelGradientFrom', item.panelGradientFrom || '#3b1f48'))}
+                ${field('Màu chuyển 2', colorInput('panelGradientTo', item.panelGradientTo || '#0a0a14'))}
+                ${field('Góc chuyển màu', numberInput('panelGradientAngle', item.panelGradientAngle ?? 135, 'deg'))}
+                ${field('Hiệu ứng bảng nền', selectInput('panelEffect', item.panelEffect || 'none', [
+                    { value: 'none', label: 'Không có' },
+                    { value: 'light-sweep', label: 'Ánh sáng quét' },
+                    { value: 'breathing', label: 'Nhịp thở' },
+                    { value: 'energy-flow', label: 'Dòng năng lượng' },
+                    { value: 'glass-shine', label: 'Kính lấp lánh' }
                 ]))}
-                ${field('Toc do bang', numberInput('panelEffectSpeed', item.panelEffectSpeed ?? 3, 's'))}
-                ${field('Do sang bang', numberInput('panelGlowIntensity', item.panelGlowIntensity ?? 0.35, 'x'))}
+                ${field('Tốc độ bảng nền', numberInput('panelEffectSpeed', item.panelEffectSpeed ?? 3, 's'))}
+                ${field('Độ sáng bảng nền', numberInput('panelGlowIntensity', item.panelGlowIntensity ?? 0.35, 'x'))}
                 ${field('Khoảng cách viền (Padding)', numberInput('padding', item.padding ?? 8, 'px'))}
                 <div class="gmd-field gmd-toggle-row">
-                    <label>Show Gift Name</label>
+                    <label>Hiển thị tên quà</label>
                     ${toggleInput('showName', item.showName !== false)}
                 </div>
                 <div class="gmd-field gmd-toggle-row">
-                    <label>Enable Loop</label>
+                    <label>Tự động cuộn lặp lại</label>
                     ${toggleInput('loopEnabled', Boolean(item.loopEnabled))}
                 </div>
-                ${field('Loop Direction', selectInput('loopDirection', item.loopDirection || 'vertical', [
-                    { value: 'vertical', label: 'Vertical' },
-                    { value: 'horizontal', label: 'Horizontal' }
+                ${field('Hướng cuộn', selectInput('loopDirection', item.loopDirection || 'vertical', [
+                    { value: 'vertical', label: 'Dọc' },
+                    { value: 'horizontal', label: 'Ngang' }
                 ]))}
-                ${field('Loop Speed', numberInput('loopSpeed', item.loopSpeed ?? 15, 's'))}
+                ${field('Tốc độ cuộn', numberInput('loopSpeed', item.loopSpeed ?? 15, 's'))}
                 <div style="font-size:11px;color:#94a3b8;line-height:1.4;margin:8px 0;">Khi bật cuộn, danh sách quà sẽ lặp liên tục theo hướng đã chọn.</div>
-                <button class="gmd-btn" data-action="ungroup-stack" style="width:100%; border-color: rgba(239,68,68,.4); color:#fca5a5;"><i class="fas fa-object-ungroup"></i> Bo gop</button>
+                <button class="gmd-btn" data-action="ungroup-stack" style="width:100%; border-color: rgba(239,68,68,.4); color:#fca5a5;"><i class="fas fa-object-ungroup"></i> Tách nhóm</button>
             `, 'fas fa-layer-group'),
-            data: section('Child Gifts', `
+            data: section('Quà trong nhóm', `
                 <div style="font-size:12px;color:#cbd5e1;line-height:1.4;">
-                    ${(Array.isArray(item.children) ? item.children : []).length} nested gifts
+                    ${(Array.isArray(item.children) ? item.children : []).length} quà trong nhóm
                 </div>
             `, 'fas fa-database')
         });

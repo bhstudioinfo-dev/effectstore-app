@@ -21,11 +21,13 @@ const {
 const effectQueue = require('../services/effectQueue');
 const playbackManager = require('../services/playbackManager');
 const obsService = require('../services/obsService');
-const jwt = require('jsonwebtoken');
+const { issueEffectAccessToken } = require('../services/effectAccessToken');
+const { isValidResourceId, ownedResourceFilter } = require('../utils/accessControl');
+const { paths: dataPaths } = require('../config/dataPaths');
 let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) {}
-const giftMenuLayoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
-const goalAssetDir = path.join(__dirname, '..', 'uploads', 'goal-assets');
+const giftMenuLayoutPath = dataPaths.giftMenuLayoutPath;
+const goalAssetDir = dataPaths.goalAssetsDir;
 fs.mkdirSync(goalAssetDir, { recursive: true });
 const goalAssetUpload = multer({
     storage: multer.diskStorage({
@@ -42,7 +44,7 @@ const goalAssetUpload = multer({
             cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${base}${ext}`);
         }
     }),
-    limits: { fileSize: 50 * 1024 * 1024 },
+    limits: { fileSize: 50 * 1024 * 1024, files: 1, fields: 10 },
     fileFilter: (_req, file, cb) => {
         const allowed = new Set(['.png', '.gif', '.webm', '.jpg', '.jpeg', '.webp', '.mp4']);
         const isAllowed = allowed.has(path.extname(file.originalname || '').toLowerCase());
@@ -187,6 +189,12 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
     try {
         const { id, giftId, effectId, giftName, effectName, giftIcon, effects, playbackMode, minQuantity, maxQuantity, exactQuantity, cooldown, cooldownAction } = req.body;
         const userId = req.userId;
+        if (id && !isValidResourceId(id)) {
+            return res.status(400).json({ success: false, error: 'Invalid mapping ID' });
+        }
+        if (!String(giftId || '').trim() || !String(effectId || '').trim()) {
+            return res.status(400).json({ success: false, error: 'giftId and effectId are required' });
+        }
 
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
@@ -196,7 +204,22 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
             return res.status(403).json({ success: false, message: 'Hiệu ứng không thuộc tài khoản này hoặc không còn khả dụng.' });
         }
 
-        const isAdmin = !!(user.isAdmin || user.email === 'admin@effectstore.vn');
+        const normalizedEffects = [];
+        for (const candidate of Array.isArray(effects) ? effects : []) {
+            const candidateId = String(candidate?.effectId || '').trim();
+            if (!candidateId) continue;
+            const candidateEffect = await resolveEffectForUser(userId, candidateId);
+            if (!candidateEffect) {
+                return res.status(403).json({ success: false, message: 'Một hiệu ứng trong nhóm không thuộc tài khoản này hoặc không còn khả dụng.' });
+            }
+            normalizedEffects.push({
+                effectId: candidateId,
+                effectName: candidateEffect.name || candidate.effectName || candidateId,
+                weight: Math.max(1, Number(candidate.weight) || 1)
+            });
+        }
+
+        const isAdmin = user.isAdmin === true;
         const entitlements = getEntitlements(user);
         const maxMappings = entitlements.mappings;
 
@@ -204,7 +227,8 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
         
         let existing = null;
         if (id) {
-            existing = await GiftMapping.findOne({ userId, _id: id });
+            existing = await GiftMapping.findOne(ownedResourceFilter(id, userId));
+            if (!existing) return res.status(404).json({ success: false, error: 'Mapping not found' });
         } else {
             existing = await GiftMapping.findOne({ 
                 userId, 
@@ -228,7 +252,7 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
             effectName: resolvedEffect.name || effectName,
             giftName,
             giftIcon,
-            effects: effects || [],
+            effects: normalizedEffects,
             playbackMode: playbackMode || 'random',
             minQuantity: minQuantity !== undefined ? Number(minQuantity) : 1,
             maxQuantity: (maxQuantity !== undefined && maxQuantity !== '' && maxQuantity !== null) ? Number(maxQuantity) : null,
@@ -266,15 +290,22 @@ async function waitForEffectPlayerReady(req, timeoutMs = 2500) {
 }
 router.delete('/mappings/:id', authMiddleware, async (req, res) => {
     try {
-        await GiftMapping.findOneAndDelete({ _id: req.params.id, userId: req.userId });
-        res.json({ success: true });
+        if (!isValidResourceId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid mapping ID' });
+        }
+        const mapping = await GiftMapping.findOneAndDelete(ownedResourceFilter(req.params.id, req.userId));
+        if (!mapping) return res.status(404).json({ success: false, error: 'Mapping not found' });
+        return res.json({ success: true });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 // Toggle mapping
 router.put('/mappings/:id/toggle', authMiddleware, async (req, res) => {
     try {
-        const mapping = await GiftMapping.findOne({ _id: req.params.id, userId: req.userId });
+        if (!isValidResourceId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid mapping ID' });
+        }
+        const mapping = await GiftMapping.findOne(ownedResourceFilter(req.params.id, req.userId));
         if (!mapping) return res.status(404).json({ success: false, message: 'Mapping not found' });
         mapping.isActive = !mapping.isActive;
         await mapping.save();
@@ -286,7 +317,10 @@ router.put('/mappings/:id/toggle', authMiddleware, async (req, res) => {
 router.post('/test-trigger', authMiddleware, async (req, res) => {
     try {
         const { mappingId } = req.body;
-        const mapping = await GiftMapping.findOne({ _id: mappingId, userId: req.userId });
+        if (!isValidResourceId(mappingId)) {
+            return res.status(400).json({ success: false, error: 'Invalid mapping ID' });
+        }
+        const mapping = await GiftMapping.findOne(ownedResourceFilter(mappingId, req.userId));
         if (!mapping) return res.status(404).json({ success: false, message: 'Mapping not found' });
 
         const effectId = String(mapping.effectId || '');
@@ -342,11 +376,11 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                     let effectUrl = resolvedEffect.fileUrl;
                     if (!resolvedEffect.isCustom) {
                         const PORT = process.env.PORT || 9000;
-                        const streamToken = jwt.sign({
+                        const streamToken = issueEffectAccessToken({
                             purpose: 'effect-player-test-mapping',
                             effectId: selEffectId,
                             userId: String(req.userId)
-                        }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
+                        });
                         effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(selEffectId)}?token=${encodeURIComponent(streamToken)}`;
                     }
 
@@ -390,11 +424,11 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             const PORT = process.env.PORT || 9000;
             let effectUrl = resolvedEffect.fileUrl;
             if (!resolvedEffect.isCustom) {
-                const streamToken = jwt.sign({
+                const streamToken = issueEffectAccessToken({
                     purpose: 'effect-player-test-mapping',
                     effectId,
                     userId: String(req.userId)
-                }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
+                });
                 effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
             }
             finalDuration = duration;
@@ -510,11 +544,11 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
             const PORT = process.env.PORT || 9000;
             let effectUrl = resolvedEffect.fileUrl;
             if (!resolvedEffect.isCustom) {
-                const streamToken = jwt.sign({
+                const streamToken = issueEffectAccessToken({
                     purpose: 'effect-player-live-mapping',
                     effectId,
                     userId: String(req.userId)
-                }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
+                });
                 effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
             }
 
@@ -586,7 +620,7 @@ router.get('/gifts-library', async (req, res) => {
             { id: 'youre_awesome', name: "You're Awesome", icon: '/assets/gift-icons/You\'re_awesome.png', coins: 88 }
         ];
 
-        const giftIconDir = path.join(__dirname, '..', 'assets', 'gift-icons');
+        const giftIconDir = dataPaths.runtimeGiftIconsDir;
         const fileGifts = fs.existsSync(giftIconDir)
             ? fs.readdirSync(giftIconDir)
                 .filter((file) => /\.(png|jpg|jpeg|webp|gif)$/i.test(file))
@@ -654,15 +688,26 @@ router.get('/gift-menu-templates', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.userId);
         const ownedEffectIds = user ? user.purchasedEffects.map(pe => pe.effectId?.toString()).filter(Boolean) : [];
-        const isAdmin = user ? (user.isAdmin || user.email === 'admin@effectstore.vn') : false;
+        const isAdmin = user ? user.isAdmin === true : false;
         const isBusiness = user ? user.subscription === 'business' : false;
 
-        const templates = await GiftMenuLayout.find({ isTemplate: true }).sort({ updatedAt: -1 });
-        const userLayouts = await GiftMenuLayout.find({ userId: req.userId, isTemplate: false }).select('_id name parentTemplateId');
+        const [templates, userLayouts] = await Promise.all([
+            GiftMenuLayout.find({ isTemplate: true }).sort({ updatedAt: -1 }).lean(),
+            GiftMenuLayout.find({ userId: req.userId, isTemplate: false }).select('_id name parentTemplateId').lean()
+        ]);
         const usedTemplateIds = new Set(userLayouts.filter(layout => layout.parentTemplateId).map(layout => String(layout.parentTemplateId)));
         const usedTemplateNames = new Set(userLayouts.map(layout => String(layout.name || '').trim().toLowerCase()));
 
-        const mappedTemplates = await Promise.all(templates.map(async t => {
+        const templateEffectByLayoutId = new Map();
+        if (!isAdmin && !isBusiness && templates.length) {
+            const templateEffects = await Effect.find({
+                category: 'menu_template',
+                fileUrl: { $in: templates.map((template) => String(template._id)) }
+            }).select('_id fileUrl').lean();
+            templateEffects.forEach((effect) => templateEffectByLayoutId.set(String(effect.fileUrl), String(effect._id)));
+        }
+
+        const mappedTemplates = templates.map((t) => {
             const normalizedName = String(t.name || '').trim().toLowerCase();
             const usedLayout = userLayouts.find(layout =>
                 String(layout.parentTemplateId || '') === String(t._id) ||
@@ -670,12 +715,12 @@ router.get('/gift-menu-templates', authMiddleware, async (req, res) => {
             );
             const isUsed = usedTemplateIds.has(String(t._id)) || usedTemplateNames.has(normalizedName);
             if (isAdmin || isBusiness) {
-                return { ...t.toObject(), isPurchased: true, isUsed, usedLayoutId: usedLayout?._id || null };
+                return { ...t, isPurchased: true, isUsed, usedLayoutId: usedLayout?._id || null };
             }
-            const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: t._id.toString() });
-            const isPurchased = correspondingEffect ? ownedEffectIds.includes(correspondingEffect._id.toString()) : false;
-            return { ...t.toObject(), isPurchased, isUsed, usedLayoutId: usedLayout?._id || null };
-        }));
+            const correspondingEffectId = templateEffectByLayoutId.get(String(t._id));
+            const isPurchased = correspondingEffectId ? ownedEffectIds.includes(correspondingEffectId) : false;
+            return { ...t, isPurchased, isUsed, usedLayoutId: usedLayout?._id || null };
+        });
 
         res.json({ success: true, templates: mappedTemplates });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -714,9 +759,9 @@ router.get('/gift-menu-overlay-layout', async (_req, res) => {
 
 router.get('/gift-menu-layout', authMiddleware, async (req, res) => {
     try {
-        let layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
+        let layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true, isTemplate: false });
         if (!layout) {
-            layout = await GiftMenuLayout.findOne({ userId: req.userId });
+            layout = await GiftMenuLayout.findOne({ userId: req.userId, isTemplate: false });
             if (layout) {
                 layout.isActive = true;
                 await layout.save();
@@ -732,6 +777,10 @@ router.get('/gift-menu-layout', authMiddleware, async (req, res) => {
 router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
     try {
         const payload = req.body || {};
+        const requestedLayoutId = payload.id || payload._id;
+        if (requestedLayoutId && !isValidResourceId(requestedLayoutId)) {
+            return res.status(400).json({ success: false, error: 'Invalid layout ID' });
+        }
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
         const entitlements = getEntitlements(user);
@@ -739,7 +788,7 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
         if (isRenameOnly) {
             const renamedLayout = await GiftMenuLayout.findOneAndUpdate(
                 { _id: payload.id, userId: req.userId, isTemplate: false },
-                { name: String(payload.name).trim() || 'Thiáº¿t káº¿ má»›i' },
+                { name: String(payload.name).trim() || 'Thiết kế mới' },
                 { new: true }
             );
             if (!renamedLayout) return res.status(404).json({ success: false, error: 'Layout not found' });
@@ -747,7 +796,7 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
                 fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(renamedLayout, null, 2), 'utf8');
                 
                 // Sync rename with Goal Board layout
-                const goalBoardLayoutPath = path.join(__dirname, '..', 'uploads', 'goal-board-layout.json');
+                const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
                 const goalBoardLayout = {
                     version: renamedLayout.version || 2,
                     savedAt: renamedLayout.savedAt || new Date().toISOString(),
@@ -773,9 +822,14 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
 
         let layout = null;
         if (payload.id || payload._id) {
-            layout = await GiftMenuLayout.findOne({ _id: payload.id || payload._id, userId: req.userId });
+            layout = await GiftMenuLayout.findOne(ownedResourceFilter(
+                payload.id || payload._id,
+                req.userId,
+                { isTemplate: false }
+            ));
+            if (!layout) return res.status(404).json({ success: false, error: 'Layout not found' });
         } else if (!payload.createNew) {
-            layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
+            layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true, isTemplate: false });
         }
 
         if (layout && !layout.parentTemplateId) {
@@ -837,7 +891,7 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
         fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
 
         // Sync with Goal Board layout
-        const goalBoardLayoutPath = path.join(__dirname, '..', 'uploads', 'goal-board-layout.json');
+        const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
         const goalBoardLayout = {
             version: layout.version || 2,
             savedAt: layout.savedAt || new Date().toISOString(),
@@ -875,7 +929,7 @@ router.post('/gift-menu-layout/create', authMiddleware, async (req, res) => {
             if (layoutCount >= entitlements.layouts) {
                 return res.status(403).json(upgradePayload(
                     'layouts',
-                    `GÃ³i ${entitlements.label} chá»‰ lÆ°u Ä‘Æ°á»£c ${entitlements.layouts} thiáº¿t káº¿ menu.`,
+                    `Gói ${entitlements.label} chỉ lưu được ${entitlements.layouts} thiết kế menu.`,
                     entitlements
                 ));
             }
@@ -883,7 +937,7 @@ router.post('/gift-menu-layout/create', authMiddleware, async (req, res) => {
         await GiftMenuLayout.updateMany({ userId: req.userId, isTemplate: false }, { isActive: false });
         const layout = new GiftMenuLayout({
             userId: req.userId,
-            name: name || 'Thiáº¿t káº¿ má»›i',
+            name: name || 'Thiết kế mới',
             aspectRatio: '9:16',
             items: [],
             exportedItems: [],
@@ -898,13 +952,18 @@ router.post('/gift-menu-layout/create', authMiddleware, async (req, res) => {
 router.put('/gift-menu-layout/:layoutId/activate', authMiddleware, async (req, res) => {
     try {
         const { layoutId } = req.params;
+        if (!isValidResourceId(layoutId)) {
+            return res.status(400).json({ success: false, error: 'Invalid layout ID' });
+        }
+        const ownedLayout = await GiftMenuLayout.findOne(ownedResourceFilter(
+            layoutId,
+            req.userId,
+            { isTemplate: false }
+        ));
+        if (!ownedLayout) return res.status(404).json({ success: false, error: 'Layout not found' });
         await GiftMenuLayout.updateMany({ userId: req.userId, isTemplate: false }, { isActive: false });
-        const layout = await GiftMenuLayout.findOneAndUpdate(
-            { _id: layoutId, userId: req.userId, isTemplate: false },
-            { isActive: true },
-            { new: true }
-        );
-        if (!layout) return res.status(404).json({ success: false, error: 'Layout not found' });
+        ownedLayout.isActive = true;
+        const layout = await ownedLayout.save();
         fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
         res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -913,10 +972,17 @@ router.put('/gift-menu-layout/:layoutId/activate', authMiddleware, async (req, r
 router.delete('/gift-menu-layout/:layoutId', authMiddleware, async (req, res) => {
     try {
         const { layoutId } = req.params;
-        const layout = await GiftMenuLayout.findOneAndDelete({ _id: layoutId, userId: req.userId, isTemplate: false });
+        if (!isValidResourceId(layoutId)) {
+            return res.status(400).json({ success: false, error: 'Invalid layout ID' });
+        }
+        const layout = await GiftMenuLayout.findOneAndDelete(ownedResourceFilter(
+            layoutId,
+            req.userId,
+            { isTemplate: false }
+        ));
         if (!layout) return res.status(404).json({ success: false, error: 'Layout not found' });
         if (layout.isActive) {
-            const nextLayout = await GiftMenuLayout.findOne({ userId: req.userId });
+            const nextLayout = await GiftMenuLayout.findOne({ userId: req.userId, isTemplate: false });
             if (nextLayout) {
                 nextLayout.isActive = true;
                 await nextLayout.save();
@@ -932,9 +998,9 @@ router.delete('/gift-menu-layout/:layoutId', authMiddleware, async (req, res) =>
 router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.userId);
-        const isAdmin = !!(user && (user.isAdmin || user.email === 'admin@effectstore.vn'));
+        const isAdmin = Boolean(user && user.isAdmin === true);
         if (!isAdmin) return res.status(403).json({ success: false, error: 'Unauthorized' });
-        const activeLayout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true });
+        const activeLayout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true, isTemplate: false });
         if (!activeLayout) return res.status(400).json({ success: false, error: 'No active layout to publish' });
         const payload = req.body || {};
         const price = Math.max(0, Number(payload.price) || 0);
@@ -961,10 +1027,7 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
         await template.save();
 
         // Automatically sync to Effect product
-        let existingEffect = await Effect.findOne({ category: 'menu_template', name: template.name });
-        if (!existingEffect) {
-            existingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
-        }
+        const existingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
 
         if (!existingEffect) {
             const newEffect = new Effect({
@@ -997,6 +1060,9 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
 
 router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, res) => {
     try {
+        if (!isValidResourceId(req.params.templateId)) {
+            return res.status(400).json({ success: false, error: 'Invalid template ID' });
+        }
         const template = await GiftMenuLayout.findOne({ _id: req.params.templateId, isTemplate: true });
         if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
         const user = await User.findById(req.userId);
@@ -1005,7 +1071,7 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
         const price = Number(template.price) || 0;
         let hasPurchased = false;
         const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
-        const isAdmin = user.isAdmin || user.email === 'admin@effectstore.vn';
+        const isAdmin = user.isAdmin === true;
         const isBusiness = user.subscription === 'business';
         if (isAdmin || isBusiness) {
             hasPurchased = true;
@@ -1154,6 +1220,9 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
 
 router.get('/gift-menu-templates/:templateId/effect', authMiddleware, async (req, res) => {
     try {
+        if (!isValidResourceId(req.params.templateId)) {
+            return res.status(400).json({ success: false, error: 'Invalid template ID' });
+        }
         const effect = await Effect.findOne({ category: 'menu_template', fileUrl: req.params.templateId });
         if (!effect) return res.status(404).json({ success: false, error: 'Effect product not found' });
         res.json({ success: true, effect });
@@ -1196,11 +1265,7 @@ router.get('/goal-board/assets', authMiddleware, async (req, res) => {
                 type: path.extname(entry.name).toLowerCase() === '.webm' ? 'video' : 'image'
             }));
         const adminUsers = await User.find({
-            $or: [
-                { isAdmin: true },
-                { hasAdminUI: true },
-                { email: 'admin@effectstore.vn' }
-            ]
+            isAdmin: true
         }).select('_id');
         const legacyAdminFrames = adminUsers.flatMap(admin => {
             const adminId = String(admin._id);
@@ -1265,10 +1330,10 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
         const maxFinalSize = { '.png': 8 * 1024 * 1024, '.gif': 12 * 1024 * 1024, '.webm': 20 * 1024 * 1024 }[ext];
         if (optimization.finalSize > maxFinalSize) {
             try { fs.unlinkSync(req.file.path); } catch (_e) {}
-            return res.status(413).json({ success: false, error: 'File váº«n quÃ¡ náº·ng sau tá»‘i Æ°u. Vui lÃ²ng giáº£m Ä‘á»™ phÃ¢n giáº£i hoáº·c thá»i lÆ°á»£ng.' });
+            return res.status(413).json({ success: false, error: 'File vẫn quá nặng sau tối ưu. Vui lòng giảm độ phân giải hoặc thời lượng.' });
         }
         let publicUrl = `/uploads/goal-assets/${req.userId}/${req.file.filename}`;
-        if (isFrameUpload && (user.isAdmin || user.hasAdminUI || user.email === 'admin@effectstore.vn')) {
+        if (isFrameUpload && user.isAdmin === true) {
             const sharedFrameDir = path.join(goalAssetDir, '_shared-frames');
             fs.mkdirSync(sharedFrameDir, { recursive: true });
             const sharedPath = path.join(sharedFrameDir, req.file.filename);
@@ -1297,7 +1362,7 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
 });
 
 router.use((error, _req, res, next) => {
-    if (error instanceof multer.MulterError || error?.message === 'Chá»‰ há»— trá»£ PNG, GIF vÃ  WebM') {
+    if (error instanceof multer.MulterError || error?.message?.startsWith('Chỉ hỗ trợ ')) {
         return res.status(400).json({ success: false, error: error.message });
     }
     return next(error);

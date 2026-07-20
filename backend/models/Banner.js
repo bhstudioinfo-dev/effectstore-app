@@ -7,4 +7,6 @@ const BannerSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true }
 });
 
+BannerSchema.index({ isActive: 1, uploadedAt: -1 });
+
 module.exports = mongoose.model('Banner', BannerSchema);

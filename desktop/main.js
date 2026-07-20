@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut, clipboard, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, clipboard, Tray, Menu, nativeImage, utilityProcess, safeStorage, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -6,15 +6,69 @@ const { spawn } = require('child_process');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const AutoLaunch = require('auto-launch');
+const { startManagedBackend, stopManagedBackend, updateMongoUri, backendStatus, ensureBackendConfig } = require('./backend-manager');
+const { sanitizeDiagnosticText } = require('./diagnostics');
 
 let mainWindow;
 let tray;
 let localServer;
 let wss;
+let backendProcess = null;
 const PORT = 8080;
 const WS_PORT = 8081;
 
 const appDataPath = app.getPath('userData');
+function getSecretCodec() {
+    if (!safeStorage.isEncryptionAvailable()) {
+        throw new Error('Hệ điều hành chưa cung cấp kho mã hóa an toàn cho cấu hình EffectStore.');
+    }
+    return {
+        protect: (value) => safeStorage.encryptString(String(value)).toString('base64'),
+        reveal: (value) => safeStorage.decryptString(Buffer.from(String(value), 'base64'))
+    };
+}
+
+function getManagedBackendOptions() {
+    return {
+        isPackaged: app.isPackaged,
+        resourcesPath: process.resourcesPath,
+        desktopDirectory: __dirname,
+        executablePath: process.execPath,
+        userDataPath: appDataPath,
+        legacyDataDirectory: app.isPackaged ? '' : path.resolve(__dirname, '..', 'backend'),
+        secretCodec: getSecretCodec(),
+        launchProcess: app.isPackaged
+            ? (entry, options) => utilityProcess.fork(entry, [], {
+                cwd: options.cwd,
+                env: options.env,
+                stdio: 'pipe',
+                serviceName: 'EffectStore Backend'
+            })
+            : null
+    };
+}
+
+async function waitForDatabaseConnection(timeoutMs = 8000) {
+    const deadline = Date.now() + timeoutMs;
+    let status = await backendStatus();
+    while (status.reachable && status.database?.connected !== true && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        status = await backendStatus();
+    }
+    return status;
+}
+function writeMainProcessError(kind, error) {
+    try {
+        fs.mkdirSync(appDataPath, { recursive: true });
+        fs.appendFileSync(
+            path.join(appDataPath, 'main-error.log'),
+            `[${new Date().toISOString()}] ${kind}: ${error?.stack || error}\n`,
+            'utf8'
+        );
+    } catch (_writeError) {}
+}
+process.on('uncaughtException', (error) => writeMainProcessError('uncaughtException', error));
+process.on('unhandledRejection', (error) => writeMainProcessError('unhandledRejection', error));
 const effectsPath = path.join(appDataPath, 'effects');
 const customEffectsPath = path.join(appDataPath, 'custom-effects');
 const CUSTOM_EFFECT_LARGE_FILE_WARNING_BYTES = 200 * 1024 * 1024;
@@ -156,7 +210,7 @@ function createWindow() {
             nodeIntegration: false,
             contextIsolation: true,
             preload: path.join(__dirname, 'preload.js'),
-            devTools: true,
+            devTools: !app.isPackaged,
             webSecurity: true,
             allowRunningInsecureContent: false
         },
@@ -167,7 +221,9 @@ function createWindow() {
         show: true
     });
 
-    mainWindow.webContents.openDevTools();
+    if (!app.isPackaged && process.env.OPEN_DEVTOOLS === 'true') {
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
     console.log('Loading HTML file...');
     
     mainWindow.webContents.on('did-finish-load', () => {
@@ -282,22 +338,26 @@ function startLocalServer() {
         });
     });
     
-    localServer = expressApp.listen(PORT, () => {
+    localServer = expressApp.listen(PORT, '127.0.0.1', () => {
         console.log(`🌐 Server: http://localhost:${PORT}`);
     });
     
-    wss = new WebSocketServer({ port: WS_PORT });
+    wss = new WebSocketServer({ port: WS_PORT, host: '127.0.0.1', maxPayload: 64 * 1024, perMessageDeflate: false });
     
     wss.on('connection', (ws) => {
         connectedClients.add(ws);
         console.log('🔌 Overlay connected');
         
         ws.on('message', (message) => {
-            const data = JSON.parse(message);
-            if (data.type === 'ping') {
-                ws.send(JSON.stringify({ type: 'pong' }));
-            } else if (data.type === 'trigger') {
-                triggerLegacyPreviewEffect(data.effectId);
+            try {
+                const data = JSON.parse(message);
+                if (data.type === 'ping') {
+                    ws.send(JSON.stringify({ type: 'pong' }));
+                } else if (data.type === 'trigger' && /^[a-zA-Z0-9_-]+$/.test(String(data.effectId || ''))) {
+                    triggerLegacyPreviewEffect(data.effectId);
+                }
+            } catch (_error) {
+                ws.close(1003, 'Invalid message');
             }
         });
         
@@ -339,7 +399,29 @@ function showNotification(title, body) {
     }
 }
 
-app.whenReady().then(createWindow);
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) {
+    writeMainProcessError('singleInstanceLock', 'Lock was not acquired; another EffectStore instance may already be running.');
+    app.quit();
+} else {
+    app.on('second-instance', () => {
+        if (!mainWindow) return;
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.focus();
+    });
+}
+
+app.whenReady().then(async () => {
+    try {
+        const backend = await startManagedBackend(getManagedBackendOptions());
+        backendProcess = backend.process;
+        await waitForDatabaseConnection(5000);
+    } catch (error) {
+        dialog.showErrorBox('Không thể khởi động EffectStore Backend', error.message);
+    }
+    createWindow();
+});
 
 app.on('window-all-closed', () => {
     globalShortcut.unregisterAll();
@@ -348,9 +430,146 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
 
+let managedBackendStopped = false;
+app.on('before-quit', (event) => {
+    if (managedBackendStopped || !backendProcess) return;
+    event.preventDefault();
+    const child = backendProcess;
+    backendProcess = null;
+    stopManagedBackend(child).finally(() => {
+        managedBackendStopped = true;
+        app.quit();
+    });
+});
+
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
+    }
+});
+
+ipcMain.handle('database-config:status', async () => {
+    const status = await backendStatus();
+    return {
+        reachable: status.reachable === true,
+        databaseConnected: status.database?.connected === true,
+        needsSetup: status.database?.connected !== true
+    };
+});
+
+ipcMain.handle('database-config:save', async (_event, mongoUri) => {
+    const configPath = path.join(appDataPath, 'backend-config.json');
+    const previousConfig = fs.existsSync(configPath) ? fs.readFileSync(configPath) : null;
+    try {
+        updateMongoUri(appDataPath, mongoUri, getSecretCodec());
+        const previous = backendProcess;
+        backendProcess = null;
+        await stopManagedBackend(previous);
+        const backend = await startManagedBackend(getManagedBackendOptions());
+        backendProcess = backend.process;
+        const status = await waitForDatabaseConnection(12000);
+        if (status.database?.connected !== true && previousConfig) {
+            const failedBackend = backendProcess;
+            backendProcess = null;
+            await stopManagedBackend(failedBackend);
+            fs.writeFileSync(configPath, previousConfig, { mode: 0o600 });
+            const restored = await startManagedBackend(getManagedBackendOptions());
+            backendProcess = restored.process;
+        }
+        return {
+            success: status.database?.connected === true,
+            databaseConnected: status.database?.connected === true,
+            error: status.database?.connected === true ? null : 'Không thể kết nối MongoDB bằng URI này.'
+        };
+    } catch (error) {
+        if (previousConfig) {
+            try { fs.writeFileSync(configPath, previousConfig, { mode: 0o600 }); } catch (_restoreError) {}
+        }
+        return { success: false, databaseConnected: false, error: error.message };
+    }
+});
+
+ipcMain.handle('admin-setup:status', async () => {
+    try {
+        const response = await fetch('http://127.0.0.1:9000/api/auth/setup-status');
+        const data = await response.json();
+        return { success: response.ok && data.success === true, needsAdminSetup: data.needsAdminSetup === true };
+    } catch (_error) {
+        return { success: false, needsAdminSetup: false, error: 'Backend chưa sẵn sàng.' };
+    }
+});
+
+ipcMain.handle('admin-setup:create', async (_event, payload) => {
+    try {
+        const config = ensureBackendConfig(appDataPath, getSecretCodec());
+        const response = await fetch('http://127.0.0.1:9000/api/auth/setup-admin', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Setup-Token': config.INITIAL_SETUP_TOKEN
+            },
+            body: JSON.stringify({
+                email: String(payload?.email || '').trim(),
+                password: String(payload?.password || ''),
+                name: String(payload?.name || '').trim(),
+                phone: String(payload?.phone || '').trim()
+            })
+        });
+        const data = await response.json();
+        return { success: response.ok && data.success === true, error: data.error || null };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+function operationDirectories() {
+    return {
+        data: path.join(appDataPath, 'backend-data'),
+        logs: path.join(appDataPath, 'logs'),
+        backups: path.join(appDataPath, 'backend-data', 'backups')
+    };
+}
+
+ipcMain.handle('operations:open-directory', async (_event, key) => {
+    const directory = operationDirectories()[String(key || '')];
+    if (!directory) return { success: false, error: 'Thư mục không hợp lệ.' };
+    fs.mkdirSync(directory, { recursive: true });
+    const error = await shell.openPath(directory);
+    return { success: !error, error: error || null };
+});
+
+ipcMain.handle('operations:create-diagnostics', async () => {
+    try {
+        const directories = operationDirectories();
+        const diagnosticDirectory = path.join(appDataPath, 'diagnostics');
+        fs.mkdirSync(diagnosticDirectory, { recursive: true });
+        const logPath = path.join(directories.logs, 'backend.log');
+        const logLines = fs.existsSync(logPath)
+            ? fs.readFileSync(logPath, 'utf8').split(/\r?\n/).slice(-500).join('\n')
+            : '';
+        const configPath = path.join(appDataPath, 'backend-config.json');
+        let configMetadata = {};
+        if (fs.existsSync(configPath)) {
+            const stored = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            configMetadata = {
+                version: stored.version || null,
+                encryptedFields: Object.keys(stored.secrets || {}).sort()
+            };
+        }
+        const report = {
+            generatedAt: new Date().toISOString(),
+            app: { name: app.getName(), version: app.getVersion(), packaged: app.isPackaged },
+            runtime: { platform: process.platform, arch: process.arch, electron: process.versions.electron },
+            backend: await backendStatus(),
+            config: configMetadata,
+            recentBackendLog: sanitizeDiagnosticText(logLines)
+        };
+        const filename = `effectstore-diagnostic-${Date.now()}.json`;
+        const reportPath = path.join(diagnosticDirectory, filename);
+        fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+        return { success: true, path: reportPath };
+    } catch (error) {
+        return { success: false, error: error.message };
     }
 });
 

@@ -1,5 +1,6 @@
 const Effect = require('../models/Effect');
 const User = require('../models/User');
+const { issueEffectAccessToken, buildEffectStreamUrl } = require('./effectAccessToken');
 
 const CUSTOM_EFFECT_BASE_URL = 'http://127.0.0.1:8080/custom-effects';
 
@@ -13,7 +14,7 @@ function toDuration(value) {
 }
 
 function isAdminUser(user) {
-    return !!(user && (user.isAdmin || user.hasAdminUI || user.email === 'admin@effectstore.vn'));
+    return Boolean(user && user.isAdmin === true);
 }
 
 function normalizePurchasedEffect(effect, ownerId = null, isOwned = true) {
@@ -26,8 +27,8 @@ function normalizePurchasedEffect(effect, ownerId = null, isOwned = true) {
         _id: id,
         type: 'purchased',
         name: effect.name || 'Effect',
-        fileUrl: effect.fileUrl || `/api/stream/effect/${id}`,
-        previewUrl: effect.previewUrl || effect.fileUrl || `/api/stream/effect/${id}`,
+        fileUrl: `/api/stream/effect/${id}`,
+        previewUrl: `/api/stream/effect/${id}`,
         thumbUrl: effect.thumbUrl || '',
         duration: toDuration(effect.duration),
         ownerId: ownerId ? toEffectId(ownerId) : null,
@@ -70,6 +71,18 @@ function dedupeEffects(effects) {
     });
 }
 
+function addProtectedMediaUrl(effect, userId) {
+    if (!effect || effect.isCustom) return effect;
+    const effectId = toEffectId(effect.id || effect._id);
+    const token = issueEffectAccessToken({
+        effectId,
+        userId,
+        purpose: 'library-playback'
+    });
+    const protectedUrl = buildEffectStreamUrl(effectId, token);
+    return { ...effect, fileUrl: protectedUrl, previewUrl: protectedUrl };
+}
+
 async function getUserRecord(userId) {
     if (!userId) return null;
     return User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
@@ -96,7 +109,7 @@ async function getUserAvailableEffects(userId) {
         .map((effect) => normalizeCustomEffect(effect, user))
         .filter(Boolean);
 
-    return dedupeEffects([...custom, ...purchased]);
+    return dedupeEffects([...custom, ...purchased]).map((effect) => addProtectedMediaUrl(effect, user._id));
 }
 
 async function resolveEffectForUser(userId, effectId) {

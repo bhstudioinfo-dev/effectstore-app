@@ -137,7 +137,8 @@
             }
 
             function connect() {
-                socket = new WebSocket(`${protocol}//${window.location.hostname || 'localhost'}:9001`);
+                const wsToken = new URLSearchParams(window.location.search).get('wsToken') || '';
+                socket = new WebSocket(`${protocol}//${window.location.hostname || 'localhost'}:9001?token=${encodeURIComponent(wsToken)}`);
                 socket.addEventListener('open', () => {
                     socket.send(JSON.stringify({ event: 'effect_player_ready', data: { ready: true } }));
                 });

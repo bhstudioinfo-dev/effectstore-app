@@ -1984,3 +1984,13 @@ html, body {
     0% { background-position: 150% 0; }
     100% { background-position: -50% 0; }
 }
+
+@keyframes gmdTalentFire { 0%,100% { filter: drop-shadow(0 0 6px #ef4444); } 50% { filter: drop-shadow(0 -4px 20px #f59e0b) saturate(1.8); } }
+@keyframes gmdTalentElectric { 0%,100% { filter: drop-shadow(0 0 5px #38bdf8); } 25% { filter: drop-shadow(0 0 18px #a5f3fc) brightness(1.35); } 27% { filter: drop-shadow(0 0 5px #38bdf8); } }
+.gmd-bar-style-fire { background: linear-gradient(90deg,#991b1b,#ef4444,#f59e0b,#fef08a) !important; animation: gmdTalentFire 1.05s ease-in-out infinite !important; }
+.gmd-bar-style-electric { background: linear-gradient(90deg,#1d4ed8,#38bdf8,#e0f2fe,#6366f1) !important; animation: gmdTalentElectric .9s steps(2,end) infinite !important; }
+
+.gmd-talent-ranking-widget > .gmd-talent-podium { max-width: 680px; width: 100%; margin-left: auto; margin-right: auto; }
+.gmd-talent-ranking-widget > .gmd-talent-podium > div { max-width: 190px; }
+.gmd-talent-ranking-list-only { align-self: stretch; }
+.gmd-talent-ranking-list-only > div { width: 100%; box-sizing: border-box; }

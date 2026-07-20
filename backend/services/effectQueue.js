@@ -6,6 +6,7 @@ class EffectQueue {
     constructor() {
         this.queue = [];
         this.broadcastFn = null;
+        this.recentEventKeys = new Map();
         
         // Listen to playback manager events to handle queue empty or queue updates
         eventBus.on('effect_playback_finished', () => {
@@ -98,8 +99,20 @@ class EffectQueue {
             giftData: input.giftData || null,
             effects: input.effects || [],
             playbackMode: input.playbackMode || 'random',
-            userId: input.userId || null
+            userId: input.userId || null,
+            eventKey: String(input.eventKey || input.giftData?.eventId || input.giftData?.msgId || '').trim() || null
         };
+    }
+
+    isDuplicateEvent(item) {
+        if (!item.eventKey) return false;
+        const now = Date.now();
+        for (const [key, expiresAt] of this.recentEventKeys) {
+            if (expiresAt <= now) this.recentEventKeys.delete(key);
+        }
+        if (this.recentEventKeys.has(item.eventKey)) return true;
+        this.recentEventKeys.set(item.eventKey, now + 5 * 60 * 1000);
+        return false;
     }
 
     async add(effectOrItem, duration, giftData = null, effectName = '') {
@@ -107,6 +120,17 @@ class EffectQueue {
         if (!item) {
             const effectId = typeof effectOrItem === 'object' ? effectOrItem?.effectId : effectOrItem;
             console.warn(`Skipping effect ${effectId}: missing id or valid duration`);
+            return false;
+        }
+
+        const maxQueueSize = Math.max(10, Math.min(2000, Number(process.env.MAX_EFFECT_QUEUE_SIZE) || 500));
+        if (this.queue.length >= maxQueueSize) {
+            console.warn(`Skipping effect ${item.effectId}: queue limit ${maxQueueSize} reached`);
+            return false;
+        }
+
+        if (this.isDuplicateEvent(item)) {
+            console.warn(`Skipping duplicate effect event: ${item.eventKey}`);
             return false;
         }
 
@@ -191,9 +215,14 @@ class EffectQueue {
             this.broadcastFn('gift', item.giftData);
         }
 
-        await playbackManager.play(item, () => {
-            this.process();
-        });
+        try {
+            await playbackManager.play(item, () => {
+                this.process();
+            });
+        } catch (error) {
+            console.error(`Unable to play effect ${item.effectId}:`, error.message || error);
+            playbackManager.failCurrent('playback_error', () => this.process());
+        }
     }
 }
 

@@ -24,4 +24,7 @@ const GiftMappingSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now }
 });
 
+GiftMappingSchema.index({ userId: 1, giftId: 1, isActive: 1 });
+GiftMappingSchema.index({ userId: 1, updatedAt: -1 });
+
 module.exports = mongoose.model('GiftMapping', GiftMappingSchema);

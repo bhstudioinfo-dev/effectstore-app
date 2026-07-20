@@ -4,7 +4,7 @@ const obsService = require('../services/obsService');
 const { authMiddleware } = require('../middleware/auth');
 const Effect = require('../models/Effect');
 const OBSSettings = require('../models/OBSSettings');
-const jwt = require('jsonwebtoken');
+const { issueEffectAccessToken, verifyEffectAccessToken } = require('../services/effectAccessToken');
 const fs = require('fs');
 const path = require('path');
 const effectQueue = require('../services/effectQueue');
@@ -13,6 +13,8 @@ const {
     resolveEffectDurationForUser
 } = require('../services/effectLibraryService');
 const effectRoutes = require('./effects');
+const { getOverlayAccessToken } = require('../config/networkSecurity');
+const { paths: dataPaths } = require('../config/dataPaths');
 
 async function getObsConnectionConfig() {
     try {
@@ -50,14 +52,27 @@ async function waitForEffectPlayerReady(req, timeoutMs = 2500) {
     return isReady();
 }
 
+router.get('/overlay-urls', authMiddleware, (req, res) => {
+    const PORT = process.env.PORT || 9000;
+    const giftToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
+    const goalToken = encodeURIComponent(getOverlayAccessToken('goal-board'));
+    return res.json({
+        success: true,
+        giftMenu: `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${giftToken}`,
+        goalBoard: `http://localhost:${PORT}/overlay/goal-board-overlay.html?wsToken=${goalToken}`
+    });
+});
+
 router.get('/effect-player-media/:effectId', async (req, res) => {
     try {
         const token = String(req.query.token || '');
-        const payload = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
         const allowedPurposes = new Set(['effect-player-preview', 'effect-player-test-mapping', 'effect-player-live-mapping']);
+        const payload = verifyEffectAccessToken(token, req.params.effectId, allowedPurposes);
         if (!allowedPurposes.has(payload.purpose) || String(payload.effectId) !== String(req.params.effectId)) {
             return res.status(403).json({ success: false, message: 'Liên kết xem thử không hợp lệ.' });
         }
+        const effect = await resolveEffectForUser(payload.userId, req.params.effectId);
+        if (!effect) return res.status(403).json({ success: false, message: 'Effect access denied.' });
         return effectRoutes.streamEffectById(req, res);
     } catch (_error) {
         return res.status(401).json({ success: false, message: 'Liên kết xem thử đã hết hạn hoặc không hợp lệ.' });
@@ -107,11 +122,11 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
         if (effect.isCustom) {
             effectUrl = effect.fileUrl;
         } else {
-            const streamToken = jwt.sign({
+            const streamToken = issueEffectAccessToken({
                 purpose: 'effect-player-preview',
                 effectId,
                 userId: String(req.userId)
-            }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
+            });
             effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
         }
 
@@ -156,7 +171,7 @@ router.get('/effect/:id', async (req, res) => {
         if (!trigger) return res.send(blankHtml);
 
         const isCustomEffect = /^custom-[a-zA-Z0-9-]+$/.test(effectId);
-        const streamToken = jwt.sign({ effectId, userId: 'obs' }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '24h' });
+        const streamToken = issueEffectAccessToken({ effectId, userId: 'obs', purpose: 'legacy-obs-effect' });
         const videoUrl = isCustomEffect
             ? `http://127.0.0.1:8080/custom-effects/${effectId}/effect.webm`
             : `http://localhost:${PORT}/api/stream/effect/${effectId}?token=${streamToken}`;
@@ -263,11 +278,12 @@ router.post('/setup-gift-menu', authMiddleware, async (_req, res) => {
         const sceneName = 'EffectStore';
         const defaultSourceName = 'gift_menu_overlay';
         const giftMenuSourceNames = ['gift_menu_overlay', 'gift_menu'];
-        const url = `http://localhost:${PORT}/gift-menu-overlay.html?t=${Date.now()}`;
+        const wsToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
+        const url = `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}&t=${Date.now()}`;
         let sourceWidth = 1080;
         let sourceHeight = 1920;
         try {
-            const layoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
+            const layoutPath = dataPaths.giftMenuLayoutPath;
             const layout = JSON.parse(fs.readFileSync(layoutPath, 'utf8'));
             const width = Number(layout?.exportSize?.width);
             const height = Number(layout?.exportSize?.height);
@@ -355,7 +371,7 @@ router.post('/setup-gift-menu', authMiddleware, async (_req, res) => {
             success: true,
             sceneName,
             sourceName,
-            overlayUrl: `http://localhost:${PORT}/gift-menu-overlay.html`
+            overlayUrl: `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}`
         });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
@@ -442,11 +458,12 @@ router.post('/repair-sources', authMiddleware, async (req, res) => {
 
         if (!giftMenuExists) {
             const PORT = process.env.PORT || 9000;
-            const url = `http://localhost:${PORT}/gift-menu-overlay.html?t=${Date.now()}`;
+            const wsToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
+            const url = `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}&t=${Date.now()}`;
             let sourceWidth = 1080;
             let sourceHeight = 1920;
             try {
-                const layoutPath = path.join(__dirname, '..', 'uploads', 'gift-menu-layout.json');
+                const layoutPath = dataPaths.giftMenuLayoutPath;
                 const layout = JSON.parse(fs.readFileSync(layoutPath, 'utf8'));
                 const width = Number(layout?.exportSize?.width);
                 const height = Number(layout?.exportSize?.height);

@@ -489,7 +489,7 @@
         
         <!-- Bulk Actions -->
         <div class="bulk-actions">
-            <button class="btn btn-primary" onclick="resetToDefault()">🔄 Reset Coins Mặc Định</button>
+            <button class="btn btn-primary" onclick="resetToDefault()">🔄 Đặt lại giá trị xu mặc định</button>
         </div>
     </div>
     
@@ -653,7 +653,7 @@
                     showNotification('success', `✅ Đã cập nhật icon cho ${giftId}`);
                     loadCoins(); // Reload
                 } else {
-                    showNotification('error', data.message || 'Upload thất bại');
+                    showNotification('error', data.message || 'Không thể tải biểu tượng lên. Vui lòng thử lại.');
                 }
             } catch (error) {
                 showNotification('error', 'Lỗi: ' + error.message);
@@ -824,7 +824,7 @@
         
         // Reset về mặc định
         async function resetToDefault() {
-            if (!confirm('⚠️ Reset tất cả coins về 1?\n\nHành động không thể hoàn tác!')) return;
+            if (!confirm('⚠️ Đặt giá trị của tất cả quà về 1 xu?\n\nBạn không thể hoàn tác thao tác này!')) return;
             
             try {
                 const token = localStorage.getItem('token');

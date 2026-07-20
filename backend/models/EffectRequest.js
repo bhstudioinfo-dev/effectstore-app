@@ -8,4 +8,7 @@ const EffectRequestSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+EffectRequestSchema.index({ status: 1, createdAt: -1 });
+EffectRequestSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('EffectRequest', EffectRequestSchema);

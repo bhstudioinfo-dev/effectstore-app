@@ -29,7 +29,7 @@ const PLAN_ENTITLEMENTS = Object.freeze({
 });
 
 function normalizePlan(user) {
-    if (user && (user.isAdmin || user.hasAdminUI || user.email === 'admin@effectstore.vn')) return 'admin';
+    if (user && user.isAdmin === true) return 'admin';
     if (user?.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt).getTime() < Date.now()) return 'free';
     const key = String(user?.subscription || 'free').toLowerCase();
     return PLAN_ENTITLEMENTS[key] ? key : 'free';

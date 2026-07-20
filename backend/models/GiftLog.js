@@ -11,4 +11,7 @@ const GiftLogSchema = new mongoose.Schema({
     repeatCount: { type: Number, default: 1 }
 });
 
+GiftLogSchema.index({ userId: 1, triggeredAt: -1 });
+GiftLogSchema.index({ sessionId: 1, triggeredAt: -1 });
+
 module.exports = mongoose.model('GiftLog', GiftLogSchema);

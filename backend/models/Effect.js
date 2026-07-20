@@ -28,4 +28,8 @@ const EffectSchema = new mongoose.Schema({
     isComposite: { type: Boolean, default: false }
 });
 
+EffectSchema.index({ isActive: 1, category: 1, uses: -1 });
+EffectSchema.index({ category: 1, fileUrl: 1 });
+EffectSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Effect', EffectSchema);

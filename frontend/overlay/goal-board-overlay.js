@@ -4,7 +4,8 @@
     // Map HTTP protocol to WS protocol
     const wsScheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     // Use port 9001 for WebSocket by default
-    const wsUrl = `${wsScheme}//${window.location.hostname}:9001`;
+    const wsToken = new URLSearchParams(window.location.search).get('wsToken') || '';
+    const wsUrl = `${wsScheme}//${window.location.hostname}:9001?token=${encodeURIComponent(wsToken)}`;
 
     let activeLayout = null;
     let ws = null;

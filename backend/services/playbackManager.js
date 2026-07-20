@@ -1,7 +1,7 @@
 const obsService = require('./obsService');
 const eventBus = require('./eventBus');
 const { resolveEffectForUser, resolveEffectDurationForUser } = require('./effectLibraryService');
-const jwt = require('jsonwebtoken');
+const { issueEffectAccessToken } = require('./effectAccessToken');
 
 class PlaybackManager {
     constructor() {
@@ -155,15 +155,24 @@ class PlaybackManager {
         }
     }
 
+    failCurrent(reason = 'failed', onFinishedCallback) {
+        if (!this.current) {
+            if (typeof onFinishedCallback === 'function') onFinishedCallback();
+            return false;
+        }
+        this.clearCurrentAndFinished(onFinishedCallback, reason);
+        return true;
+    }
+
     buildEffectPlayerUrl(userId, effectId, resolvedEffect) {
         if (resolvedEffect?.isCustom) return resolvedEffect.fileUrl;
 
         const PORT = process.env.PORT || 9000;
-        const streamToken = jwt.sign({
+        const streamToken = issueEffectAccessToken({
             purpose: 'effect-player-live-mapping',
             effectId,
             userId: String(userId)
-        }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '5m' });
+        });
 
         return `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
     }

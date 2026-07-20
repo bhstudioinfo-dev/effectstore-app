@@ -22,4 +22,8 @@ const GiftMenuLayoutSchema = new mongoose.Schema({
     parentTemplateId: { type: mongoose.Schema.Types.ObjectId, ref: 'GiftMenuLayout', required: false },
 }, { timestamps: true });
 
+GiftMenuLayoutSchema.index({ userId: 1, isTemplate: 1, isActive: 1 });
+GiftMenuLayoutSchema.index({ isTemplate: 1, updatedAt: -1 });
+GiftMenuLayoutSchema.index({ parentTemplateId: 1 });
+
 module.exports = mongoose.model('GiftMenuLayout', GiftMenuLayoutSchema);

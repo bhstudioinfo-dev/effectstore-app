@@ -1,15 +1,40 @@
 require('dotenv').config();
+const startupTrace = (label) => {
+    if (process.env.EFFECTSTORE_STARTUP_TRACE === 'true') console.log(`[startup] ${label}`);
+};
+startupTrace('environment loaded');
+const { assertSecurityConfiguration } = require('./config/security');
+assertSecurityConfiguration();
+startupTrace('security validated');
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
+startupTrace('core dependencies loaded');
 const EffectRequest = require('./models/EffectRequest');
+const User = require('./models/User');
+const { authMiddleware, adminMiddleware } = require('./middleware/auth');
+const { createRateLimiter } = require('./middleware/rateLimit');
+const { paths: dataPaths, ensureRuntimeDirectories, migrateLegacyData } = require('./config/dataPaths');
+const {
+    getApiHost,
+    getWebSocketHost,
+    isAllowedOrigin,
+    securityHeaders,
+    verifyOverlayAccessToken,
+    verifyUserSocketToken
+} = require('./config/networkSecurity');
+startupTrace('models and configuration loaded');
 // Services
 const obsService = require('./services/obsService');
+startupTrace('OBS service loaded');
 const tiktokService = require('./services/tiktokService');
+startupTrace('TikTok service loaded');
 const effectQueue = require('./services/effectQueue');
+const { runSchemaMigrations, CURRENT_SCHEMA_VERSION } = require('./services/schemaMigrationService');
+startupTrace('services loaded');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -19,16 +44,51 @@ const paymentRoutes = require('./routes/payment');
 const tiktokRoutes = require('./routes/tiktok');
 const obsRoutes = require('./routes/obs');
 const settingsRoutes = require('./routes/settings');
+startupTrace('routes loaded');
 
 const app = express();
 const PORT = process.env.PORT || 9000;
+const API_HOST = getApiHost();
+ensureRuntimeDirectories();
+startupTrace('runtime directories ready');
+const migration = migrateLegacyData();
+if (migration.migrated) console.log(`Migrated legacy runtime data from ${migration.from} to ${migration.to}`);
 
 // ========================================
 // MIDDLEWARE
 // ========================================
-app.use(cors());
+app.disable('x-powered-by');
+app.set('trust proxy', false);
+app.use(securityHeaders);
+app.use(cors({
+    origin(origin, callback) {
+        const allowed = isAllowedOrigin(origin);
+        callback(allowed ? null : new Error('Origin is not allowed by CORS.'), allowed);
+    },
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Webhook-Secret'],
+    maxAge: 86400
+}));
 app.use(express.json({ limit: '10mb' }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+app.use('/api', createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 600,
+    message: 'Too many API requests. Please try again shortly.'
+}));
+app.use('/uploads/previews', (_req, res) => {
+    res.status(404).json({ success: false, error: 'Protected media is not publicly available.' });
+});
+app.use('/uploads/effects', (_req, res) => {
+    res.status(404).json({ success: false, error: 'Protected media is not publicly available.' });
+});
+app.use('/uploads/temp', (_req, res) => {
+    res.status(404).json({ success: false, error: 'Private uploads are not publicly available.' });
+});
+app.use('/uploads', express.static(dataPaths.uploadsDir, {
+    maxAge: '1y',
+    immutable: true
+}));
+app.use('/assets/gift-icons', express.static(dataPaths.runtimeGiftIconsDir, {
     maxAge: '1y',
     immutable: true
 }));
@@ -53,15 +113,12 @@ app.use(express.static(path.join(__dirname, 'public'), {
 
 // Ensure directories exist
 const directories = [
-    path.join(__dirname, 'effects', 'encrypted'),
-    path.join(__dirname, 'uploads', 'previews'),
-    path.join(__dirname, 'uploads', 'temp'),
-    path.join(__dirname, 'uploads', 'banners'),
-    path.join(__dirname, 'assets', 'gift-icons'),
-    path.join(__dirname, 'uploads', 'thumbs'),
-    path.join(__dirname, 'assets', 'webm-frames'),
-    path.join(__dirname, 'assets', 'goal'),
-    path.join(__dirname, 'uploads', 'goal')
+    dataPaths.encryptedEffectsDir,
+    dataPaths.previewsDir,
+    dataPaths.tempDir,
+    dataPaths.bannersDir,
+    dataPaths.runtimeGiftIconsDir,
+    dataPaths.thumbsDir
 ];
 
 directories.forEach(dir => {
@@ -71,31 +128,76 @@ directories.forEach(dir => {
 // ========================================
 // MONGODB CONNECTION
 // ========================================
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/effectstore')
-    .then(() => console.log('✅ MongoDB Connected'))
-    .catch(err => console.error('❌ MongoDB Error:', err));
+let databaseSchemaReady = false;
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/effectstore', {
+    serverSelectionTimeoutMS: 10000,
+    maxPoolSize: 10,
+    minPoolSize: 0
+})
+    .then(async () => {
+        await runSchemaMigrations();
+        databaseSchemaReady = true;
+        console.log(`✅ MongoDB Connected (schema v${CURRENT_SCHEMA_VERSION})`);
+    })
+    .catch(err => {
+        databaseSchemaReady = false;
+        console.error('❌ MongoDB Error:', err);
+    });
 
 // ========================================
 // REAL-TIME COMMUNICATION (WebSocket)
 // ========================================
 const WS_PORT = parseInt(process.env.WS_PORT || '9001', 10);
+const WS_HOST = getWebSocketHost();
 let wss = null;
+let heartbeat = null;
 const clients = new Set();
 const effectPlayerClients = new Set();
 
 try {
-    wss = new WebSocket.Server({ port: WS_PORT });
+    wss = new WebSocket.Server({
+        port: WS_PORT,
+        host: WS_HOST,
+        maxPayload: 64 * 1024,
+        perMessageDeflate: false,
+        verifyClient(info, done) {
+            (async () => {
+                if (clients.size >= 50) return done(false, 503, 'Too many WebSocket clients');
+                const requestUrl = new URL(info.req.url || '/', 'ws://localhost');
+                const token = requestUrl.searchParams.get('token') || '';
+                const overlayRole = verifyOverlayAccessToken(token);
+                if (overlayRole) {
+                    info.req.wsIdentity = { type: 'overlay', role: overlayRole };
+                    return done(true);
+                }
+
+                const payload = verifyUserSocketToken(token);
+                const user = await User.findById(payload.userId).select('_id isAdmin isActive');
+                if (!user || user.isActive === false) return done(false, 401, 'Unauthorized');
+                info.req.wsIdentity = { type: 'user', userId: String(user._id), isAdmin: user.isAdmin === true };
+                return done(true);
+            })().catch(() => done(false, 401, 'Unauthorized'));
+        }
+    });
     wss.on('error', (err) => {
         console.error(`❌ WebSocket runtime error on port ${WS_PORT}:`, err.message);
     });
-    wss.on('connection', (ws) => {
+    wss.on('connection', (ws, request) => {
+        ws.identity = request.wsIdentity;
+        ws.isAlive = true;
+        ws.messageWindow = { count: 0, resetAt: Date.now() + 10000 };
         clients.add(ws);
         ws.send(JSON.stringify({ event: 'gift_catalog_update', data: { type: 'gift_catalog_update', gifts: tiktokService.getGiftCatalogState().gifts } }));
         ws.on('message', (raw) => {
             try {
+                const now = Date.now();
+                if (ws.messageWindow.resetAt <= now) ws.messageWindow = { count: 0, resetAt: now + 10000 };
+                ws.messageWindow.count += 1;
+                if (ws.messageWindow.count > 30) return ws.close(1008, 'Message rate exceeded');
                 const packet = JSON.parse(raw.toString() || '{}');
                 // Phase 2A infrastructure only. These events do not trigger media.
                 if (packet.event === 'effect_player_ready' || packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
+                    if (ws.identity?.role !== 'effect-player') return ws.close(1008, 'Event is not allowed');
                     if (packet.event === 'effect_player_ready') effectPlayerClients.add(ws);
                     effectQueue.handleEffectPlayerEvent(packet.event, packet.data || {});
                     broadcastToClients(packet.event, packet.data || {});
@@ -104,11 +206,20 @@ try {
                 console.error('⚠️ WebSocket message ignored:', error.message);
             }
         });
+        ws.on('pong', () => { ws.isAlive = true; });
         ws.on('close', () => {
             clients.delete(ws);
             effectPlayerClients.delete(ws);
         });
     });
+    heartbeat = setInterval(() => {
+        clients.forEach((client) => {
+            if (client.isAlive === false) return client.terminate();
+            client.isAlive = false;
+            client.ping();
+        });
+    }, 30000);
+    heartbeat.unref();
 } catch (err) {
     console.error(`❌ WebSocket startup error on port ${WS_PORT}:`, err.message);
 }
@@ -152,20 +263,33 @@ app.get('/api/queue/status', (_req, res) => {
     res.json(effectQueue.getStatus());
 });
 
-app.post('/api/debug/test-effect-player', (_req, res) => {
-    const payload = { effectId: 'test', effectName: 'TEST EFFECT' };
-    broadcastToClients('effect_player_play_request', payload);
-    res.json({ success: true, event: 'effect_player_play_request', data: payload });
+if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEBUG_ROUTES === 'true') {
+    app.post('/api/debug/test-effect-player', authMiddleware, adminMiddleware, (_req, res) => {
+        const payload = { effectId: 'test', effectName: 'TEST EFFECT' };
+        broadcastToClients('effect_player_play_request', payload);
+        res.json({ success: true, event: 'effect_player_play_request', data: payload });
+    });
+}
+
+const effectRequestLimiter = createRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: 'Too many effect requests. Please try again later.'
 });
 
 // Compatibility endpoint used by older renderer builds
-app.post('/api/effect-requests', async (req, res) => {
+app.post('/api/effect-requests', effectRequestLimiter, async (req, res) => {
     try {
-        const { name, phone, description } = req.body || {};
+        const name = String(req.body?.name || '').trim();
+        const phone = String(req.body?.phone || '').trim();
+        const description = String(req.body?.description || '').trim();
+        if (!name || name.length > 100 || !phone || phone.length > 30 || !description || description.length > 2000) {
+            return res.status(400).json({ success: false, error: 'Invalid effect request.' });
+        }
         const request = await EffectRequest.create({ name, phone, description });
         res.json({ success: true, request });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+    } catch (_error) {
+        res.status(500).json({ success: false, error: 'Unable to create effect request.' });
     }
 });
 
@@ -175,19 +299,27 @@ app.use('/api/banner', bannerRoutes);
 app.use('/api/admin/banner', bannerRoutes);
 
 // System Status API
-app.get('/api/system/status', async (req, res) => {
+app.get('/api/system/status', async (_req, res) => {
     try {
-        const tiktokService = require('./services/tiktokService');
-        const obsService = require('./services/obsService');
         const obsSources = await obsService.getFoundationSourceStatus();
-        res.json({
-            success: true,
+        const databaseConnected = mongoose.connection.readyState === 1 && databaseSchemaReady;
+        res.status(databaseConnected ? 200 : 503).json({
+            success: databaseConnected,
+            database: { connected: databaseConnected },
             tiktok: { connected: tiktokService.isConnected() },
             obs: { connected: obsService.isConnected(), sources: obsSources },
+            websocket: { active: Boolean(wss), clients: clients.size },
+            uptimeSeconds: Math.floor(process.uptime()),
             launcher: { connected: true }
         });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+    } catch (_error) {
+        res.status(503).json({
+            success: false,
+            database: { connected: mongoose.connection.readyState === 1 },
+            tiktok: { connected: tiktokService.isConnected() },
+            obs: { connected: obsService.isConnected() },
+            websocket: { active: Boolean(wss), clients: clients.size }
+        });
     }
 });
 
@@ -204,10 +336,39 @@ app.get('/overlay/gift-menu/', (_req, res) => {
 // ========================================
 // START SERVER
 // ========================================
-app.listen(PORT, () => {
+const httpServer = app.listen(PORT, API_HOST, () => {
     console.log(`🚀 Backend started - EffectStore Server v1.0`);
     console.log(`🚀 Server chạy tại: http://localhost:${PORT}`);
     if (wss) console.log(`📡 WebSocket init at: ws://localhost:${WS_PORT}`);
     else console.log(`⚠️ WebSocket disabled (port ${WS_PORT} unavailable)`);
     console.log(`🔐 DRM Protection: Enabled (Encrypted Streaming)`);
 });
+
+let shuttingDown = false;
+async function gracefulShutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`Received ${signal}. Shutting down services...`);
+
+    if (heartbeat) clearInterval(heartbeat);
+    clients.forEach((client) => client.close(1001, 'Server shutting down'));
+    if (wss) await new Promise((resolve) => wss.close(() => resolve()));
+    await Promise.allSettled([obsService.shutdown(), tiktokService.shutdown()]);
+    await new Promise((resolve) => httpServer.close(() => resolve()));
+    await mongoose.disconnect();
+}
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.once(signal, () => {
+        const forceExit = setTimeout(() => process.exit(1), 10000);
+        forceExit.unref();
+        gracefulShutdown(signal)
+            .then(() => process.exit(0))
+            .catch((error) => {
+                console.error('Graceful shutdown failed:', error.message || error);
+                process.exit(1);
+            });
+    });
+}
+
+module.exports = { app, gracefulShutdown };

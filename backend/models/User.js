@@ -28,4 +28,8 @@ const UserSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+UserSchema.index({ createdAt: -1 });
+UserSchema.index({ isAdmin: 1, isActive: 1 });
+UserSchema.index({ 'purchasedEffects.effectId': 1 });
+
 module.exports = mongoose.model('User', UserSchema);

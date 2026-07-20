@@ -5,9 +5,12 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:verify": "electron-builder --dir -c.win.signAndEditExecutable=false"
   },
   "author": "EffectStore",
+  "companyName": "EffectStore",
+  "copyright": "Copyright © 2026 EffectStore",
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.0.0",
@@ -30,13 +33,41 @@
     },
     "files": [
       "main.js",
+      "backend-manager.js",
+      "diagnostics.js",
       "preload.js",
+      "assets/**/*",
       "renderer/**/*",
       "node_modules/ffmpeg-static/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!.env",
+          "!uploads/**/*",
+          "!tests/**/*",
+          "!scripts/**/*",
+          "!node_modules/.cache/**/*"
+        ]
+      },
+      {
+        "from": "../frontend/overlay",
+        "to": "frontend/overlay"
+      }
     ],
     "win": {
       "target": "nsis",
       "artifactName": "EffectStore-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false
     }
   }
 }

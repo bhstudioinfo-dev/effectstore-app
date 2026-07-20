@@ -69,7 +69,7 @@
         }
 
         get isAdmin() {
-            return window.app && window.app.currentUser && (window.app.currentUser.isAdmin || window.app.currentUser.email === 'admin@effectstore.vn');
+            return Boolean(window.app && window.app.currentUser && window.app.currentUser.isAdmin === true);
         }
 
         get actualPlanKey() {
@@ -104,7 +104,7 @@
         }
 
         countGoalTrackers(items = this.items) {
-            const types = new Set(['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'combo']);
+            const types = new Set(['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'combo']);
             return Array.isArray(items) ? items.filter(item => item && types.has(item.type)).length : 0;
         }
 
@@ -155,7 +155,7 @@
                 const wsScheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 // Detect WebSocket host based on API URL or window.location
                 const host = this.apiBase ? new URL(this.apiBase).hostname : 'localhost';
-                const wsUrl = `${wsScheme}//${host}:9001`;
+                const wsUrl = `${wsScheme}//${host}:9001?token=${encodeURIComponent(this.token)}`;
 
                 console.log('📡 Designer connecting WebSocket:', wsUrl);
                 const ws = new WebSocket(wsUrl);
@@ -165,18 +165,22 @@
                         const packet = JSON.parse(event.data || '{}');
                         if (packet.event === 'gift_menu_progress_update' && packet.data?.items) {
                             let updated = false;
+                            let talentOnly = true;
                             packet.data.items.forEach(layer => {
                                 const existing = this.items.find(x => x.id === layer.id);
                                 if (existing) {
                                     if (layer.currentCount !== undefined) {
+                                        talentOnly = false;
                                         if (existing._originalCurrentCount === undefined) existing._originalCurrentCount = existing.currentCount || 0;
                                         existing.currentCount = layer.currentCount;
                                     }
                                     if (layer.comboCount !== undefined) {
+                                        talentOnly = false;
                                         if (existing._originalComboCount === undefined) existing._originalComboCount = existing.comboCount || 0;
                                         existing.comboCount = layer.comboCount;
                                     }
                                     if (layer.goals !== undefined) {
+                                        talentOnly = false;
                                         const originalByGift = new Map((existing.goals || []).map(goal => [String(goal.giftId), Number(goal.current) || 0]));
                                         existing.goals = layer.goals.map(goal => ({
                                             ...goal,
@@ -184,14 +188,19 @@
                                         }));
                                     }
                                     if (layer.contributors !== undefined) {
+                                        talentOnly = false;
                                         if (existing._originalContributors === undefined) existing._originalContributors = Array.isArray(existing.contributors) ? existing.contributors.map(c => ({ ...c })) : [];
                                         existing.contributors = layer.contributors;
+                                    }
+                                    if (layer.talentCompetition !== undefined) {
+                                        existing.talentCompetition = JSON.parse(JSON.stringify(layer.talentCompetition));
+                                        this.patchTalentLiveVisual(existing);
                                     }
                                     updated = true;
                                 }
                             });
                             if (updated) {
-                                this.renderCanvas();
+                                if (!talentOnly) this.renderCanvas();
                                 if (this.inspectorTab !== 'layers') {
                                     this.renderInspector();
                                 }
@@ -333,7 +342,7 @@
             this.mount.innerHTML = `
                 <div class="gift-menu-designer">
                     <div class="gmd-headline">
-                        <div class="gmd-brand">EffectStore <span>|</span> Menu Designer <em>Pro</em></div>
+                        <div class="gmd-brand">EffectStore <span>|</span> Thiết kế bảng quà <em>Pro</em></div>
                     </div>
                     <div class="gmd-toolbar">
                         <div class="gmd-group">
@@ -1134,6 +1143,10 @@
                     hideBg: item.hideBg,
                     useCustomBg: item.useCustomBg,
                     bgColor: item.bgColor,
+                    useCustomBgGradient: item.useCustomBgGradient,
+                    bgColorGradientFrom: item.bgColorGradientFrom,
+                    bgColorGradientTo: item.bgColorGradientTo,
+                    bgColorGradientAngle: item.bgColorGradientAngle,
                     useCustomTextColor: item.useCustomTextColor,
                     textColor: item.textColor,
                     lockRatio: item.lockRatio,
@@ -1208,6 +1221,7 @@
                     })) : undefined,
                     goals: Array.isArray(item.goals) ? item.goals.map(g => ({ id: g.id, text: g.text, target: g.target, giftId: g.giftId })) : undefined,
                     pkPlayers: Array.isArray(item.pkPlayers) ? item.pkPlayers.map(p => ({ name: p.name, giftId: p.giftId, target: p.target })) : undefined,
+                    talentCompetition: item.talentCompetition,
                 };
                 const contentSignature = JSON.stringify(structuralState);
 
@@ -1229,6 +1243,8 @@
                             else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
                             else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
                             else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
+                            else if (item.type === 'talent-live') { refW = 900; refH = 300; }
+                            else if (item.type === 'talent-leaderboard') { refW = 900; refH = 430; }
                             else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
                             else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
 
@@ -1253,6 +1269,9 @@
                                 : '';
 
                             const isFlexiblePodium = isPodiumBoard && (item.lockRatio === false || hasCustomBoardRatio);
+                            const isTalentBoard = item.type === 'talent-live' || item.type === 'talent-leaderboard';
+                            const talentContentScale = isTalentBoard ? Math.max(0.25, item.height / refH) : 1;
+                            const talentContentWidth = isTalentBoard ? Math.max(240, item.width / talentContentScale) : refW;
                             // The visible podium only occupies the center portion of the 900x560
                             // design. Fit against that footprint so trimming empty board space does
                             // not immediately shrink the title and avatars.
@@ -1270,6 +1289,12 @@
                                         ${transparentWidgetHTML}
                                     </div>
                                     <div class="gmd-visual-scaled-wrapper gmd-board-bg-only" style="z-index:0; width:${refW}px; height:${refH}px; transform:scale(${scaleX}, ${scaleY}); transform-origin:top left; position:absolute; inset:0 auto auto 0; pointer-events:none;">
+                                        ${widgetHTML}
+                                    </div>
+                                </div>
+                            ` : isTalentBoard ? `
+                                <div class="gmd-visual" style="width:100%;height:100%;position:relative;overflow:visible;">
+                                    <div class="gmd-visual-scaled-wrapper gmd-talent-size-aware" style="width:${talentContentWidth}px;height:${refH}px;transform:scale(${talentContentScale});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">
                                         ${widgetHTML}
                                     </div>
                                 </div>
@@ -1806,7 +1831,31 @@
             }
         }
 
-        async uploadPlayerAvatarAsset(file, assetKind = '') {
+        async optimizeAvatarUpload(file, size = 256) {
+            if (!file) return file;
+            try {
+                const bitmap = await createImageBitmap(file);
+                const cropSize = Math.min(bitmap.width, bitmap.height);
+                const sx = Math.round((bitmap.width - cropSize) / 2);
+                const sy = Math.round((bitmap.height - cropSize) / 2);
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d', { alpha: false });
+                ctx.fillStyle = '#0b1020';
+                ctx.fillRect(0, 0, size, size);
+                ctx.drawImage(bitmap, sx, sy, cropSize, cropSize, 0, 0, size, size);
+                bitmap.close();
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+                if (!blob) return file;
+                const name = String(file.name || 'avatar').replace(/\.[^/.]+$/, '') + '-avatar.jpg';
+                return new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() });
+            } catch (_e) {
+                return file;
+            }
+        }
+
+        async uploadPlayerAvatarAsset(file, assetKind = '', squareAvatar = false) {
             if (!file) return null;
             const ext = `.${String(file.name || '').split('.').pop().toLowerCase()}`;
             if (!['.png', '.gif', '.jpg', '.jpeg', '.webp', '.webm', '.mp4'].includes(ext)) {
@@ -1816,7 +1865,7 @@
                 return null;
             }
             const isVideo = ['.webm', '.mp4'].includes(ext);
-            const uploadFile = isVideo ? file : await this.optimizeImageUpload(file, 256);
+            const uploadFile = isVideo ? file : (squareAvatar ? await this.optimizeAvatarUpload(file, 256) : await this.optimizeImageUpload(file, 256));
             const formData = new FormData();
             if (assetKind) formData.append('assetKind', assetKind);
             formData.append('assetFile', uploadFile);
@@ -1838,6 +1887,20 @@
                 console.error(err);
             }
             return null;
+        }
+
+        triggerTalentAvatarUpload(itemId, participantIndex) {
+            if (this.planKey === 'free') {
+                this.showUpgrade('menuAssets', 'Nâng cấp Basic để tải ảnh đại diện thí sinh.');
+                return;
+            }
+            this.pendingTalentAvatar = { itemId, participantIndex };
+            const fileInput = this.mount.querySelector('#gmd-asset-file-input');
+            if (fileInput) {
+                fileInput.value = '';
+                fileInput.accept = 'image/png,image/jpeg,image/webp';
+                fileInput.click();
+            }
         }
 
         triggerFrameUpload(rank) {
@@ -2854,6 +2917,10 @@
                     locked: Boolean(item.locked),
                     zIndex: item.zIndex || idx + 1
                 };
+                if (['talent-live', 'talent-leaderboard'].includes(normalized.type)) {
+                    normalized.groupId = null;
+                    if (normalized.type === 'talent-leaderboard') normalized.lockRatio = false;
+                }
                 if (item.type === 'gift-stack-group') {
                     normalized.children = Array.isArray(item.children) ? item.children.map((child) => ({ ...child })) : [];
                     normalized.itemRefs = Array.isArray(item.itemRefs) ? item.itemRefs : [];
@@ -3001,7 +3068,7 @@
                 });
                 const data = await res.json();
                 if (!res.ok || !(data && data.success)) {
-                    throw new Error((data && (data.message || data.error)) || 'Rename layout is not supported');
+                    throw new Error((data && (data.message || data.error)) || 'Phiên bản hiện tại chưa hỗ trợ đổi tên thiết kế.');
                 }
                 if (data && data.success) {
                     if (window.app && typeof window.app.showNotification === 'function') {
@@ -3120,6 +3187,7 @@
                         this.showUpgrade('menuAssets', 'Nâng cấp Basic để tải ảnh/video riêng vào menu.');
                         return;
                     }
+                    fileInput.accept = '.png,.gif,.webm,image/png,image/gif,video/webm';
                     fileInput.click();
                     return;
                 }
@@ -3161,7 +3229,7 @@
                 if (tmplCard) {
                     const templateId = tmplCard.dataset.templateId;
                     if (this.planKey === 'free' && templateId !== 'tmpl_neon_purple') {
-                        this.showUpgrade('templates', 'Gói Free chỉ sử dụng mẫu cơ bản. Nâng cấp Basic để mở thêm mẫu.');
+                        this.showUpgrade('templates', 'Gói miễn phí chỉ sử dụng được mẫu cơ bản. Nâng cấp lên Basic để mở thêm mẫu.');
                         return;
                     }
                     this.addTemplateToCanvas(templateId);
@@ -3260,7 +3328,7 @@
                 if (action === 'undo') this.undo();
                 if (action === 'redo') this.redo();
                 if (action === 'help') {
-                    alert('Gift Menu Designer\n\n• Kéo thả để di chuyển\n• Shift + click để chọn nhiều\n• Ctrl + D để nhân bản\n• Ctrl + Z / Ctrl + Y để hoàn tác / làm lại\n• Delete để xóa\n• Ctrl + cuộn chuột để zoom\n• Giữ Space hoặc chuột giữa để pan khi đang zoom');
+                    alert('Hướng dẫn thiết kế bảng quà\n\n• Kéo thả để di chuyển\n• Giữ Shift và nhấp chuột để chọn nhiều mục\n• Ctrl + D để nhân bản\n• Ctrl + Z / Ctrl + Y để hoàn tác / làm lại\n• Phím Delete để xóa\n• Giữ Ctrl và cuộn chuột để phóng to, thu nhỏ\n• Giữ phím cách hoặc chuột giữa để di chuyển vùng thiết kế');
                     return;
                 }
                 if (['layer-toggle-visible', 'layer-toggle-lock', 'layer-up', 'layer-down', 'align-left', 'align-center-x', 'align-right', 'align-top', 'align-center-y', 'align-bottom', 'distribute-x', 'distribute-y', 'create-stack-group', 'ungroup-stack'].includes(action) && !['business', 'studio', 'admin'].includes(this.planKey)) {
@@ -3412,7 +3480,7 @@
 
                     if (templateId) {
                         if (this.planKey === 'free' && templateId !== 'tmpl_neon_purple') {
-                            this.showUpgrade('templates', 'Gói Free chỉ sử dụng mẫu cơ bản.');
+                            this.showUpgrade('templates', 'Gói miễn phí chỉ sử dụng được mẫu cơ bản.');
                             return;
                         }
                         this.addTemplateToCanvas(templateId, point.x, point.y);
@@ -3789,6 +3857,9 @@
             if (!listEl) return;
 
             const standardTemplates = this.getDefaultTemplates();
+            standardTemplates.forEach((template) => (template.layers || []).forEach((layer) => {
+                if (layer.talentCompetition && layer.talentCompetition.showTop3 === true) layer.talentCompetition.showTop3 = false;
+            }));
             const allTemplates = [...(this.customTemplates || []), ...standardTemplates];
 
             listEl.innerHTML = `
@@ -3925,8 +3996,9 @@
                     previewHTML = `<div style="font-size: 18px;">📊</div>`;
                 }
 
+                if (t.id === 'tmpl_talent_competition_live') previewHTML = `<div class="gmd-mini-widget" style="background:linear-gradient(155deg,#221434,#090d1f);border:1px solid #fbbf2475;border-radius:6px;padding:5px;width:100%;height:100%;display:flex;flex-direction:column;gap:3px;box-sizing:border-box;color:#fff;"><div style="text-align:center;color:#fbbf24;font-size:7px;font-weight:900;">🏆 Bảng xếp hạng Talent</div><div style="text-align:center;color:#c4b5fd;font-size:4px;font-weight:800;">VÒNG 1 • CẬP NHẬT TRỰC TIẾP</div><div style="display:flex;flex-direction:column;gap:2px;margin-top:3px;"><div style="display:flex;justify-content:space-between;padding:3px 4px;border-radius:3px;background:#fbbf2428;font-size:5px;font-weight:800;"><span>1　Hoàng Long</span><b style="color:#fbbf24;">10.000</b></div><div style="display:flex;justify-content:space-between;padding:3px 4px;border-radius:3px;background:#ffffff0b;font-size:5px;"><span>2　Minh Anh</span><b>0</b></div><div style="display:flex;justify-content:space-between;padding:3px 4px;border-radius:3px;background:#ffffff0b;font-size:5px;"><span>3　Bảo Ngọc</span><b>0</b></div></div></div>`;
                 const isPremium = Boolean(t.isPremium);
-                const priceTag = isPremium ? `${Number(t.price || 0).toLocaleString()}đ` : 'Free';
+                const priceTag = isPremium ? `${Number(t.price || 0).toLocaleString()}đ` : 'Miễn phí';
                 const isPlanLocked = this.actualPlanKey === 'free' && t.id !== 'tmpl_neon_purple';
 
                 return `
@@ -3973,7 +4045,15 @@
                 fileInput.dataset.bound = 'true';
                 fileInput.addEventListener('change', async (e) => {
                     if (e.target.files && e.target.files[0]) {
-                        if (this.pendingUploadPlayerIndex !== undefined) {
+                        if (this.pendingTalentAvatar) {
+                            const pending = this.pendingTalentAvatar;
+                            delete this.pendingTalentAvatar;
+                            const uploadedUrl = await this.uploadPlayerAvatarAsset(e.target.files[0], '', true);
+                            if (uploadedUrl) {
+                                this.updateTalentParticipant(pending.itemId, pending.participantIndex, 'avatar', uploadedUrl);
+                                await this.loadGoalAssets();
+                            }
+                        } else if (this.pendingUploadPlayerIndex !== undefined) {
                             const idx = this.pendingUploadPlayerIndex;
                             delete this.pendingUploadPlayerIndex;
                             const uploadedUrl = await this.uploadPlayerAvatarAsset(e.target.files[0]);
@@ -3991,13 +4071,22 @@
 
         addTemplateToCanvas(templateId, dropX = null, dropY = null) {
             if (this.planKey === 'free' && templateId !== 'tmpl_neon_purple') {
-                this.showUpgrade('templates', 'Gói Free chỉ sử dụng mẫu cơ bản. Nâng cấp Basic để mở thêm mẫu.');
+                this.showUpgrade('templates', 'Gói miễn phí chỉ sử dụng được mẫu cơ bản. Nâng cấp lên Basic để mở thêm mẫu.');
                 return;
             }
             const templates = this.getDefaultTemplates();
             const allTemplates = [...(this.customTemplates || []), ...templates];
             const tmpl = allTemplates.find(t => t.id === templateId);
             if (!tmpl) return;
+            (tmpl.layers || []).forEach((layer) => {
+                if (layer.type === 'talent-leaderboard' && layer.talentCompetition) {
+                    layer.talentCompetition.showTop3 = false;
+                    layer.fontSize = layer.fontSize || 32;
+                    layer.subtitleFontSize = layer.subtitleFontSize || 16;
+                    layer.rowFontSize = layer.rowFontSize || 18;
+                    layer.titleEffect = layer.titleEffect || 'glow';
+                }
+            });
             const incomingGoals = this.countGoalTrackers(tmpl.layers);
             if (this.countGoalTrackers() + incomingGoals > this.goalTrackerLimit) {
                 this.showUpgrade('goalTrackers', `Gói hiện tại chỉ hỗ trợ ${this.goalTrackerLimit} bảng mục tiêu.`);
@@ -4032,7 +4121,7 @@
                 const freshLayer = {
                     ...layer,
                     id: uniqueId,
-                    groupId: groupUniqueId,
+                    groupId: ['talent-live', 'talent-leaderboard'].includes(layer.type) ? null : groupUniqueId,
                     x: Math.round(newX),
                     y: Math.round(newY),
                     zIndex: baseZ + idx + 1
@@ -4054,6 +4143,21 @@
                 if (Array.isArray(freshLayer.contributors)) {
                     freshLayer.contributors = [];
                 }
+                if (freshLayer.talentCompetition && typeof freshLayer.talentCompetition === 'object') {
+                    freshLayer.talentCompetition = JSON.parse(JSON.stringify(freshLayer.talentCompetition));
+                    freshLayer.talentCompetition.id = `talent_${groupUniqueId}`;
+                    freshLayer.talentCompetition.status = 'idle';
+                    freshLayer.talentCompetition.startedAt = null;
+                    freshLayer.talentCompetition.remainingSeconds = Number(freshLayer.talentCompetition.durationSeconds) || 180;
+                    freshLayer.talentCompetition.eventFeed = [];
+                    freshLayer.talentCompetition.participants = (freshLayer.talentCompetition.participants || []).map((person, personIndex) => ({
+                        ...person,
+                        id: `${groupUniqueId}_talent_${personIndex + 1}`,
+                        score: 0,
+                        roundScore: 0
+                    }));
+                    freshLayer.talentCompetition.activeTalentId = freshLayer.talentCompetition.participants[0]?.id || '';
+                }
 
                 return freshLayer;
             });
@@ -4061,7 +4165,8 @@
             this.items.push(...newLayers);
 
             if (newLayers[0]) {
-                this.setSelection(newLayers.map(l => l.id), newLayers[0].id);
+                const independentTalentLayers = newLayers.filter((layer) => ['talent-live', 'talent-leaderboard'].includes(layer.type));
+                this.setSelection(independentTalentLayers.length ? [independentTalentLayers[0].id] : newLayers.map(l => l.id), newLayers[0].id);
             }
 
             this.renderCanvas();
@@ -4155,10 +4260,10 @@
                 return;
             }
 
-            const name = await this.showPromptModal('Nhap ten mau thiet ke:', this.currentLayoutName || 'Gift Menu Template');
+            const name = await this.showPromptModal('Nhập tên mẫu thiết kế:', this.currentLayoutName || 'Mẫu bảng quà');
             if (name === null) return;
 
-            const safeName = String(name || '').trim() || 'Gift Menu Template';
+            const safeName = String(name || '').trim() || 'Mẫu bảng quà';
             const templateId = `custom_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
             const layers = this.items.map((item, idx) => {
                 const logical = this.stageToLogical(item);
@@ -4364,7 +4469,7 @@
                     await this.loadGoalAssets();
                 } else {
                     if (this.handlePlanLimit(data, 'menuAssets')) return;
-                    throw new Error(data.error || 'Lỗi upload');
+                    throw new Error(data.error || 'Không thể tải tệp lên.');
                 }
             } catch (err) {
                 if (window.app && typeof window.app.showNotification === 'function') {
@@ -4663,7 +4768,7 @@
                                 </div>
                             </div>
                         `).join('')}
-                        <button class="gmd-btn" onclick="window.giftMenuDesigner.resetPkScores()" style="width: 100%; font-size: 10px; height: 24px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; margin-top: 4px;"><i class="fas fa-undo"></i> Reset điểm</button>
+                        <button class="gmd-btn" onclick="window.giftMenuDesigner.resetPkScores()" style="width: 100%; font-size: 10px; height: 24px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; margin-top: 4px;"><i class="fas fa-undo"></i> Đặt lại điểm</button>
                     </div>
                 `;
 
@@ -4994,14 +5099,14 @@
 
 
             let testButtonHTML = '';
-            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'combo'].includes(selected.type)) {
+            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'combo'].includes(selected.type)) {
                 testButtonHTML = `
                     <div class="gmd-section" style="border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
                         <h4 style="color: #a855f7; margin-bottom: 6px;"><i class="fas fa-flask"></i> CHẠY THỬ / TEST GOAL</h4>
                         <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.</p>
                         <div style="display: flex; gap: 8px;">
                             <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: #8b5cf6; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.sendSimulatedGift('${selected.id}')"><i class="fas fa-play"></i> Gửi quà Test</button>
-                            <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem('${selected.id}')"><i class="fas fa-undo"></i> Reset lại đầu</button>
+                            <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem('${selected.id}')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>
                         </div>
                     </div>
                 `;
@@ -5179,11 +5284,11 @@
                             <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 100}">
                         </div>
                         <div class="gmd-field">
-                            <label>Số lượng hiện tại (Current)</label>
+                            <label>Số lượng hiện tại</label>
                             <input class="gmd-input" type="number" data-goal-key="currentCount" value="${selected.currentCount || 0}">
                         </div>
                         <div class="gmd-field">
-                            <label>Dòng phụ hiển thị (Subtitle Text)</label>
+                            <label>Dòng phụ hiển thị</label>
                             <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}">
                         </div>
                         <div class="gmd-field">
@@ -5258,7 +5363,7 @@
                             <input class="gmd-input" type="number" data-goal-key="targetCount" value="${selected.targetCount || 100}">
                         </div>
                         <div class="gmd-field">
-                            <label>Số lượng hiện tại (Current)</label>
+                            <label>Số lượng hiện tại</label>
                             <input class="gmd-input" type="number" data-goal-key="currentCount" value="${selected.currentCount || 0}">
                         </div>
                         <div class="gmd-field">
@@ -5272,7 +5377,7 @@
                             </select>
                         </div>
                         <div class="gmd-field">
-                            <label>Dòng phụ hiển thị (Subtitle Text)</label>
+                            <label>Dòng phụ hiển thị</label>
                             <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}">
                         </div>
                         <div class="gmd-field gmd-toggle-row" style="margin-top: 6px;">
@@ -5321,7 +5426,7 @@
                         <h4><i class="fas fa-skull"></i> THÁCH ĐẤU BOSS</h4>
                         ${makeCustomGiftSelect('Chọn quà tấn công Boss', selected.giftId)}
                         <div class="gmd-field">
-                            <label>Tên quái thú / Boss Name</label>
+                            <label>Tên quái thú</label>
                             <input class="gmd-input" type="text" data-goal-key="bossName" value="${selected.bossName || 'BOSS HP'}">
                         </div>
                         <div class="gmd-field">
@@ -5529,7 +5634,7 @@
                             <input class="gmd-input" type="text" data-goal-key="name" value="${selected.name || '🎁 MỞ KHÓA HỘP QUÀ KỲ BÍ'}">
                         </div>
                         <div class="gmd-field">
-                            <label>Dòng phụ hiển thị (Subtitle Text)</label>
+                            <label>Dòng phụ hiển thị</label>
                             <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}">
                         </div>
                         <div class="gmd-field">
@@ -5582,7 +5687,7 @@
                             <input class="gmd-input" type="text" data-goal-key="name" value="${selected.name || 'COMBO ĐANG CHẠY!'}">
                         </div>
                         <div class="gmd-field">
-                            <label>Dòng phụ hiển thị (Subtitle Text)</label>
+                            <label>Dòng phụ hiển thị</label>
                             <input class="gmd-input" type="text" data-goal-key="subtitleText" value="${selected.subtitleText || ''}">
                         </div>
                         <div class="gmd-field">
@@ -5616,12 +5721,56 @@
                         </div>
                     </div>
                 `;
+            } else if (selected.type === 'talent-live' || selected.type === 'talent-leaderboard') {
+                const talent = selected.talentCompetition || {};
+                const participants = Array.isArray(talent.participants) ? talent.participants : [];
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-trophy"></i> CUỘC THI TALENT</h4>
+                        <div class="gmd-field"><label>Tên cuộc thi</label><input class="gmd-input" value="${this.escapeHtml(talent.title || '')}" onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'title', this.value)"></div>
+                        <div class="gmd-field"><label>Vòng thi</label><input class="gmd-input" value="${this.escapeHtml(talent.roundLabel || '')}" onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'roundLabel', this.value)"></div>
+                        <div class="gmd-row">
+                            <div class="gmd-field"><label>Thời lượng mỗi lượt (giây)</label><input class="gmd-input" type="number" min="10" value="${talent.durationSeconds || 180}" onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'durationSeconds', this.value)"></div>
+                            <div class="gmd-field"><label>Mục tiêu donate/điểm</label><input class="gmd-input" type="number" min="0" value="${talent.goalAmount || 0}" onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'goalAmount', this.value)"></div>
+                        </div>
+                        <div class="gmd-field"><label>Đơn vị điểm</label><input class="gmd-input" value="${this.escapeHtml(talent.pointsLabel || 'điểm')}" onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'pointsLabel', this.value)"></div>
+                        <div class="gmd-field"><label>Thí sinh đang biểu diễn</label>
+                            <select class="gmd-select" onchange="window.giftMenuDesigner.setTalentActive('${selected.id}', this.value)">
+                                ${participants.map((person) => `<option value="${person.id}" ${person.id === talent.activeTalentId ? 'selected' : ''}>${this.escapeHtml(person.name || 'Thí sinh')}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;">
+                            <button class="gmd-btn primary" onclick="window.giftMenuDesigner.setTalentStatus('${selected.id}', 'start')"><i class="fas fa-play"></i> Bắt đầu</button>
+                            <button class="gmd-btn" onclick="window.giftMenuDesigner.setTalentStatus('${selected.id}', 'pause')"><i class="fas fa-pause"></i> Tạm dừng</button>
+                            <button class="gmd-btn" style="border-color:rgba(244,63,94,.5);color:#fda4af;" onclick="window.giftMenuDesigner.setTalentStatus('${selected.id}', 'finish')"><i class="fas fa-stop"></i> Kết thúc</button>
+                        </div>
+                        <div style="font-size:10px;color:#c4b5fd;margin-top:8px;line-height:1.4;">Trạng thái: <b>${talent.status === 'running' ? 'Đang nhận donate' : (talent.status === 'paused' ? 'Tạm dừng' : 'Chưa nhận donate')}</b>. Donate chỉ cộng cho thí sinh đang biểu diễn.</div>
+                    </div>
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-users"></i> DANH SÁCH THÍ SINH</h4>
+                        <div style="display:flex;flex-direction:column;gap:7px;max-height:260px;overflow:auto;">
+                            ${participants.map((person, index) => `
+                                <div style="padding:7px;border:1px solid rgba(255,255,255,.09);border-radius:8px;background:rgba(255,255,255,.025);">
+                                    <div style="display:flex;gap:5px;align-items:center;"><span style="color:#fbbf24;font-weight:900;font-size:11px;">#${index + 1}</span><input class="gmd-input" style="min-width:0;flex:1;height:28px;" value="${this.escapeHtml(person.name || '')}" placeholder="Tên thí sinh" onchange="window.giftMenuDesigner.updateTalentParticipant('${selected.id}', ${index}, 'name', this.value)"><button class="gmd-btn" style="color:#fda4af;padding:4px 6px;" onclick="window.giftMenuDesigner.removeTalentParticipant('${selected.id}', ${index})"><i class="fas fa-trash"></i></button></div>
+                                    <input class="gmd-input" style="height:26px;margin-top:5px;" value="${this.escapeHtml(person.performance || '')}" placeholder="Tên tiết mục" onchange="window.giftMenuDesigner.updateTalentParticipant('${selected.id}', ${index}, 'performance', this.value)">
+                                    <div style="display:grid;grid-template-columns:1fr 82px;gap:5px;margin-top:5px;"><button class="gmd-btn" style="height:26px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onclick="window.giftMenuDesigner.triggerTalentAvatarUpload('${selected.id}', ${index})"><i class="fas fa-upload"></i> ${person.avatar ? 'Đổi ảnh đại diện' : 'Tải ảnh đại diện'}</button><input class="gmd-input" type="number" style="height:26px;" value="${Number(person.score) || 0}" title="Tổng điểm" onchange="window.giftMenuDesigner.updateTalentParticipant('${selected.id}', ${index}, 'score', this.value)"></div>
+                                </div>`).join('')}
+                        </div>
+                        <button class="gmd-btn" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.addTalentParticipant('${selected.id}')"><i class="fas fa-user-plus"></i> Thêm thí sinh</button>
+                    </div>
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-wand-magic-sparkles"></i> HIỂN THỊ & HIỆU ỨNG</h4>
+                        ${selected.type === 'talent-live' ? `<div class="gmd-field"><label>Hiệu ứng thanh donate</label><select class="gmd-select" onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'donationEffect', this.value)"><option value="neon-sweep" ${talent.donationEffect === 'neon-sweep' ? 'selected' : ''}>Neon quét sáng</option><option value="glow-pulse" ${talent.donationEffect === 'glow-pulse' ? 'selected' : ''}>Nhịp sáng neon</option><option value="gradient-sweep" ${talent.donationEffect === 'gradient-sweep' ? 'selected' : ''}>Gradient chuyển động</option><option value="candy-stripe" ${talent.donationEffect === 'candy-stripe' ? 'selected' : ''}>Sọc kim tuyến</option></select></div>` : `<div class="gmd-field"><label>Số hạng hiển thị</label><input class="gmd-input" type="number" min="3" max="30" value="${talent.maxRanking || 8}" onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'maxRanking', this.value)"></div>`}
+                        <div class="gmd-field gmd-toggle-row"><label>Hiển thị avatar</label><label class="gmd-switch"><input type="checkbox" ${talent.showAvatar !== false ? 'checked' : ''} onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'showAvatar', this.checked)"><span></span></label></div>
+                        ${selected.type === 'talent-live' ? `<div class="gmd-field gmd-toggle-row"><label>Hiển thị donate mới nhất</label><label class="gmd-switch"><input type="checkbox" ${talent.showFeed !== false ? 'checked' : ''} onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'showFeed', this.checked)"><span></span></label></div>` : `<div class="gmd-field gmd-toggle-row"><label>Hiển thị bục Top 3</label><label class="gmd-switch"><input type="checkbox" ${talent.showTop3 !== false ? 'checked' : ''} onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'showTop3', this.checked)"><span></span></label></div>`}
+                    </div>
+                `;
             } else if (selected.type === 'goal-list') {
                 specificConfigHTML = `
                     <div class="gmd-section">
                         <h4><i class="fas fa-list-ul"></i> MULTI GOAL LIST</h4>
                         <div class="gmd-field">
-                            <label>Dòng chân trang (Footer Text)</label>
+                            <label>Dòng chân trang</label>
                             <input class="gmd-input" type="text" data-goal-key="footerText" value="${selected.footerText || ''}">
                         </div>
                         <div class="gmd-field">
@@ -5738,7 +5887,7 @@
                             </select>
                         </div>
                         <div class="gmd-field">
-                            <label>Bóng chữ (Text Shadow)</label>
+                            <label>Bóng chữ</label>
                             <select class="gmd-select" data-goal-key="textShadow">
                                 <option value="none" ${selected.textShadow === 'none' ? 'selected' : ''}>Không bóng</option>
                                 <option value="0 0 8px rgba(168,85,247,0.8)" ${selected.textShadow === '0 0 8px rgba(168,85,247,0.8)' ? 'selected' : ''}>Tím Neon Glow</option>
@@ -5834,7 +5983,7 @@
 
             const customTextColorControlsHTML = `
                     <div class="gmd-field gmd-toggle-row" style="margin-top: 8px;">
-                        <label style="font-size: 11px;">Tá»± chá»n mÃ u chá»¯</label>
+                        <label style="font-size: 11px;">Tự chọn màu chữ</label>
                         <label class="gmd-switch">
                             <input type="checkbox" data-goal-key="useCustomTextColor" ${selected.useCustomTextColor ? 'checked' : ''}>
                             <span></span>
@@ -5842,7 +5991,7 @@
                     </div>
                     ${selected.useCustomTextColor ? `
                     <div class="gmd-field" style="margin-top: 4px;">
-                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">MÃ u chá»¯</label>
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu chữ</label>
                         <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}">
                     </div>
                     ` : ''}
@@ -5867,7 +6016,7 @@
                                     </div>
                                     
                                     <div class="gmd-field" style="margin-top: 4px;">
-                                        <label style="font-size: 11px;">Tên chính (Main Text)</label>
+                                        <label style="font-size: 11px;">Tên chính</label>
                                         <input class="gmd-input gmd-input-compact" style="width:100%; font-size:11px; height:24px; padding:2px 4px;" data-child-index="${index}" data-child-key="name" value="${child.name || child.giftName || ''}">
                                     </div>
 
@@ -6075,9 +6224,36 @@
                         </div>
                         ${selected.useCustomBg ? `
                         <div class="gmd-field" style="margin-top: 4px;">
-                            <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu nền bảng</label>
-                            <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="bgColor" value="${selected.bgColor || '#0a0a14'}">
+                            <label style="font-size: 11px; display: block; margin-bottom: 4px;">Kiểu nền bảng</label>
+                            <select class="gmd-select" data-goal-key="useCustomBgGradient">
+                                <option value="false" ${!selected.useCustomBgGradient ? 'selected' : ''}>Màu đơn</option>
+                                <option value="true" ${selected.useCustomBgGradient ? 'selected' : ''}>Chuyển màu (Gradient)</option>
+                            </select>
                         </div>
+                        ${!selected.useCustomBgGradient ? `
+                            <div class="gmd-field" style="margin-top: 4px;">
+                                <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu nền bảng</label>
+                                <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="bgColor" value="${selected.bgColor || '#0a0a14'}">
+                            </div>
+                        ` : `
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
+                                <div class="gmd-field" style="margin:0;">
+                                    <label style="font-size:11px; display:block; margin-bottom:4px;">Màu bắt đầu</label>
+                                    <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="bgColorGradientFrom" value="${selected.bgColorGradientFrom || selected.bgColor || '#1e1b4b'}">
+                                </div>
+                                <div class="gmd-field" style="margin:0;">
+                                    <label style="font-size:11px; display:block; margin-bottom:4px;">Màu kết thúc</label>
+                                    <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="bgColorGradientTo" value="${selected.bgColorGradientTo || '#311042'}">
+                                </div>
+                            </div>
+                            <div class="gmd-field" style="margin-top:6px;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
+                                    <label style="margin:0; font-size:11px;">Góc chuyển màu</label>
+                                    <div class="gmd-inline-input gmd-inline-input-single" style="max-width:70px; margin:0;"><input class="gmd-input gmd-input-compact" type="number" min="0" max="360" data-goal-key="bgColorGradientAngle" value="${selected.bgColorGradientAngle !== undefined ? selected.bgColorGradientAngle : 135}"><span>°</span></div>
+                                </div>
+                                <input class="gmd-range" type="range" min="0" max="360" data-goal-key="bgColorGradientAngle" value="${selected.bgColorGradientAngle !== undefined ? selected.bgColorGradientAngle : 135}">
+                            </div>
+                        `}
                         ` : ''}
                         ` : ''}
 
@@ -6138,7 +6314,7 @@
 
             // PHẦN 3: TEST THỬ TRÊN APP
             let part3HTML = '';
-            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'combo'].includes(selected.type)) {
+            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'combo'].includes(selected.type)) {
                 part3HTML = `
                     <div class="gmd-section">
                         <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorTest()">
@@ -6149,7 +6325,7 @@
                             <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.</p>
                             <div style="display: flex; gap: 8px;">
                                 <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: #8b5cf6; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.sendSimulatedGift('${selected.id}')"><i class="fas fa-play"></i> Gửi quà Test</button>
-                                <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem('${selected.id}')"><i class="fas fa-undo"></i> Reset lại đầu</button>
+                                <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem('${selected.id}')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>
                             </div>
                         </div>
                     </div>
@@ -6166,13 +6342,31 @@
                 ${part2HTML}
                 ${part3HTML}
             `;
+            if (selected.type === 'talent-live' || selected.type === 'talent-leaderboard') {
+                this.applyTalentTitleEffect(selected);
+                const styleSection = document.createElement('div');
+                styleSection.className = 'gmd-section';
+                styleSection.innerHTML = `<h4><i class="fas fa-font"></i> CỠ CHỮ & HIỆU ỨNG</h4><div class="gmd-field"><label>Cỡ chữ tiêu đề</label><input class="gmd-input" type="number" min="14" max="96" value="${selected.fontSize || 32}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value)"></div><div class="gmd-row"><div class="gmd-field"><label>Cỡ chữ vòng</label><input class="gmd-input" type="number" min="10" max="48" value="${selected.subtitleFontSize || 16}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','subtitleFontSize',this.value)"></div><div class="gmd-field"><label>Cỡ chữ danh sách</label><input class="gmd-input" type="number" min="10" max="42" value="${selected.rowFontSize || 18}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value)"></div></div><div class="gmd-field"><label>Hiệu ứng tiêu đề</label><select class="gmd-select" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','titleEffect',this.value)"><option value="glow">Phát sáng</option><option value="neon">Neon</option><option value="rainbow">Cầu vồng</option><option value="fire">Lửa</option><option value="pulse">Nhịp đập</option><option value="none">Không hiệu ứng</option></select></div>`;
+                styleSection.insertAdjacentHTML('beforeend', `<div class="gmd-field"><label>Kéo chỉnh cỡ chữ tiêu đề</label><input class="gmd-range" type="range" min="14" max="96" value="${selected.fontSize || 32}" oninput="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value,true)" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value)"></div><div class="gmd-field"><label>Kéo chỉnh cỡ chữ danh sách</label><input class="gmd-range" type="range" min="10" max="42" value="${selected.rowFontSize || 18}" oninput="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value,true)" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value)"></div>`);
+                const firstSection = inspector.querySelector('.gmd-section');
+                if (firstSection) firstSection.parentNode.insertBefore(styleSection, firstSection.nextSibling);
+            }
+            if (selected.type === 'talent-live') {
+                const effectSelect = inspector.querySelector('select[onchange*="donationEffect"]');
+                if (effectSelect) {
+                    [['fire', '🔥 Lửa bùng cháy'], ['electric', '⚡ Điện giật kịch tính']].forEach(([value, label]) => {
+                        if (!effectSelect.querySelector(`option[value="${value}"]`)) effectSelect.insertAdjacentHTML('beforeend', `<option value="${value}">${label}</option>`);
+                    });
+                    effectSelect.value = selected.talentCompetition?.donationEffect || effectSelect.value;
+                }
+            }
         }
 
         updateGoalBoardSelectedItem(key, value, pushHist = true) {
             const item = this.items.find((x) => x.id === this.selectedId);
             if (!item) return;
 
-            const freeStyleKeys = ['barColor', 'glowColor', 'bgColor', 'textColor', 'useCustomBg', 'useCustomTextColor', 'barStyle', 'panelEffect', 'borderEffect', 'panelColor', 'panelGradientFrom', 'panelGradientTo', 'borderColor', 'borderGradientFrom', 'borderGradientTo'];
+            const freeStyleKeys = ['barColor', 'glowColor', 'bgColor', 'bgColorGradientFrom', 'bgColorGradientTo', 'bgColorGradientAngle', 'useCustomBg', 'useCustomBgGradient', 'textColor', 'useCustomTextColor', 'barStyle', 'panelEffect', 'borderEffect', 'panelColor', 'panelGradientFrom', 'panelGradientTo', 'borderColor', 'borderGradientFrom', 'borderGradientTo'];
             if (this.planKey === 'free' && freeStyleKeys.includes(key)) {
                 this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu và dùng hiệu ứng đẹp mắt.');
                 return;
@@ -6227,7 +6421,9 @@
                 } else {
                     item[key] = numVal;
                 }
-            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg' || key === 'showName' || key === 'showVs' || key === 'loopEnabled' || key === 'showPanel' || key === 'showBorder' || key === 'useCustomPkBorderColor' || key === 'timerRunning' || key === 'showTimer' || key === 'useCustomBgGradient') {
+            } else if (key === 'useCustomBgGradient') {
+                item[key] = typeof value === 'boolean' ? value : String(value) === 'true';
+            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg' || key === 'showName' || key === 'showVs' || key === 'loopEnabled' || key === 'showPanel' || key === 'showBorder' || key === 'useCustomPkBorderColor' || key === 'timerRunning' || key === 'showTimer') {
                 item[key] = Boolean(value);
                 if (key === 'lockRatio') {
                     if (item.lockRatio) {
@@ -6290,6 +6486,31 @@
             if (!visualContainer) return;
             delete visualContainer.dataset.contentSignature;
             delete visualContainer.dataset.itemState;
+        }
+
+        patchTalentLiveVisual(item) {
+            if (!item || item.type !== 'talent-live') return false;
+            const root = document.getElementById(`gmd-item-${item.id}`);
+            if (!root) return false;
+            const competition = item.talentCompetition || {};
+            const active = (competition.participants || []).find((p) => p.id === competition.activeTalentId) || {};
+            const score = Number(active.roundScore) || 0;
+            const target = Number(competition.goalAmount) || 0;
+            const pct = target > 0 ? Math.min(100, Math.round(score / target * 100)) : 0;
+            const scoreEl = root.querySelector('.gmd-talent-live-score');
+            const pctEl = root.querySelector('.gmd-talent-live-pct');
+            const progressEl = root.querySelector('.gmd-talent-live-progress');
+            if (!scoreEl || !progressEl) return false;
+            scoreEl.firstChild.textContent = `${score.toLocaleString('vi-VN')} `;
+            if (pctEl) pctEl.textContent = `${pct}%`;
+            progressEl.style.width = `${target > 0 ? pct : 100}%`;
+            const feedEl = root.querySelector('.gmd-talent-live-feed');
+            const feed = (competition.eventFeed || [])[0];
+            if (feedEl) {
+                feedEl.style.display = feed && competition.showFeed !== false ? '' : 'none';
+                if (feed) feedEl.innerHTML = `💝 <b>${this.escapeHtml(feed.nickname || 'Khán giả')}</b> ủng hộ <b style="color:#fbbf24;">${this.escapeHtml(feed.giftName || 'quà')} +${(Number(feed.points) || 0).toLocaleString('vi-VN')}</b>`;
+            }
+            return true;
         }
 
         updateGoalListItem(idx, field, value) {
@@ -6355,6 +6576,10 @@
         async sendSimulatedGift(itemId) {
             const item = this.items.find(x => x.id === itemId);
             if (!item) return;
+            if (item.type === 'talent-live' || item.type === 'talent-leaderboard') {
+                this.testTalentDonation(itemId);
+                return;
+            }
 
             let giftId = 'rose';
             let giftName = 'Rose';
@@ -6491,6 +6716,18 @@
             } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
                 if (item._originalContributors === undefined) item._originalContributors = Array.isArray(item.contributors) ? item.contributors.map(c => ({ ...c })) : [];
                 item.contributors = item._originalContributors.map(c => ({ ...c }));
+            } else if (item.type === 'talent-live' || item.type === 'talent-leaderboard') {
+                this.updateTalentCompetition(itemId, (competition) => {
+                    competition.status = 'idle';
+                    competition.startedAt = null;
+                    competition.remainingSeconds = Number(competition.durationSeconds) || 180;
+                    competition.eventFeed = [];
+                    (competition.participants || []).forEach((person) => {
+                        person.score = 0;
+                        person.roundScore = 0;
+                    });
+                }, 'reset-talent-competition');
+                return;
             } else if (item.type === 'combo') {
                 if (item._originalComboCount === undefined) item._originalComboCount = item.comboCount || 0;
                 item.comboCount = item._originalComboCount;
@@ -6528,6 +6765,133 @@
             if (window.app && typeof window.app.showNotification === 'function') {
                 window.app.showNotification('success', 'Đã reset tiến trình mục tiêu về ban đầu!');
             }
+        }
+
+        getTalentCompetitionItems(itemId) {
+            const current = this.items.find((item) => item.id === itemId);
+            const competitionId = current && current.talentCompetition && current.talentCompetition.id;
+            if (!competitionId) return [];
+            return this.items.filter((item) => item && item.talentCompetition && item.talentCompetition.id === competitionId);
+        }
+
+        updateTalentCompetition(itemId, updater, historyLabel = 'update-talent-competition', patchVisual = false) {
+            const current = this.items.find((item) => item.id === itemId);
+            if (!current || !current.talentCompetition) return;
+            const next = JSON.parse(JSON.stringify(current.talentCompetition));
+            updater(next);
+            this.getTalentCompetitionItems(itemId).forEach((item) => {
+                item.talentCompetition = JSON.parse(JSON.stringify(next));
+            });
+            const patched = patchVisual && this.getTalentCompetitionItems(itemId).filter((item) => item.type === 'talent-live').every((item) => this.patchTalentLiveVisual(item));
+            if (!patched) this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory(historyLabel);
+            this.saveLayout(false, false).catch(() => {});
+        }
+
+        setTalentActive(itemId, talentId) {
+            this.updateTalentCompetition(itemId, (competition) => {
+                competition.activeTalentId = talentId;
+                competition.status = 'idle';
+                competition.startedAt = null;
+                competition.remainingSeconds = Number(competition.durationSeconds) || 180;
+                const person = (competition.participants || []).find((entry) => entry.id === talentId);
+                if (person) person.roundScore = 0;
+            }, 'select-talent');
+        }
+
+        setTalentStatus(itemId, action) {
+            this.updateTalentCompetition(itemId, (competition) => {
+                const now = Date.now();
+                const duration = Math.max(0, Number(competition.durationSeconds) || 180);
+                if (action === 'start') {
+                    competition.status = 'running';
+                    competition.startedAt = new Date(now - Math.max(0, duration - (Number(competition.remainingSeconds) || duration)) * 1000).toISOString();
+                } else if (action === 'pause') {
+                    const started = competition.startedAt ? new Date(competition.startedAt).getTime() : now;
+                    competition.remainingSeconds = Math.max(0, duration - Math.floor((now - started) / 1000));
+                    competition.startedAt = null;
+                    competition.status = 'paused';
+                } else if (action === 'finish') {
+                    competition.status = 'finished';
+                    competition.remainingSeconds = 0;
+                    competition.startedAt = null;
+                }
+            }, `talent-${action}`);
+        }
+
+        updateTalentField(itemId, key, value) {
+            this.updateTalentCompetition(itemId, (competition) => {
+                const numericFields = ['durationSeconds', 'goalAmount', 'maxRanking'];
+                const booleanFields = ['showFeed', 'showAvatar', 'showTop3'];
+                competition[key] = numericFields.includes(key) ? Math.max(0, Number(value) || 0) : (booleanFields.includes(key) ? Boolean(value) : value);
+                if (key === 'durationSeconds' && competition.status !== 'running') competition.remainingSeconds = competition[key];
+            });
+        }
+
+        updateTalentStyle(itemId, key, value, live = false) {
+            const item = this.items.find((entry) => entry.id === itemId);
+            if (!item || !['talent-live', 'talent-leaderboard'].includes(item.type)) return;
+            const numeric = ['fontSize', 'subtitleFontSize', 'rowFontSize', 'valueFontSize'];
+            item[key] = numeric.includes(key) ? Math.max(8, Number(value) || 8) : String(value || 'none');
+            this.invalidateItemVisual(item);
+            this.renderCanvas();
+            this.applyTalentTitleEffect(item);
+            if (live) return;
+            this.renderInspector();
+            this.pushHistory('update-talent-style');
+            this.saveLayout(false, false).catch(() => {});
+        }
+
+        applyTalentTitleEffect(item) {
+            if (!item || !['talent-live', 'talent-leaderboard'].includes(item.type)) return;
+            if (!document.getElementById('gmd-talent-title-effects')) { const s = document.createElement('style'); s.id = 'gmd-talent-title-effects'; s.textContent = '@keyframes gmdTalentTitlePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}@keyframes gmdTalentTitleRainbow{0%{color:#f472b6}50%{color:#fbbf24}100%{color:#22d3ee}}'; document.head.appendChild(s); }
+            const root = document.getElementById(`gmd-item-${item.id}`);
+            const title = root && root.querySelector('.gmd-talent-ranking-widget > div');
+            if (!title) return;
+            const effect = item.titleEffect || 'glow';
+            title.style.animation = '';
+            title.style.textShadow = effect === 'none' ? 'none' : (effect === 'neon' ? '0 0 8px #22d3ee,0 0 22px #a855f7' : effect === 'fire' ? '0 0 10px #ef4444,0 0 24px #f59e0b' : '0 0 14px #fbbf24');
+            title.style.color = effect === 'fire' ? '#fbbf24' : effect === 'neon' ? '#67e8f9' : '';
+            if (effect === 'pulse') title.style.animation = 'gmdTalentTitlePulse 1.4s ease-in-out infinite';
+            if (effect === 'rainbow') title.style.animation = 'gmdTalentTitleRainbow 2.4s linear infinite';
+        }
+
+        updateTalentParticipant(itemId, index, key, value) {
+            this.updateTalentCompetition(itemId, (competition) => {
+                const person = (competition.participants || [])[Number(index)];
+                if (!person) return;
+                person[key] = key === 'score' ? Math.max(0, Number(value) || 0) : value;
+            }, 'update-talent-participant');
+        }
+
+        addTalentParticipant(itemId) {
+            this.updateTalentCompetition(itemId, (competition) => {
+                const participants = Array.isArray(competition.participants) ? competition.participants : [];
+                const index = participants.length + 1;
+                participants.push({ id: `talent_${Date.now()}_${index}`, name: `Thí sinh ${index}`, performance: 'Tiết mục mới', avatar: '', score: 0, roundScore: 0 });
+                competition.participants = participants;
+            }, 'add-talent-participant');
+        }
+
+        removeTalentParticipant(itemId, index) {
+            this.updateTalentCompetition(itemId, (competition) => {
+                const participants = Array.isArray(competition.participants) ? competition.participants : [];
+                const removed = participants.splice(Number(index), 1)[0];
+                if (removed && competition.activeTalentId === removed.id) competition.activeTalentId = participants[0] ? participants[0].id : '';
+                competition.participants = participants;
+            }, 'remove-talent-participant');
+        }
+
+        testTalentDonation(itemId) {
+            this.updateTalentCompetition(itemId, (competition) => {
+                const person = (competition.participants || []).find((entry) => entry.id === competition.activeTalentId);
+                if (!person) return;
+                const points = 500;
+                person.score = (Number(person.score) || 0) + points;
+                person.roundScore = (Number(person.roundScore) || 0) + points;
+                competition.eventFeed = [{ nickname: 'Khán giả thử nghiệm', giftName: 'Galaxy', points, at: new Date().toISOString() }, ...(competition.eventFeed || [])].slice(0, 5);
+            }, 'test-talent-donation', true);
         }
 
         getDefaultTemplates() {
@@ -6669,6 +7033,38 @@
                                 { nickname: '@user - Top 2', value: 850, avatar: '' },
                                 { nickname: '@user - Top 3', value: 620, avatar: '' }
                             ]
+                        }
+                    ]
+                },
+                {
+                    id: 'tmpl_talent_competition_live',
+                    name: '🏆 Cuộc thi Talent Live',
+                    tag: 'Talent',
+                    category: 'talent-competition',
+                    tags: ['talent', 'contest', 'ranking', 'donate'],
+                    isPremium: false,
+                    layers: [
+                        {
+                            id: 'talent_live_widget', name: '🎤 Phần thi trực tiếp', type: 'talent-live',
+                            x: 90, y: 570, w: 900, h: 300, width: 900, height: 300, zIndex: 1, visible: true, locked: false,
+                            barColor: '#f43f5e', glowColor: '#8b5cf6', barHeight: 22, fontSize: 36, subtitleFontSize: 20, valueFontSize: 28, feedFontSize: 17,
+                            talentCompetition: { id: 'talent_default_competition', title: 'TALENT OF THE NIGHT', roundLabel: 'VÒNG 1', status: 'idle', durationSeconds: 180, remainingSeconds: 180, startedAt: null, activeTalentId: 'talent_minh_anh', goalAmount: 10000, pointsLabel: 'điểm', donationEffect: 'neon-sweep', showFeed: true, showAvatar: true, showTop3: true, maxRanking: 8, eventFeed: [], participants: [
+                                { id: 'talent_minh_anh', name: 'Minh Anh', performance: 'Mashup mùa hè', avatar: '', score: 0, roundScore: 0 },
+                                { id: 'talent_hoang_long', name: 'Hoàng Long', performance: 'Nhảy hiện đại', avatar: '', score: 0, roundScore: 0 },
+                                { id: 'talent_bao_ngoc', name: 'Bảo Ngọc', performance: 'Ca khúc tự chọn', avatar: '', score: 0, roundScore: 0 },
+                                { id: 'talent_tu_anh', name: 'Tú Anh', performance: 'Biểu diễn guitar', avatar: '', score: 0, roundScore: 0 }
+                            ] }
+                        },
+                        {
+                            id: 'talent_leaderboard_widget', name: '🏆 Bảng xếp hạng Talent', type: 'talent-leaderboard',
+                            x: 90, y: 110, w: 900, h: 430, width: 900, height: 430, zIndex: 2, visible: true, locked: false,
+                            barColor: '#fbbf24', fontSize: 32, subtitleFontSize: 16, rowFontSize: 18, valueFontSize: 16, lockRatio: false,
+                            talentCompetition: { id: 'talent_default_competition', title: 'TALENT OF THE NIGHT', roundLabel: 'VÒNG 1', status: 'idle', durationSeconds: 180, remainingSeconds: 180, startedAt: null, activeTalentId: 'talent_minh_anh', goalAmount: 10000, pointsLabel: 'điểm', donationEffect: 'neon-sweep', showFeed: true, showAvatar: true, showTop3: true, maxRanking: 8, eventFeed: [], participants: [
+                                { id: 'talent_minh_anh', name: 'Minh Anh', performance: 'Mashup mùa hè', avatar: '', score: 0, roundScore: 0 },
+                                { id: 'talent_hoang_long', name: 'Hoàng Long', performance: 'Nhảy hiện đại', avatar: '', score: 0, roundScore: 0 },
+                                { id: 'talent_bao_ngoc', name: 'Bảo Ngọc', performance: 'Ca khúc tự chọn', avatar: '', score: 0, roundScore: 0 },
+                                { id: 'talent_tu_anh', name: 'Tú Anh', performance: 'Biểu diễn guitar', avatar: '', score: 0, roundScore: 0 }
+                            ] }
                         }
                     ]
                 }
@@ -6815,7 +7211,7 @@
 
                 try {
                     const saved = await this.saveLayout(false, false);
-                    if (saved === false) throw new Error('Layout chưa được lưu');
+                    if (saved === false) throw new Error('Thiết kế chưa được lưu.');
                     const headers = { 'Content-Type': 'application/json' };
                     if (this.token) headers.Authorization = `Bearer ${this.token}`;
 
@@ -6842,7 +7238,7 @@
                             await window.app.loadEffects();
                         }
                     } else {
-                        throw new Error(data.error || 'Lỗi server');
+                        throw new Error(data.error || 'Dịch vụ ứng dụng gặp lỗi. Vui lòng thử lại.');
                     }
                 } catch (e) {
                     saveBtn.disabled = false;

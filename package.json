@@ -4,12 +4,14 @@
   "description": "EffectStore - Premium TikTok Live Effects Manager",
   "main": "desktop/main.js",
   "scripts": {
-    "start": "cd desktop && npm start",
-    "dev": "concurrently \"cd backend && npm start\" \"npm run desktop\"",
-    "desktop": "cd desktop && npm start",
-    "build": "cd desktop && npm run build",
-    "test": "echo \"All tests passed!\" && exit 0",
-    "backend": "cd backend && npm start"
+    "start": "npm --prefix desktop start",
+    "dev": "concurrently \"npm --prefix backend start\" \"npm --prefix desktop start\"",
+    "desktop": "npm --prefix desktop start",
+    "build": "npm run release:check && npm --prefix desktop run build",
+    "build:verify": "npm run release:check && npm --prefix desktop run build:verify",
+    "test": "npm --prefix backend test && node scripts/validate-localization.js",
+    "backend": "npm --prefix backend start",
+    "release:check": "node scripts/validate-release.js"
   },
   "keywords": [
     "electron",

@@ -65,42 +65,16 @@ function decryptVideoStream(encryptedPath) {
  * @param {string} encryptedPath 
  * @param {Object} res - Express response object
  */
-function streamDecryptedVideo(encryptedPath, req, res) {
-    const stat = fs.statSync(encryptedPath);
-    const fileSize = stat.size - IV_LENGTH; // Subtract IV size
-    
-    const range = req.headers.range;
-    if (range) {
-        // Handle range requests for seeking
-        const parts = range.replace(/bytes=/, '').split('-');
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        const chunksize = (end - start) + 1;
-        
-        const iv = fs.readFileSync(encryptedPath, { end: IV_LENGTH - 1 });
-        const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-        
-        const stream = fs.createReadStream(encryptedPath, { 
-            start: IV_LENGTH + start, 
-            end: IV_LENGTH + end 
-        });
-        
-        res.writeHead(206, {
-            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-            'Accept-Ranges': 'bytes',
-            'Content-Length': chunksize,
-            'Content-Type': 'video/webm'
-        });
-        
-        stream.pipe(decipher).pipe(res);
-    } else {
-        res.writeHead(200, {
-            'Content-Length': fileSize,
-            'Content-Type': 'video/webm'
-        });
-        
-        decryptVideoStream(encryptedPath).pipe(res);
-    }
+function streamDecryptedVideo(encryptedPath, _req, res) {
+    // AES-CBC cannot safely decrypt an arbitrary byte range without block-aware
+    // alignment and the preceding cipher block. Stream the complete plaintext
+    // with chunked transfer instead of returning corrupt partial content.
+    res.writeHead(200, {
+        'Accept-Ranges': 'none',
+        'Cache-Control': 'private, no-store',
+        'Content-Type': 'video/webm'
+    });
+    decryptVideoStream(encryptedPath).pipe(res);
 }
 
 module.exports = {

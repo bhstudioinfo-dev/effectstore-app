@@ -10,21 +10,65 @@ const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { paths: dataPaths } = require('../config/dataPaths');
+const {
+    createDatabaseBackup,
+    listDatabaseBackups,
+    restoreDatabaseBackup
+} = require('../services/databaseBackupService');
+const { runSchemaMigrations } = require('../services/schemaMigrationService');
 
-const upload = multer({ dest: 'uploads/temp/' });
-const iconUpload = multer({ dest: 'uploads/temp/' });
+const imageUploadOptions = {
+    dest: dataPaths.tempDir,
+    limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 10 },
+    fileFilter: (_req, file, callback) => {
+        const allowed = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']).has(path.extname(file.originalname || '').toLowerCase());
+        callback(allowed ? null : new Error('Unsupported image upload.'), allowed);
+    }
+};
+const upload = multer(imageUploadOptions);
+const iconUpload = multer(imageUploadOptions);
+
+router.get('/database/backups', authMiddleware, adminMiddleware, async (_req, res) => {
+    try {
+        return res.json({ success: true, backups: await listDatabaseBackups() });
+    } catch (_error) {
+        return res.status(500).json({ success: false, error: 'Không thể tải danh sách backup.' });
+    }
+});
+
+router.post('/database/backup', authMiddleware, adminMiddleware, async (_req, res) => {
+    try {
+        return res.status(201).json({ success: true, backup: await createDatabaseBackup() });
+    } catch (_error) {
+        return res.status(500).json({ success: false, error: 'Không thể tạo database backup.' });
+    }
+});
+
+router.post('/database/restore/:filename', authMiddleware, adminMiddleware, async (req, res) => {
+    if (req.body?.confirmation !== 'RESTORE_MERGE') {
+        return res.status(400).json({ success: false, error: 'Cần xác nhận RESTORE_MERGE.' });
+    }
+    try {
+        const safetyBackup = await createDatabaseBackup();
+        const restored = await restoreDatabaseBackup(req.params.filename);
+        await runSchemaMigrations();
+        return res.json({ success: true, restored, safetyBackup });
+    } catch (_error) {
+        return res.status(500).json({ success: false, error: 'Không thể phục hồi database backup.' });
+    }
+});
 
 // Dashboard Data (Stats + Recent Payments)
 router.get('/dashboard', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const totalEffects = await Effect.countDocuments();
-        const totalUsers = await User.countDocuments();
-        const totalRevenue = await Payment.aggregate([{ $match: { status: 'approved' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]);
-        const pendingPayments = await Payment.countDocuments({ status: 'pending' });
-        
-        const recentPayments = await Payment.find()
-            .sort({ createdAt: -1 })
-            .limit(10);
+        const [totalEffects, totalUsers, totalRevenue, pendingPayments, recentPayments] = await Promise.all([
+            Effect.countDocuments(),
+            User.countDocuments(),
+            Payment.aggregate([{ $match: { status: 'approved' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+            Payment.countDocuments({ status: 'pending' }),
+            Payment.find().sort({ createdAt: -1 }).limit(10).lean()
+        ]);
 
         res.json({ 
             success: true, 
@@ -53,7 +97,7 @@ router.get('/stats', authMiddleware, adminMiddleware, async (req, res) => {
 // Users (matching /api/admin/users)
 router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const users = await User.find().sort({ createdAt: -1 });
+        const users = await User.find().sort({ createdAt: -1 }).lean();
         res.json({ success: true, users });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -100,7 +144,7 @@ router.post('/effect-requests', async (req, res) => {
 
 router.get('/effect-requests', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const requests = await EffectRequest.find().sort({ createdAt: -1 });
+        const requests = await EffectRequest.find().sort({ createdAt: -1 }).lean();
         res.json({ success: true, requests });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -125,7 +169,7 @@ router.put('/effect-requests/:id', authMiddleware, adminMiddleware, async (req, 
 // Get all effects for admin
 router.get('/effects', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const effects = await Effect.find().sort({ createdAt: -1 });
+        const effects = await Effect.find().sort({ createdAt: -1 }).lean();
         res.json({ success: true, effects });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -133,7 +177,7 @@ router.get('/effects', authMiddleware, adminMiddleware, async (req, res) => {
 // Gift Coins Management
 router.get('/gift-coins', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        let configs = await GiftConfig.find().sort({ coins: 1 });
+        const configs = await GiftConfig.find().sort({ coins: 1 }).lean();
         res.json({ success: true, configs });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -169,7 +213,7 @@ router.post('/gift-coins/bulk-update', authMiddleware, adminMiddleware, async (r
 // Gift Icons Management
 router.get('/gift-icons', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const iconsDir = path.join(__dirname, '../assets/gift-icons');
+        const iconsDir = dataPaths.runtimeGiftIconsDir;
         if (!fs.existsSync(iconsDir)) fs.mkdirSync(iconsDir, { recursive: true });
         const files = fs.readdirSync(iconsDir);
         const icons = files.filter(f => /\.(png|jpg|jpeg|gif|svg)$/i.test(f)).map(f => ({
@@ -188,7 +232,7 @@ router.post('/gift-icons/upload', authMiddleware, adminMiddleware, iconUpload.si
             return res.status(400).json({ success: false, message: 'Missing giftId or icon file' });
         }
 
-        const iconsDir = path.join(__dirname, '../assets/gift-icons');
+        const iconsDir = dataPaths.runtimeGiftIconsDir;
         if (!fs.existsSync(iconsDir)) fs.mkdirSync(iconsDir, { recursive: true });
 
         const safeGiftId = String(giftId).toLowerCase().replace(/[^a-z0-9_]/g, '_');
@@ -211,7 +255,7 @@ router.post('/gift-icons/add', authMiddleware, adminMiddleware, iconUpload.singl
             return res.status(400).json({ success: false, message: 'Missing giftId, name or icon file' });
         }
 
-        const iconsDir = path.join(__dirname, '../assets/gift-icons');
+        const iconsDir = dataPaths.runtimeGiftIconsDir;
         if (!fs.existsSync(iconsDir)) fs.mkdirSync(iconsDir, { recursive: true });
 
         const safeGiftId = String(giftId).toLowerCase().replace(/[^a-z0-9_]/g, '_');
@@ -234,7 +278,7 @@ router.post('/gift-icons/add', authMiddleware, adminMiddleware, iconUpload.singl
 
 router.delete('/gift-icons/:giftId', authMiddleware, adminMiddleware, async (req, res) => {
     try {
-        const iconsDir = path.join(__dirname, '../assets/gift-icons');
+        const iconsDir = dataPaths.runtimeGiftIconsDir;
         const safeGiftId = String(req.params.giftId).toLowerCase().replace(/[^a-z0-9_]/g, '_');
         if (!fs.existsSync(iconsDir)) return res.json({ success: true });
 
@@ -264,12 +308,26 @@ router.post('/gift-coins/reset', authMiddleware, adminMiddleware, async (req, re
 
 router.get('/payments/:id', authMiddleware, adminMiddleware, async (req, res) => {
     try {
+        if (!require('../utils/accessControl').isValidResourceId(req.params.id)) {
+            return res.status(400).json({ success: false, message: 'Invalid payment ID' });
+        }
         const payment = await Payment.findById(req.params.id);
         if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
-        res.json({ success: true, payment });
+        const value = payment.toObject();
+        value.proofImage = payment.proofImage
+            ? `/api/payment/admin/proof/${encodeURIComponent(path.basename(payment.proofImage))}`
+            : null;
+        res.json({ success: true, payment: value });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
+});
+
+router.use((error, _req, res, next) => {
+    if (error instanceof multer.MulterError || error?.message === 'Unsupported image upload.') {
+        return res.status(400).json({ success: false, error: error.message });
+    }
+    return next(error);
 });
 
 module.exports = router;

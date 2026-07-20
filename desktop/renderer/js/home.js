@@ -14,6 +14,8 @@ function openBannerManager() {
 class EffectStoreApp {
     constructor() {
         this.effects = [];
+        this.storeEffects = [];
+        this.mappingEffects = [];
         this.ownedEffects = [];
         this.personalEffects = [];
         this.pendingPersonalEffectFiles = null;
@@ -90,6 +92,11 @@ class EffectStoreApp {
             }
             this.machineId = savedMachineId;
 
+            const databaseReady = await this.checkDatabaseSetup();
+            if (!databaseReady) return;
+            const adminReady = await this.checkInitialAdminSetup();
+            if (!adminReady) return;
+
             await this.checkAuth();
 
             if (this.currentUser) {
@@ -109,6 +116,99 @@ class EffectStoreApp {
             }
         } catch (err) {
             console.error('Init error:', err);
+        }
+    }
+
+    async checkDatabaseSetup() {
+        if (!window.electronAPI?.invoke) return true;
+        try {
+            const status = await window.electronAPI.invoke('database-config:status');
+            const modal = document.getElementById('database-setup-modal');
+            if (status?.needsSetup) {
+                if (modal) modal.style.display = 'flex';
+                return false;
+            }
+            if (modal) modal.style.display = 'none';
+            return true;
+        } catch (error) {
+            console.error('Database setup status failed:', error);
+            return true;
+        }
+    }
+
+    async saveDatabaseSetup() {
+        const input = document.getElementById('database-setup-uri');
+        const errorElement = document.getElementById('database-setup-error');
+        const button = document.getElementById('database-setup-save');
+        const mongoUri = String(input?.value || '').trim();
+        if (!/^mongodb(?:\+srv)?:\/\//i.test(mongoUri)) {
+            if (errorElement) errorElement.textContent = 'URI phải bắt đầu bằng mongodb:// hoặc mongodb+srv://';
+            return;
+        }
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Đang kiểm tra kết nối...';
+        }
+        if (errorElement) errorElement.textContent = '';
+        try {
+            const result = await window.electronAPI.invoke('database-config:save', mongoUri);
+            if (!result?.success) throw new Error(result?.error || 'Không thể kết nối MongoDB.');
+            if (input) input.value = '';
+            location.reload();
+        } catch (error) {
+            if (errorElement) errorElement.textContent = error.message;
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Lưu và kiểm tra kết nối';
+            }
+        }
+    }
+
+    async checkInitialAdminSetup() {
+        if (!window.electronAPI?.invoke) return true;
+        try {
+            const status = await window.electronAPI.invoke('admin-setup:status');
+            const modal = document.getElementById('admin-setup-modal');
+            if (status?.success && status.needsAdminSetup) {
+                if (modal) modal.style.display = 'flex';
+                return false;
+            }
+            if (modal) modal.style.display = 'none';
+            return true;
+        } catch (_error) {
+            return true;
+        }
+    }
+
+    async createInitialAdmin() {
+        const errorElement = document.getElementById('admin-setup-error');
+        const button = document.getElementById('admin-setup-save');
+        const payload = {
+            name: document.getElementById('admin-setup-name')?.value || '',
+            phone: document.getElementById('admin-setup-phone')?.value || '',
+            email: document.getElementById('admin-setup-email')?.value || '',
+            password: document.getElementById('admin-setup-password')?.value || ''
+        };
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email.trim())) {
+            if (errorElement) errorElement.textContent = 'Email admin không hợp lệ.';
+            return;
+        }
+        if (payload.password.length < 12) {
+            if (errorElement) errorElement.textContent = 'Mật khẩu phải có ít nhất 12 ký tự.';
+            return;
+        }
+        if (button) { button.disabled = true; button.textContent = 'Đang tạo admin...'; }
+        if (errorElement) errorElement.textContent = '';
+        try {
+            const result = await window.electronAPI.invoke('admin-setup:create', payload);
+            if (!result?.success) throw new Error(result?.error || 'Không thể tạo admin.');
+            payload.password = '';
+            location.reload();
+        } catch (error) {
+            if (errorElement) errorElement.textContent = error.message;
+        } finally {
+            if (button) { button.disabled = false; button.textContent = 'Tạo tài khoản admin'; }
         }
     }
 
@@ -256,7 +356,7 @@ class EffectStoreApp {
             admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
             business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
             pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
-            free: { label: '🆓 Free', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
+            free: { label: '🆓 Miễn phí', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
         };
         const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
         const plan = planInfo[planKey] || planInfo.free;
@@ -462,7 +562,7 @@ class EffectStoreApp {
     async pollSystemStatus() {
         try {
             const res = await fetch(`${this.API_URL}/api/system/status`);
-            if (!res.ok) throw new Error('API Offline');
+            if (!res.ok) throw new Error('Dịch vụ ứng dụng chưa hoạt động');
             const data = await res.json();
             this.updateSystemStatusUI(data);
         } catch (err) {
@@ -571,9 +671,13 @@ class EffectStoreApp {
     }
     async loadEffects() {
         try {
-            const response = await fetch(this.API_URL + '/api/effects');
+            const response = await fetch(this.API_URL + '/api/effects', {
+                headers: { 'Authorization': `Bearer ${this.authToken}` }
+            });
             const data = await response.json();
-            this.effects = data.effects || [];
+            if (!response.ok || data.success === false) throw new Error(data.error || 'Không thể tải cửa hàng.');
+            this.storeEffects = data.effects || [];
+            this.effects = this.storeEffects;
             this.menuTemplateUsage = new Map();
             if (this.authToken) {
                 try {
@@ -591,7 +695,7 @@ class EffectStoreApp {
                 }
             }
             if (this.currentView === 'store') this.renderEffects();
-        } catch (error) { console.error('Error loading effects:', error); this.effects = []; if (this.currentView === 'store') this.renderEffects(); }
+        } catch (error) { console.error('Error loading effects:', error); this.storeEffects = []; this.effects = []; if (this.currentView === 'store') this.renderEffects(); }
     }
     async loadTrending() {
         try {
@@ -638,12 +742,10 @@ class EffectStoreApp {
             if (data.success) {
                 if (data.libraryType === 'all_with_ownership') {
                     // API mới: tất cả effects có flag isOwned
-                    this.effects = data.effects || [];
-                    this.ownedEffects = this.effects.filter(e => e.isOwned);
+                    this.ownedEffects = (data.effects || []).filter(e => e.isOwned);
                 } else if (data.libraryType === 'admin_all') {
                     // Admin: thấy tất cả
-                    this.effects = data.effects || [];
-                    this.ownedEffects = this.effects; // admin "sở hữu" tất cả
+                    this.ownedEffects = data.effects || []; // admin "sở hữu" tất cả
                 } else {
                     // Fallback cÅ©
                     this.ownedEffects = data.effects || [];
@@ -789,7 +891,7 @@ class EffectStoreApp {
             const data = await response.json().catch(() => ({}));
             if (!response.ok || !data.success) {
                 await window.electronAPI.invoke('custom-effects:delete', registerId);
-                if (response.status === 404) throw new Error('Backend chưa nạp API upload hiệu ứng cá nhân. Vui lòng tắt mở lại backend/app rồi thử lại.');
+                if (response.status === 404) throw new Error('Dịch vụ ứng dụng chưa hỗ trợ tải hiệu ứng cá nhân. Hãy đóng, mở lại ứng dụng rồi thử lại.');
                 if (this.handlePlanLimit(data, 'customEffects')) {
                     if (status) status.textContent = 'Gói hiện tại đã đạt giới hạn hiệu ứng cá nhân.';
                     return;
@@ -805,7 +907,7 @@ class EffectStoreApp {
             this.closeModal();
             await this.loadOwnedEffects();
             if (this.currentView === 'gift-mapping') await this.loadEffectsForMapping();
-            this.showNotification('success', 'Đã thêm hiệu ứng cá nhân vào Gift Mapping.');
+            this.showNotification('success', 'Đã thêm hiệu ứng cá nhân vào mục Gán quà với hiệu ứng.');
         } catch (error) {
             if (this.isCustomEffectBridgeMissing(error)) return this.showCustomEffectRestartNotice();
             console.error('Save personal effect error:', error);
@@ -1201,21 +1303,22 @@ class EffectStoreApp {
             this.showNotification('info', '⏳ Đang tạo mã QR...');
             const response = await fetch(this.API_URL + '/api/payment/create-qr', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`
+                },
                 body: JSON.stringify({
-                    amount: total,
-                    effectIds,
-                    userId: this.machineId,
-                    userName: this.currentUser ? this.currentUser.name : 'Khach'
+                    effectIds
                 })
             });
             const data = await response.json();
-            if (!data.success) throw new Error('Failed to create QR');
+            if (!data.success) throw new Error('Không thể tạo mã QR thanh toán.');
 
             // Fix: đảm bảo orderId luôn có giá trị
             const orderId = data.orderId || `DH${Date.now()}`;
             const bank = data.bankInfo || {};
-            const formattedTotal = this.formatPrice(total);
+            const orderTotal = Number(data.amount ?? bank.amount ?? total);
+            const formattedTotal = this.formatPrice(orderTotal);
 
             this.showModal('Thanh toán', `
                         <div style="font-family:inherit;max-width:480px;margin:0 auto;">
@@ -1277,14 +1380,14 @@ class EffectStoreApp {
                                     <li style="font-size:12px;color:#9ca3af;">Kiểm tra số tiền và nội dung chuyển khoản</li>
                                     <li style="font-size:12px;color:#9ca3af;">Chuyển khoản thành công</li>
                                     <li style="font-size:12px;color:#9ca3af;">Nhấn <strong style="color:#fff;">"Xác nhận đã chuyển khoản"</strong> bên dưới</li>
-                                    <li style="font-size:12px;color:#a78bfa;">(Tùy chọn) Upload ảnh để được duyệt nhanh hơn</li>
+                                    <li style="font-size:12px;color:#a78bfa;">(Không bắt buộc) Gửi ảnh chuyển khoản để được kiểm tra nhanh hơn</li>
                                 </ol>
                             </div>
 
                             <!-- Upload ảnh (tùy chọn) -->
                             <div style="margin-bottom:16px;">
                                 <label style="font-size:12px;color:#6b7280;display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                                    📎 Upload ảnh chuyển khoản
+                                    📎 Chọn ảnh chuyển khoản
                                     <span style="font-size:10px;background:rgba(167,139,250,0.15);color:#a78bfa;border:1px solid rgba(167,139,250,0.3);padding:2px 7px;border-radius:20px;font-weight:600;">Không bắt buộc</span>
                                 </label>
                                 <div style="border:2px dashed rgba(255,255,255,0.10);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;transition:border-color 0.2s;"
@@ -1306,7 +1409,7 @@ class EffectStoreApp {
 
                             <!-- Buttons -->
                             <div style="display:flex;flex-direction:column;gap:10px;">
-                                <button onclick="app.confirmPaymentWithProof('${orderId}', ${total})" style="width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#ec4899);border:none;border-radius:12px;color:#fff;font-weight:800;font-size:15px;cursor:pointer;transition:all 0.2s;"
+                                <button onclick="app.confirmPaymentWithProof('${orderId}', ${orderTotal})" style="width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#ec4899);border:none;border-radius:12px;color:#fff;font-weight:800;font-size:15px;cursor:pointer;transition:all 0.2s;"
                                     onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(124,58,237,0.5)'"
                                     onmouseout="this.style.transform='';this.style.boxShadow=''">
                                     ✅ Xác nhận đã chuyển khoản
@@ -1317,7 +1420,7 @@ class EffectStoreApp {
                     `);
 
             // Bắt đầu Polling trạng thái đơn hàng
-            this.startPaymentPolling(orderId, effectIds, total);
+            this.startPaymentPolling(orderId, effectIds, orderTotal);
 
         } catch (error) {
             console.error('Checkout error:', error);
@@ -1345,17 +1448,14 @@ class EffectStoreApp {
             btn.textContent = '⏳ Đang gửi...'; btn.disabled = true;
             const formData = new FormData();
             if (hasProof) formData.append('proof', input.files[0]);
-            formData.append('noProof', hasProof ? 'false' : 'true');
             formData.append('orderId', orderId);
-            formData.append('userId', this.currentUser ? this.currentUser.id : this.machineId);
-            formData.append('effectIds', JSON.stringify(this.pendingEffects.map(e => e.effectId)));
-            formData.append('amount', total);
             const headers = {};
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
             const res = await fetch(this.API_URL + '/api/payment/confirm', {
                 method: 'POST', body: formData, headers
             });
             const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Không thể xác nhận thanh toán.');
             const indicator = document.getElementById('payment-status-indicator');
             if (indicator) {
                 indicator.style.background = 'rgba(16,185,129,0.15)';
@@ -1405,7 +1505,9 @@ class EffectStoreApp {
             }
 
             try {
-                const res = await fetch(`http://127.0.0.1:9000/api/payment/status/${orderId}`);
+                const res = await fetch(`${this.API_URL}/api/payment/status/${orderId}`, {
+                    headers: { 'Authorization': `Bearer ${this.authToken}` }
+                });
                 const data = await res.json();
                 if (data.success && data.status === 'approved') {
                     clearInterval(this.paymentInterval);
@@ -1494,7 +1596,7 @@ class EffectStoreApp {
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok || !data.success) {
-                throw new Error(data.message || data.error || 'OBS hoặc effect_player chưa sẵn sàng.');
+                throw new Error(data.message || data.error || 'OBS hoặc trình phát hiệu ứng chưa sẵn sàng. Hãy kiểm tra kết nối rồi thử lại.');
             }
             this.showNotification('success', 'Đang xem thử trên OBS');
             return true;
@@ -1619,9 +1721,9 @@ class EffectStoreApp {
                 const active = document.querySelector('.filter-btn-new.active');
                 if (active) {
                     const match = active.getAttribute('onclick')?.match(/'([^']+)'/);
-                    filter = match ? match[1] : 'free';
+                    filter = match ? match[1] : 'all';
                 } else {
-                    filter = 'free';
+                    filter = 'all';
                 }
             }
         }
@@ -1631,10 +1733,10 @@ class EffectStoreApp {
 
         if (this.currentView === 'store') {
             if (storeGrid) {
-                this._renderGrid(storeGrid, this.effects, filter, search, 'store');
+                this._renderGrid(storeGrid, this.storeEffects, filter, search, 'store');
             }
             if (flashSaleGrid) {
-                const flashEffects = this.effects.filter(e => {
+                const flashEffects = this.storeEffects.filter(e => {
                     const now = new Date();
                     const endsAt = e.flashSaleEndsAt ? new Date(e.flashSaleEndsAt) : null;
                     return e.isFlashSale && endsAt && endsAt > now;
@@ -1709,7 +1811,11 @@ class EffectStoreApp {
         const usageSignature = this.menuTemplateUsage
             ? Array.from(this.menuTemplateUsage.entries()).filter(([, used]) => used).map(([id]) => id).sort().join(',')
             : '';
-        const cacheKey = `_hasRendered_${viewName}_${(effects || []).length}_${usageSignature}`;
+        const contentSignature = (effects || []).map(effect => {
+            if (!effect || typeof effect !== 'object') return String(effect || '');
+            return [effect._id || effect.id, effect.category, effect.price, effect.previewUrl, effect.thumbUrl, effect.fileUrl].join(':');
+        }).join('|');
+        const cacheKey = `_hasRendered_${viewName}_${contentSignature}_${usageSignature}`;
         
         if (!grid[cacheKey]) {
             grid[cacheKey] = true;
@@ -1991,7 +2097,7 @@ class EffectStoreApp {
     getCategoryName(cat) {
         return {
             transformation: 'Biến hình', gift: 'Quà tặng',
-            background: 'Background', animation: 'Animation',
+            background: 'Phông nền', animation: 'Hoạt ảnh',
             pk: 'PK', meme: 'Meme', team_heart: 'Tym đội',
             menu_template: 'Mẫu Menu Quà'
         }[cat] || cat;
@@ -2016,14 +2122,16 @@ class EffectStoreApp {
     }
 
     showEffectDetail(effectId) {
-        const effect = this.effects.find(e => (e.id || e._id) === effectId) || this.ownedEffects.find(e => (e.id || e._id) === effectId);
+        const effect = this.ownedEffects.find(e => (e.id || e._id) === effectId) || this.effects.find(e => (e.id || e._id) === effectId);
         if (!effect) return;
 
         const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
         const isBusiness = this.currentUser && this.currentUser.subscription === 'business';
         const hasPurchased = this.ownedEffects.some(e => (e.id || e._id) === effectId);
         const isOwned = isAdmin || isBusiness || hasPurchased;
-        const videoUrl = effect.previewUrl ? `http://127.0.0.1:9000${effect.previewUrl}` : '';
+        const videoUrl = effect.previewUrl
+            ? (/^https?:\/\//i.test(effect.previewUrl) ? effect.previewUrl : `${this.API_URL}${effect.previewUrl}`)
+            : '';
 
         document.getElementById('detail-name').textContent = `${effect.icon || '🎬'} ${effect.name}`;
         document.getElementById('detail-category').textContent = this.getCategoryName(effect.category);
@@ -2276,7 +2384,7 @@ class EffectStoreApp {
                         `;
                     }
 
-                    const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'];
+                    const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'];
                     if (customWidgetTypes.includes(item.type)) {
                         const refW = item.lockedW || item.w || 900;
                         const refH = item.lockedH || item.h || 160;
@@ -2470,7 +2578,7 @@ class EffectStoreApp {
                         `;
                     }
 
-                    const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'];
+                    const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'];
                     if (customWidgetTypes.includes(item.type)) {
                         const refW = item.lockedW || item.w || 900;
                         const refH = item.lockedH || item.h || 160;
@@ -2643,7 +2751,7 @@ class EffectStoreApp {
             targetView.classList.remove('hidden');
 
             if (view === 'admin') {
-                document.getElementById('page-title').textContent = '👨‍💼 Admin Dashboard';
+                document.getElementById('page-title').textContent = '👨‍💼 Trang quản trị';
                 this.loadAdminDashboard();
             } else if (view === 'store') {
                 document.getElementById('page-title').textContent = '🛒 Cửa Hàng';
@@ -2652,13 +2760,13 @@ class EffectStoreApp {
                 document.getElementById('page-title').textContent = '📚 Thư Viện';
                 this.loadOwnedEffects();
             } else if (view === 'gift-mapping') {
-                document.getElementById('page-title').textContent = '🎁 Gift Mapping';
+                document.getElementById('page-title').textContent = '🎁 Gán quà với hiệu ứng';
                 this.initGiftMapping(); // Khởi tạo Gift Mapping khi vào view
             } else if (view === 'settings') {
                 document.getElementById('page-title').textContent = '⚙️ Cài Đặt';
                 this.loadSettings();
             } else if (view === 'gift-menu-designer') {
-                document.getElementById('page-title').textContent = '🎨 Gift Menu Designer';
+                document.getElementById('page-title').textContent = '🎨 Thiết kế bảng quà';
                 if (rightSidebar) rightSidebar.style.display = 'none';
                 if (window.giftMenuDesigner) {
                     window.giftMenuDesigner.onViewSwitch();
@@ -2730,7 +2838,7 @@ class EffectStoreApp {
             const data = await response.json();
 
             if (data.success) {
-                this.showNotification('success', '✅ Upload thành công!');
+                this.showNotification('success', '✅ Đã tải lên thành công!');
                 document.getElementById('upload-name').value = '';
                 document.getElementById('upload-price').value = '';
                 document.getElementById('upload-original-price').value = '';
@@ -2970,7 +3078,7 @@ class EffectStoreApp {
                                     <div class="effect-item-row" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display:flex; flex-direction:column; gap:8px;">
                                         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                                             <div style="overflow:hidden;">
-                                                <h4 style="font-size:12px; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">User: ${p.userId}</h4>
+                                                <h4 style="font-size:12px; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Người dùng: ${p.userId}</h4>
                                                 <span style="font-size:10px; color:var(--text-muted);">${new Date(p.createdAt).toLocaleString('vi-VN')}</span>
                                             </div>
                                             <div style="color: #fbbf24; font-weight: 700; font-size: 13px;">${this.formatPrice(p.amount)}</div>
@@ -3176,11 +3284,11 @@ class EffectStoreApp {
                                             <td style="padding:12px 16px;text-align:center;">
                                                  ${u.isAdmin ? '<span style="color:#6b7280;font-size:12px;">—</span>' : `
                                                  <div style="display:flex;gap:6px;justify-content:center;align-items:center;">
-                                                     <button onclick="app.upgradeSubscription('${u._id}','pro',30)" style="padding:5px 10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#f59e0b;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Basic 30 ngày</button>
+                                                     <button onclick="app.upgradeSubscription('${u._id}','pro',30)" style="padding:5px 10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#f59e0b;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Cấp gói Basic 30 ngày</button>
                                                      <button onclick="app.upgradeSubscription('${u._id}','business',30)" style="padding:5px 10px;background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.3);border-radius:6px;color:#ec4899;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Pro 30 ngày</button>
                                                      <button onclick="app.upgradeSubscription('${u._id}','studio',3650)" style="padding:5px 10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:6px;color:#10b981;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Studio</button>
                                                      ${u.subscription && u.subscription !== 'free' ? `<button onclick="app.upgradeSubscription('${u._id}','${u.subscription}',30,true)" style="padding:5px 10px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:6px;color:#3b82f6;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Gia hạn 30 ngày</button>` : ''}
-                                                     <button onclick="app.upgradeSubscription('${u._id}','free',0)" style="padding:5px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;">Hạ Free</button>
+                                                     <button onclick="app.upgradeSubscription('${u._id}','free',0)" style="padding:5px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;">Chuyển về gói miễn phí</button>
                                                  </div>`}
                                              </td>
                                             <td style="padding:12px 16px;text-align:center;">
@@ -3203,7 +3311,7 @@ class EffectStoreApp {
         async upgradeSubscription(userId, plan, durationDays, extend = false) {
         const planLabel = { pro: 'Basic', business: 'Pro', studio: 'Studio', free: 'Miễn phí' }[plan] || plan;
         const msg = plan === 'free'
-            ? `Hạ tài khoản về Free?`
+            ? `Chuyển tài khoản về gói miễn phí?`
             : (extend ? `Gia hạn thêm gói ${planLabel} thêm ${durationDays} ngày?` : `Đặt gói ${planLabel} trong ${durationDays} ngày?`);
         if (!confirm(msg)) return;
         try {
@@ -3254,7 +3362,7 @@ class EffectStoreApp {
             tts: 'Không giới hạn đọc tên/TTS',
             goalTrackers: '10 bảng mục tiêu livestream',
             devices: 'Sử dụng gói phù hợp trên nhiều thiết bị',
-            customEffects: 'Thêm nhiều hiệu ứng cá nhân cho Gift Mapping'
+            customEffects: 'Thêm nhiều hiệu ứng cá nhân để gán với quà tặng'
         };
         const primaryBenefit = featureCopy[feature] || 'Menu quà tặng chuyên nghiệp';
         const currentPlan = String(this.currentUser?.subscription || 'free').toLowerCase();
@@ -3352,20 +3460,21 @@ class EffectStoreApp {
             this.showNotification('info', '⏳ Đang tạo mã QR thanh toán...');
             const response = await fetch(`${this.API_URL}/api/payment/create-qr`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`
+                },
                 body: JSON.stringify({
-                    amount: price,
-                    effectIds: [subCode],
-                    userId: this.machineId,
-                    userName: this.currentUser ? this.currentUser.name : 'Khach'
+                    effectIds: [subCode]
                 })
             });
             const data = await response.json();
-            if (!data.success) throw new Error('Failed to create QR');
+            if (!data.success) throw new Error('Không thể tạo mã QR thanh toán.');
 
             const orderId = data.orderId || `SUB${Date.now()}`;
             const bank = data.bankInfo || {};
-            const formattedPrice = this.formatPrice(price);
+            const orderPrice = Number(data.amount ?? bank.amount ?? price);
+            const formattedPrice = this.formatPrice(orderPrice);
 
             this.showModal(`Thanh toán nâng cấp ${planName}`, `
                         <div style="font-family: 'Inter', sans-serif; max-width: 650px; margin: 0 auto; color: #fff;">
@@ -3428,14 +3537,14 @@ class EffectStoreApp {
                                     <i class="fas fa-spinner fa-spin"></i> Đang kết nối với cổng thanh toán...
                                 </div>
 
-                                <button onclick="app.confirmPaymentWithProof('${orderId}', ${price})" style="width: 100%; padding: 18px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border: none; border-radius: 16px; color: #fff; font-weight: 800; font-size: 16px; cursor: pointer; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3); transition: 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.filter='brightness(1.1)';" onmouseout="this.style.transform=''; this.style.filter='';">
+                                <button onclick="app.confirmPaymentWithProof('${orderId}', ${orderPrice})" style="width: 100%; padding: 18px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border: none; border-radius: 16px; color: #fff; font-weight: 800; font-size: 16px; cursor: pointer; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3); transition: 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.filter='brightness(1.1)';" onmouseout="this.style.transform=''; this.style.filter='';">
                                     XÁC NHẬN ĐÃ CHUYỂN KHOẢN
                                 </button>
                             </div>
                         </div>
                     `);
 
-            this.startPaymentPolling(orderId, [subCode], price);
+            this.startPaymentPolling(orderId, [subCode], orderPrice);
 
         } catch (error) {
             console.error('Buy Subscription error:', error);
@@ -3510,7 +3619,7 @@ class EffectStoreApp {
                     }
                     if (currentType) {
                         const typeText = status.currentPlaybackType === 'live_mapping' ? 'TikTok Live' : 
-                                         status.currentPlaybackType === 'test_mapping' ? 'Test Mapping' : 
+                                         status.currentPlaybackType === 'test_mapping' ? 'Phát thử cách gán' :
                                          status.currentPlaybackType === 'preview_effect' ? 'Xem thử' : 'OBS Layer';
                         currentType.textContent = `Loại: ${typeText}`;
                     }
@@ -3567,7 +3676,7 @@ class EffectStoreApp {
 
     connectWebSocket() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
-        this.ws = new WebSocket(this.WS_URL);
+        this.ws = new WebSocket(`${this.WS_URL}?token=${encodeURIComponent(this.authToken || '')}`);
         this.ws.onopen = () => console.log('✅ WebSocket connected');
         this.ws.onmessage = (event) => {
             try {
@@ -3743,7 +3852,7 @@ class EffectStoreApp {
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok || data.success === false) {
-                throw new Error(data.message || data.error || `Lỗi tải thư viện effect ${res.status}`);
+                throw new Error(data.message || data.error || `Không thể tải thư viện hiệu ứng (mã lỗi ${res.status}).`);
             }
 
             const displayEffects = Array.isArray(data.effects) ? data.effects : [];
@@ -3752,7 +3861,7 @@ class EffectStoreApp {
 
             this.personalEffects = customEffects;
             if (this.currentUser?.isAdmin) {
-                this.effects = purchasedEffects;
+                this.mappingEffects = purchasedEffects;
             } else {
                 this.ownedEffects = [...purchasedEffects, ...customEffects];
             }
@@ -3939,7 +4048,7 @@ class EffectStoreApp {
             const data = await res.json();
             if (data.success) {
                 const names = this.selectedEffects.map(x => x.name).join(', ');
-                this.showNotification('success', `✅ Mapping: ${this.selectedGift.name} → ${names}`);
+                this.showNotification('success', `✅ Đã gán quà ${this.selectedGift.name} với: ${names}`);
                 this.clearSelection();
                 this.loadMappings();
             } else if (!this.handlePlanLimit(data, 'mappings')) {
@@ -4019,7 +4128,7 @@ class EffectStoreApp {
                                             </div>
                                             <span style="color:var(--text-muted);font-size:16px;">▶</span>
                                             <div class="mapping-badge" style="background:rgba(240,147,251,0.1);border-color:rgba(240,147,251,0.2);">
-                                                <span style="font-size:14px;font-weight:600;color:#f093fb;">${m.effects && m.effects.length > 0 ? (m.effects.map(x => x.effectName).join(', ')) : (m.effectName || 'Unknown')}</span>
+                                                <span style="font-size:14px;font-weight:600;color:#f093fb;">${m.effects && m.effects.length > 0 ? (m.effects.map(x => x.effectName).join(', ')) : (m.effectName || 'Không rõ')}</span>
                                             </div>
                                         </div>
                                         <div class="mapping-actions">
@@ -4105,7 +4214,7 @@ class EffectStoreApp {
             const data = await res.json().catch(() => ({}));
 
             if (!res.ok || !data.success) {
-                throw new Error(data.message || data.error || `Lỗi server ${res.status}`);
+                throw new Error(data.message || data.error || `Dịch vụ ứng dụng gặp lỗi ${res.status}.`);
             }
 
             this.showNotification('success', '🎬 Đã chạy thử hiệu ứng trên OBS!');
@@ -4114,7 +4223,7 @@ class EffectStoreApp {
 
             const resolvedDuration = Number(data.duration);
             if (!Number.isFinite(resolvedDuration) || resolvedDuration <= 0) {
-                throw new Error('Server không trả về thời lượng hiệu ứng hợp lệ.');
+                throw new Error('Không đọc được thời lượng hiệu ứng. Hãy kiểm tra tệp rồi thử lại.');
             }
             const totalDuration = Math.max(resolvedDuration * 1000, 1000);
             let timeLeft = totalDuration;
@@ -4164,7 +4273,7 @@ class EffectStoreApp {
 
     connectWebSocket() {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
-        this.ws = new WebSocket(this.WS_URL);
+        this.ws = new WebSocket(`${this.WS_URL}?token=${encodeURIComponent(this.authToken || '')}`);
         this.ws.onopen = () => console.log('✅ WebSocket connected');
         this.ws.onmessage = (event) => {
             try {
@@ -4283,7 +4392,7 @@ class EffectStoreApp {
                                 <tr>
                                     <td>${new Date(log.triggeredAt).toLocaleString('vi-VN')}</td>
                                     <td>🎁 ${log.giftName}</td>
-                                    <td>🎬 ${log.effectName || 'Unknown'}</td>
+                                    <td>🎬 ${log.effectName || 'Không rõ'}</td>
                                     <td>${log.userName || 'N/A'}</td>
                                     <td style="color:#00ff88;">✅</td>
                                 </tr>
@@ -4315,6 +4424,10 @@ class EffectStoreApp {
         const u = this.currentUser;
         if (!u) return;
 
+        const operationsCard = document.getElementById('admin-operations-card');
+        if (operationsCard) operationsCard.style.display = u.isAdmin === true ? 'block' : 'none';
+        if (u.isAdmin === true) this.loadDatabaseBackups();
+
         // 1. Load Account
         const nameEl = document.getElementById('settings-name');
         const emailEl = document.getElementById('settings-email');
@@ -4339,7 +4452,7 @@ class EffectStoreApp {
                 admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
                 business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
                 pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
-                free: { label: '🆓 Free', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
+                free: { label: '🆓 Miễn phí', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
             };
             const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
             const plan = planInfo[planKey] || planInfo.free;
@@ -4416,6 +4529,92 @@ class EffectStoreApp {
         if (defaultUser && liveUserInput && !liveUserInput.value) {
             liveUserInput.value = defaultUser;
         }
+    }
+
+    async loadDatabaseBackups() {
+        if (this.currentUser?.isAdmin !== true) return;
+        const list = document.getElementById('database-backups-list');
+        if (!list) return;
+        list.textContent = 'Đang tải danh sách backup...';
+        try {
+            const response = await fetch(`${this.API_URL}/api/admin/database/backups`, { headers: { 'Authorization': `Bearer ${this.authToken}` } });
+            const data = await response.json();
+            if (!response.ok || data.success !== true) throw new Error(data.error || 'Không thể tải danh sách sao lưu.');
+            list.replaceChildren();
+            if (!data.backups.length) { list.textContent = 'Chưa có bản sao lưu nào.'; return; }
+            data.backups.forEach((backup) => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 12px;background:rgba(255,255,255,.03);border-radius:10px;flex-wrap:wrap;';
+                const info = document.createElement('div');
+                const name = document.createElement('div');
+                name.style.cssText = 'color:#fff;font-size:12px;font-weight:700;word-break:break-all;';
+                name.textContent = backup.filename;
+                const meta = document.createElement('div');
+                meta.style.cssText = 'color:var(--text-muted);font-size:11px;margin-top:3px;';
+                meta.textContent = `${new Date(backup.createdAt).toLocaleString('vi-VN')} · ${(backup.size / 1024).toFixed(1)} KB`;
+                info.append(name, meta);
+                const restore = document.createElement('button');
+                restore.type = 'button';
+                restore.textContent = 'Khôi phục và cập nhật dữ liệu';
+                restore.style.cssText = 'padding:8px 11px;border:1px solid rgba(245,158,11,.35);border-radius:8px;background:rgba(245,158,11,.08);color:#fbbf24;cursor:pointer;font-weight:700;';
+                restore.addEventListener('click', () => this.restoreDatabaseBackup(backup.filename));
+                row.append(info, restore);
+                list.append(row);
+            });
+        } catch (error) {
+            list.textContent = error.message;
+            this.showNotification('error', error.message);
+        }
+    }
+
+    async createDatabaseBackup() {
+        if (this.currentUser?.isAdmin !== true) return;
+        const button = document.getElementById('create-database-backup-btn');
+        if (button) button.disabled = true;
+        try {
+            const response = await fetch(`${this.API_URL}/api/admin/database/backup`, { method: 'POST', headers: { 'Authorization': `Bearer ${this.authToken}` } });
+            const data = await response.json();
+            if (!response.ok || data.success !== true) throw new Error(data.error || 'Không thể tạo bản sao lưu.');
+            this.showNotification('success', `Đã tạo bản sao lưu ${data.backup.filename}`);
+            await this.loadDatabaseBackups();
+        } catch (error) {
+            this.showNotification('error', error.message);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    }
+
+    async restoreDatabaseBackup(filename) {
+        if (this.currentUser?.isAdmin !== true) return;
+        const confirmation = window.prompt(`Hệ thống sẽ cập nhật dữ liệu từ ${filename} và tự tạo một bản sao lưu an toàn trước khi thực hiện.\nNhập RESTORE_MERGE để tiếp tục:`);
+        if (confirmation !== 'RESTORE_MERGE') {
+            if (confirmation !== null) this.showNotification('warning', 'Chuỗi xác nhận không đúng.');
+            return;
+        }
+        try {
+            const response = await fetch(`${this.API_URL}/api/admin/database/restore/${encodeURIComponent(filename)}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${this.authToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ confirmation })
+            });
+            const data = await response.json();
+            if (!response.ok || data.success !== true) throw new Error(data.error || 'Không thể khôi phục dữ liệu từ bản sao lưu.');
+            this.showNotification('success', `Đã cập nhật ${data.restored.restoredDocuments} bản ghi. Bản sao lưu an toàn: ${data.safetyBackup.filename}`);
+            await this.loadDatabaseBackups();
+        } catch (error) {
+            this.showNotification('error', error.message);
+        }
+    }
+
+    async openOperationDirectory(key) {
+        const result = await window.electronAPI?.invoke('operations:open-directory', key);
+        if (!result?.success) this.showNotification('error', result?.error || 'Không thể mở thư mục.');
+    }
+
+    async createDiagnosticReport() {
+        const result = await window.electronAPI?.invoke('operations:create-diagnostics');
+        if (result?.success) this.showNotification('success', `Đã tạo báo cáo: ${result.path}`);
+        else this.showNotification('error', result?.error || 'Không thể tạo báo cáo chẩn đoán.');
     }
 
     async saveOBSSettings() {
@@ -4571,7 +4770,7 @@ function showAccount() {
         admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.12)', border: 'rgba(255,107,53,0.25)' },
         business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.25)' },
         pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.12)', border: 'rgba(212,175,55,0.25)' },
-        free: { label: '🆓 Free', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.18)' }
+        free: { label: '🆓 Miễn phí', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.18)' }
     };
     const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
     const plan = planInfo[planKey] || planInfo.free;
@@ -4829,7 +5028,7 @@ async function loadOBSSources() {
             // Thêm nhóm webcam
             if (webcams.length > 0) {
                 const grp = document.createElement('optgroup');
-                grp.label = '📹 Webcam / Video Capture';
+                grp.label = '📹 Webcam / Thiết bị ghi hình';
                 webcams.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.name;
@@ -4842,7 +5041,7 @@ async function loadOBSSources() {
             // Thêm nhóm source khác
             if (others.length > 0) {
                 const grp = document.createElement('optgroup');
-                grp.label = '📦 Source khác (Audio, Text, Browser...)';
+                grp.label = '📦 Nguồn khác (âm thanh, chữ, trình duyệt...)';
                 others.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.name;

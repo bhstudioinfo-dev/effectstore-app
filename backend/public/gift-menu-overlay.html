@@ -1504,7 +1504,7 @@
           root.innerHTML = `
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #94a3b8; font-family: Inter, sans-serif; text-align: center; padding: 24px; box-sizing: border-box;">
               <div style="font-size: 54px; margin-bottom: 16px; animation: gmdFloat 3s ease-in-out infinite;">🎨</div>
-              <h2 style="color: #fff; margin: 0 0 12px 0; font-size: 24px; font-weight: 800;">Gift Menu Preview</h2>
+              <h2 style="color: #fff; margin: 0 0 12px 0; font-size: 24px; font-weight: 800;">Xem trước bảng quà</h2>
               <p style="margin: 4px 0; font-size: 15px; line-height: 1.5;">Thiết kế của bạn hiện đang trống hoặc chưa được lưu.</p>
               <p style="font-size: 13px; color: #64748b; margin-top: 8px;">Hãy thêm các phần quà/bảng mục tiêu trên Canvas của designer và bấm <strong>Lưu</strong>.</p>
             </div>
@@ -1549,13 +1549,15 @@
             return;
           }
           
-          if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
+          if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
             let refW = item.lockedW || item.w || 900;
             let refH = item.lockedH || item.h || 160;
             if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
               refW = 900;
               refH = 560;
             }
+            if (item.type === 'talent-live') { refW = 900; refH = 300; }
+            if (item.type === 'talent-leaderboard') { refW = 900; refH = 430; }
 
             el.style.left = `${Math.round(offsetX + (item.x || 0) * s)}px`;
             el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
@@ -1723,7 +1725,8 @@
 
     function connectGiftMenuPlaybackSocket() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.hostname || 'localhost'}:9001`;
+      const wsToken = new URLSearchParams(window.location.search).get('wsToken') || '';
+      const wsUrl = `${protocol}//${window.location.hostname || 'localhost'}:9001?token=${encodeURIComponent(wsToken)}`;
       console.log('[DEBUG] connectGiftMenuPlaybackSocket to:', wsUrl);
       const socket = new WebSocket(wsUrl);
 

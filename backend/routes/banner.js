@@ -5,17 +5,25 @@ const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { paths: dataPaths } = require('../config/dataPaths');
 
-const bannersDir = path.join(__dirname, '..', 'uploads', 'banners');
+const bannersDir = dataPaths.bannersDir;
 if (!fs.existsSync(bannersDir)) {
     fs.mkdirSync(bannersDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/temp/'),
+    destination: (_req, _file, cb) => cb(null, dataPaths.tempDir),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
-const upload = multer({ storage });
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 5 },
+    fileFilter: (_req, file, callback) => {
+        const allowed = new Set(['.png', '.jpg', '.jpeg', '.webp']).has(path.extname(file.originalname || '').toLowerCase());
+        callback(allowed ? null : new Error('Unsupported banner image.'), allowed);
+    }
+});
 
 // Get active banner
 router.get('/', async (req, res) => {
@@ -80,6 +88,13 @@ router.delete('/', authMiddleware, adminMiddleware, async (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
+});
+
+router.use((error, _req, res, next) => {
+    if (error instanceof multer.MulterError || error?.message === 'Unsupported banner image.') {
+        return res.status(400).json({ success: false, error: error.message });
+    }
+    return next(error);
 });
 
 module.exports = router;

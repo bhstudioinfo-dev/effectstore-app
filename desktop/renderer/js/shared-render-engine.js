@@ -20,6 +20,23 @@
         return (hex.startsWith('#') && hex.length === 7) ? hex + '40' : hex;
     }
 
+    function widgetBackground(item, fallback) {
+        if (item.hideBg) return 'transparent';
+        if (item.useCustomBgGradient) {
+            const from = item.bgColorGradientFrom || item.bgColor || '#1e1b4b';
+            const to = item.bgColorGradientTo || '#311042';
+            const angle = Math.max(0, Math.min(360, Number(item.bgColorGradientAngle ?? 135)));
+            return `linear-gradient(${angle}deg, ${from}, ${to})`;
+        }
+        return item.useCustomBg ? bg(item.bgColor) : fallback;
+    }
+
+    function widgetBorderColor(item, fallback) {
+        if (item.hideBg) return 'transparent';
+        if (item.useCustomBgGradient) return item.bgColorGradientFrom || item.bgColor || fallback;
+        return item.useCustomBg ? bg(item.bgColor) : fallback;
+    }
+
     function assetUrl(url, apiBase = '') {
         if (!url) return '';
         if (url.startsWith('http')) return url;
@@ -1209,7 +1226,7 @@
         const headerInfo = renderWidgetHeader(item, ctx, 'BANG VINH DANH', color, 'gmd-contrib-header');
         return `
             ${headerInfo.styleInject}
-            <div class="gmd-contributors-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(20, ctx.scale)}px ${color}33, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`}; padding: ${roundPx(12, ctx.scale)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
+            <div class="gmd-contributors-widget" style="background: ${widgetBackground(item, `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${widgetBorderColor(item, color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(20, ctx.scale)}px ${color}33, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`}; padding: ${roundPx(12, ctx.scale)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; gap: ${roundPx(6, ctx.scale)}px; width: 100%;">
                     ${headerInfo.titleHTML}
                     <div class="gmd-contrib-list" style="display: flex; flex-direction: column; gap: ${roundPx(6, ctx.scale)}px;">
@@ -1313,7 +1330,7 @@
 
         return `
             ${headerInfo.styleInject}
-            <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)')} !important; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : '#eab308'}`} !important; box-shadow: ${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(217, 70, 239, 0.25), 0 ${roundPx(12, ctx.scale)}px ${roundPx(48, ctx.scale)}px rgba(0,0,0,0.7)`} !important; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(paddingVal, ctx.scale)}px; display: flex; flex-direction: column; justify-content: ${justifyVal}; height: 100%; box-sizing: border-box; width: 100%; overflow: hidden;">
+            <div class="gmd-podium-widget" style="background: ${widgetBackground(item, 'radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)')} !important; border: 1px solid ${widgetBorderColor(item, '#eab308')} !important; box-shadow: ${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(217, 70, 239, 0.25), 0 ${roundPx(12, ctx.scale)}px ${roundPx(48, ctx.scale)}px rgba(0,0,0,0.7)`} !important; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(paddingVal, ctx.scale)}px; display: flex; flex-direction: column; justify-content: ${justifyVal}; height: 100%; box-sizing: border-box; width: 100%; overflow: hidden;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; width: 100%; ${isTable ? 'height: 100%;' : ''} box-sizing: border-box;">
                     ${headerInfo.titleHTML}
                     <div class="gmd-podium-podium" style="gap: 0; margin-top: ${roundPx(item.podiumHeaderGap !== undefined ? item.podiumHeaderGap : 8, ctx.scale)}px; justify-content: center; flex-shrink: 0; flex: none !important;">
@@ -1334,7 +1351,7 @@
         const isAutoScroll = item.autoScroll === true;
         const goalsList = isAutoScroll && goals.length > 0 ? [...goals, ...goals] : goals;
         return `
-            <div class="gmd-goal-list-widget" style="width:100%; height:100%; padding: ${roundPx(24, ctx.scale)}px; box-sizing: border-box; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : color}`}; border-radius: ${roundPx(24, ctx.scale)}px; display:flex; flex-direction:column; justify-content:flex-start; overflow:hidden; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${color}26, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`};">
+            <div class="gmd-goal-list-widget" style="width:100%; height:100%; padding: ${roundPx(24, ctx.scale)}px; box-sizing: border-box; background: ${widgetBackground(item, `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: 1px solid ${widgetBorderColor(item, color)}; border-radius: ${roundPx(24, ctx.scale)}px; display:flex; flex-direction:column; justify-content:flex-start; overflow:hidden; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${color}26, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`};">
                 <div class="gmd-goal-list-header" style="font-weight:900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 ${roundPx(10, ctx.scale)}px ${color}80; text-align:center; font-size: ${font(ctx, item.fontSize, 32)}px; margin-bottom: ${roundPx(12, ctx.scale)}px; flex-shrink: 0; transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px);">${text(ctx, item.name || 'MUC TIEU HOM NAY')}</div>
                 <div class="gmd-goal-list-scroll-container" style="flex: 1; overflow: hidden; position: relative; width: 100%; transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px);">
                     <div class="${isAutoScroll ? 'gmd-goal-list-marquee-track' : 'gmd-goal-list-static-track'}" style="${isAutoScroll ? `animation: gmdMarqueeVertical ${item.autoScrollSpeed !== undefined ? item.autoScrollSpeed : 15}s linear infinite;` : `display:flex; flex-direction:column; gap: ${roundPx(12, ctx.scale)}px;`}">
@@ -1627,6 +1644,133 @@
         `;
     }
 
+    function talentState(item) {
+        const raw = item.talentCompetition && typeof item.talentCompetition === 'object' ? item.talentCompetition : {};
+        const participants = Array.isArray(raw.participants) ? raw.participants : [];
+        const durationSeconds = Math.max(0, Number(raw.durationSeconds) || 180);
+        const startedAt = raw.startedAt ? new Date(raw.startedAt).getTime() : 0;
+        const elapsed = raw.status === 'running' && startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
+        return {
+            id: raw.id || item.talentCompetitionId || '',
+            title: raw.title || 'CUỘC THI TALENT LIVE',
+            roundLabel: raw.roundLabel || 'VÒNG 1',
+            status: raw.status || 'idle',
+            durationSeconds,
+            remainingSeconds: raw.status === 'running' ? Math.max(0, durationSeconds - elapsed) : Math.max(0, Number(raw.remainingSeconds ?? durationSeconds)),
+            participants,
+            activeTalentId: raw.activeTalentId || participants[0]?.id || '',
+            eventFeed: Array.isArray(raw.eventFeed) ? raw.eventFeed : [],
+            goalAmount: Math.max(0, Number(raw.goalAmount) || 0),
+            donationEffect: raw.donationEffect || 'neon-sweep',
+            showFeed: raw.showFeed !== false,
+            showAvatar: raw.showAvatar !== false,
+            showTop3: raw.showTop3 !== false,
+            maxRanking: Math.max(3, Number(raw.maxRanking) || 8),
+            pointsLabel: raw.pointsLabel || 'điểm'
+        };
+    }
+
+    function talentTime(seconds) {
+        const value = Math.max(0, Math.floor(Number(seconds) || 0));
+        return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+    }
+
+    function talentAvatar(person, size, ctx, color) {
+        const name = text(ctx, person.name || 'Talent');
+        const avatar = assetUrl(person.avatar || '', ctx.apiBase);
+        const initial = safeText(String(person.name || 'T').trim().charAt(0).toUpperCase());
+        return avatar
+            ? `<img src="${avatar}" alt="${name}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid ${color};box-shadow:0 0 ${roundPx(12, ctx.scale)}px ${color}99;">`
+            : `<div style="width:${size}px;height:${size}px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,${color},#312e81);border:2px solid ${color};box-shadow:0 0 ${roundPx(12, ctx.scale)}px ${color}99;font-size:${Math.max(12, Math.round(size * .42))}px;font-weight:900;color:white;">${initial}</div>`;
+    }
+
+    function renderTalentLive(item, options) {
+        const ctx = createContext(options);
+        const talent = talentState(item);
+        const active = talent.participants.find((person) => person.id === talent.activeTalentId) || talent.participants[0] || { name: 'Chưa chọn thí sinh', score: 0, roundScore: 0, performance: '' };
+        const score = Math.max(0, Number(active.roundScore) || 0);
+        const target = talent.goalAmount;
+        const pct = target > 0 ? Math.min(100, Math.round(score / target * 100)) : 0;
+        const primary = item.barColor || '#f43f5e';
+        const secondary = item.glowColor || '#a855f7';
+        const feed = talent.eventFeed[0];
+        const statusText = talent.status === 'running' ? 'ĐANG BIỂU DIỄN' : (talent.status === 'paused' ? 'TẠM DỪNG' : 'CHỜ BẮT ĐẦU');
+        return `
+            <style>
+                @keyframes gmdTalentSweep { from { transform:translateX(-130%); } to { transform:translateX(230%); } }
+                @keyframes gmdTalentPulse { 0%,100% { filter:drop-shadow(0 0 5px ${primary}); } 50% { filter:drop-shadow(0 0 18px ${secondary}); } }
+                @keyframes gmdTalentFire { 0%,100% { filter:drop-shadow(0 0 6px #ef4444) saturate(1.1); } 50% { filter:drop-shadow(0 -4px 20px #f59e0b) saturate(1.8); } }
+                @keyframes gmdTalentElectric { 0%,100% { filter:drop-shadow(0 0 5px #38bdf8); } 25% { filter:drop-shadow(0 0 18px #a5f3fc) brightness(1.35); } 27% { filter:drop-shadow(0 0 5px #38bdf8); } 70% { filter:drop-shadow(0 0 16px #818cf8); } }
+                .gmd-talent-effect-fire { background:linear-gradient(90deg,#991b1b,#ef4444,#f59e0b,#fef08a) !important; animation:gmdTalentFire 1.05s ease-in-out infinite !important; }
+                .gmd-talent-effect-electric { background:linear-gradient(90deg,#1d4ed8,#38bdf8,#e0f2fe,#6366f1) !important; animation:gmdTalentElectric .9s steps(2,end) infinite !important; }
+            </style>
+            <div class="gmd-talent-live-widget" style="width:100%;height:100%;box-sizing:border-box;position:relative;overflow:hidden;padding:${roundPx(20, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(135deg, rgba(23,13,44,.98), rgba(12,18,45,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}99`)};border-radius:${roundPx(24, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}33, inset 0 1px 0 rgba(255,255,255,.12)`};display:flex;flex-direction:column;gap:${roundPx(12, ctx.scale)}px;color:white;">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:${font(ctx, item.headerFontSize, 21)}px;font-weight:900;letter-spacing:.04em;">
+                    <span style="color:${primary};text-shadow:0 0 ${roundPx(12, ctx.scale)}px ${primary};">🔴 ${text(ctx, statusText)} <span style="color:#cbd5e1;font-size:.8em;">• ${text(ctx, talent.roundLabel)}</span></span>
+                    <span class="gmd-talent-time" data-running="${talent.status === 'running'}" data-started-at="${talent.status === 'running' ? new Date(Date.now() - ((talent.durationSeconds - talent.remainingSeconds) * 1000)).toISOString() : ''}" data-duration-secs="${talent.durationSeconds}" style="font-variant-numeric:tabular-nums;padding:${roundPx(5, ctx.scale)}px ${roundPx(10, ctx.scale)}px;border-radius:999px;background:rgba(255,255,255,.08);color:#fef3c7;">${talentTime(talent.remainingSeconds)}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:${roundPx(16, ctx.scale)}px;min-height:0;flex:1;">
+                    ${talent.showAvatar ? talentAvatar(active, roundPx(92, ctx.scale), ctx, primary) : ''}
+                    <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:${roundPx(5, ctx.scale)}px;">
+                        <div style="font-size:${font(ctx, item.fontSize, 36)}px;font-weight:1000;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 ${roundPx(14, ctx.scale)}px ${primary};">${text(ctx, active.name || 'Chưa chọn thí sinh')}</div>
+                        <div style="font-size:${font(ctx, item.subtitleFontSize, 20)}px;color:#ddd6fe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${text(ctx, active.performance || 'Tiết mục đang chờ')}</div>
+                        <div style="display:flex;justify-content:space-between;align-items:end;margin-top:${roundPx(4, ctx.scale)}px;gap:8px;"><span class="gmd-talent-live-score" style="font-size:${font(ctx, item.valueFontSize, 28)}px;color:#fff;font-weight:900;">${score.toLocaleString('vi-VN')} <small style="color:#c4b5fd;font-size:.55em;">${text(ctx, talent.pointsLabel)}</small></span>${target > 0 ? `<span class="gmd-talent-live-pct" style="font-size:${font(ctx, 18, 18)}px;color:#fce7f3;font-weight:800;">${pct}%</span>` : ''}</div>
+                        <div style="height:${length(ctx, item.barHeight, 22)}px;border-radius:999px;background:rgba(0,0,0,.45);padding:3px;overflow:hidden;box-shadow:inset 0 1px 4px rgba(0,0,0,.6);">
+                            <div class="gmd-talent-live-progress gmd-bar-style-${talent.donationEffect} ${talent.donationEffect === 'fire' ? 'gmd-talent-effect-fire' : (talent.donationEffect === 'electric' ? 'gmd-talent-effect-electric' : '')}" style="height:100%;width:${target > 0 ? pct : 100}%;min-width:${score > 0 ? '3%' : '0'};position:relative;overflow:hidden;border-radius:999px;background:linear-gradient(90deg,${primary},${secondary},#fbbf24);box-shadow:0 0 ${roundPx(16, ctx.scale)}px ${primary};animation:${talent.donationEffect === 'fire' || talent.donationEffect === 'electric' ? 'none' : (talent.status === 'running' ? 'gmdTalentPulse 1.5s ease-in-out infinite' : 'none')};transition:width .45s ease;">
+                                <span style="position:absolute;inset:0;width:35%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.8),transparent);animation:gmdTalentSweep 1.4s linear infinite;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ${talent.showFeed && feed ? `<div style="border-top:1px solid rgba(255,255,255,.1);padding-top:${roundPx(8, ctx.scale)}px;color:#fce7f3;font-size:${font(ctx, item.feedFontSize, 17)}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">💝 <b>${text(ctx, feed.nickname || 'Khán giả')}</b> ủng hộ <b style="color:#fbbf24;">${text(ctx, feed.giftName || 'quà')} +${Number(feed.points || 0).toLocaleString('vi-VN')}</b></div>` : ''}
+            </div>
+        `;
+    }
+
+    function renderTalentLeaderboard(item, options) {
+        const ctx = createContext(options);
+        const talent = talentState(item);
+        const primary = item.barColor || '#fbbf24';
+        const ranked = [...talent.participants].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+        const medals = ['🥇', '🥈', '🥉'];
+        const podium = ranked.slice(0, 3);
+        const rows = (talent.showTop3 ? ranked.slice(3) : ranked).slice(0, talent.maxRanking);
+        const listMode = !talent.showTop3;
+        const podiumOrder = [podium[1], podium[0], podium[2]];
+        return `
+            <div class="gmd-talent-ranking-widget" style="width:100%;height:100%;box-sizing:border-box;overflow:hidden;padding:${roundPx(18, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(155deg, rgba(34,20,52,.98), rgba(9,13,31,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}aa`)};border-radius:${roundPx(26, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}2e`};display:flex;flex-direction:column;color:white;">
+                <div style="text-align:center;font-size:${font(ctx, item.fontSize, 32)}px;font-weight:1000;color:${primary};text-shadow:0 0 ${roundPx(14, ctx.scale)}px ${primary};letter-spacing:.03em;">🏆 ${text(ctx, item.name || talent.title || 'BẢNG XẾP HẠNG TALENT')}</div>
+                <div style="text-align:center;color:#c4b5fd;font-size:${font(ctx, item.subtitleFontSize, 16)}px;font-weight:800;margin:${roundPx(3, ctx.scale)}px 0 ${roundPx(10, ctx.scale)}px;">${text(ctx, talent.roundLabel)} • CẬP NHẬT TRỰC TIẾP</div>
+                ${talent.showTop3 ? `<div class="gmd-talent-podium" style="display:flex;align-items:end;justify-content:center;gap:${roundPx(8, ctx.scale)}px;min-height:${roundPx(190, ctx.scale)}px;flex-shrink:0;max-width:680px;width:100%;margin:0 auto;">
+                    ${podiumOrder.map((person, index) => {
+                        if (!person) return '<div style="flex:1;"></div>';
+                        const rank = index === 0 ? 2 : (index === 1 ? 1 : 3);
+                        const color = rank === 1 ? '#fbbf24' : (rank === 2 ? '#cbd5e1' : '#d97706');
+                        const height = rank === 1 ? 120 : (rank === 2 ? 92 : 76);
+                        return `<div style="flex:1;min-width:0;max-width:190px;display:flex;flex-direction:column;align-items:center;gap:${roundPx(4, ctx.scale)}px;">
+                            ${talentAvatar(person, roundPx(rank === 1 ? 58 : 46, ctx.scale), ctx, color)}
+                            <div style="font-size:${font(ctx, item.rowFontSize, 17)}px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${text(ctx, person.name || 'Talent')}</div>
+                            <div style="font-size:${font(ctx, item.valueFontSize, 15)}px;color:${color};font-weight:900;">${Number(person.score || 0).toLocaleString('vi-VN')}</div>
+                            <div style="width:100%;height:${roundPx(height, ctx.scale)}px;display:flex;align-items:start;justify-content:center;padding-top:${roundPx(7, ctx.scale)}px;box-sizing:border-box;border-radius:${roundPx(12, ctx.scale)}px ${roundPx(12, ctx.scale)}px 0 0;background:linear-gradient(180deg,${color}88,${color}24);border:1px solid ${color}99;box-shadow:0 0 ${roundPx(13, ctx.scale)}px ${color}55;font-size:${font(ctx, 27, 27)}px;">${medals[rank - 1]}</div>
+                        </div>`;
+                    }).join('')}
+                </div>` : ''}
+                <div class="gmd-talent-ranking-list ${listMode ? 'gmd-talent-ranking-list-only' : ''}" style="display:flex;flex-direction:column;gap:${roundPx(listMode ? 5 : 6, ctx.scale)}px;margin:${roundPx(listMode ? 10 : 10, ctx.scale)}px auto 0;overflow:hidden;flex:1;width:100%;max-width:${listMode ? '760px' : 'none'};">
+                    ${rows.map((person, index) => {
+                        const rank = listMode ? index + 1 : index + 4;
+                        const active = person.id === talent.activeTalentId;
+                        return `<div style="display:flex;align-items:center;gap:${roundPx(listMode ? 8 : 10, ctx.scale)}px;padding:${roundPx(listMode ? 6 : 7, ctx.scale)}px ${roundPx(listMode ? 10 : 12, ctx.scale)}px;border-radius:${roundPx(11, ctx.scale)}px;background:${active ? `${primary}28` : 'rgba(255,255,255,.045)'};border:1px solid ${active ? `${primary}99` : 'rgba(255,255,255,.07)'};min-height:0;box-shadow:${active ? `0 0 14px ${primary}22` : 'none'};">
+                            <span style="width:${roundPx(24, ctx.scale)}px;color:${active ? primary : '#94a3b8'};font-size:${font(ctx, item.rowFontSize, 18)}px;font-weight:1000;">${rank}</span>
+                            ${talent.showAvatar ? talentAvatar(person, roundPx(listMode ? 24 : 28, ctx.scale), ctx, active ? primary : '#64748b') : ''}
+                            <span style="flex:1;min-width:0;font-size:${font(ctx, item.rowFontSize, listMode ? 16 : 18)}px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${text(ctx, person.name || 'Talent')}</span>
+                            <span style="color:${active ? primary : '#e2e8f0'};font-size:${font(ctx, item.valueFontSize, 16)}px;font-weight:900;">${Number(person.score || 0).toLocaleString('vi-VN')}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+
     function renderByType(item, options) {
         if (!item) return '';
         const type = item.type || 'gift';
@@ -1642,6 +1786,8 @@
             'top-contributors': renderTopContributors,
             'podium-contributors': renderPodium,
             'goal-list': renderGoalList,
+            'talent-live': renderTalentLive,
+            'talent-leaderboard': renderTalentLeaderboard,
             'gift-stack-group': renderGiftStackGroup
         };
         const renderer = map[type];
@@ -1661,6 +1807,8 @@
         renderTopContributors,
         renderPodium,
         renderGoalList,
+        renderTalentLive,
+        renderTalentLeaderboard,
         renderGiftStackGroup,
         renderByType
     });
@@ -1695,6 +1843,14 @@
                     if (el.textContent !== formatted) {
                         el.textContent = formatted;
                     }
+                });
+                document.querySelectorAll('.gmd-talent-time[data-running="true"]').forEach((el) => {
+                    const startedAt = new Date(el.getAttribute('data-started-at') || 0).getTime();
+                    const duration = Number(el.getAttribute('data-duration-secs')) || 0;
+                    if (!startedAt || !duration) return;
+                    const remaining = Math.max(0, duration - Math.floor((Date.now() - startedAt) / 1000));
+                    const formatted = `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
+                    if (el.textContent !== formatted) el.textContent = formatted;
                 });
             }, 200);
         }

@@ -1,4 +1,5 @@
 const { OBSWebSocket } = require('obs-websocket-js');
+const { getOverlayAccessToken } = require('../config/networkSecurity');
 
 class OBSService {
     constructor() {
@@ -104,12 +105,27 @@ class OBSService {
         }, 5000);
     }
 
+    async shutdown() {
+        if (this._reconnectTimer) {
+            clearInterval(this._reconnectTimer);
+            this._reconnectTimer = null;
+        }
+        this._lastConfig = null;
+        this._triggerTokens.clear();
+        if (this._isConnected) {
+            try { await this.obs.disconnect(); } catch (_error) {}
+        }
+        this._isConnected = false;
+    }
+
     async ensureEffectPlayerSource() {
         if (!this._isConnected) return false;
 
         const sceneName = 'EffectStore';
         const sourceName = 'effect_player';
-        const sourceUrl = 'http://localhost:9000/effect-player-overlay.html';
+        const PORT = process.env.PORT || 9000;
+        const wsToken = encodeURIComponent(getOverlayAccessToken('effect-player'));
+        const sourceUrl = `http://localhost:${PORT}/effect-player-overlay.html?wsToken=${wsToken}`;
         const { scenes } = await this.obs.call('GetSceneList');
 
         if (!scenes.some((scene) => scene.sceneName === sceneName)) {
@@ -117,7 +133,14 @@ class OBSService {
         }
 
         const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName });
-        if (sceneItems.some((item) => item.sourceName === sourceName)) return true;
+        if (sceneItems.some((item) => item.sourceName === sourceName)) {
+            await this.obs.call('SetInputSettings', {
+                inputName: sourceName,
+                inputSettings: { url: sourceUrl, shutdown: false, restart_when_active: false },
+                overlay: true
+            });
+            return true;
+        }
 
         await this.obs.call('CreateInput', {
             sceneName,
@@ -142,7 +165,8 @@ class OBSService {
         if (!this._isConnected) return false;
 
         const PORT = process.env.PORT || 9000;
-        const sourceUrl = `http://localhost:${PORT}/gift-menu-overlay.html`;
+        const wsToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
+        const sourceUrl = `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}`;
         const candidateSources = ['gift_menu_overlay', 'gift_menu'];
 
         try {
@@ -154,7 +178,7 @@ class OBSService {
             await this.obs.call('SetInputSettings', {
                 inputName: sourceName,
                 inputSettings: {
-                    url: `${sourceUrl}?t=${Date.now()}`,
+                    url: `${sourceUrl}&t=${Date.now()}`,
                     shutdown: false,
                     restart_when_active: true
                 },

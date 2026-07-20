@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - EffectStore</title>
+    <title>Trang quản trị - EffectStore</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -171,7 +171,7 @@
         <div class="login-box" style="background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
             <div style="text-align:center; margin-bottom:30px;">
                 <div style="font-size:50px; margin-bottom:15px;">👑</div>
-                <h1 class="login-title" style="font-size:28px; margin-bottom:5px;">Admin Dashboard</h1>
+                <h1 class="login-title" style="font-size:28px; margin-bottom:5px;">Trang quản trị</h1>
                 <p class="login-subtitle" style="font-size:14px;">Hệ thống quản lý EffectStore Premium</p>
             </div>
             
@@ -210,7 +210,7 @@
                     <div class="stat-value" id="stat-users">0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">⏳ Pending Payments</div>
+                    <div class="stat-label">⏳ Thanh toán chờ duyệt</div>
                     <div class="stat-value" id="stat-pending">0</div>
                 </div>
                 <div class="stat-card">
@@ -221,7 +221,7 @@
             <div class="section">
                 <h2 class="section-title">💳 Payments</h2>
                 <table>
-                    <thead><tr><th>ID</th><th>User</th><th>Số tiền</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+                    <thead><tr><th>Mã</th><th>Người dùng</th><th>Số tiền</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
                     <tbody id="payments-table"></tbody>
                 </table>
             </div>
@@ -235,7 +235,7 @@
             <div class="section">
                 <h2 class="section-title">👥 Users</h2>
                 <table>
-                    <thead><tr><th>Email</th><th>Name</th><th>Effects đã mua</th><th>Tổng chi</th></tr></thead>
+                    <thead><tr><th>Email</th><th>Tên</th><th>Hiệu ứng đã mua</th><th>Tổng chi</th></tr></thead>
                     <tbody id="users-table"></tbody>
                 </table>
             </div>
@@ -448,22 +448,33 @@ async function viewPayment(id) {
         if (data.success) {
             currentPaymentId = id;
             const p = data.payment;
+            let proofObjectUrl = '';
+            if (p.proofImage) {
+                try {
+                    const proofResponse = await fetch(`http://127.0.0.1:9000${p.proofImage}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (proofResponse.ok) proofObjectUrl = URL.createObjectURL(await proofResponse.blob());
+                } catch (proofError) {
+                    console.error('Load payment proof error:', proofError);
+                }
+            }
             
             const modalHTML = `
                 <div id="payment-modal" class="modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:1000;">
                     <div style="background:var(--dark-light);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.1);">
-                            <h2 style="font-size:1.5em;font-weight:700;">📋 Chi tiết Payment</h2>
+                            <h2 style="font-size:1.5em;font-weight:700;">📋 Chi tiết thanh toán</h2>
                             <button onclick="closePaymentModal()" style="background:none;border:none;color:var(--gray);font-size:1.5em;cursor:pointer;width:36px;height:36px;border-radius:8px;">×</button>
                         </div>
                         <div style="display:grid;gap:16px;">
-                            <div><strong>🆔 Payment ID:</strong> <code style="background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:4px;">${p._id}</code></div>
-                            <div><strong>👤 User ID:</strong> <code style="background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:4px;">${p.userId}</code></div>
+                            <div><strong>🆔 Mã thanh toán:</strong> <code style="background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:4px;">${p._id}</code></div>
+                            <div><strong>👤 Mã người dùng:</strong> <code style="background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:4px;">${p.userId}</code></div>
                             <div><strong>💰 Số tiền:</strong> <span style="color:var(--gold);font-size:1.3em;font-weight:700;">${formatPrice(p.amount)}</span></div>
                             <div><strong>📊 Trạng thái:</strong> <span class="badge badge-${p.status}" style="padding:6px 14px;border-radius:20px;font-size:0.85em;font-weight:600;">${p.status}</span></div>
                             <div><strong>🖼️ Có ảnh:</strong> ${p.hasProof ? '<span style="color:var(--success)">✅ Có</span>' : '<span style="color:var(--gray)">❌ Không</span>'}</div>
                             <div><strong>⏰ Ngày tạo:</strong> ${new Date(p.createdAt).toLocaleString('vi-VN')}</div>
-                            ${p.proofImage ? `<div><strong>📸 Ảnh chuyển khoản:</strong><br><img src="http://127.0.0.1:9000${p.proofImage}" style="max-width:100%;border-radius:12px;margin-top:12px;" alt="Proof"></div>` : ''}
+                            ${proofObjectUrl ? `<div><strong>📸 Ảnh chuyển khoản:</strong><br><img src="${proofObjectUrl}" style="max-width:100%;border-radius:12px;margin-top:12px;" alt="Proof"></div>` : ''}
                         </div>
                         <div style="display:flex;gap:12px;margin-top:24px;">
                             ${p.status === 'pending' ? `
