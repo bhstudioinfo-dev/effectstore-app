@@ -1587,6 +1587,9 @@
             const isFlexiblePodium = isPodiumBoard && (item.lockRatio === false || hasCustomBoardRatio);
             const boardWidth = item.width || refW / 3;
             const boardHeight = item.height || refH / 3;
+            const isTalentBoard = item.type === 'talent-live' || item.type === 'talent-leaderboard';
+            const talentContentScale = isTalentBoard ? Math.max(0.25, boardHeight / refH) : 1;
+            const talentContentWidth = isTalentBoard ? Math.max(240, boardWidth / talentContentScale) : refW;
             const podiumContentScale = Math.min(boardWidth / 620, boardHeight / 330);
             const podiumContentLeft = ((boardWidth / 2) - ((refW * podiumContentScale) / 2)) * s;
             const podiumContentTop = ((boardHeight / 2) - ((refH * podiumContentScale) / 2)) * s;
@@ -1600,6 +1603,10 @@
                 ${transparentWidgetHTML}
               </div>
               <div class="gmd-visual-scaled-wrapper gmd-board-bg-only" style="z-index:0; width:${refW}px; height:${refH}px; transform:scale(${scaleX * s}, ${scaleY * s}); transform-origin:top left; position:absolute; inset:0 auto auto 0; pointer-events:none;">
+                ${widgetHTML}
+              </div>
+            ` : isTalentBoard ? `
+              <div class="gmd-visual-scaled-wrapper gmd-talent-size-aware" style="width:${talentContentWidth}px;height:${refH}px;transform:scale(${talentContentScale * s});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">
                 ${widgetHTML}
               </div>
             ` : `
