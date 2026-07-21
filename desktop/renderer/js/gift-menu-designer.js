@@ -5782,6 +5782,16 @@
             } else if (selected.type === 'challenge-wheel') {
                 const segments = Array.isArray(selected.segments) ? selected.segments : [];
                 specificConfigHTML = `
+                    <div class="gmd-section" style="background:linear-gradient(135deg,rgba(139,92,246,.12),rgba(34,211,238,.08));border-color:rgba(139,92,246,.35);">
+                        <h4><i class="fas fa-circle-info"></i> CÁCH SỬ DỤNG</h4>
+                        <div style="font-size:11px;color:#cbd5e1;line-height:1.6;">
+                            <div><b style="color:#fbbf24;">1.</b> Nhập các thử thách ở Phần 3.</div>
+                            <div><b style="color:#fbbf24;">2.</b> Chỉnh tiêu đề, màu và kích thước ở Phần 2.</div>
+                            <div><b style="color:#fbbf24;">3.</b> Bấm <b>Lưu</b>, sau đó vào <b>Gán hiệu ứng</b>.</div>
+                            <div><b style="color:#fbbf24;">4.</b> Chọn món quà và gán với vòng quay này.</div>
+                            <div><b style="color:#fbbf24;">5.</b> Khi donate đúng quà, vòng quay tự xuất hiện trên OBS.</div>
+                        </div>
+                    </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-sliders-h"></i> PHẦN 2: TÙY CHỈNH VÒNG QUAY</h4>
                         <div class="gmd-field"><label>Tiêu đề vòng quay</label><input class="gmd-input" value="${this.escapeHtml(selected.title || '')}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','title',this.value)"></div>
@@ -5795,6 +5805,9 @@
                     </div>
                     <div class="gmd-section"><h4><i class="fas fa-vial"></i> KIỂM TRA</h4><div style="font-size:11px;color:#94a3b8;line-height:1.4;">Vòng quay sẽ xuất hiện trên OBS khi món quà được mapping và donate thực tế.</div></div>
                 `;
+                if (selected.type === 'challenge-wheel') {
+                    specificConfigHTML += `<div class="gmd-section"><h4><i class="fas fa-sliders"></i> HÀNH VI VÒNG QUAY</h4><div class="gmd-row"><div class="gmd-field"><label>Thời gian quay (giây)</label><input class="gmd-input" type="number" min="2" max="30" value="${Math.round((selected.durationMs || 6500) / 1000)}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','durationMs',Number(this.value)*1000)"></div><div class="gmd-field"><label>Tự ẩn sau (giây)</label><input class="gmd-input" type="number" min="0" max="60" value="${Math.round((selected.autoHideMs || 7000) / 1000)}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','autoHideMs',Number(this.value)*1000)"></div></div><button class="gmd-btn primary" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.previewChallengeWheelSpin('${selected.id}')"><i class="fas fa-play"></i> Xem thử vòng quay</button></div>`;
+                }
             } else if (selected.type === 'goal-list') {
                 specificConfigHTML = `
                     <div class="gmd-section">
@@ -6345,17 +6358,18 @@
             // PHẦN 3: TEST THỬ TRÊN APP
             let part3HTML = '';
             if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'combo'].includes(selected.type)) {
+                const isChallengeWheel = selected.type === 'challenge-wheel';
                 part3HTML = `
                     <div class="gmd-section">
                         <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorTest()">
-                            <span><i class="fas fa-flask"></i> PHẦN 3: TEST THỬ TRÊN APP</span>
+                            <span><i class="fas ${isChallengeWheel ? 'fa-dharmachakra' : 'fa-flask'}"></i> ${isChallengeWheel ? 'PHẦN 3: TEST QUAY THỬ' : 'PHẦN 3: TEST THỬ TRÊN APP'}</span>
                             <i class="fas ${this.inspectorTestExpanded !== false ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
                         </h4>
                         <div style="display: ${this.inspectorTestExpanded !== false ? 'block' : 'none'};">
-                            <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.</p>
+                            <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">${isChallengeWheel ? 'Bấm nút để quay thử ngay trong app. Đây chỉ là mô phỏng, không gửi quà và không kích hoạt OBS.' : 'Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.'}</p>
                             <div style="display: flex; gap: 8px;">
-                                <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: #8b5cf6; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.sendSimulatedGift('${selected.id}')"><i class="fas fa-play"></i> Gửi quà Test</button>
-                                <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem('${selected.id}')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>
+                                <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: ${isChallengeWheel ? 'linear-gradient(135deg,#ef2029,#f59e0b)' : '#8b5cf6'}; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.${isChallengeWheel ? `previewChallengeWheelSpin('${selected.id}')` : `sendSimulatedGift('${selected.id}')`}"><i class="fas ${isChallengeWheel ? 'fa-dharmachakra' : 'fa-play'}"></i> ${isChallengeWheel ? 'Test quay thử' : 'Gửi quà Test'}</button>
+                                ${isChallengeWheel ? '' : '<button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem(\'' + selected.id + '\')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>'}
                             </div>
                         </div>
                     </div>
@@ -6862,7 +6876,7 @@
         updateChallengeWheelField(itemId, key, value) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
             if (!item) return;
-            const numeric = ['titleFontSize', 'subtitleFontSize'];
+            const numeric = ['titleFontSize', 'subtitleFontSize', 'durationMs', 'autoHideMs'];
             item[key] = numeric.includes(key) ? Math.max(8, Number(value) || 8) : String(value || '');
             this.invalidateItemVisual(item);
             this.renderCanvas();
@@ -6894,6 +6908,28 @@
             this.saveLayout(false, false).catch(() => {});
         }
 
+        removeChallengeSegment(itemId, index) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
+            if (!item || !Array.isArray(item.segments) || item.segments.length <= 2) return;
+            item.segments.splice(index, 1);
+            this.invalidateItemVisual(item);
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('remove-challenge-segment');
+            this.saveLayout(false, false).catch(() => {});
+        }
+
+        previewChallengeWheelSpin(itemId) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
+            const wheel = this.mount?.querySelector('.gmd-challenge-wheel-widget > div:last-child');
+            if (!item || !wheel) return;
+            wheel.classList.remove('gmd-wheel-preview-spin');
+            void wheel.offsetWidth;
+            wheel.style.setProperty('--gmd-wheel-turns', `${(5 + Math.random() * 2).toFixed(2)}turn`);
+            wheel.classList.add('gmd-wheel-preview-spin');
+            window.setTimeout(() => wheel.classList.remove('gmd-wheel-preview-spin'), Math.max(1800, Number(item.durationMs) || 6500));
+        }
+
         decorateChallengeWheelPreview(item, container) {
             const wheel = container?.querySelector('.gmd-challenge-wheel-widget > div:nth-child(3)');
             const segments = Array.isArray(item.segments) ? item.segments.filter((segment) => segment && segment.label) : [];
@@ -6905,8 +6941,12 @@
             segments.forEach((segment, index) => {
                 const label = document.createElement('span');
                 const angle = index * step + step / 2;
+                const radians = (angle - 90) * Math.PI / 180;
+                const radius = 32;
+                const left = 50 + Math.cos(radians) * radius;
+                const top = 50 + Math.sin(radians) * radius;
                 label.textContent = segment.label;
-                label.style.cssText = `position:absolute;left:50%;top:50%;width:38%;transform:rotate(${angle}deg) translateY(-${Math.round(wheel.clientWidth * .34)}px) rotate(-${angle}deg);transform-origin:0 0;color:#fff;font-size:${Math.max(9, Number(item.subtitleFontSize || 18) * .65)}px;font-weight:900;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 4px #000;`;
+                label.style.cssText = `position:absolute;left:${left}%;top:${top}%;width:30%;transform:translate(-50%,-50%);color:#fff;font-size:${Math.max(11, Number(item.subtitleFontSize || 18) * .8)}px;font-weight:900;line-height:1.1;text-align:center;white-space:normal;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 4px #000;`;
                 labels.appendChild(label);
             });
             wheel.insertBefore(labels, wheel.firstChild);
@@ -6982,7 +7022,7 @@
                 {
                     id: 'tmpl_challenge_wheel', name: '🎡 Vòng quay thử thách', tag: 'Tương tác', category: 'challenge-wheel',
                     tags: ['wheel', 'challenge', 'donate'], isPremium: false,
-                    layers: [{ id: 'challenge_wheel_widget', name: '🎡 Vòng quay thử thách', type: 'challenge-wheel', x: 90, y: 120, w: 720, h: 760, width: 720, height: 760, zIndex: 1, visible: true, locked: false, title: 'VÒNG QUAY THỬ THÁCH', subtitle: 'Donate đúng quà để kích hoạt', titleFontSize: 34, subtitleFontSize: 18, segments: [{ id: 'challenge-1', label: 'Hát một đoạn', color: '#8b5cf6', weight: 1 }, { id: 'challenge-2', label: 'Nhảy 10 giây', color: '#ec4899', weight: 1 }, { id: 'challenge-3', label: 'Kể chuyện vui', color: '#f59e0b', weight: 1 }, { id: 'challenge-4', label: 'Tạo dáng', color: '#06b6d4', weight: 1 }] }]
+                    layers: [{ id: 'challenge_wheel_widget', name: '🎡 Vòng quay thử thách', type: 'challenge-wheel', x: 90, y: 120, w: 720, h: 760, width: 720, height: 760, zIndex: 1, visible: true, locked: false, title: 'VÒNG QUAY THỬ THÁCH', subtitle: 'Donate đúng quà để kích hoạt', titleFontSize: 34, subtitleFontSize: 18, segments: [{ id: 'challenge-1', label: 'Hát một đoạn', color: '#ef2029', weight: 1 }, { id: 'challenge-2', label: 'Nhảy 10 giây', color: '#1455a0', weight: 1 }, { id: 'challenge-3', label: 'Kể chuyện vui', color: '#f97316', weight: 1 }, { id: 'challenge-4', label: 'Tạo dáng', color: '#facc15', weight: 1 }] }]
                 },
                 {
                     id: 'tmpl_pk_versus_bar',

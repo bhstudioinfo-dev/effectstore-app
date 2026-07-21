@@ -398,10 +398,10 @@
                 title: 'VÒNG QUAY THỬ THÁCH', subtitle: 'Donate đúng quà để kích hoạt',
                 titleFontSize: 34, subtitleFontSize: 18,
                 segments: [
-                    { id: 'challenge-1', label: 'Hát một đoạn', color: '#8b5cf6', weight: 1 },
-                    { id: 'challenge-2', label: 'Nhảy 10 giây', color: '#ec4899', weight: 1 },
-                    { id: 'challenge-3', label: 'Kể chuyện vui', color: '#f59e0b', weight: 1 },
-                    { id: 'challenge-4', label: 'Tạo dáng', color: '#06b6d4', weight: 1 }
+                    { id: 'challenge-1', label: 'Hát một đoạn', color: '#ef2029', weight: 1 },
+                    { id: 'challenge-2', label: 'Nhảy 10 giây', color: '#1455a0', weight: 1 },
+                    { id: 'challenge-3', label: 'Kể chuyện vui', color: '#f97316', weight: 1 },
+                    { id: 'challenge-4', label: 'Tạo dáng', color: '#facc15', weight: 1 }
                 ],
                 visible: true, locked: false
             },
