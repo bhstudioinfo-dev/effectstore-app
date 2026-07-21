@@ -1703,6 +1703,7 @@
                 @keyframes gmdTalentElectric { 0%,100% { filter:drop-shadow(0 0 5px #38bdf8); } 25% { filter:drop-shadow(0 0 18px #a5f3fc) brightness(1.35); } 27% { filter:drop-shadow(0 0 5px #38bdf8); } 70% { filter:drop-shadow(0 0 16px #818cf8); } }
                 .gmd-talent-effect-fire { background:linear-gradient(90deg,#991b1b,#ef4444,#f59e0b,#fef08a) !important; animation:gmdTalentFire 1.05s ease-in-out infinite !important; }
                 .gmd-talent-effect-electric { background:linear-gradient(90deg,#1d4ed8,#38bdf8,#e0f2fe,#6366f1) !important; animation:gmdTalentElectric .9s steps(2,end) infinite !important; }
+                .gmd-talent-live-widget,.gmd-talent-ranking-widget { border-width:3px !important; }
             </style>
             <div class="gmd-talent-live-widget" style="width:100%;height:100%;box-sizing:border-box;position:relative;overflow:hidden;padding:${roundPx(20, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(135deg, rgba(23,13,44,.98), rgba(12,18,45,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}99`)};border-radius:${roundPx(24, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}33, inset 0 1px 0 rgba(255,255,255,.12)`};display:flex;flex-direction:column;gap:${roundPx(12, ctx.scale)}px;color:white;">
                 <div style="display:flex;justify-content:space-between;align-items:center;font-size:${font(ctx, item.headerFontSize, 21)}px;font-weight:900;letter-spacing:.04em;">

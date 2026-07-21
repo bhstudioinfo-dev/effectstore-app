@@ -1275,12 +1275,14 @@
                             const isFlexiblePodium = isPodiumBoard && (item.lockRatio === false || hasCustomBoardRatio);
                             const isTalentBoard = item.type === 'talent-live' || item.type === 'talent-leaderboard';
                             const talentCount = isTalentBoard && item.talentCompetition ? Math.min(Number(item.talentCompetition.maxRanking) || 8, (item.talentCompetition.participants || []).length || 1) : 0;
-                            const talentRequiredHeight = 100 + (talentCount * 28);
+                            const talentRowHeight = isTalentBoard && item.talentCompetition?.showAvatar ? 34 : 28;
+                            const talentRequiredHeight = 120 + (talentCount * talentRowHeight);
+                            const talentBaseHeight = Math.max(refH, talentRequiredHeight);
                             // Talent boards may be taller than the base design. Let the
                             // content scale up with the board height so the border and
                             // all configured rows fill the resized board instead of
                             // leaving a short, wide panel.
-                            const talentContentScale = isTalentBoard ? Math.max(0.25, Math.min(item.height / refH, item.height / talentRequiredHeight)) : 1;
+                            const talentContentScale = isTalentBoard ? Math.max(0.25, item.height / talentBaseHeight) : 1;
                             const talentContentWidth = isTalentBoard ? Math.max(240, item.width / talentContentScale) : refW;
                             // The visible podium only occupies the center portion of the 900x560
                             // design. Fit against that footprint so trimming empty board space does
@@ -1304,7 +1306,7 @@
                                 </div>
                             ` : isTalentBoard ? `
                                 <div class="gmd-visual" style="width:100%;height:100%;position:relative;overflow:visible;">
-                                    <div class="gmd-visual-scaled-wrapper gmd-talent-size-aware" style="width:${talentContentWidth}px;height:${refH}px;transform:scale(${talentContentScale});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">
+                                    <div class="gmd-visual-scaled-wrapper gmd-talent-size-aware" style="width:${talentContentWidth}px;height:${talentBaseHeight}px;transform:scale(${talentContentScale});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">
                                         ${widgetHTML}
                                     </div>
                                 </div>

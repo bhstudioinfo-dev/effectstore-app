@@ -1588,10 +1588,12 @@
               ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary })
               : '';
             const talentCount = isTalentBoard && item.talentCompetition ? Math.min(Number(item.talentCompetition.maxRanking) || 8, (item.talentCompetition.participants || []).length || 1) : 0;
-            const talentRequiredHeight = 100 + (talentCount * 28);
+            const talentRowHeight = isTalentBoard && item.talentCompetition?.showAvatar ? 38 : 28;
+            const talentRequiredHeight = 120 + (talentCount * talentRowHeight);
+            const talentBaseHeight = Math.max(refH, talentRequiredHeight);
             // Keep OBS in lockstep with the Designer: a resized Talent board may
             // scale above the base reference size so its border encloses every row.
-            const talentContentScale = isTalentBoard ? Math.max(0.25, Math.min(boardHeight / refH, boardHeight / talentRequiredHeight)) : 1;
+            const talentContentScale = isTalentBoard ? Math.max(0.25, boardHeight / talentBaseHeight) : 1;
             const talentContentWidth = isTalentBoard ? Math.max(240, boardWidth / talentContentScale) : refW;
             const podiumContentScale = Math.min(boardWidth / 620, boardHeight / 330);
             const podiumContentLeft = ((boardWidth / 2) - ((refW * podiumContentScale) / 2)) * s;
@@ -1609,7 +1611,7 @@
                 ${widgetHTML}
               </div>
             ` : isTalentBoard ? `
-              <div class="gmd-visual-scaled-wrapper gmd-talent-size-aware" style="width:${talentContentWidth}px;height:${refH}px;transform:scale(${talentContentScale * s});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">
+              <div class="gmd-visual-scaled-wrapper gmd-talent-size-aware" style="width:${talentContentWidth}px;height:${talentBaseHeight}px;transform:scale(${talentContentScale * s});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">
                 ${widgetHTML}
               </div>
             ` : `
