@@ -5778,6 +5778,22 @@
                         ${selected.type === 'talent-live' ? `<div class="gmd-field gmd-toggle-row"><label>Hiển thị donate mới nhất</label><label class="gmd-switch"><input type="checkbox" ${talent.showFeed !== false ? 'checked' : ''} onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'showFeed', this.checked)"><span></span></label></div>` : `<div class="gmd-field gmd-toggle-row"><label>Hiển thị bục Top 3</label><label class="gmd-switch"><input type="checkbox" ${talent.showTop3 !== false ? 'checked' : ''} onchange="window.giftMenuDesigner.updateTalentField('${selected.id}', 'showTop3', this.checked)"><span></span></label></div>`}
                     </div>
                 `;
+            } else if (selected.type === 'challenge-wheel') {
+                const segments = Array.isArray(selected.segments) ? selected.segments : [];
+                specificConfigHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-sliders-h"></i> PHẦN 2: TÙY CHỈNH VÒNG QUAY</h4>
+                        <div class="gmd-field"><label>Tiêu đề vòng quay</label><input class="gmd-input" value="${this.escapeHtml(selected.title || '')}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','title',this.value)"></div>
+                        <div class="gmd-field"><label>Dòng mô tả</label><input class="gmd-input" value="${this.escapeHtml(selected.subtitle || '')}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','subtitle',this.value)"></div>
+                        <div class="gmd-row"><div class="gmd-field"><label>Cỡ chữ tiêu đề</label><input class="gmd-input" type="number" min="16" max="72" value="${selected.titleFontSize || 34}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','titleFontSize',this.value)"></div><div class="gmd-field"><label>Cỡ chữ mô tả</label><input class="gmd-input" type="number" min="10" max="36" value="${selected.subtitleFontSize || 18}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','subtitleFontSize',this.value)"></div></div>
+                    </div>
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-list-ol"></i> PHẦN 3: DANH SÁCH THỬ THÁCH</h4>
+                        <div style="display:flex;flex-direction:column;gap:7px;max-height:240px;overflow:auto;">${segments.map((segment,index)=>`<div style="display:flex;gap:5px;align-items:center;"><span style="width:20px;color:#fbbf24;font-weight:900;">${index+1}</span><input class="gmd-input" style="flex:1;min-width:0;" value="${this.escapeHtml(segment.label || '')}" onchange="window.giftMenuDesigner.updateChallengeSegment('${selected.id}',${index},'label',this.value)"><input class="gmd-color" style="width:34px;height:28px;padding:2px;" type="color" value="${segment.color || '#8b5cf6'}" onchange="window.giftMenuDesigner.updateChallengeSegment('${selected.id}',${index},'color',this.value)"></div>`).join('')}</div>
+                        <button class="gmd-btn" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.addChallengeSegment('${selected.id}')"><i class="fas fa-plus"></i> Thêm thử thách</button>
+                    </div>
+                    <div class="gmd-section"><h4><i class="fas fa-vial"></i> KIỂM TRA</h4><div style="font-size:11px;color:#94a3b8;line-height:1.4;">Vòng quay sẽ xuất hiện trên OBS khi món quà được mapping và donate thực tế.</div></div>
+                `;
             } else if (selected.type === 'goal-list') {
                 specificConfigHTML = `
                     <div class="gmd-section">
@@ -6840,6 +6856,41 @@
                 competition[key] = numericFields.includes(key) ? Math.max(0, Number(value) || 0) : (booleanFields.includes(key) ? Boolean(value) : value);
                 if (key === 'durationSeconds' && competition.status !== 'running') competition.remainingSeconds = competition[key];
             });
+        }
+
+        updateChallengeWheelField(itemId, key, value) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
+            if (!item) return;
+            const numeric = ['titleFontSize', 'subtitleFontSize'];
+            item[key] = numeric.includes(key) ? Math.max(8, Number(value) || 8) : String(value || '');
+            this.invalidateItemVisual(item);
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('update-challenge-wheel');
+            this.saveLayout(false, false).catch(() => {});
+        }
+
+        updateChallengeSegment(itemId, index, key, value) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
+            if (!item || !Array.isArray(item.segments) || !item.segments[index]) return;
+            item.segments[index][key] = String(value || '');
+            this.invalidateItemVisual(item);
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('update-challenge-segment');
+            this.saveLayout(false, false).catch(() => {});
+        }
+
+        addChallengeSegment(itemId) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
+            if (!item) return;
+            if (!Array.isArray(item.segments)) item.segments = [];
+            item.segments.push({ id: `challenge-${Date.now()}`, label: `Thử thách ${item.segments.length + 1}`, color: '#8b5cf6', weight: 1 });
+            this.invalidateItemVisual(item);
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('add-challenge-segment');
+            this.saveLayout(false, false).catch(() => {});
         }
 
         updateTalentStyle(itemId, key, value, live = false) {
