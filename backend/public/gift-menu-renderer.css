@@ -2014,3 +2014,10 @@ html, body {
 .gmd-wheel-labels span { position:absolute; left:50%; top:50%; width:42%; transform:rotate(calc(var(--i) * 360deg / var(--count))) translateY(-145px) rotate(calc(var(--i) * -360deg / var(--count))); transform-origin:0 0; font-size:12px; font-weight:900; text-shadow:0 1px 3px #000; }
 .gmd-wheel-result { min-height:28px; color:#fde68a; font-size:clamp(16px,2vw,26px); opacity:0; transform:translateY(8px); transition:opacity .3s ease,transform .3s ease; }
 #gmd-challenge-wheel-live.is-finished .gmd-wheel-result { opacity:1; transform:translateY(0); }
+
+/* Designer wheel skin: keep the preview close to the polished OBS wheel. */
+.gmd-challenge-wheel-widget { background:radial-gradient(circle at 50% 30%,#263b63 0,#111827 52%,#070b16 100%) !important; border:3px solid #d6a84f !important; border-radius:30px !important; box-shadow:0 0 28px #f59e0b55,inset 0 0 28px #38bdf822 !important; }
+.gmd-challenge-wheel-widget > div:first-child { color:#fbbf24 !important; text-shadow:0 0 12px #f59e0b !important; letter-spacing:.03em; }
+.gmd-challenge-wheel-widget > div:nth-child(2) { color:#cbd5e1 !important; }
+.gmd-challenge-wheel-widget > div:last-child { border-color:#d6a84f !important; box-shadow:0 0 0 8px #b7791f,0 0 24px #fbbf2488 !important; }
+.gmd-challenge-wheel-widget > div:last-child > div > div { background:radial-gradient(circle at 35% 30%,#60a5fa,#1d4ed8) !important; border-color:#fbbf24 !important; box-shadow:0 0 16px #38bdf899 !important; }
