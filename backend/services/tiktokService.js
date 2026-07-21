@@ -1,5 +1,6 @@
 const { TikTokLiveClient } = require('tiktok-live-connector');
 const GiftMapping = require('../models/GiftMapping');
+const ChallengeWheel = require('../models/ChallengeWheel');
 const Effect = require('../models/Effect');
 const GiftLog = require('../models/GiftLog');
 const effectQueue = require('./effectQueue');
@@ -20,6 +21,18 @@ const FALLBACK_GIFTS = [
 
 function uid(prefix) {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function chooseWheelSegment(segments) {
+    const usable = (Array.isArray(segments) ? segments : []).filter((segment) => segment && segment.label && Number(segment.weight) > 0);
+    if (!usable.length) return null;
+    const total = usable.reduce((sum, segment) => sum + Number(segment.weight || 1), 0);
+    let cursor = Math.random() * total;
+    for (const segment of usable) {
+        cursor -= Number(segment.weight || 1);
+        if (cursor <= 0) return segment;
+    }
+    return usable[usable.length - 1];
 }
 
 class TikTokService {
@@ -171,7 +184,23 @@ class TikTokService {
                         }
 
                         let queued = false;
-                        if (mapping.effects && mapping.effects.length > 0) {
+                        if (['wheel', 'effect_and_wheel'].includes(mapping.triggerType) && mapping.wheelId) {
+                            const wheel = await ChallengeWheel.findOne({ _id: mapping.wheelId, userId: this.currentLiveUserId, isActive: true }).lean();
+                            const result = wheel && chooseWheelSegment(wheel.segments);
+                            if (result && this.broadcast) {
+                                this.broadcast('challenge_wheel_spin', {
+                                    wheelId: String(wheel._id), title: wheel.title, segments: wheel.segments,
+                                    resultId: result.id, resultLabel: result.label,
+                                    durationMs: wheel.durationMs, autoHideMs: wheel.autoHideMs,
+                                    giftId: data.giftId, giftName: data.giftName,
+                                    nickname: data.nickname || data.uniqueId || 'TikTok user', triggeredAt: Date.now()
+                                });
+                                queued = true;
+                            }
+                        }
+                        if (mapping.triggerType === 'wheel') {
+                            // Wheel-only mappings do not enqueue a media effect.
+                        } else if (mapping.effects && mapping.effects.length > 0) {
                             // Multiple effects group mapping
                             queued = await effectQueue.add({
                                 mappingId: mapping._id,

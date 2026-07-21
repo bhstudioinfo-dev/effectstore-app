@@ -104,7 +104,7 @@
         }
 
         countGoalTrackers(items = this.items) {
-            const types = new Set(['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'combo']);
+            const types = new Set(['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'combo']);
             return Array.isArray(items) ? items.filter(item => item && types.has(item.type)).length : 0;
         }
 
@@ -1249,6 +1249,7 @@
                             else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
                             else if (item.type === 'talent-live') { refW = 900; refH = 300; }
                             else if (item.type === 'talent-leaderboard') { refW = 900; refH = 430; }
+                            else if (item.type === 'challenge-wheel') { refW = 720; refH = 760; }
                             else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
                             else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
 
@@ -5111,7 +5112,7 @@
 
 
             let testButtonHTML = '';
-            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'combo'].includes(selected.type)) {
+            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'combo'].includes(selected.type)) {
                 testButtonHTML = `
                     <div class="gmd-section" style="border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
                         <h4 style="color: #a855f7; margin-bottom: 6px;"><i class="fas fa-flask"></i> CHẠY THỬ / TEST GOAL</h4>
@@ -6326,7 +6327,7 @@
 
             // PHẦN 3: TEST THỬ TRÊN APP
             let part3HTML = '';
-            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'combo'].includes(selected.type)) {
+            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'combo'].includes(selected.type)) {
                 part3HTML = `
                     <div class="gmd-section">
                         <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorTest()">
@@ -6908,6 +6909,11 @@
 
         getDefaultTemplates() {
             return [
+                {
+                    id: 'tmpl_challenge_wheel', name: '🎡 Vòng quay thử thách', tag: 'Tương tác', category: 'challenge-wheel',
+                    tags: ['wheel', 'challenge', 'donate'], isPremium: false,
+                    layers: [{ id: 'challenge_wheel_widget', name: '🎡 Vòng quay thử thách', type: 'challenge-wheel', x: 90, y: 120, w: 720, h: 760, width: 720, height: 760, zIndex: 1, visible: true, locked: false, title: 'VÒNG QUAY THỬ THÁCH', subtitle: 'Donate đúng quà để kích hoạt', titleFontSize: 34, subtitleFontSize: 18, segments: [{ id: 'challenge-1', label: 'Hát một đoạn', color: '#8b5cf6', weight: 1 }, { id: 'challenge-2', label: 'Nhảy 10 giây', color: '#ec4899', weight: 1 }, { id: 'challenge-3', label: 'Kể chuyện vui', color: '#f59e0b', weight: 1 }, { id: 'challenge-4', label: 'Tạo dáng', color: '#06b6d4', weight: 1 }] }]
+                },
                 {
                     id: 'tmpl_pk_versus_bar',
                     name: '⚔️ Thanh đối kháng / PK',

@@ -1998,3 +1998,19 @@ html, body {
 .gmd-talent-ranking-list-only > div > span { line-height: 1 !important; }
 .gmd-talent-live-widget, .gmd-talent-ranking-widget { border-width: 3px !important; }
 .gmd-talent-ranking-widget { height: 100% !important; box-sizing: border-box !important; }
+
+#gmd-challenge-wheel-live { position:fixed; inset:0; z-index:2147483000; pointer-events:none; font-family:Inter,system-ui,sans-serif; }
+.gmd-wheel-backdrop { width:100%; height:100%; display:grid; place-items:center; background:radial-gradient(circle,rgba(15,23,42,.28),rgba(2,6,23,.78)); opacity:0; transition:opacity .35s ease; }
+#gmd-challenge-wheel-live.is-spinning .gmd-wheel-backdrop { opacity:1; }
+.gmd-wheel-card { position:relative; width:min(560px,82vw); padding:28px 32px 34px; border:3px solid #fbbf24; border-radius:30px; text-align:center; color:#fff; background:linear-gradient(145deg,#211044,#07152f); box-shadow:0 0 30px #a855f7aa, inset 0 0 40px #22d3ee22; transform:scale(.82); transition:transform .45s cubic-bezier(.2,.85,.25,1.2); }
+#gmd-challenge-wheel-live.is-spinning .gmd-wheel-card { transform:scale(1); }
+.gmd-wheel-title { color:#fbbf24; font-size:clamp(22px,3vw,38px); font-weight:1000; text-shadow:0 0 14px #f59e0b; }
+.gmd-wheel-subtitle { margin-top:6px; color:#ddd6fe; font-size:clamp(13px,1.7vw,20px); }
+.gmd-wheel-disc { position:relative; width:min(390px,68vw); aspect-ratio:1; margin:24px auto 16px; border:14px solid #f8fafc; border-radius:50%; background:var(--wheel-gradient); box-shadow:0 0 0 10px #ef4444,0 0 30px #fbbf24aa; transform:rotate(0deg); transition:transform var(--wheel-duration,6.5s) cubic-bezier(.12,.72,.08,1); }
+#gmd-challenge-wheel-live.is-spinning .gmd-wheel-disc { transform:rotate(var(--wheel-rotation)); }
+.gmd-wheel-pointer { position:absolute; z-index:2; left:50%; top:116px; transform:translateX(-50%); color:#fef3c7; font-size:34px; text-shadow:0 0 12px #fbbf24; }
+.gmd-wheel-center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:104px; height:104px; display:grid; place-items:center; border-radius:50%; background:radial-gradient(circle,#38bdf8,#1d4ed8); border:8px solid #fbbf24; font-weight:1000; font-size:22px; box-shadow:0 0 22px #38bdf8aa; }
+.gmd-wheel-labels { position:absolute; inset:0; }
+.gmd-wheel-labels span { position:absolute; left:50%; top:50%; width:42%; transform:rotate(calc(var(--i) * 360deg / var(--count))) translateY(-145px) rotate(calc(var(--i) * -360deg / var(--count))); transform-origin:0 0; font-size:12px; font-weight:900; text-shadow:0 1px 3px #000; }
+.gmd-wheel-result { min-height:28px; color:#fde68a; font-size:clamp(16px,2vw,26px); opacity:0; transform:translateY(8px); transition:opacity .3s ease,transform .3s ease; }
+#gmd-challenge-wheel-live.is-finished .gmd-wheel-result { opacity:1; transform:translateY(0); }

@@ -6,7 +6,9 @@ const GiftMappingSchema = new mongoose.Schema({
     giftId: { type: String, required: true },
     giftName: String,
     giftIcon: String,
-    effectId: { type: String, required: true },
+    effectId: { type: String, default: null },
+    triggerType: { type: String, enum: ['effect', 'wheel', 'effect_and_wheel'], default: 'effect' },
+    wheelId: { type: mongoose.Schema.Types.ObjectId, ref: 'ChallengeWheel', default: null },
     effectName: String,
     effects: [{
         effectId: { type: String },

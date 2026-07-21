@@ -3557,8 +3557,11 @@ class EffectStoreApp {
         this.connectWebSocket();
         this.loadGifts();
         this.loadEffectsForMapping();
+        this.loadChallengeWheels();
         this.loadMappings();
         this.startEffectQueueStatusPolling();
+        const triggerSelect = document.getElementById('mapping-trigger-type');
+        if (triggerSelect) triggerSelect.onchange = () => this.updateMappingConfigPanel();
     }
 
     startEffectQueueStatusPolling() {
@@ -3993,6 +3996,10 @@ class EffectStoreApp {
             if (modeField) {
                 modeField.style.display = this.selectedEffects.length > 1 ? 'block' : 'none';
             }
+            const trigger = document.getElementById('mapping-trigger-type');
+            const wheelField = document.getElementById('mapping-wheel-field');
+            const wheelMode = trigger && ['wheel', 'effect_and_wheel'].includes(trigger.value);
+            if (wheelField) wheelField.style.display = wheelMode ? 'block' : 'none';
         } else {
             panel.style.display = 'none';
         }
@@ -4012,8 +4019,14 @@ class EffectStoreApp {
     }
 
 
-        async createMapping() {
-        if (!this.selectedGift || !this.selectedEffects || this.selectedEffects.length === 0) return;
+    async createMapping() {
+        const triggerType = document.getElementById('mapping-trigger-type')?.value || 'effect';
+        const wheelId = document.getElementById('mapping-wheel-id')?.value || '';
+        if (!this.selectedGift) return;
+        if (triggerType === 'effect' && (!this.selectedEffects || this.selectedEffects.length === 0)) return;
+        if (['wheel', 'effect_and_wheel'].includes(triggerType) && !wheelId) {
+            return this.showNotification('error', 'Hãy chọn hoặc tạo một vòng quay thử thách.');
+        }
         try {
             const cooldownVal = document.getElementById('mapping-cooldown')?.value || 0;
             const cooldownActionVal = document.getElementById('mapping-cooldown-action')?.value || 'queue';
@@ -4026,9 +4039,11 @@ class EffectStoreApp {
                 giftId: this.selectedGift.id, 
                 giftName: this.selectedGift.name, 
                 giftIcon: this.selectedGift.icon,
-                effectId: this.selectedEffects[0].id, 
-                effectName: this.selectedEffects[0].name,
-                effects: this.selectedEffects.map(x => ({ effectId: x.id, effectName: x.name })),
+                effectId: this.selectedEffects[0]?.id || null,
+                effectName: this.selectedEffects[0]?.name || '',
+                effects: (this.selectedEffects || []).map(x => ({ effectId: x.id, effectName: x.name })),
+                triggerType,
+                wheelId: wheelId || null,
                 playbackMode: modeVal,
                 minQuantity: minQtyVal ? Number(minQtyVal) : 1,
                 maxQuantity: maxQtyVal ? Number(maxQtyVal) : null,
@@ -4047,7 +4062,7 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                const names = this.selectedEffects.map(x => x.name).join(', ');
+                const names = triggerType === 'wheel' ? 'Vòng quay thử thách' : triggerType === 'effect_and_wheel' ? `${this.selectedEffects.map(x => x.name).join(', ')} + vòng quay` : this.selectedEffects.map(x => x.name).join(', ');
                 this.showNotification('success', `✅ Đã gán quà ${this.selectedGift.name} với: ${names}`);
                 this.clearSelection();
                 this.loadMappings();
@@ -4529,6 +4544,38 @@ class EffectStoreApp {
         if (defaultUser && liveUserInput && !liveUserInput.value) {
             liveUserInput.value = defaultUser;
         }
+    }
+
+    async loadChallengeWheels() {
+        try {
+            const res = await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`, { headers: { 'Authorization': `Bearer ${this.authToken}` } });
+            const data = await res.json();
+            this.challengeWheels = Array.isArray(data.wheels) ? data.wheels : [];
+            const select = document.getElementById('mapping-wheel-id');
+            if (select) select.innerHTML = this.challengeWheels.length
+                ? this.challengeWheels.map((wheel) => `<option value="${wheel._id}">${wheel.name} (${(wheel.segments || []).length} thử thách)</option>`).join('')
+                : '<option value="">Chưa có vòng quay</option>';
+        } catch (error) { console.warn('Không tải được vòng quay thử thách:', error.message); }
+    }
+
+    async createChallengeWheelPrompt() {
+        const name = window.prompt('Tên vòng quay:', 'Vòng quay thử thách');
+        if (!name) return;
+        const raw = window.prompt('Nhập các thử thách, ngăn cách bằng dấu phẩy:', 'Hát một đoạn,Nhảy 10 giây,Kể một câu chuyện vui');
+        const labels = String(raw || '').split(',').map((label) => label.trim()).filter(Boolean);
+        if (labels.length < 2) return this.showNotification('error', 'Cần ít nhất 2 thử thách.');
+        try {
+            const res = await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` },
+                body: JSON.stringify({ name, segments: labels.map((label, index) => ({ id: `challenge-${Date.now()}-${index}`, label })) })
+            });
+            const data = await res.json();
+            if (!data.success) return this.showNotification('error', data.error || 'Không tạo được vòng quay.');
+            await this.loadChallengeWheels();
+            const select = document.getElementById('mapping-wheel-id');
+            if (select) select.value = data.wheel._id;
+            this.showNotification('success', 'Đã tạo vòng quay thử thách.');
+        } catch (error) { this.showNotification('error', error.message); }
     }
 
     async loadDatabaseBackups() {

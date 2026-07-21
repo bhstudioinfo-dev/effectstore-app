@@ -391,6 +391,24 @@
                 preservesNestedChildren: true
             }
         },
+        'challenge-wheel': {
+            type: 'challenge-wheel',
+            defaults: {
+                w: 720, h: 760, width: 720, height: 760,
+                title: 'VÒNG QUAY THỬ THÁCH', subtitle: 'Donate đúng quà để kích hoạt',
+                titleFontSize: 34, subtitleFontSize: 18,
+                segments: [
+                    { id: 'challenge-1', label: 'Hát một đoạn', color: '#8b5cf6', weight: 1 },
+                    { id: 'challenge-2', label: 'Nhảy 10 giây', color: '#ec4899', weight: 1 },
+                    { id: 'challenge-3', label: 'Kể chuyện vui', color: '#f59e0b', weight: 1 },
+                    { id: 'challenge-4', label: 'Tạo dáng', color: '#06b6d4', weight: 1 }
+                ],
+                visible: true, locked: false
+            },
+            inspectorTabs: ['basic', 'advanced', 'data', 'test', 'layers'],
+            renderContract: { family: 'challenge-wheel-widget', previewBranch: 'widget-challenge-wheel', overlayBranch: 'widget-challenge-wheel', supportsRotation: false, supportsResize: true, usesScaledWrapper: true, defaultRefSize: { width: 720, height: 760 } },
+            exportContract: { coordinateSource: 'stage-and-logical', scalesPositionFromSafeArea: true, preservesNestedChildren: false }
+        },
         'gift-stack-group': {
             type: 'gift-stack-group',
             defaults: {

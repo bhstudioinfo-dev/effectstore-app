@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const tiktokService = require('../services/tiktokService');
 const GiftMapping = require('../models/GiftMapping');
+const ChallengeWheel = require('../models/ChallengeWheel');
 const GiftLog = require('../models/GiftLog');
 const GiftConfig = require('../models/GiftConfig');
 const Effect = require('../models/Effect');
@@ -185,22 +186,97 @@ router.get('/available-effects', authMiddleware, async (req, res) => {
     }
 });
 
+router.get('/challenge-wheels', authMiddleware, async (req, res) => {
+    try {
+        const wheels = await ChallengeWheel.find({ userId: req.userId }).sort({ updatedAt: -1 }).lean();
+        res.json({ success: true, wheels });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.post('/challenge-wheels', authMiddleware, async (req, res) => {
+    try {
+        const name = String(req.body.name || '').trim();
+        const rawSegments = Array.isArray(req.body.segments) ? req.body.segments : [];
+        const segments = rawSegments.map((segment, index) => ({
+            id: String(segment.id || `challenge-${Date.now()}-${index}`),
+            label: String(segment.label || '').trim(),
+            color: String(segment.color || '#8b5cf6'),
+            weight: Math.max(0, Number(segment.weight) || 1)
+        })).filter((segment) => segment.label).slice(0, 32);
+        if (!name || segments.length < 2) return res.status(400).json({ success: false, error: 'Vòng quay cần tên và ít nhất 2 thử thách.' });
+        const wheel = await ChallengeWheel.create({
+            userId: req.userId,
+            name,
+            title: String(req.body.title || 'VÒNG QUAY THỬ THÁCH').trim(),
+            segments,
+            durationMs: Math.min(30000, Math.max(1500, Number(req.body.durationMs) || 6500)),
+            autoHideMs: Math.min(60000, Math.max(0, Number(req.body.autoHideMs) || 7000)),
+            noRepeat: Boolean(req.body.noRepeat)
+        });
+        res.status(201).json({ success: true, wheel });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.put('/challenge-wheels/:id', authMiddleware, async (req, res) => {
+    try {
+        const wheel = await ChallengeWheel.findOne({ _id: req.params.id, userId: req.userId });
+        if (!wheel) return res.status(404).json({ success: false, error: 'Không tìm thấy vòng quay.' });
+        if (req.body.name !== undefined) wheel.name = String(req.body.name || '').trim();
+        if (req.body.title !== undefined) wheel.title = String(req.body.title || '').trim();
+        if (Array.isArray(req.body.segments)) wheel.segments = req.body.segments.map((segment, index) => ({
+            id: String(segment.id || `challenge-${Date.now()}-${index}`), label: String(segment.label || '').trim(),
+            color: String(segment.color || '#8b5cf6'), weight: Math.max(0, Number(segment.weight) || 1)
+        })).filter((segment) => segment.label).slice(0, 32);
+        if (req.body.durationMs !== undefined) wheel.durationMs = Math.min(30000, Math.max(1500, Number(req.body.durationMs) || 6500));
+        if (req.body.autoHideMs !== undefined) wheel.autoHideMs = Math.min(60000, Math.max(0, Number(req.body.autoHideMs) || 7000));
+        if (req.body.noRepeat !== undefined) wheel.noRepeat = Boolean(req.body.noRepeat);
+        await wheel.save();
+        res.json({ success: true, wheel });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.delete('/challenge-wheels/:id', authMiddleware, async (req, res) => {
+    try {
+        const result = await ChallengeWheel.deleteOne({ _id: req.params.id, userId: req.userId });
+        if (!result.deletedCount) return res.status(404).json({ success: false, error: 'Không tìm thấy vòng quay.' });
+        await GiftMapping.updateMany({ userId: req.userId, wheelId: req.params.id }, { $set: { wheelId: null, triggerType: 'effect' } });
+        res.json({ success: true });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.post('/challenge-wheels/:id/test', authMiddleware, async (req, res) => {
+    try {
+        const wheel = await ChallengeWheel.findOne({ _id: req.params.id, userId: req.userId, isActive: true }).lean();
+        if (!wheel || !Array.isArray(wheel.segments) || wheel.segments.length < 2) return res.status(404).json({ success: false, error: 'Vòng quay chưa đủ thử thách.' });
+        const usable = wheel.segments.filter((segment) => Number(segment.weight) > 0);
+        const result = usable[Math.floor(Math.random() * usable.length)] || wheel.segments[0];
+        req.app.locals.broadcastToClients?.('challenge_wheel_spin', {
+            wheelId: String(wheel._id), title: wheel.title, segments: wheel.segments,
+            resultId: result.id, resultLabel: result.label, durationMs: wheel.durationMs,
+            autoHideMs: wheel.autoHideMs, giftId: 'test', giftName: 'Quà thử nghiệm',
+            nickname: 'Khán giả thử nghiệm', triggeredAt: Date.now(), simulated: true
+        });
+        res.json({ success: true, result });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
 router.post('/map-gift', authMiddleware, async (req, res) => {
     try {
-        const { id, giftId, effectId, giftName, effectName, giftIcon, effects, playbackMode, minQuantity, maxQuantity, exactQuantity, cooldown, cooldownAction } = req.body;
+        const { id, giftId, effectId, effectName, giftName, giftIcon, effects, playbackMode, minQuantity, maxQuantity, exactQuantity, cooldown, cooldownAction, triggerType, wheelId } = req.body;
         const userId = req.userId;
         if (id && !isValidResourceId(id)) {
             return res.status(400).json({ success: false, error: 'Invalid mapping ID' });
         }
-        if (!String(giftId || '').trim() || !String(effectId || '').trim()) {
-            return res.status(400).json({ success: false, error: 'giftId and effectId are required' });
+        const normalizedTriggerType = ['wheel', 'effect_and_wheel'].includes(triggerType) ? triggerType : 'effect';
+        if (!String(giftId || '').trim() || (normalizedTriggerType === 'effect' && !String(effectId || '').trim())) {
+            return res.status(400).json({ success: false, error: 'giftId và hành động mapping là bắt buộc' });
         }
 
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-        const resolvedEffect = await resolveEffectForUser(userId, effectId);
-        if (!resolvedEffect) {
+        const resolvedEffect = effectId ? await resolveEffectForUser(userId, effectId) : null;
+        if (normalizedTriggerType !== 'wheel' && !resolvedEffect) {
             return res.status(403).json({ success: false, message: 'Hiệu ứng không thuộc tài khoản này hoặc không còn khả dụng.' });
         }
 
@@ -217,6 +293,11 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
                 effectName: candidateEffect.name || candidate.effectName || candidateId,
                 weight: Math.max(1, Number(candidate.weight) || 1)
             });
+        }
+        let wheel = null;
+        if (['wheel', 'effect_and_wheel'].includes(normalizedTriggerType)) {
+            wheel = await ChallengeWheel.findOne({ _id: wheelId, userId, isActive: true });
+            if (!wheel) return res.status(400).json({ success: false, error: 'Vòng quay không tồn tại hoặc đã bị tắt.' });
         }
 
         const isAdmin = user.isAdmin === true;
@@ -249,7 +330,7 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
 
         const mappingData = {
             effectId,
-            effectName: resolvedEffect.name || effectName,
+            effectName: resolvedEffect?.name || effectName || '',
             giftName,
             giftIcon,
             effects: normalizedEffects,
@@ -259,6 +340,8 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
             exactQuantity: (exactQuantity !== undefined && exactQuantity !== '' && exactQuantity !== null) ? Number(exactQuantity) : null,
             cooldown: cooldown !== undefined ? Number(cooldown) : 0,
             cooldownAction: cooldownAction || 'queue',
+            triggerType: normalizedTriggerType,
+            wheelId: wheel ? wheel._id : null,
             updatedAt: Date.now()
         };
 

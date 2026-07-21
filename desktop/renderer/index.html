@@ -1458,6 +1458,20 @@
                                       <option value="sequential">Tuần tự (Sequential)</option>
                                   </select>
                               </div>
+                              <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px;">
+                                  <label style="font-size:12px;color:#fff;display:block;margin-bottom:4px;font-weight:600;">Hành động khi nhận quà</label>
+                                  <select id="mapping-trigger-type" class="es-input" style="width:100%;padding:6px 10px;font-size:12px;">
+                                      <option value="effect">Phát hiệu ứng</option>
+                                      <option value="wheel">Kích hoạt vòng quay thử thách</option>
+                                      <option value="effect_and_wheel">Phát hiệu ứng + vòng quay</option>
+                                  </select>
+                                  <div id="mapping-wheel-field" style="display:none;margin-top:8px;">
+                                      <div style="display:flex;gap:6px;">
+                                          <select id="mapping-wheel-id" class="es-input" style="flex:1;padding:6px 10px;font-size:12px;"></select>
+                                          <button type="button" onclick="app.createChallengeWheelPrompt()" class="btn-sm" style="white-space:nowrap;">+ Tạo vòng quay</button>
+                                      </div>
+                                  </div>
+                              </div>
                           </div>
                           
                           <!-- Cooldown Settings -->

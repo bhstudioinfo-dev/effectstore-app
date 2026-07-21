@@ -1549,7 +1549,7 @@
             return;
           }
           
-          if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
+          if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
             let refW = item.lockedW || item.w || 900;
             let refH = item.lockedH || item.h || 160;
             if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
@@ -1558,6 +1558,7 @@
             }
             if (item.type === 'talent-live') { refW = 900; refH = 300; }
             if (item.type === 'talent-leaderboard') { refW = 900; refH = 430; }
+            if (item.type === 'challenge-wheel') { refW = 720; refH = 760; }
 
             el.style.left = `${Math.round(offsetX + (item.x || 0) * s)}px`;
             el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
@@ -1729,6 +1730,27 @@
       return decision;
     }
 
+    function showChallengeWheel(data) {
+      const segments = Array.isArray(data?.segments) ? data.segments.filter((segment) => segment && segment.label) : [];
+      if (segments.length < 2) return;
+      document.getElementById('gmd-challenge-wheel-live')?.remove();
+      const host = document.createElement('div');
+      host.id = 'gmd-challenge-wheel-live';
+      const colors = segments.map((segment, index) => segment.color || ['#8b5cf6','#ec4899','#f59e0b','#06b6d4','#22c55e'][index % 5]);
+      const step = 360 / segments.length;
+      const gradient = segments.map((_, index) => `${colors[index]} ${index * step}deg ${(index + 1) * step}deg`).join(',');
+      const resultIndex = Math.max(0, segments.findIndex((segment) => String(segment.id) === String(data.resultId)));
+      const targetRotation = 360 * 6 + (360 - (resultIndex * step + step / 2));
+      const safe = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+      const duration = Math.max(1500, Number(data.durationMs) || 6500);
+      const hideAfter = Math.max(duration, Number(data.autoHideMs) || 7000);
+      host.innerHTML = `<div class="gmd-wheel-backdrop"><div class="gmd-wheel-card"><div class="gmd-wheel-title">🎡 ${safe(data.title || 'VÒNG QUAY THỬ THÁCH')}</div><div class="gmd-wheel-subtitle">${safe(data.nickname || 'Khán giả')} tặng ${safe(data.giftName || 'quà')}</div><div class="gmd-wheel-pointer">▼</div><div class="gmd-wheel-disc" style="--wheel-gradient:conic-gradient(${gradient});--wheel-rotation:${targetRotation}deg;--wheel-duration:${duration}ms;"><div class="gmd-wheel-labels">${segments.map((segment, index) => `<span style="--i:${index};--count:${segments.length};">${safe(segment.label)}</span>`).join('')}</div><div class="gmd-wheel-center">QUAY</div></div><div class="gmd-wheel-result">Kết quả: <b>${safe(data.resultLabel || '')}</b></div></div></div>`;
+      document.body.appendChild(host);
+      window.setTimeout(() => host.classList.add('is-spinning'), 30);
+      window.setTimeout(() => host.classList.add('is-finished'), duration);
+      window.setTimeout(() => host.remove(), hideAfter + 500);
+    }
+
     async function syncGiftMenuPlaybackVisibility() {
       try {
         console.log('[DEBUG] syncGiftMenuPlaybackVisibility fetching...');
@@ -1771,6 +1793,8 @@
             setGiftMenuPlaybackVisibility(false);
           } else if (packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
             syncGiftMenuPlaybackVisibility();
+          } else if (packet.event === 'challenge_wheel_spin') {
+            showChallengeWheel(packet.data || {});
           } else if (packet.event === 'effect_queue_empty') {
             setGiftMenuPlaybackVisibility(false);
           }
