@@ -1318,6 +1318,7 @@
                                     </div>
                                 </div>
                             `;
+                            if (item.type === 'challenge-wheel') this.decorateChallengeWheelPreview(item, visualContainer);
                         } else {
                         const auraShapeVars = this.getAuraShapeVars(item.auraShape);
                         const lightSweepOverlay = '';
@@ -6891,6 +6892,24 @@
             this.renderInspector();
             this.pushHistory('add-challenge-segment');
             this.saveLayout(false, false).catch(() => {});
+        }
+
+        decorateChallengeWheelPreview(item, container) {
+            const wheel = container?.querySelector('.gmd-challenge-wheel-widget > div:nth-child(3)');
+            const segments = Array.isArray(item.segments) ? item.segments.filter((segment) => segment && segment.label) : [];
+            if (!wheel || segments.length < 2) return;
+            wheel.style.overflow = 'hidden';
+            const step = 360 / segments.length;
+            const labels = document.createElement('div');
+            labels.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
+            segments.forEach((segment, index) => {
+                const label = document.createElement('span');
+                const angle = index * step + step / 2;
+                label.textContent = segment.label;
+                label.style.cssText = `position:absolute;left:50%;top:50%;width:38%;transform:rotate(${angle}deg) translateY(-${Math.round(wheel.clientWidth * .34)}px) rotate(-${angle}deg);transform-origin:0 0;color:#fff;font-size:${Math.max(9, Number(item.subtitleFontSize || 18) * .65)}px;font-weight:900;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 4px #000;`;
+                labels.appendChild(label);
+            });
+            wheel.insertBefore(labels, wheel.firstChild);
         }
 
         updateTalentStyle(itemId, key, value, live = false) {
