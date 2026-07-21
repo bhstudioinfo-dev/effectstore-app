@@ -1584,20 +1584,8 @@
             const boardWidth = item.width || refW / 3;
             const boardHeight = item.height || refH / 3;
             const isTalentBoard = item.type === 'talent-live' || item.type === 'talent-leaderboard';
-            // Exported layouts contain typography already multiplied by the
-            // export scale. Talent content is scaled again to fit its resized
-            // board, so normalize its typography once before rendering to avoid
-            // oversized rows being clipped in OBS.
-            const exportScale = Math.max(1, Number(exportW) / Math.max(1, Number(layout.safeArea && layout.safeArea.width) || exportW));
-            const talentRenderItem = isTalentBoard ? {
-              ...item,
-              fontSize: Number(item.fontSize || 32) / exportScale,
-              subtitleFontSize: Number(item.subtitleFontSize || 16) / exportScale,
-              rowFontSize: Number(item.rowFontSize || 18) / exportScale,
-              valueFontSize: Number(item.valueFontSize || 16) / exportScale
-            } : item;
             const widgetHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
-              ? window.MenuDesignerSharedRenderEngine.renderByType(talentRenderItem, { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary })
+              ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary })
               : '';
             const talentCount = isTalentBoard && item.talentCompetition ? Math.min(Number(item.talentCompetition.maxRanking) || 8, (item.talentCompetition.participants || []).length || 1) : 0;
             const talentRequiredHeight = 100 + (talentCount * 28);
