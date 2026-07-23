@@ -17,7 +17,8 @@ const { getEntitlements, upgradePayload, validateDesignerItems } = require('../c
 const {
     getUserAvailableEffects,
     resolveEffectForUser,
-    resolveEffectDurationForUser
+    resolveEffectDurationForUser,
+    isCustomEffectMediaAvailable
 } = require('../services/effectLibraryService');
 const effectQueue = require('../services/effectQueue');
 const playbackManager = require('../services/playbackManager');
@@ -572,6 +573,13 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
         if (!resolvedEffect) {
             return res.status(403).json({ success: false, message: 'Hiệu ứng không thuộc tài khoản này hoặc không còn khả dụng.' });
         }
+        if (resolvedEffect.isCustom && !await isCustomEffectMediaAvailable(resolvedEffect)) {
+            return res.status(422).json({
+                success: false,
+                code: 'CUSTOM_EFFECT_FILE_UNAVAILABLE',
+                message: 'Không tìm thấy file hiệu ứng cá nhân trên máy này. Hãy thêm lại hiệu ứng rồi thử lại.'
+            });
+        }
 
         const duration = await resolveEffectDurationForUser(req.userId, effectId);
         if (!duration) {
@@ -743,6 +751,14 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
         const resolvedEffect = await resolveEffectForUser(req.userId, effectId);
         if (!resolvedEffect) {
             return res.status(403).json({ success: false, message: 'Hiệu ứng không thuộc tài khoản này hoặc không còn khả dụng.', triggered: false });
+        }
+        if (resolvedEffect.isCustom && !await isCustomEffectMediaAvailable(resolvedEffect)) {
+            return res.status(422).json({
+                success: false,
+                triggered: false,
+                code: 'CUSTOM_EFFECT_FILE_UNAVAILABLE',
+                message: 'Không tìm thấy file hiệu ứng cá nhân trên máy này. Hãy thêm lại hiệu ứng rồi thử lại.'
+            });
         }
 
         const duration = await resolveEffectDurationForUser(req.userId, effectId);

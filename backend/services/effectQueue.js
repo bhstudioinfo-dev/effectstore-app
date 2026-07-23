@@ -135,8 +135,15 @@ class EffectQueue {
         }
 
         // Validate URLs for test or live mapping
-        if ((item.playbackType === 'test_mapping' || item.playbackType === 'preview_effect' || item.playbackType === 'live_mapping') && 
-            !item.effectUrl && (!item.effects || item.effects.length === 0)) {
+        const canResolveMediaBeforePlayback = Boolean(
+            item.userId &&
+            item.effectId &&
+            (!item.effects || item.effects.length === 0)
+        );
+        if ((item.playbackType === 'test_mapping' || item.playbackType === 'preview_effect' || item.playbackType === 'live_mapping') &&
+            !item.effectUrl &&
+            (!item.effects || item.effects.length === 0) &&
+            !canResolveMediaBeforePlayback) {
             console.warn(`Skipping ${item.playbackType} ${item.effectId}: missing effect URL/group`);
             return false;
         }
@@ -221,6 +228,14 @@ class EffectQueue {
             });
         } catch (error) {
             console.error(`Unable to play effect ${item.effectId}:`, error.message || error);
+            if (this.broadcastFn) {
+                this.broadcastFn('effect_warning', {
+                    effectId: item.effectId,
+                    effectName: item.effectName,
+                    playbackType: item.playbackType,
+                    message: error.message || 'Không thể phát hiệu ứng.'
+                });
+            }
             playbackManager.failCurrent('playback_error', () => this.process());
         }
     }

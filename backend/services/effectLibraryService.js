@@ -83,6 +83,33 @@ function addProtectedMediaUrl(effect, userId) {
     return { ...effect, fileUrl: protectedUrl, previewUrl: protectedUrl };
 }
 
+async function isCustomEffectMediaAvailable(effect, options = {}) {
+    if (!effect?.isCustom) return true;
+    const url = String(effect.fileUrl || '').trim();
+    if (!url) return false;
+
+    const fetchFn = options.fetchFn || global.fetch;
+    if (typeof fetchFn !== 'function') return false;
+
+    const timeoutMs = Math.max(250, Math.min(5000, Number(options.timeoutMs) || 1200));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    timeout.unref?.();
+
+    try {
+        const response = await fetchFn(url, {
+            method: 'HEAD',
+            cache: 'no-store',
+            signal: controller.signal
+        });
+        return response?.ok === true;
+    } catch (_error) {
+        return false;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 async function getUserRecord(userId) {
     if (!userId) return null;
     return User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
@@ -159,6 +186,7 @@ async function resolveEffectDurationForUser(userId, effectId) {
 module.exports = {
     normalizePurchasedEffect,
     normalizeCustomEffect,
+    isCustomEffectMediaAvailable,
     getUserAvailableEffects,
     resolveEffectForUser,
     resolveEffectDurationForUser

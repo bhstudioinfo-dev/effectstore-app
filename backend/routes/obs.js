@@ -10,7 +10,8 @@ const path = require('path');
 const effectQueue = require('../services/effectQueue');
 const {
     resolveEffectForUser,
-    resolveEffectDurationForUser
+    resolveEffectDurationForUser,
+    isCustomEffectMediaAvailable
 } = require('../services/effectLibraryService');
 const effectRoutes = require('./effects');
 const { getOverlayAccessToken } = require('../config/networkSecurity');
@@ -96,6 +97,13 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
         const effect = await resolveEffectForUser(req.userId, effectId);
         if (!effect) {
             return res.status(403).json({ success: false, message: 'Bạn chưa sở hữu hiệu ứng này.' });
+        }
+        if (effect.isCustom && !await isCustomEffectMediaAvailable(effect)) {
+            return res.status(422).json({
+                success: false,
+                code: 'CUSTOM_EFFECT_FILE_UNAVAILABLE',
+                message: 'Không tìm thấy file hiệu ứng cá nhân trên máy này. Hãy thêm lại hiệu ứng rồi thử lại.'
+            });
         }
 
         const duration = await resolveEffectDurationForUser(req.userId, effectId);

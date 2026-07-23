@@ -153,6 +153,10 @@ class TikTokService {
         };
     }
 
+    shouldSkipIntermediateStreak(data = {}) {
+        return Number(data.giftType) === 1 && data.repeatEnd === false;
+    }
+
     getGiftCatalogState() {
         if (this.giftCatalogState.gifts.length) return this.giftCatalogState;
         return { gifts: FALLBACK_GIFTS, lastSyncedAt: null, source: 'fallback-preview' };
@@ -216,6 +220,11 @@ class TikTokService {
                 await this.processGiftMenuGift(data).catch(err => {
                     console.error('⚠️ Gift Menu live progress sync error:', err.message);
                 });
+
+                // TikTok sends intermediate updates while a streak gift is still
+                // repeating. Goal/menu counters already ignore these updates.
+                // Media playback must also wait for the final repeatEnd event.
+                if (this.shouldSkipIntermediateStreak(data)) return;
 
                 let mappings = [];
                 if (this.currentLiveUserId) {

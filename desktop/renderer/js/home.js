@@ -4229,7 +4229,7 @@ class EffectStoreApp {
                         
                         // Cooldown
                         if (m.cooldown && m.cooldown > 0) {
-                            const actionText = m.cooldownAction === 'ignore' ? 'Bỏ qua' : 'Đợi';
+                            const actionText = m.cooldownAction === 'ignore' ? 'Bỏ qua' : 'Vẫn xếp hàng';
                             badges.push(`<span style="font-size:11px;color:#ef4444;background:rgba(239,68,68,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(239,68,68,0.2);margin-left:6px;">Chờ: ${m.cooldown}s (${actionText})</span>`);
                         }
                         
