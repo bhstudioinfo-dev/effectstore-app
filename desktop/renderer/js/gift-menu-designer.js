@@ -662,6 +662,13 @@
                     if (this.handlePlanLimit(data, 'templates')) return;
                     throw new Error(data.error || `HTTP ${res.status}`);
                 }
+                if (data.challengeWheel?._id) {
+                    const wheelItem = this.items.find((entry) => entry.type === 'challenge-wheel');
+                    if (wheelItem) {
+                        wheelItem.challengeWheelId = String(data.challengeWheel._id);
+                        await this.saveLayout(false, false);
+                    }
+                }
                 await this.loadLayoutsList();
                 await this.loadLayout();
                 await this.loadTemplatesList();
@@ -1318,7 +1325,8 @@
                                     </div>
                                 </div>
                             `;
-                            if (item.type === 'challenge-wheel') this.decorateChallengeWheelPreview(item, visualContainer);
+                            // Challenge-wheel labels are rendered by the shared
+                            // renderer. Do not decorate a second label layer here.
                         } else {
                         const auraShapeVars = this.getAuraShapeVars(item.auraShape);
                         const lightSweepOverlay = '';
@@ -5797,16 +5805,20 @@
                         <div class="gmd-field"><label>Tiêu đề vòng quay</label><input class="gmd-input" value="${this.escapeHtml(selected.title || '')}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','title',this.value)"></div>
                         <div class="gmd-field"><label>Dòng mô tả</label><input class="gmd-input" value="${this.escapeHtml(selected.subtitle || '')}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','subtitle',this.value)"></div>
                         <div class="gmd-row"><div class="gmd-field"><label>Cỡ chữ tiêu đề</label><input class="gmd-input" type="number" min="16" max="72" value="${selected.titleFontSize || 34}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','titleFontSize',this.value)"></div><div class="gmd-field"><label>Cỡ chữ mô tả</label><input class="gmd-input" type="number" min="10" max="36" value="${selected.subtitleFontSize || 18}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','subtitleFontSize',this.value)"></div></div>
+                        <div class="gmd-field"><label>Cỡ chữ thử thách</label><input class="gmd-range" type="range" min="8" max="28" value="${selected.labelFontSize || 16}" oninput="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','labelFontSize',this.value,true)" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','labelFontSize',this.value)"></div>
+                        <div class="gmd-field"><label>Hiệu ứng viền vòng quay</label><select class="gmd-select" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','ringEffect',this.value)"><option value="gold" ${(selected.ringEffect || 'gold') === 'gold' ? 'selected' : ''}>Kim loại vàng</option><option value="neon" ${selected.ringEffect === 'neon' ? 'selected' : ''}>Neon xanh hồng</option><option value="fire" ${selected.ringEffect === 'fire' ? 'selected' : ''}>Lửa đỏ cam</option><option value="electric" ${selected.ringEffect === 'electric' ? 'selected' : ''}>Điện xanh</option><option value="rainbow" ${selected.ringEffect === 'rainbow' ? 'selected' : ''}>Cầu vồng chuyển động</option></select></div>
+                        <div class="gmd-row"><div class="gmd-field"><label>Màu chữ</label><input class="gmd-color" type="color" value="${selected.textColor || '#ffffff'}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','textColor',this.value)"></div><div class="gmd-field"><label>Màu viền</label><input class="gmd-color" type="color" value="${selected.borderColor || '#d6a84f'}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','borderColor',this.value)"></div></div>
+                        <div class="gmd-field gmd-toggle-row"><label>Ẩn viền bảng</label><label class="gmd-switch"><input type="checkbox" ${selected.hideBorder ? 'checked' : ''} onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','hideBorder',this.checked)"><span></span></label></div>
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-list-ol"></i> PHẦN 3: DANH SÁCH THỬ THÁCH</h4>
-                        <div style="display:flex;flex-direction:column;gap:7px;max-height:240px;overflow:auto;">${segments.map((segment,index)=>`<div style="display:flex;gap:5px;align-items:center;"><span style="width:20px;color:#fbbf24;font-weight:900;">${index+1}</span><input class="gmd-input" style="flex:1;min-width:0;" value="${this.escapeHtml(segment.label || '')}" onchange="window.giftMenuDesigner.updateChallengeSegment('${selected.id}',${index},'label',this.value)"><input class="gmd-color" style="width:34px;height:28px;padding:2px;" type="color" value="${segment.color || '#8b5cf6'}" onchange="window.giftMenuDesigner.updateChallengeSegment('${selected.id}',${index},'color',this.value)"></div>`).join('')}</div>
+                        <div style="display:flex;flex-direction:column;gap:7px;max-height:300px;overflow:auto;">${segments.map((segment,index)=>`<div style="padding:6px;border:1px solid rgba(255,255,255,.08);border-radius:8px;"><div style="display:flex;gap:5px;align-items:center;"><span style="width:20px;color:#fbbf24;font-weight:900;">${index+1}</span><input class="gmd-input" style="flex:1;min-width:0;" value="${this.escapeHtml(segment.label || '')}" onchange="window.giftMenuDesigner.updateChallengeSegment('${selected.id}',${index},'label',this.value)"><input class="gmd-color" style="width:34px;height:28px;padding:2px;" type="color" value="${segment.color || '#8b5cf6'}" onchange="window.giftMenuDesigner.updateChallengeSegment('${selected.id}',${index},'color',this.value)"></div><div style="display:flex;gap:5px;margin-top:5px;"><button class="gmd-btn" style="flex:1;height:25px;font-size:10px;" onclick="window.giftMenuDesigner.uploadChallengeSegmentImage('${selected.id}',${index})"><i class="fas fa-image"></i> ${segment.resultImage ? 'Đổi ảnh kết quả riêng' : 'Tải ảnh kết quả riêng'}</button>${segments.length > 2 ? `<button class="gmd-btn" style="width:32px;height:25px;font-size:10px;color:#f87171;" title="Xóa thử thách" onclick="window.giftMenuDesigner.removeChallengeSegment('${selected.id}',${index})"><i class="fas fa-trash"></i></button>` : ''}</div></div>`).join('')}</div>
                         <button class="gmd-btn" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.addChallengeSegment('${selected.id}')"><i class="fas fa-plus"></i> Thêm thử thách</button>
                     </div>
                     <div class="gmd-section"><h4><i class="fas fa-vial"></i> KIỂM TRA</h4><div style="font-size:11px;color:#94a3b8;line-height:1.4;">Vòng quay sẽ xuất hiện trên OBS khi món quà được mapping và donate thực tế.</div></div>
                 `;
                 if (selected.type === 'challenge-wheel') {
-                    specificConfigHTML += `<div class="gmd-section"><h4><i class="fas fa-sliders"></i> HÀNH VI VÒNG QUAY</h4><div class="gmd-row"><div class="gmd-field"><label>Thời gian quay (giây)</label><input class="gmd-input" type="number" min="2" max="30" value="${Math.round((selected.durationMs || 6500) / 1000)}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','durationMs',Number(this.value)*1000)"></div><div class="gmd-field"><label>Tự ẩn sau (giây)</label><input class="gmd-input" type="number" min="0" max="60" value="${Math.round((selected.autoHideMs || 7000) / 1000)}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','autoHideMs',Number(this.value)*1000)"></div></div><button class="gmd-btn primary" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.previewChallengeWheelSpin('${selected.id}')"><i class="fas fa-play"></i> Xem thử vòng quay</button></div>`;
+                    specificConfigHTML += `<div class="gmd-section"><h4><i class="fas fa-sliders"></i> HÀNH VI VÒNG QUAY</h4><div class="gmd-row"><div class="gmd-field"><label>Thời gian quay (giây)</label><input class="gmd-input" type="number" min="2" max="30" value="${Math.round((selected.durationMs || 6500) / 1000)}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','durationMs',Number(this.value)*1000)"></div><div class="gmd-field"><label>Tự ẩn sau (giây)</label><input class="gmd-input" type="number" min="0" max="60" value="${Math.round((selected.autoHideMs || 7000) / 1000)}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','autoHideMs',Number(this.value)*1000)"></div></div><button class="gmd-btn primary" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.saveChallengeWheel('${selected.id}')"><i class="fas fa-cloud-arrow-up"></i> Lưu cấu hình vòng quay cho Gift Mapping</button></div>`;
                 }
             } else if (selected.type === 'goal-list') {
                 specificConfigHTML = `
@@ -6369,6 +6381,7 @@
                             <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">${isChallengeWheel ? 'Bấm nút để quay thử ngay trong app. Đây chỉ là mô phỏng, không gửi quà và không kích hoạt OBS.' : 'Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.'}</p>
                             <div style="display: flex; gap: 8px;">
                                 <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: ${isChallengeWheel ? 'linear-gradient(135deg,#ef2029,#f59e0b)' : '#8b5cf6'}; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.${isChallengeWheel ? `previewChallengeWheelSpin('${selected.id}')` : `sendSimulatedGift('${selected.id}')`}"><i class="fas ${isChallengeWheel ? 'fa-dharmachakra' : 'fa-play'}"></i> ${isChallengeWheel ? 'Test quay thử' : 'Gửi quà Test'}</button>
+                                ${isChallengeWheel ? `<button class="gmd-btn" style="flex:0 0 42px;font-size:11px;padding:6px;height:32px;" title="Đặt lại vòng quay" onclick="window.giftMenuDesigner.resetChallengeWheelPreview('${selected.id}')"><i class="fas fa-undo"></i></button>` : '<button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem(\'' + selected.id + '\')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>'}
                                 ${isChallengeWheel ? '' : '<button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem(\'' + selected.id + '\')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>'}
                             </div>
                         </div>
@@ -6873,16 +6886,69 @@
             });
         }
 
-        updateChallengeWheelField(itemId, key, value) {
+        updateChallengeWheelField(itemId, key, value, live = false) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
             if (!item) return;
             const numeric = ['titleFontSize', 'subtitleFontSize', 'durationMs', 'autoHideMs'];
-            item[key] = numeric.includes(key) ? Math.max(8, Number(value) || 8) : String(value || '');
+            const boolean = ['hideBorder'];
+            item[key] = numeric.includes(key) ? Math.max(8, Number(value) || 8) : (boolean.includes(key) ? Boolean(value) : String(value || ''));
             this.invalidateItemVisual(item);
             this.renderCanvas();
+            if (live) return;
             this.renderInspector();
             this.pushHistory('update-challenge-wheel');
             this.saveLayout(false, false).catch(() => {});
+        }
+
+        async saveChallengeWheel(itemId) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
+            if (!item) return;
+            const logical = this.stageToLogical(item);
+            const wheelId = item.challengeWheelId || item.wheelId;
+            if (!wheelId) {
+                window.app?.showNotification?.('info', 'Hãy bấm Sử dụng mẫu một lần để tạo vòng quay cá nhân trước.');
+                return;
+            }
+            try {
+                const res = await fetch(`${this.apiBase}/api/tiktok/challenge-wheels/${wheelId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) },
+                    body: JSON.stringify({
+                        title: item.title,
+                        segments: item.segments || [],
+                        durationMs: item.durationMs,
+                        autoHideMs: item.autoHideMs,
+                        presentation: {
+                            coordinateSpace: 'export-logical-v1',
+                            hideBorder: Boolean(item.hideBorder),
+                            hideBg: Boolean(item.hideBg),
+                            useCustomBg: Boolean(item.useCustomBg),
+                            useCustomBgGradient: Boolean(item.useCustomBgGradient),
+                            bgColor: item.bgColor || '',
+                            bgColorGradientFrom: item.bgColorGradientFrom || '',
+                            bgColorGradientTo: item.bgColorGradientTo || '',
+                            ringEffect: item.ringEffect || 'gold',
+                            borderColor: item.borderColor || '#d6a84f',
+                            useCustomTextColor: Boolean(item.useCustomTextColor),
+                            textColor: item.textColor || '#ffffff',
+                            labelFontSize: Number(item.labelFontSize) || 16,
+                            titleFontSize: Number(item.titleFontSize) || 34,
+                            subtitleFontSize: Number(item.subtitleFontSize) || 18,
+                            // OBS uses the same 1080x1920 export-logical
+                            // coordinate space as the static layout.
+                            boardX: Number(logical.x) || 0,
+                            boardY: Number(logical.y) || 0,
+                            boardWidth: Number(logical.w) || Number(item.w) || 0,
+                            boardHeight: Number(logical.h) || Number(item.h) || 0
+                        }
+                    })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) throw new Error(data.error || 'Không thể lưu vòng quay');
+                window.app?.showNotification?.('success', 'Đã lưu cấu hình vòng quay cho Gift Mapping.');
+            } catch (error) {
+                window.app?.showNotification?.('error', error.message);
+            }
         }
 
         updateChallengeSegment(itemId, index, key, value) {
@@ -6900,7 +6966,8 @@
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
             if (!item) return;
             if (!Array.isArray(item.segments)) item.segments = [];
-            item.segments.push({ id: `challenge-${Date.now()}`, label: `Thử thách ${item.segments.length + 1}`, color: '#8b5cf6', weight: 1 });
+            const palette = ['#4c00ff', '#ec4899', '#f59e0b', '#06b6d4', '#22c55e', '#f43f5e', '#8b5cf6', '#14b8a6'];
+            item.segments.push({ id: `challenge-${Date.now()}`, label: `Thử thách ${item.segments.length + 1}`, color: palette[item.segments.length % palette.length], weight: 1 });
             this.invalidateItemVisual(item);
             this.renderCanvas();
             this.renderInspector();
@@ -6921,13 +6988,92 @@
 
         previewChallengeWheelSpin(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
-            const wheel = this.mount?.querySelector('.gmd-challenge-wheel-widget > div:last-child');
+            const wheel = this.mount?.querySelector('.gmd-challenge-wheel-widget > div:nth-child(3)')
+                || this.mount?.querySelector('.gmd-challenge-wheel-widget > div:last-child');
             if (!item || !wheel) return;
+            const segments = Array.isArray(item.segments) ? item.segments.filter((segment) => segment && segment.label) : [];
+            if (segments.length < 2) return;
+            const resultIndex = Math.floor(Math.random() * segments.length);
+            const resultSegment = segments[resultIndex];
+            const resultLabel = resultSegment.label;
+            const previousResult = this.mount?.querySelector('.gmd-wheel-preview-result');
+            if (previousResult) previousResult.classList.remove('is-visible');
             wheel.classList.remove('gmd-wheel-preview-spin');
+            wheel.style.animation = 'none';
             void wheel.offsetWidth;
-            wheel.style.setProperty('--gmd-wheel-turns', `${(5 + Math.random() * 2).toFixed(2)}turn`);
+            const startRotation = Number(wheel.dataset.rotation || 0);
+            const step = 360 / segments.length;
+            const currentAngle = ((startRotation % 360) + 360) % 360;
+            const alignToPointer = (360 - (resultIndex * step + step / 2) - currentAngle + 360) % 360;
+            const fullSpins = 5 + Math.floor(Math.random() * 2);
+            const finalRotation = startRotation + fullSpins * 360 + alignToPointer;
+            const duration = Math.max(1800, Number(item.durationMs) || 6500);
+            wheel.style.setProperty('--gmd-wheel-start-rotation', `${startRotation}deg`);
+            wheel.style.setProperty('--gmd-wheel-final-rotation', `${finalRotation}deg`);
+            wheel.style.setProperty('--gmd-wheel-duration', `${duration}ms`);
+            wheel.style.animation = `gmdWheelPreviewSpin ${duration}ms cubic-bezier(.12,.72,.08,1) both`;
             wheel.classList.add('gmd-wheel-preview-spin');
-            window.setTimeout(() => wheel.classList.remove('gmd-wheel-preview-spin'), Math.max(1800, Number(item.durationMs) || 6500));
+            window.setTimeout(() => {
+                wheel.classList.remove('gmd-wheel-preview-spin');
+                wheel.style.animation = 'none';
+                wheel.dataset.rotation = String(finalRotation);
+                wheel.style.transform = `rotateX(12deg) rotateZ(${finalRotation}deg)`;
+                const widget = wheel.closest('.gmd-challenge-wheel-widget');
+                if (widget) {
+                    let result = widget.querySelector('.gmd-wheel-preview-result');
+                    if (!result) {
+                        result = document.createElement('span');
+                        result.className = 'gmd-wheel-preview-result';
+                        widget.appendChild(result);
+                    }
+                    if (resultSegment.resultImage || item.resultImage) {
+                        result.innerHTML = `<img src="${this.escapeHtml(resultSegment.resultImage || item.resultImage)}" alt="Kết quả" style="max-width:220px;max-height:140px;display:block;margin:0 auto 6px;border-radius:12px;object-fit:contain;"><span>🎉 ${this.escapeHtml(resultLabel)}</span>`;
+                    } else {
+                        result.textContent = `🎉 KẾT QUẢ: ${resultLabel}`;
+                    }
+                    result.classList.add('is-visible');
+                }
+            }, duration + 40);
+        }
+
+        uploadChallengeResultImage(itemId) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/png,image/jpeg,image/webp,image/gif';
+            input.onchange = () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => this.updateChallengeWheelField(itemId, 'resultImage', String(reader.result || ''));
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+
+        resetChallengeWheelPreview(itemId) {
+            const wheel = this.mount?.querySelector('.gmd-challenge-wheel-widget > div:nth-child(3)') || this.mount?.querySelector('.gmd-challenge-wheel-widget > div:last-child');
+            const result = this.mount?.querySelector('.gmd-wheel-preview-result');
+            if (wheel) {
+                wheel.classList.remove('gmd-wheel-preview-spin');
+                wheel.style.animation = 'none';
+                wheel.style.transform = 'rotateX(12deg) rotateZ(0deg)';
+                wheel.dataset.rotation = '0';
+            }
+            if (result) result.classList.remove('is-visible');
+        }
+
+        uploadChallengeSegmentImage(itemId, index) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/png,image/jpeg,image/webp,image/gif';
+            input.onchange = () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => this.updateChallengeSegment(itemId, index, 'resultImage', String(reader.result || ''));
+                reader.readAsDataURL(file);
+            };
+            input.click();
         }
 
         decorateChallengeWheelPreview(item, container) {
@@ -6945,8 +7091,10 @@
                 const radius = 32;
                 const left = 50 + Math.cos(radians) * radius;
                 const top = 50 + Math.sin(radians) * radius;
+                const radialAngle = angle + 90;
+                const readableAngle = radialAngle > 180 && radialAngle < 360 ? radialAngle + 180 : radialAngle;
                 label.textContent = segment.label;
-                label.style.cssText = `position:absolute;left:${left}%;top:${top}%;width:30%;transform:translate(-50%,-50%);color:#fff;font-size:${Math.max(11, Number(item.subtitleFontSize || 18) * .8)}px;font-weight:900;line-height:1.1;text-align:center;white-space:normal;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 4px #000;`;
+                label.style.cssText = `position:absolute;left:${left}%;top:${top}%;width:30%;transform:translate(-50%,-50%) rotate(${readableAngle}deg);color:#fff;font-size:${Math.max(11, Number(item.subtitleFontSize || 18) * .8)}px;font-weight:900;line-height:1.1;text-align:center;white-space:normal;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 4px #000;`;
                 labels.appendChild(label);
             });
             wheel.insertBefore(labels, wheel.firstChild);

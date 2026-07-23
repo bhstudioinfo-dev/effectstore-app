@@ -1530,6 +1530,7 @@
         .forEach((item) => {
           const el = document.createElement('div');
           el.className = 'gmd-item gmd-export-item';
+          if (item.type === 'challenge-wheel') el.classList.add('gmd-static-challenge-wheel');
 
           if (item.type === 'gift-stack-group') {
             const overlayItem = {
@@ -1736,6 +1737,7 @@
       document.getElementById('gmd-challenge-wheel-live')?.remove();
       const host = document.createElement('div');
       host.id = 'gmd-challenge-wheel-live';
+      document.body.classList.add('gmd-live-wheel-active');
       const colors = segments.map((segment, index) => segment.color || ['#8b5cf6','#ec4899','#f59e0b','#06b6d4','#22c55e'][index % 5]);
       const step = 360 / segments.length;
       const gradient = segments.map((_, index) => `${colors[index]} ${index * step}deg ${(index + 1) * step}deg`).join(',');
@@ -1744,11 +1746,115 @@
       const safe = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
       const duration = Math.max(1500, Number(data.durationMs) || 6500);
       const hideAfter = Math.max(duration, Number(data.autoHideMs) || 7000);
-      host.innerHTML = `<div class="gmd-wheel-backdrop"><div class="gmd-wheel-card"><div class="gmd-wheel-title">🎡 ${safe(data.title || 'VÒNG QUAY THỬ THÁCH')}</div><div class="gmd-wheel-subtitle">${safe(data.nickname || 'Khán giả')} tặng ${safe(data.giftName || 'quà')}</div><div class="gmd-wheel-pointer">▼</div><div class="gmd-wheel-disc" style="--wheel-gradient:conic-gradient(${gradient});--wheel-rotation:${targetRotation}deg;--wheel-duration:${duration}ms;"><div class="gmd-wheel-labels">${segments.map((segment, index) => `<span style="--i:${index};--count:${segments.length};">${safe(segment.label)}</span>`).join('')}</div><div class="gmd-wheel-center">QUAY</div></div><div class="gmd-wheel-result">Kết quả: <b>${safe(data.resultLabel || '')}</b></div></div></div>`;
+      const resultVisual = data.resultImage ? `<img src="${safe(data.resultImage)}" alt="Kết quả" style="max-width:220px;max-height:140px;display:block;margin:0 auto 6px;border-radius:12px;object-fit:contain;">` : '';
+      host.innerHTML = `<div class="gmd-wheel-backdrop"><div class="gmd-wheel-card"><div class="gmd-wheel-title">🎡 ${safe(data.title || 'VÒNG QUAY THỬ THÁCH')}</div><div class="gmd-wheel-subtitle">${safe(data.nickname || 'Khán giả')} tặng ${safe(data.giftName || 'quà')}</div><div class="gmd-wheel-pointer">▼</div><div class="gmd-wheel-disc" style="--wheel-gradient:conic-gradient(${gradient});--wheel-rotation:${targetRotation}deg;--wheel-duration:${duration}ms;"><div class="gmd-wheel-labels">${segments.map((segment, index) => { const angle = index * step + step / 2; const radialAngle = angle + 90; const readableAngle = radialAngle > 180 && radialAngle < 360 ? radialAngle + 180 : radialAngle; return `<span style="--i:${index};--count:${segments.length};--label-angle:${readableAngle}deg;">${safe(segment.label)}</span>`; }).join('')}</div><div class="gmd-wheel-center">QUAY</div></div><div class="gmd-wheel-result">${resultVisual}Kết quả: <b>${safe(data.resultLabel || '')}</b></div></div></div>`;
+      const presentation = data.presentation && typeof data.presentation === 'object' ? data.presentation : {};
+      const card = host.querySelector('.gmd-wheel-card');
+      const backdrop = host.querySelector('.gmd-wheel-backdrop');
+      const disc = host.querySelector('.gmd-wheel-disc');
+      const pointer = host.querySelector('.gmd-wheel-pointer');
+      const labels = host.querySelectorAll('.gmd-wheel-labels span');
+      const labelSize = Math.max(10, Math.min(28, Number(presentation.labelFontSize) || 16));
+      if (card) {
+        // The live event already contains the wheel surface. Never add a
+        // second rectangular board behind it; the wheel's own ring remains.
+        // This also keeps older mappings (without presentation data) aligned
+        // with the transparent designer preview.
+        card.classList.add('gmd-wheel-card-transparent', 'gmd-wheel-no-border');
+        card.style.setProperty('--wheel-border-color', presentation.borderColor || '#d6a84f');
+        card.style.setProperty('--wheel-text-color', presentation.useCustomTextColor ? (presentation.textColor || '#ffffff') : '#ffffff');
+        card.style.setProperty('--wheel-label-size', `${labelSize}px`);
+        let boardX = Number(presentation.boardX);
+        let boardY = Number(presentation.boardY);
+        const boardWidth = Number(presentation.boardWidth);
+        const boardHeight = Number(presentation.boardHeight);
+        // Older saved wheel configurations stored the designer's stage
+        // coordinates (9:16 stage is 720x960 with a 180x160 safe offset).
+        // Convert those once at render time so old mappings line up with the
+        // export canvas too; new saves are explicitly export-logical.
+        if (presentation.coordinateSpace !== 'export-logical-v1'
+          && Number.isFinite(boardX) && Number.isFinite(boardY)
+          && boardWidth >= 500 && boardHeight >= 500) {
+          boardX = Math.round((boardX - 180) * 3);
+          boardY = Math.round((boardY - 160) * 3);
+        }
+        if (Number.isFinite(boardX) && Number.isFinite(boardY) && boardWidth > 0 && boardHeight > 0) {
+          const exportW = 1080;
+          const exportH = 1920;
+          const positionScale = Math.min(window.innerWidth / exportW, window.innerHeight / exportH) || 1;
+          // Keep the same centered export-canvas origin as the static
+          // renderer. This matters when OBS uses a viewport whose aspect
+          // ratio differs slightly from the 9:16 export canvas.
+          const offsetX = Math.round((window.innerWidth - (exportW * positionScale)) / 2);
+          const offsetY = Math.round((window.innerHeight - (exportH * positionScale)) / 2);
+          card.style.width = `${boardWidth * positionScale}px`;
+          card.style.height = `${boardHeight * positionScale}px`;
+          card.style.boxSizing = 'border-box';
+          card.style.display = 'grid';
+          card.style.placeItems = 'center';
+          card.style.position = 'absolute';
+          card.style.left = `${offsetX + boardX * positionScale}px`;
+          card.style.top = `${offsetY + boardY * positionScale}px`;
+          card.style.transformOrigin = 'top left';
+          // The saved board coordinates already describe the final canvas
+          // position. Disable the entrance scale animation here; scaling the
+          // positioning box changes its visual center and shifts the wheel.
+          card.style.transform = 'none';
+          card.style.transition = 'none';
+        }
+      }
+      if (disc) {
+        // Keep the live wheel's layered ring identical to the Designer skin:
+        // white inner rim, red outer rim, gold accent and 3D lower shadow.
+        disc.classList.add('gmd-live-wheel-disc');
+        disc.style.border = '14px solid #f8fafc';
+        disc.style.boxShadow = '0 0 0 5px #fbbf24, 0 0 0 14px #ef2029, 0 0 0 20px #fbbf24, 0 8px 0 22px #991b1b, 0 0 34px #ef4444aa';
+        disc.style.filter = 'drop-shadow(0 0 12px rgba(251,191,36,.75))';
+      }
+      labels.forEach((label, index) => {
+        const angle = index * step + step / 2;
+        const radians = (angle - 90) * Math.PI / 180;
+        const radialAngle = angle + 90;
+        const readableAngle = radialAngle > 180 && radialAngle < 360 ? radialAngle + 180 : radialAngle;
+        label.style.left = `${50 + Math.cos(radians) * 29}%`;
+        label.style.top = `${50 + Math.sin(radians) * 29}%`;
+        label.style.width = '22%';
+        label.style.maxWidth = '22%';
+        label.style.fontSize = `${labelSize}px`;
+        label.style.transform = `translate(-50%,-50%) rotate(${readableAngle}deg)`;
+      });
+      if (disc) disc.style.setProperty('--wheel-label-size', `${labelSize}px`);
+      if (disc && (Number(presentation.boardWidth) > 0 || Number(presentation.boardHeight) > 0)) {
+        const boardWidth = Number(presentation.boardWidth) || 0;
+        const boardHeight = Number(presentation.boardHeight) || 0;
+        const configuredDisc = boardWidth > 0 ? boardWidth * 0.78 : boardHeight * 0.62;
+        const maxByHeight = boardHeight > 0 ? boardHeight * 0.72 : configuredDisc;
+        // Match the same logical-to-viewport conversion used by the static
+        // layout renderer (1080x1920 export canvas). The saved dimensions are
+        // logical Designer pixels, so convert them exactly once here.
+        const exportW = 1080;
+        const exportH = 1920;
+        const viewportScale = Math.min(window.innerWidth / exportW, window.innerHeight / exportH) || 1;
+        const discSize = Math.max(40, Math.min(configuredDisc, maxByHeight) * viewportScale);
+        disc.style.width = `${discSize}px`;
+        disc.style.maxWidth = 'none';
+        // The live card is transparent and only acts as a positioning box.
+        // Anchor the pointer to the actual wheel top, not to the card top;
+        // otherwise a tall saved board makes the pointer visibly drift.
+        if (pointer) {
+          const cardHeight = boardHeight > 0 ? boardHeight * viewportScale : discSize;
+          pointer.style.left = '50%';
+          pointer.style.top = `${Math.max(0, (cardHeight - discSize) / 2 - (24 * viewportScale))}px`;
+          pointer.style.transform = 'translateX(-50%)';
+        }
+      }
       document.body.appendChild(host);
       window.setTimeout(() => host.classList.add('is-spinning'), 30);
       window.setTimeout(() => host.classList.add('is-finished'), duration);
-      window.setTimeout(() => host.remove(), hideAfter + 500);
+      window.setTimeout(() => {
+        host.remove();
+        document.body.classList.remove('gmd-live-wheel-active');
+      }, hideAfter + 500);
     }
 
     async function syncGiftMenuPlaybackVisibility() {

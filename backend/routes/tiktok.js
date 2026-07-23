@@ -29,6 +29,14 @@ let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) {}
 const giftMenuLayoutPath = dataPaths.giftMenuLayoutPath;
 const goalAssetDir = dataPaths.goalAssetsDir;
+const savedPresentationNumber = (presentation, key, fallback, allowZero = false) => {
+    const saved = Number(presentation?.[key]);
+    const backup = Number(fallback);
+    const isDimension = key === 'boardWidth' || key === 'boardHeight';
+    if (Number.isFinite(saved) && (allowZero ? saved >= 0 : saved > 0)
+        && (!isDimension || !Number.isFinite(backup) || backup <= 0 || (saved >= backup * 0.75 && saved <= backup * 1.5))) return saved;
+    return Number.isFinite(backup) && (allowZero ? backup >= 0 : backup > 0) ? backup : 0;
+};
 fs.mkdirSync(goalAssetDir, { recursive: true });
 const goalAssetUpload = multer({
     storage: multer.diskStorage({
@@ -188,31 +196,94 @@ router.get('/available-effects', authMiddleware, async (req, res) => {
 
 router.get('/challenge-wheels', authMiddleware, async (req, res) => {
     try {
-        const wheels = await ChallengeWheel.find({ userId: req.userId }).sort({ updatedAt: -1 }).lean();
+        // Backfill a wheel for an admin's already-published challenge-wheel
+        // template. Older published products predate the ChallengeWheel record.
+        const owner = await User.findById(req.userId).select('isAdmin subscription').lean();
+        if (owner?.isAdmin === true || owner?.subscription === 'business') {
+            const templates = await GiftMenuLayout.find({
+                userId: req.userId,
+                isTemplate: true,
+                $or: [
+                    { productType: 'challenge-wheel' },
+                    { 'items.type': 'challenge-wheel' },
+                    { 'exportedItems.type': 'challenge-wheel' }
+                ]
+            }).lean();
+            for (const template of templates) {
+                const wheelItem = [...(template.items || []), ...(template.exportedItems || [])]
+                    .find((item) => item && item.type === 'challenge-wheel');
+                if (!wheelItem) continue;
+                await ChallengeWheel.findOneAndUpdate(
+                    { userId: req.userId, sourceTemplateId: template._id },
+                    {
+                        $set: {
+                            name: template.name,
+                            title: wheelItem.title || 'VÒNG QUAY THỬ THÁCH',
+                            segments: wheelItem.segments || [],
+                            durationMs: wheelItem.durationMs || 6500,
+                            autoHideMs: wheelItem.autoHideMs || 7000,
+                            isActive: true
+                        }
+                    },
+                    { upsert: true, setDefaultsOnInsert: true }
+                );
+            }
+        }
+        const rawWheels = await ChallengeWheel.find({ userId: req.userId }).sort({ updatedAt: -1 }).lean();
+        // A previous client could create the same wheel more than once while
+        // synchronizing a published template. Return one record per source.
+        const seenSources = new Set();
+        const seenContent = new Set();
+        const wheels = rawWheels.filter((wheel) => {
+            const source = wheel.sourceTemplateId ? String(wheel.sourceTemplateId) : '';
+            const content = (wheel.segments || []).map((segment) => segment.label).join('|');
+            const key = source ? `source:${source}` : `content:${wheel.name}|${content}`;
+            if (source) {
+                if (seenSources.has(source)) return false;
+                seenSources.add(source);
+            } else {
+                if (seenContent.has(key)) return false;
+                seenContent.add(key);
+            }
+            return true;
+        });
         res.json({ success: true, wheels });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.post('/challenge-wheels', authMiddleware, async (req, res) => {
     try {
+        const owner = await User.findById(req.userId).select('isAdmin subscription').lean();
+        const sourceTemplateId = req.body.sourceTemplateId && isValidResourceId(req.body.sourceTemplateId) ? req.body.sourceTemplateId : null;
+        if (!sourceTemplateId && owner?.isAdmin !== true && owner?.subscription !== 'business') {
+            return res.status(403).json({ success: false, error: 'Vòng quay chỉ được tạo từ sản phẩm Vòng quay thử thách đã mua.' });
+        }
         const name = String(req.body.name || '').trim();
         const rawSegments = Array.isArray(req.body.segments) ? req.body.segments : [];
         const segments = rawSegments.map((segment, index) => ({
             id: String(segment.id || `challenge-${Date.now()}-${index}`),
             label: String(segment.label || '').trim(),
             color: String(segment.color || '#8b5cf6'),
+            resultImage: String(segment.resultImage || '').slice(0, 2000000),
             weight: Math.max(0, Number(segment.weight) || 1)
         })).filter((segment) => segment.label).slice(0, 32);
         if (!name || segments.length < 2) return res.status(400).json({ success: false, error: 'Vòng quay cần tên và ít nhất 2 thử thách.' });
-        const wheel = await ChallengeWheel.create({
-            userId: req.userId,
+        const wheelData = {
             name,
             title: String(req.body.title || 'VÒNG QUAY THỬ THÁCH').trim(),
             segments,
             durationMs: Math.min(30000, Math.max(1500, Number(req.body.durationMs) || 6500)),
             autoHideMs: Math.min(60000, Math.max(0, Number(req.body.autoHideMs) || 7000)),
-            noRepeat: Boolean(req.body.noRepeat)
-        });
+            noRepeat: Boolean(req.body.noRepeat),
+            isActive: true
+        };
+        const wheel = sourceTemplateId
+            ? await ChallengeWheel.findOneAndUpdate(
+                { userId: req.userId, sourceTemplateId },
+                { $set: wheelData },
+                { new: true, upsert: true, setDefaultsOnInsert: true }
+            )
+            : await ChallengeWheel.create({ userId: req.userId, ...wheelData });
         res.status(201).json({ success: true, wheel });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -225,12 +296,40 @@ router.put('/challenge-wheels/:id', authMiddleware, async (req, res) => {
         if (req.body.title !== undefined) wheel.title = String(req.body.title || '').trim();
         if (Array.isArray(req.body.segments)) wheel.segments = req.body.segments.map((segment, index) => ({
             id: String(segment.id || `challenge-${Date.now()}-${index}`), label: String(segment.label || '').trim(),
-            color: String(segment.color || '#8b5cf6'), weight: Math.max(0, Number(segment.weight) || 1)
+            color: String(segment.color || '#8b5cf6'), resultImage: String(segment.resultImage || '').slice(0, 2000000), weight: Math.max(0, Number(segment.weight) || 1)
         })).filter((segment) => segment.label).slice(0, 32);
         if (req.body.durationMs !== undefined) wheel.durationMs = Math.min(30000, Math.max(1500, Number(req.body.durationMs) || 6500));
         if (req.body.autoHideMs !== undefined) wheel.autoHideMs = Math.min(60000, Math.max(0, Number(req.body.autoHideMs) || 7000));
         if (req.body.noRepeat !== undefined) wheel.noRepeat = Boolean(req.body.noRepeat);
+        if (req.body.presentation && typeof req.body.presentation === 'object') wheel.presentation = req.body.presentation;
         await wheel.save();
+
+        // When the owner/admin edits the wheel that originated from a
+        // published template, keep that catalog template in sync as well.
+        // Customer-owned copies must never mutate the seller's product.
+        if (wheel.sourceTemplateId) {
+            const sourceTemplate = await GiftMenuLayout.findOne({
+                _id: wheel.sourceTemplateId,
+                userId: req.userId,
+                isTemplate: true
+            });
+            if (sourceTemplate) {
+                const syncItem = (entry) => entry && entry.type === 'challenge-wheel'
+                    ? {
+                        ...entry,
+                        title: wheel.title || entry.title,
+                        segments: wheel.segments,
+                        durationMs: wheel.durationMs,
+                        autoHideMs: wheel.autoHideMs,
+                        ...(wheel.presentation || {})
+                    }
+                    : entry;
+                sourceTemplate.items = (sourceTemplate.items || []).map(syncItem);
+                sourceTemplate.exportedItems = (sourceTemplate.exportedItems || []).map(syncItem);
+                sourceTemplate.savedAt = new Date();
+                await sourceTemplate.save();
+            }
+        }
         res.json({ success: true, wheel });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -250,9 +349,31 @@ router.post('/challenge-wheels/:id/test', authMiddleware, async (req, res) => {
         if (!wheel || !Array.isArray(wheel.segments) || wheel.segments.length < 2) return res.status(404).json({ success: false, error: 'Vòng quay chưa đủ thử thách.' });
         const usable = wheel.segments.filter((segment) => Number(segment.weight) > 0);
         const result = usable[Math.floor(Math.random() * usable.length)] || wheel.segments[0];
+        // The mapped wheel is independent from the active menu layout.
+        let templateItem = null;
+        if (wheel.sourceTemplateId) {
+            const template = await GiftMenuLayout.findOne({ _id: wheel.sourceTemplateId, isTemplate: true }).select('items exportedItems').lean().catch(() => null);
+            templateItem = [...(template?.items || []), ...(template?.exportedItems || [])].find((entry) => entry?.type === 'challenge-wheel');
+        }
+        const savedPresentation = wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {};
+        const resolvedSegments = Array.isArray(wheel.segments) ? wheel.segments : [];
+        const resolvedPresentation = {
+            ...(templateItem ? {
+                hideBorder: Boolean(templateItem.hideBorder), hideBg: Boolean(templateItem.hideBg),
+                ringEffect: templateItem.ringEffect || 'gold', borderColor: templateItem.borderColor || '#d6a84f',
+                useCustomTextColor: Boolean(templateItem.useCustomTextColor), textColor: templateItem.textColor || '#ffffff',
+                labelFontSize: Number(templateItem.labelFontSize) || 16
+            } : {}),
+            ...savedPresentation,
+            boardWidth: savedPresentationNumber(savedPresentation, 'boardWidth', templateItem?.w || templateItem?.width || templateItem?.lockedW),
+            boardHeight: savedPresentationNumber(savedPresentation, 'boardHeight', templateItem?.h || templateItem?.height || templateItem?.lockedH),
+            boardX: savedPresentationNumber(savedPresentation, 'boardX', templateItem?.x, true),
+            boardY: savedPresentationNumber(savedPresentation, 'boardY', templateItem?.y, true)
+        };
         req.app.locals.broadcastToClients?.('challenge_wheel_spin', {
-            wheelId: String(wheel._id), title: wheel.title, segments: wheel.segments,
-            resultId: result.id, resultLabel: result.label, durationMs: wheel.durationMs,
+            wheelId: String(wheel._id), title: wheel.title || templateItem?.title, segments: resolvedSegments,
+            presentation: resolvedPresentation,
+            resultId: result.id, resultLabel: result.label, resultImage: result.resultImage || '', durationMs: wheel.durationMs,
             autoHideMs: wheel.autoHideMs, giftId: 'test', giftName: 'Quà thử nghiệm',
             nickname: 'Khán giả thử nghiệm', triggeredAt: Date.now(), simulated: true
         });
@@ -405,6 +526,46 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
         }
         const mapping = await GiftMapping.findOne(ownedResourceFilter(mappingId, req.userId));
         if (!mapping) return res.status(404).json({ success: false, message: 'Mapping not found' });
+
+        // A wheel-only mapping must be testable without an effect player.
+        if (mapping.wheelId && (mapping.triggerType === 'wheel' || !mapping.effectId)) {
+            const wheel = await ChallengeWheel.findOne({ _id: mapping.wheelId, userId: req.userId, isActive: true }).lean();
+            const usable = (wheel?.segments || []).filter((segment) => Number(segment.weight) > 0);
+            if (!wheel || usable.length < 2) {
+                return res.status(400).json({ success: false, message: 'Vòng quay không tồn tại hoặc chưa đủ thử thách.' });
+            }
+            const result = usable[Math.floor(Math.random() * usable.length)];
+            // The mapping owns the wheel configuration. Never read the
+            // currently active personal layout here.
+            let templateItem = null;
+            if (wheel.sourceTemplateId) {
+                const template = await GiftMenuLayout.findOne({ _id: wheel.sourceTemplateId, isTemplate: true }).select('items exportedItems').lean().catch(() => null);
+                templateItem = [...(template?.items || []), ...(template?.exportedItems || [])].find((entry) => entry?.type === 'challenge-wheel');
+            }
+            const savedPresentation = wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {};
+            const resolvedSegments = Array.isArray(wheel.segments) ? wheel.segments : [];
+            const resolvedTitle = wheel.title || templateItem?.title;
+            const presentation = {
+                ...(templateItem ? {
+                    hideBorder: Boolean(templateItem.hideBorder), hideBg: Boolean(templateItem.hideBg), ringEffect: templateItem.ringEffect || 'gold',
+                    borderColor: templateItem.borderColor || '#d6a84f', useCustomTextColor: Boolean(templateItem.useCustomTextColor),
+                    textColor: templateItem.textColor || '#ffffff', labelFontSize: Number(templateItem.labelFontSize) || 16
+                } : {}),
+                ...savedPresentation,
+                boardWidth: savedPresentationNumber(savedPresentation, 'boardWidth', templateItem?.w || templateItem?.width || templateItem?.lockedW),
+                boardHeight: savedPresentationNumber(savedPresentation, 'boardHeight', templateItem?.h || templateItem?.height || templateItem?.lockedH),
+                boardX: savedPresentationNumber(savedPresentation, 'boardX', templateItem?.x, true),
+                boardY: savedPresentationNumber(savedPresentation, 'boardY', templateItem?.y, true)
+            };
+            req.app.locals.broadcastToClients?.('challenge_wheel_spin', {
+                wheelId: String(wheel._id), title: resolvedTitle, segments: resolvedSegments, presentation,
+                resultId: result.id, resultLabel: result.label, resultImage: result.resultImage || '',
+                durationMs: wheel.durationMs, autoHideMs: wheel.autoHideMs,
+                giftId: mapping.giftId, giftName: mapping.giftName, nickname: 'Khán giả thử nghiệm',
+                triggeredAt: Date.now(), simulated: true
+            });
+            return res.json({ success: true, effectId: 'wheel', effectName: result.label, duration: Math.max(1, (wheel.durationMs || 6500) / 1000) });
+        }
 
         const effectId = String(mapping.effectId || '');
         const resolvedEffect = await resolveEffectForUser(req.userId, effectId);
@@ -973,6 +1134,29 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
         }
         fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
 
+        // Keep the mapped wheel record in sync with normal Designer saves.
+        // Previously only the dedicated "Lưu cấu hình vòng quay" button
+        // updated ChallengeWheel, so a user could edit the segment labels,
+        // press the regular Save button, and still test the old published
+        // segments from Gift Mapping.
+        const wheelItemsToSync = (layout.items || []).filter((entry) => entry?.type === 'challenge-wheel');
+        for (const item of wheelItemsToSync) {
+            const wheelId = item.challengeWheelId || item.wheelId;
+            if (!isValidResourceId(wheelId) || !Array.isArray(item.segments) || item.segments.length < 2) continue;
+            await ChallengeWheel.findOneAndUpdate(
+                { _id: wheelId, userId: req.userId },
+                {
+                    $set: {
+                        title: String(item.title || '').trim() || undefined,
+                        segments: item.segments,
+                        durationMs: Math.min(30000, Math.max(1500, Number(item.durationMs) || 6500)),
+                        autoHideMs: Math.min(60000, Math.max(0, Number(item.autoHideMs) || 7000))
+                    }
+                },
+                { new: false }
+            );
+        }
+
         // Sync with Goal Board layout
         const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
         const goalBoardLayout = {
@@ -1100,6 +1284,7 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
             items: activeLayout.items,
             exportedItems: activeLayout.exportedItems,
             isTemplate: true,
+            productType: Array.isArray(activeLayout.items) && activeLayout.items.some((item) => item && item.type === 'challenge-wheel') ? 'challenge-wheel' : 'standard',
             category: String(payload.category || activeLayout.category || 'all'),
             price,
             originalPrice,
@@ -1243,7 +1428,18 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
             { $set: { isActive: false } }
         );
         fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(activeLayout, null, 2), 'utf8');
-        return res.json({ success: true, layout: activeLayout, reused: Boolean(linkedLayout) });
+        let challengeWheel = null;
+        if (template.productType === 'challenge-wheel') {
+            const wheelItem = (activeLayout.items || []).find((item) => item && item.type === 'challenge-wheel');
+            if (wheelItem) {
+                challengeWheel = await ChallengeWheel.findOneAndUpdate(
+                    { userId: req.userId, sourceTemplateId: template._id },
+                    { $set: { name: template.name, title: wheelItem.title || 'VÒNG QUAY THỬ THÁCH', segments: wheelItem.segments || [], durationMs: wheelItem.durationMs || 6500, autoHideMs: wheelItem.autoHideMs || 7000, isActive: true } },
+                    { new: true, upsert: true, setDefaultsOnInsert: true }
+                );
+            }
+        }
+        return res.json({ success: true, layout: activeLayout, challengeWheel, reused: Boolean(linkedLayout) });
 
         const existingLayout = await GiftMenuLayout.findOne({
             userId: req.userId,
@@ -1309,6 +1505,21 @@ router.get('/gift-menu-templates/:templateId/effect', authMiddleware, async (req
         const effect = await Effect.findOne({ category: 'menu_template', fileUrl: req.params.templateId });
         if (!effect) return res.status(404).json({ success: false, error: 'Effect product not found' });
         res.json({ success: true, effect });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Fetch one published template for previews. Keep this route after the
+// `/effect` route so the literal `effect` segment is not treated as an ID.
+router.get('/gift-menu-templates/:templateId', authMiddleware, async (req, res) => {
+    try {
+        if (!isValidResourceId(req.params.templateId)) {
+            return res.status(400).json({ success: false, error: 'Invalid template ID' });
+        }
+        const template = await GiftMenuLayout.findOne({ _id: req.params.templateId, isTemplate: true }).lean();
+        if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
+        res.json({ success: true, template });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

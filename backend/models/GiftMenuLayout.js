@@ -14,6 +14,7 @@ const GiftMenuLayoutSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: false },
     isTemplate: { type: Boolean, default: false },
     category: { type: String, default: 'all' },
+    productType: { type: String, enum: ['standard', 'challenge-wheel'], default: 'standard' },
     price: { type: Number, default: 0, min: 0 },
     originalPrice: { type: Number, default: 0, min: 0 },
     description: { type: String, default: '' },

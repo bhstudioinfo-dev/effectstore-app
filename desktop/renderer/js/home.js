@@ -2274,7 +2274,10 @@ class EffectStoreApp {
     async getTemplateLayout(templateId) {
         try {
             if (this._templatesCache && this._templatesCache.length > 0) {
-                return this._templatesCache.find(t => String(t._id || t.id) === String(templateId));
+                const cached = this._templatesCache.find(t => String(t._id || t.id) === String(templateId));
+                if (cached) return cached;
+                // A newly published product may not exist in the list cache yet.
+                // Fall through to the direct lookup below.
             }
             if (this._fetchingTemplatesPromise) {
                 const templates = await this._fetchingTemplatesPromise;
@@ -2298,7 +2301,13 @@ class EffectStoreApp {
                 return null;
             })();
             const templates = await this._fetchingTemplatesPromise;
-            return templates ? templates.find(t => String(t._id || t.id) === String(templateId)) : null;
+            const listed = templates ? templates.find(t => String(t._id || t.id) === String(templateId)) : null;
+            if (listed) return listed;
+
+            const headers = this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {};
+            const direct = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates/${encodeURIComponent(templateId)}`, { headers });
+            const directData = await direct.json();
+            return direct.ok && directData.success ? directData.template : null;
         } catch (e) {
             console.error('Failed to fetch template layout:', e);
         }
@@ -2356,6 +2365,13 @@ class EffectStoreApp {
             `;
 
             const items = Array.isArray(template.exportedItems) && template.exportedItems.length > 0 ? template.exportedItems : (template.items || []);
+            if ((template.productType === 'challenge-wheel' || items.some(item => item && item.type === 'challenge-wheel')) && !document.getElementById('gift-menu-renderer-css')) {
+                const rendererCss = document.createElement('link');
+                rendererCss.id = 'gift-menu-renderer-css';
+                rendererCss.rel = 'stylesheet';
+                rendererCss.href = `${this.API_URL}/gift-menu-renderer.css?v=11`;
+                document.head.appendChild(rendererCss);
+            }
             const itemsHtmlList = items.map(item => {
                 try {
                     const itemW = item.width || 120;
@@ -2384,7 +2400,7 @@ class EffectStoreApp {
                         `;
                     }
 
-                    const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'];
+                    const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text', 'challenge-wheel'];
                     if (customWidgetTypes.includes(item.type)) {
                         const refW = item.lockedW || item.w || 900;
                         const refH = item.lockedH || item.h || 160;
@@ -2578,7 +2594,7 @@ class EffectStoreApp {
                         `;
                     }
 
-                    const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'];
+                    const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text', 'challenge-wheel'];
                     if (customWidgetTypes.includes(item.type)) {
                         const refW = item.lockedW || item.w || 900;
                         const refH = item.lockedH || item.h || 160;
@@ -3556,8 +3572,9 @@ class EffectStoreApp {
         initGiftMapping() {
         this.connectWebSocket();
         this.loadGifts();
-        this.loadEffectsForMapping();
-        this.loadChallengeWheels();
+        // Load wheels first so purchased Challenge Wheel products can appear
+        // in the mapping library.
+        this.loadChallengeWheels().then(() => this.loadEffectsForMapping());
         this.loadMappings();
         this.startEffectQueueStatusPolling();
         const triggerSelect = document.getElementById('mapping-trigger-type');
@@ -3593,7 +3610,8 @@ class EffectStoreApp {
             if (!res.ok) return;
             const status = await res.json();
             this.effectQueueStatus = status;
-            if (!this.isEffectQueueBusy()) {
+            const hasLocalTestTimer = this.testMappingTimer && this.testMappingTimer.until > Date.now();
+            if (!this.isEffectQueueBusy() && !hasLocalTestTimer) {
                 this.activeTestMappingId = null;
             }
             this.updateMappingTestButtons();
@@ -3650,15 +3668,20 @@ class EffectStoreApp {
         const buttons = document.querySelectorAll('.btn-test[data-mapping-id]');
         if (!buttons.length) return;
 
-        const busy = this.isEffectQueueBusy();
-        const remainingSeconds = Math.max(0, Number(this.effectQueueStatus?.remainingMs || 0) / 1000).toFixed(1);
+        const localTestBusy = this.testMappingTimer && this.testMappingTimer.until > Date.now();
+        const busy = this.isEffectQueueBusy() || localTestBusy;
+        const remainingSeconds = localTestBusy
+            ? Math.max(0, (this.testMappingTimer.until - Date.now()) / 1000).toFixed(1)
+            : Math.max(0, Number(this.effectQueueStatus?.remainingMs || 0) / 1000).toFixed(1);
         const queueLength = Number(this.effectQueueStatus?.queueLength || 0);
         const busyLabel = queueLength > 0 ? `⏳ Đang chạy (${queueLength} chờ)` : `⏳ ${remainingSeconds}s`;
 
         buttons.forEach((btn) => {
             const defaultLabel = btn.dataset.defaultLabel || '▶ Test';
             const mappingId = btn.dataset.mappingId;
-            const isActiveTest = this.activeTestMappingId && mappingId === this.activeTestMappingId;
+            const hasLocalTestTimer = localTestBusy;
+            const isActiveTest = (this.activeTestMappingId && mappingId === this.activeTestMappingId)
+                || (hasLocalTestTimer && mappingId === this.testMappingTimer.mappingId);
 
             if (isActiveTest) return;
 
@@ -3858,7 +3881,36 @@ class EffectStoreApp {
                 throw new Error(data.message || data.error || `Không thể tải thư viện hiệu ứng (mã lỗi ${res.status}).`);
             }
 
-            const displayEffects = Array.isArray(data.effects) ? data.effects : [];
+            const displayEffects = Array.isArray(data.effects) ? [...data.effects] : [];
+            // Gộp bản sao theo template hoặc nội dung. Các vòng quay cũ có thể
+            // chưa có sourceTemplateId nên không được lọc mất khỏi thư viện.
+            const seenWheelKeys = new Set();
+            const uniqueWheels = (this.challengeWheels || []).filter((wheel) => {
+                const contentKey = (wheel.segments || []).map((segment) => segment.label).join('|');
+                const key = wheel.sourceTemplateId ? `source:${wheel.sourceTemplateId}` : `content:${wheel.name}|${contentKey}`;
+                if (seenWheelKeys.has(key)) return false;
+                seenWheelKeys.add(key);
+                return true;
+            });
+            const catalogWheelIds = this.challengeWheelTemplateIds instanceof Set
+                ? this.challengeWheelTemplateIds
+                : new Set();
+            const catalogWheels = catalogWheelIds.size
+                ? uniqueWheels.filter((wheel) => wheel.sourceTemplateId && catalogWheelIds.has(String(wheel.sourceTemplateId)))
+                : uniqueWheels;
+            const visibleWheels = catalogWheels.length
+                ? catalogWheels
+                : (this.challengeWheelTemplateCount > 0 ? uniqueWheels.slice(0, this.challengeWheelTemplateCount) : uniqueWheels);
+            const wheelEffects = visibleWheels.map((wheel) => ({
+                _id: `challenge-wheel:${wheel._id}`,
+                name: wheel.name || 'Vòng quay thử thách',
+                icon: '🎡',
+                isChallengeWheel: true,
+                challengeWheelId: String(wheel._id),
+                segments: Array.isArray(wheel.segments) ? wheel.segments : [],
+                presentation: wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {}
+            }));
+            displayEffects.push(...wheelEffects);
             const customEffects = displayEffects.filter(effect => effect?.isCustom);
             const purchasedEffects = displayEffects.filter(effect => !effect?.isCustom);
 
@@ -3876,7 +3928,29 @@ class EffectStoreApp {
                     const videoUrl = e.previewUrl ? (/^https?:\/\//i.test(e.previewUrl) ? e.previewUrl : `${this.API_URL}${e.previewUrl}`) : '';
                     let previewHTML = '';
 
-                    if (thumbUrl && videoUrl) {
+                    if (e.isChallengeWheel) {
+                        const segments = (e.segments || []).filter(segment => segment && segment.label).slice(0, 8);
+                        const colors = segments.map((segment, index) => segment.color || ['#4c00ff','#ec4899','#f59e0b','#06b6d4','#22c55e'][index % 5]);
+                        const presentation = e.presentation || {};
+                        const borderColor = presentation.borderColor || '#d6a84f';
+                        const ringEffect = presentation.ringEffect || 'gold';
+                        const ringShadow = ringEffect === 'fire'
+                            ? '0 0 0 6px #ef2029,0 0 18px #f97316,0 0 28px #ef4444aa'
+                            : ringEffect === 'electric'
+                                ? '0 0 0 6px #22d3ee,0 0 18px #3b82f6,0 0 28px #22d3eeaa'
+                                : ringEffect === 'neon'
+                                    ? '0 0 0 6px #ec4899,0 0 18px #8b5cf6,0 0 28px #ec4899aa'
+                                    : '0 0 0 6px #ef4444,0 0 18px #fbbf24';
+                        const gradient = colors.length > 1
+                            ? `conic-gradient(${colors.map((color, index) => `${color} ${(index / colors.length) * 100}% ${((index + 1) / colors.length) * 100}%`).join(',')})`
+                            : 'conic-gradient(#8b5cf6 0 25%,#ec4899 25% 50%,#f59e0b 50% 75%,#06b6d4 75% 100%)';
+                        const labels = segments.map((segment, index) => {
+                            const angle = index * (360 / Math.max(segments.length, 1)) + (180 / Math.max(segments.length, 1));
+                            const radians = (angle - 90) * Math.PI / 180;
+                            return `<span style="position:absolute;left:${50 + Math.cos(radians) * 29}%;top:${50 + Math.sin(radians) * 29}%;width:28%;transform:translate(-50%,-50%) rotate(${angle + 90 > 180 && angle + 90 < 360 ? angle + 270 : angle + 90}deg);font-size:6px;line-height:1;color:#fff;text-shadow:0 1px 2px #000;text-align:center;white-space:normal;">${String(segment.label).replace(/[&<>"']/g, '')}</span>`;
+                        }).join('');
+                        previewHTML = `<div style="width:128px;height:128px;position:relative;display:grid;place-items:center;"><div style="position:absolute;inset:12px;border-radius:50%;background:${gradient};border:5px solid #f8fafc;box-shadow:0 0 0 6px #ef2029,0 0 18px #fbbf24;">${labels}<span style="position:absolute;inset:35%;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#60a5fa,#1d4ed8);border:4px solid #fbbf24;color:#fff;font-size:9px;font-weight:900;">QUAY</span></div><span style="position:absolute;top:0;left:50%;transform:translateX(-50%);color:#fef3c7;font-size:14px;text-shadow:0 0 6px #fbbf24;">▼</span></div>`;
+                    } else if (thumbUrl && videoUrl) {
                         previewHTML = `
                         <img src="${thumbUrl}" class="mapping-thumb-img">
                         <video src="${videoUrl}" class="mapping-video" muted loop playsinline></video>
@@ -3888,7 +3962,7 @@ class EffectStoreApp {
                     }
 
                     return `
-                <div class="effect-mapping-item" data-effect-id="${effectId}" data-effect-name="${e.name || ''}" style="${e.isCustom ? 'border-color:rgba(34,197,94,.35);' : ''}">
+                <div class="effect-mapping-item" data-effect-id="${effectId}" data-effect-name="${e.name || ''}" ${e.isChallengeWheel ? `data-wheel-id="${e.challengeWheelId}"` : ''} style="${e.isCustom ? 'border-color:rgba(34,197,94,.35);' : e.isChallengeWheel ? 'border-color:rgba(245,158,11,.55);' : ''}">
                     <div class="effect-mapping-thumb" 
                         onmouseenter="const v=this.querySelector('video'); if(v) { v.muted=true; const p=v.play(); if(p!==undefined) p.catch(()=>{}); }" 
                         onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
@@ -3920,6 +3994,11 @@ class EffectStoreApp {
                         }
 
                                                 item.addEventListener('click', () => {
+                            const wheelId = item.getAttribute('data-wheel-id');
+                            if (wheelId) {
+                                this.selectChallengeWheel(wheelId, item.getAttribute('data-effect-name') || 'Vòng quay thử thách', item);
+                                return;
+                            }
                             const effectId = item.getAttribute('data-effect-id');
                             const effectName = item.getAttribute('data-effect-name') || item.querySelector('.effect-mapping-name').textContent.trim();
                             this.selectEffect(effectId, effectName, item);
@@ -3943,7 +4022,26 @@ class EffectStoreApp {
         this.updateMappingConfigPanel();
     }
 
-    selectEffect(id, name, element) {
+        selectChallengeWheel(wheelId, name, element) {
+        const trigger = document.getElementById('mapping-trigger-type');
+        const wheelSelect = document.getElementById('mapping-wheel-id');
+        if (trigger) trigger.value = 'wheel';
+        if (wheelSelect) wheelSelect.value = String(wheelId);
+        this.selectedEffects = [];
+        this.selectedEffect = null;
+        document.querySelectorAll('.effect-mapping-item').forEach(el => {
+            el.classList.remove('selected');
+            el.style.border = '';
+        });
+        if (element) {
+            element.classList.add('selected');
+            element.style.border = '1px solid #f59e0b';
+        }
+        this.updateMappingConfigPanel();
+        this.showNotification('success', `Đã chọn vòng quay: ${name}`);
+    }
+
+        selectEffect(id, name, element) {
         if (!this.selectedEffects) this.selectedEffects = [];
         const idx = this.selectedEffects.findIndex(x => x.id === id);
         const itemEl = element || (event && event.currentTarget);
@@ -3968,8 +4066,12 @@ class EffectStoreApp {
     updateMappingConfigPanel() {
         const panel = document.getElementById('mapping-config-panel');
         if (!panel) return;
-        
-        if (this.selectedGift && this.selectedEffects && this.selectedEffects.length > 0) {
+        const triggerValue = document.getElementById('mapping-trigger-type')?.value || 'effect';
+        const wheelId = document.getElementById('mapping-wheel-id')?.value || '';
+        const hasWheelSelection = ['wheel', 'effect_and_wheel'].includes(triggerValue) && Boolean(wheelId);
+
+        // Vòng quay không dùng selectedEffects, nhưng vẫn phải mở panel để lưu mapping.
+        if (this.selectedGift && ((this.selectedEffects && this.selectedEffects.length > 0) || hasWheelSelection)) {
             panel.style.display = 'block';
             
             const giftEl = document.getElementById('config-selected-gift');
@@ -3987,7 +4089,9 @@ class EffectStoreApp {
                 giftEl.innerHTML = `${iconHtml}<span style="vertical-align:middle;font-weight:700;">${this.selectedGift.name}</span>`;
             }
             if (effectEl) {
-                const names = this.selectedEffects.map(x => x.name).join(', ');
+                const names = hasWheelSelection && (!this.selectedEffects || !this.selectedEffects.length)
+                    ? '🎡 Vòng quay thử thách'
+                    : this.selectedEffects.map(x => x.name).join(', ');
                 effectEl.textContent = names;
                 effectEl.title = names;
             }
@@ -4143,7 +4247,7 @@ class EffectStoreApp {
                                             </div>
                                             <span style="color:var(--text-muted);font-size:16px;">▶</span>
                                             <div class="mapping-badge" style="background:rgba(240,147,251,0.1);border-color:rgba(240,147,251,0.2);">
-                                                <span style="font-size:14px;font-weight:600;color:#f093fb;">${m.effects && m.effects.length > 0 ? (m.effects.map(x => x.effectName).join(', ')) : (m.effectName || 'Không rõ')}</span>
+                                                <span style="font-size:14px;font-weight:600;color:#f093fb;">${m.wheelId && (m.triggerType === 'wheel' || !m.effectId) ? '🎡 Vòng quay thử thách' : m.triggerType === 'effect_and_wheel' ? `${m.effects && m.effects.length > 0 ? m.effects.map(x => x.effectName).join(', ') : 'Hiệu ứng'} + 🎡 Vòng quay` : (m.effects && m.effects.length > 0 ? m.effects.map(x => x.effectName).join(', ') : (m.effectName || 'Không rõ'))}</span>
                                             </div>
                                         </div>
                                         <div class="mapping-actions">
@@ -4205,6 +4309,9 @@ class EffectStoreApp {
         const btn = event.currentTarget;
         if (btn.disabled) return;
 
+        if (this.testMappingTimer?.raf) cancelAnimationFrame(this.testMappingTimer.raf);
+        this.testMappingTimer = null;
+
         btn.blur();
 
         const originalContent = btn.innerHTML;
@@ -4218,13 +4325,19 @@ class EffectStoreApp {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
             const token = localStorage.getItem('token');
-            const res = await fetch(`${this.API_URL}/api/tiktok/test-trigger`, {
+            const mapping = (this.giftMappings || []).find((entry) => String(entry._id) === String(id));
+            const wheelOnly = mapping?.wheelId && (mapping.triggerType === 'wheel' || !mapping.effectId);
+            const testUrl = wheelOnly
+                ? `${this.API_URL}/api/tiktok/challenge-wheels/${encodeURIComponent(mapping.wheelId)}/test`
+                : `${this.API_URL}/api/tiktok/test-trigger`;
+            const testBody = wheelOnly ? {} : { mappingId: id };
+            const res = await fetch(testUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ mappingId: id })
+                body: JSON.stringify(testBody)
             });
             const data = await res.json().catch(() => ({}));
 
@@ -4236,38 +4349,48 @@ class EffectStoreApp {
 
             this.activeTestMappingId = id;
 
-            const resolvedDuration = Number(data.duration);
+            const resolvedDuration = Number(data.duration) || (wheelOnly ? 6.5 : 0);
             if (!Number.isFinite(resolvedDuration) || resolvedDuration <= 0) {
                 throw new Error('Không đọc được thời lượng hiệu ứng. Hãy kiểm tra tệp rồi thử lại.');
             }
             const totalDuration = Math.max(resolvedDuration * 1000, 1000);
-            let timeLeft = totalDuration;
-            const step = 50;
-            btn.innerHTML = `<i class="fas fa-hourglass-half"></i> ${(timeLeft / 1000).toFixed(1)}s`;
+            const finishAt = Date.now() + totalDuration;
+            this.testMappingTimer = { mappingId: String(id), until: finishAt, raf: null };
+            let lastShown = null;
             btn.style.background = `linear-gradient(90deg, #10b981 100%, rgba(0,0,0,0.3) 100%)`;
+            this.updateMappingTestButtons();
 
-            const interval = setInterval(() => {
-                timeLeft -= step;
-                const percent = Math.max(0, (timeLeft / totalDuration) * 100);
-                const seconds = Math.max(0, (timeLeft / 1000)).toFixed(1);
-
-                btn.innerHTML = `<i class="fas fa-hourglass-half"></i> ${seconds}s`;
-                btn.style.background = `linear-gradient(90deg, #10b981 ${percent}%, rgba(0,0,0,0.3) ${percent}%)`;
-
+            const tick = () => {
+                const timeLeft = Math.max(0, finishAt - Date.now());
+                const seconds = (timeLeft / 1000).toFixed(1);
+                if (seconds !== lastShown) {
+                    lastShown = seconds;
+                    const percent = Math.max(0, (timeLeft / totalDuration) * 100);
+                    btn.innerHTML = `<i class="fas fa-hourglass-half"></i> ${seconds}s`;
+                    btn.style.background = `linear-gradient(90deg, #10b981 ${percent}%, rgba(0,0,0,0.3) ${percent}%)`;
+                }
                 if (timeLeft <= 0) {
-                    clearInterval(interval);
                     this.activeTestMappingId = null;
+                    this.testMappingTimer = null;
                     btn.disabled = false;
                     btn.innerHTML = originalContent;
                     btn.style.background = '';
                     btn.style.cursor = 'pointer';
                     btn.style.transition = '0.3s';
+                    this.updateMappingTestButtons();
                     this.loadLogs?.();
+                    return;
                 }
-            }, step);
+                if (this.testMappingTimer) {
+                    this.testMappingTimer.raf = requestAnimationFrame(tick);
+                }
+            };
+            tick();
         } catch (e) {
             this.showNotification('error', 'Lỗi test OBS: ' + e.message);
             this.activeTestMappingId = null;
+            this.testMappingTimer = null;
+            this.updateMappingTestButtons();
             btn.disabled = false;
             btn.innerHTML = originalContent;
             btn.style.background = '';
@@ -4551,9 +4674,83 @@ class EffectStoreApp {
             const res = await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`, { headers: { 'Authorization': `Bearer ${this.authToken}` } });
             const data = await res.json();
             this.challengeWheels = Array.isArray(data.wheels) ? data.wheels : [];
+            // Older published wheel products may not have a personal wheel
+            // record yet. Create missing records from owned/admin templates.
+            // Do this even when another wheel already exists, otherwise the
+            // library silently misses the newly published product.
+            {
+                const templateRes = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers: { 'Authorization': `Bearer ${this.authToken}` } });
+                const templateData = await templateRes.json().catch(() => ({}));
+                const templates = Array.isArray(templateData.templates) ? templateData.templates : [];
+                // Chỉ đưa vào Gán hiệu ứng các vòng quay đang có sản phẩm
+                // challenge-wheel hoạt động trong Cửa hàng. Các bản ghi cũ
+                // còn sót lại trong ChallengeWheel không được coi là sản phẩm.
+                let catalogEffects = Array.isArray(this.storeEffects) ? this.storeEffects : [];
+                if (!catalogEffects.length) {
+                    const catalogRes = await fetch(`${this.API_URL}/api/effects`, { headers: { 'Authorization': `Bearer ${this.authToken}` } }).catch(() => null);
+                    const catalogData = catalogRes ? await catalogRes.json().catch(() => ({})) : {};
+                    catalogEffects = Array.isArray(catalogData.effects) ? catalogData.effects : [];
+                }
+                const catalogTemplateIds = new Set(catalogEffects
+                    .filter((effect) => effect?.category === 'menu_template' && effect.fileUrl)
+                    .map((effect) => String(effect.fileUrl)));
+                const catalogWheelTemplates = templates.filter((template) => {
+                    const templateItems = [...(template.items || []), ...(template.exportedItems || [])];
+                    const isWheel = template.productType === 'challenge-wheel' || templateItems.some((item) => item?.type === 'challenge-wheel');
+                    return isWheel && catalogTemplateIds.has(String(template._id));
+                });
+                this.challengeWheelTemplateIds = catalogTemplateIds.size
+                    ? new Set(catalogWheelTemplates.map((template) => String(template._id)))
+                    : new Set();
+                this.challengeWheelTemplateCount = catalogWheelTemplates.length;
+                const existingSourceIds = new Set((this.challengeWheels || []).map((wheel) => String(wheel.sourceTemplateId || '')));
+                const eligible = templates.filter((template) => {
+                    const templateItems = [...(template.items || []), ...(template.exportedItems || [])];
+                    const isWheel = template.productType === 'challenge-wheel' || templateItems.some((item) => item?.type === 'challenge-wheel');
+                    return isWheel && !existingSourceIds.has(String(template._id)) && (template.isPurchased || this.currentUser?.isAdmin || this.currentUser?.subscription === 'business');
+                });
+                for (const template of eligible) {
+                    const item = [...(template.items || []), ...(template.exportedItems || [])].find((entry) => entry?.type === 'challenge-wheel');
+                    if (!item) continue;
+                    await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` },
+                        body: JSON.stringify({
+                            sourceTemplateId: template._id,
+                            name: template.name,
+                            title: item.title,
+                            segments: item.segments || [],
+                            durationMs: item.durationMs,
+                            autoHideMs: item.autoHideMs
+                        })
+                    }).catch(() => {});
+                }
+                if (eligible.length) {
+                    const refreshed = await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`, { headers: { 'Authorization': `Bearer ${this.authToken}` } });
+                    const refreshedData = await refreshed.json().catch(() => ({}));
+                    this.challengeWheels = Array.isArray(refreshedData.wheels) ? refreshedData.wheels : this.challengeWheels;
+                }
+            }
+            const seenWheelKeys = new Set();
+            const uniqueMappingWheels = this.challengeWheels.filter((wheel) => {
+                const contentKey = (wheel.segments || []).map((segment) => segment.label).join('|');
+                const key = wheel.sourceTemplateId ? `source:${wheel.sourceTemplateId}` : `content:${wheel.name}|${contentKey}`;
+                if (seenWheelKeys.has(key)) return false;
+                seenWheelKeys.add(key);
+                return true;
+            });
+            const catalogWheelIds = this.challengeWheelTemplateIds instanceof Set
+                ? this.challengeWheelTemplateIds
+                : new Set();
+            const catalogMappingWheels = catalogWheelIds.size
+                ? uniqueMappingWheels.filter((wheel) => wheel.sourceTemplateId && catalogWheelIds.has(String(wheel.sourceTemplateId)))
+                : uniqueMappingWheels;
+            const mappingWheels = catalogMappingWheels.length
+                ? catalogMappingWheels
+                : (this.challengeWheelTemplateCount > 0 ? uniqueMappingWheels.slice(0, this.challengeWheelTemplateCount) : uniqueMappingWheels);
             const select = document.getElementById('mapping-wheel-id');
-            if (select) select.innerHTML = this.challengeWheels.length
-                ? this.challengeWheels.map((wheel) => `<option value="${wheel._id}">${wheel.name} (${(wheel.segments || []).length} thử thách)</option>`).join('')
+            if (select) select.innerHTML = mappingWheels.length
+                ? mappingWheels.map((wheel) => `<option value="${wheel._id}">${wheel.name} (${(wheel.segments || []).length} thử thách)</option>`).join('')
                 : '<option value="">Chưa có vòng quay</option>';
         } catch (error) { console.warn('Không tải được vòng quay thử thách:', error.message); }
     }

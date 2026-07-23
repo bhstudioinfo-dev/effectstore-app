@@ -35,6 +35,72 @@ function chooseWheelSegment(segments) {
     return usable[usable.length - 1];
 }
 
+async function resolveWheelPresentation(userId, wheel) {
+    let item = null;
+    if (wheel?.sourceTemplateId) {
+        const template = await GiftMenuLayout.findOne({ _id: wheel.sourceTemplateId, isTemplate: true }).select('items exportedItems').lean().catch(() => null);
+        item = [...(template?.items || []), ...(template?.exportedItems || [])].find((entry) => entry?.type === 'challenge-wheel');
+    }
+    if (!item) return wheel?.presentation || {};
+    const saved = wheel?.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {};
+    const savedNumber = (key, fallback, allowZero = false) => {
+        const value = Number(saved[key]);
+        const backup = Number(fallback);
+        // Older saves stored logical export dimensions (about 3x the
+        // Designer canvas size). Reject that stale form when a canvas-size
+        // fallback is available, so existing wheels migrate automatically.
+        const isDimension = key === 'boardWidth' || key === 'boardHeight';
+        if (Number.isFinite(value) && (allowZero ? value >= 0 : value > 0)
+            && (!isDimension || !Number.isFinite(backup) || backup <= 0 || (value >= backup * 0.75 && value <= backup * 1.5))) return value;
+        return Number.isFinite(backup) && (allowZero ? backup >= 0 : backup > 0) ? backup : 0;
+    };
+    return {
+        ...saved,
+        hideBorder: Boolean(item.hideBorder), hideBg: Boolean(item.hideBg), ringEffect: item.ringEffect || 'gold',
+        borderColor: item.borderColor || '#d6a84f', useCustomTextColor: Boolean(item.useCustomTextColor),
+        textColor: item.textColor || '#ffffff', labelFontSize: Number(item.labelFontSize) || 16,
+        boardWidth: savedNumber('boardWidth', item.w || item.width || item.lockedW),
+        boardHeight: savedNumber('boardHeight', item.h || item.height || item.lockedH),
+        boardX: savedNumber('boardX', item.x, true),
+        boardY: savedNumber('boardY', item.y, true)
+    };
+}
+
+async function resolveWheelConfig(userId, wheel) {
+    // A Gift Mapping points to one immutable wheel record. Do not resolve
+    // from the user's currently active menu, otherwise switching menus
+    // silently changes the mapped wheel.
+    let item = null;
+    if (wheel?.sourceTemplateId) {
+        const template = await GiftMenuLayout.findOne({ _id: wheel.sourceTemplateId, isTemplate: true }).select('items exportedItems').lean().catch(() => null);
+        item = [...(template?.items || []), ...(template?.exportedItems || [])].find((entry) => entry?.type === 'challenge-wheel');
+    }
+    if (!item) return wheel;
+    const saved = wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {};
+    const savedNumber = (key, fallback, allowZero = false) => {
+        const value = Number(saved[key]);
+        const backup = Number(fallback);
+        const isDimension = key === 'boardWidth' || key === 'boardHeight';
+        if (Number.isFinite(value) && (allowZero ? value >= 0 : value > 0)
+            && (!isDimension || !Number.isFinite(backup) || backup <= 0 || (value >= backup * 0.75 && value <= backup * 1.5))) return value;
+        return Number.isFinite(backup) && (allowZero ? backup >= 0 : backup > 0) ? backup : 0;
+    };
+    return {
+        ...wheel,
+        title: wheel.title || item.title,
+        segments: Array.isArray(wheel.segments) ? wheel.segments : [],
+        presentation: {
+            hideBorder: Boolean(item.hideBorder), hideBg: Boolean(item.hideBg), ringEffect: item.ringEffect || 'gold',
+            borderColor: item.borderColor || '#d6a84f', useCustomTextColor: Boolean(item.useCustomTextColor),
+            textColor: item.textColor || '#ffffff', labelFontSize: Number(item.labelFontSize) || 16,
+            ...saved,
+            boardWidth: savedNumber('boardWidth', item.w || item.width || item.lockedW),
+            boardHeight: savedNumber('boardHeight', item.h || item.height || item.lockedH),
+            boardX: savedNumber('boardX', item.x, true), boardY: savedNumber('boardY', item.y, true)
+        }
+    };
+}
+
 class TikTokService {
     constructor() {
         this.tiktokClient = null;
@@ -184,13 +250,17 @@ class TikTokService {
                         }
 
                         let queued = false;
-                        if (['wheel', 'effect_and_wheel'].includes(mapping.triggerType) && mapping.wheelId) {
+                        const wheelOnlyMapping = mapping.wheelId && (['wheel', 'effect_and_wheel'].includes(mapping.triggerType) || !mapping.effectId);
+                        if (wheelOnlyMapping) {
                             const wheel = await ChallengeWheel.findOne({ _id: mapping.wheelId, userId: this.currentLiveUserId, isActive: true }).lean();
-                            const result = wheel && chooseWheelSegment(wheel.segments);
+                            const resolvedWheel = wheel ? await resolveWheelConfig(this.currentLiveUserId, wheel) : null;
+                            const result = resolvedWheel && chooseWheelSegment(resolvedWheel.segments);
+                            const presentation = resolvedWheel ? (resolvedWheel.presentation || {}) : {};
                             if (result && this.broadcast) {
                                 this.broadcast('challenge_wheel_spin', {
-                                    wheelId: String(wheel._id), title: wheel.title, segments: wheel.segments,
+                                    wheelId: String(resolvedWheel._id), title: resolvedWheel.title, segments: resolvedWheel.segments, presentation,
                                     resultId: result.id, resultLabel: result.label,
+                                    resultImage: result.resultImage || '',
                                     durationMs: wheel.durationMs, autoHideMs: wheel.autoHideMs,
                                     giftId: data.giftId, giftName: data.giftName,
                                     nickname: data.nickname || data.uniqueId || 'TikTok user', triggeredAt: Date.now()
@@ -198,7 +268,7 @@ class TikTokService {
                                 queued = true;
                             }
                         }
-                        if (mapping.triggerType === 'wheel') {
+                        if (mapping.triggerType === 'wheel' || (wheelOnlyMapping && !mapping.effectId)) {
                             // Wheel-only mappings do not enqueue a media effect.
                         } else if (mapping.effects && mapping.effects.length > 0) {
                             // Multiple effects group mapping

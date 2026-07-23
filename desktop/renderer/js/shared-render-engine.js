@@ -1804,7 +1804,19 @@
             'gift-stack-group': renderGiftStackGroup
         };
         const renderer = map[type];
-        return renderer ? renderer(item, options) : '';
+        if (!renderer) return '';
+        const rendered = renderer(item, options);
+        if (type !== 'challenge-wheel') return rendered;
+        const segments = Array.isArray(item.segments) ? item.segments.filter((segment) => segment && segment.label) : [];
+        const step = segments.length ? 360 / segments.length : 90;
+        const labelFontSize = Number(item.labelFontSize) > 0 ? Number(item.labelFontSize) : Math.max(10, Math.min(18, 90 / Math.max(1, segments.length)));
+        const labels = `<div class="gmd-wheel-static-labels">${segments.map((segment, index) => { const angle = index * step + step / 2; const radians = (angle - 90) * Math.PI / 180; const left = 50 + Math.cos(radians) * 29; const top = 50 + Math.sin(radians) * 29; const radial = angle + 90; const readable = radial > 180 && radial < 360 ? radial + 180 : radial; return `<span style="left:${left}%;top:${top}%;width:22%;max-width:22%;white-space:normal;font-size:${labelFontSize}px;line-height:1.02;--label-angle:${readable}deg;">${safeText(segment.label)}</span>`; }).join('')}</div>`;
+        // Re-rendering the designer can reuse the same widget node. Strip any
+        // previously injected label layer before adding the current one so a
+        // refresh never leaves two copies of each challenge text stacked.
+        const cleanRendered = rendered.replace(/<div class="gmd-wheel-static-labels">[\s\S]*?<\/div>/g, '');
+        const withLabels = cleanRendered.replace('<div style="position:absolute;inset:0;display:grid;place-items:center;">', `${labels}<div style="position:absolute;inset:0;display:grid;place-items:center;">`);
+        return withLabels.replace('class="gmd-challenge-wheel-widget"', `class="gmd-challenge-wheel-widget" data-ring-effect="${safeText(item.ringEffect || 'gold')}" data-hide-border="${item.hideBorder ? 'true' : 'false'}" data-hide-bg="${item.hideBg ? 'true' : 'false'}"`).replace('style="', `style="--gmd-wheel-border:${safeText(item.borderColor || '#d6a84f')};--gmd-wheel-text:${safeText(item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff')};--gmd-wheel-bg:${safeText(item.hideBg ? 'transparent' : (item.useCustomBg ? (item.useCustomBgGradient ? 'linear-gradient(135deg,' + (item.bgColorGradientFrom || item.bgColor || '#0f172a') + ',' + (item.bgColorGradientTo || '#1e1b4b') + ')' : (item.bgColor || '#0f172a')) : 'linear-gradient(145deg,#0f766e,#082f49)'))};`);
     }
 
     window.MenuDesignerSharedRenderEngine = Object.freeze({
