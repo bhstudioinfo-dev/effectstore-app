@@ -339,6 +339,63 @@ body {
     width: 320px; flex-shrink: 0;
     display: flex; flex-direction: column; gap: 20px;
 }
+.live-control-deck {
+    display: none; padding: 14px; border-radius: 16px;
+    border: 1px solid rgba(34,211,238,.24);
+    background: radial-gradient(circle at 100% 0,rgba(168,85,247,.18),transparent 42%),linear-gradient(155deg,#121a2a,#0d1320);
+    box-shadow: 0 16px 38px rgba(0,0,0,.3), inset 0 1px rgba(255,255,255,.04);
+}
+body[data-current-view="gift-mapping"] .live-control-deck { display:block; }
+body[data-current-view="gift-mapping"] .ranking-card,
+body[data-current-view="gift-mapping"] .why-card,
+body[data-current-view="gift-mapping"] .contact-card { display:none; }
+.lcd-heading,.lcd-modal-head { display:flex;align-items:center;justify-content:space-between;gap:10px; }
+.lcd-heading>div { display:flex;align-items:center;gap:8px;font-size:15px; }
+.lcd-live-dot { width:9px;height:9px;border-radius:50%;background:#22d3ee;box-shadow:0 0 10px #22d3ee; }
+.lcd-limit { font-size:10px;color:#94a3b8;background:#0a1020;border:1px solid #26324a;padding:4px 7px;border-radius:20px; }
+.lcd-scroll-area { max-height:none;overflow:visible;margin-top:12px;padding-right:0; }
+.lcd-section-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#e8eefe;font-size:12px; }
+.lcd-section-head strong { display:flex;align-items:center;gap:7px; }.lcd-section-head strong i{color:#c084fc}.lcd-sound-section .lcd-section-head strong i{color:#22d3ee}
+.lcd-section-head span { color:#71809a;font-size:9px;background:#090f1b;border:1px solid #253148;border-radius:20px;padding:3px 6px; }
+.lcd-section-note { margin:-3px 0 8px;color:#64748b;font-size:9px; }
+.lcd-divider { display:none; }
+.lcd-sound-section {
+    margin:18px -15px -15px;
+    padding:15px;
+    border:1px solid rgba(168,85,247,.3);
+    border-radius:16px;
+    background:radial-gradient(circle at 0 0,rgba(34,211,238,.1),transparent 38%),linear-gradient(155deg,#17152c,#0d1320);
+    box-shadow:0 16px 38px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.04);
+}
+.lcd-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:1px; }
+.lcd-slot { position:relative;min-height:86px;border:1px solid #28354d;border-radius:11px;background:#111a2a;color:#fff;padding:8px;cursor:pointer;overflow:hidden;text-align:left;transition:.16s ease; }
+.lcd-slot:hover { transform:translateY(-1px);border-color:#8b5cf6;background:#162038; }
+.lcd-slot.running { border-color:#22d3ee;box-shadow:0 0 14px rgba(34,211,238,.3); }
+.lcd-slot.queued { border-color:#f59e0b;box-shadow:0 0 10px rgba(245,158,11,.16); }
+.lcd-slot-status { position:absolute;right:5px;bottom:8px;color:#22d3ee;font-size:9px;font-weight:800;background:#08111e;border-radius:10px;padding:2px 5px; }
+.lcd-slot.queued .lcd-slot-status { color:#fbbf24; }
+.lcd-slot.empty { display:flex;align-items:center;justify-content:center;color:#526078;border-style:dashed;background:rgba(10,16,29,.6); }
+.lcd-slot-icon { width:30px;height:30px;border-radius:8px;object-fit:cover;background:#0a1020;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:5px; }
+.lcd-slot-name { font-size:11px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:17px;display:block; }
+.lcd-slot-key { font-size:9px;color:#94a3b8;margin-top:3px;display:block; }
+.lcd-slot-volume { width:100%;height:3px;margin-top:7px;display:block;accent-color:#a855f7;cursor:pointer; }
+.lcd-slot-remove { position:absolute;right:5px;top:5px;width:18px;height:18px;border:0;border-radius:5px;background:rgba(239,68,68,.13);color:#f87171;cursor:pointer; }
+.lcd-footer { display:grid;grid-template-columns:1fr 36px;gap:7px;margin-top:9px; }
+.lcd-add-wide { width:100%;margin-top:9px; }
+.lcd-add,.lcd-stop { height:34px;border-radius:9px;border:1px solid #31405b;background:#172238;color:#dbeafe;font-weight:700;font-size:11px;cursor:pointer; }
+.lcd-stop { color:#fb7185;background:rgba(127,29,29,.16);border-color:rgba(239,68,68,.25); }
+.lcd-performance { color:#64748b;font-size:9px;text-align:center;margin-top:8px; }
+.lcd-modal { display:none;position:fixed;inset:0;z-index:12000;background:rgba(2,6,23,.82);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px; }
+.lcd-modal.open { display:flex; }
+.lcd-modal-card { width:min(720px,92vw);max-height:78vh;display:flex;flex-direction:column;background:#0d1422;border:1px solid rgba(139,92,246,.38);border-radius:18px;box-shadow:0 30px 90px #000;padding:16px; }
+.lcd-modal-head small { display:block;color:#7f8ba3;margin-top:4px; }.lcd-modal-head button{border:0;background:#1d2738;color:#fff;border-radius:8px;width:32px;height:32px;font-size:20px;cursor:pointer}
+.lcd-effect-list { display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px;overflow:auto;margin-top:14px; }
+.lcd-effect-option { border:1px solid #28354d;background:#121b2b;color:#fff;border-radius:11px;padding:9px;cursor:pointer;text-align:left; }.lcd-effect-option:hover{border-color:#a855f7}.lcd-effect-option img{width:100%;height:72px;object-fit:cover;border-radius:7px;background:#080d17}.lcd-effect-option strong{display:block;font-size:11px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lcd-upload-sound { margin-top:14px;min-height:42px;border:1px solid rgba(34,211,238,.45);border-radius:11px;background:linear-gradient(135deg,rgba(6,182,212,.2),rgba(139,92,246,.18));color:#e0f2fe;font-weight:800;cursor:pointer; }
+.lcd-upload-sound:hover { border-color:#22d3ee;background:linear-gradient(135deg,rgba(6,182,212,.3),rgba(139,92,246,.25)); }
+.lcd-sound-option { min-height:74px;display:flex;align-items:center;gap:10px; }
+.lcd-sound-option .lcd-slot-icon { flex:0 0 38px;width:38px;height:38px;display:grid;place-items:center;border-radius:10px;background:rgba(34,211,238,.12);color:#22d3ee; }
+.lcd-sound-option strong { margin:0;white-space:normal;overflow-wrap:anywhere; }
 .ranking-card, .why-card, .contact-card {
     background: var(--bg-card); border: 1px solid var(--border-subtle);
     border-radius: var(--radius); padding: 20px;

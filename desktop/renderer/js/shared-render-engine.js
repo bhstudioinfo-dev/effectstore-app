@@ -442,7 +442,7 @@
                     headersHTML = players.map((p, idx) => {
                         const isLeading = hasLeader && (Number(p.score) || 0) === maxScore;
                         const giftIcon = giftIconFromLibrary(p, ctx.gifts, ctx.apiBase) || '';
-                        const giftMedia = giftIcon 
+                        const giftMedia = giftIcon && players.length === 2
                             ? `<img src="${giftIcon}" style="width: ${roundPx(24, ctx.scale)}px; height: ${roundPx(24, ctx.scale)}px; object-fit: contain; vertical-align: middle;">`
                             : '';
                         
@@ -459,7 +459,7 @@
                         const cardBg = isLeading 
                             ? `linear-gradient(110deg, color-mix(in srgb, ${p.color || '#ffffff'} 12%, rgba(15, 23, 42, 0.45)) 30%, rgba(255, 255, 255, 0.3) 50%, color-mix(in srgb, ${p.color || '#ffffff'} 12%, rgba(15, 23, 42, 0.45)) 70%)` 
                             : `linear-gradient(180deg, color-mix(in srgb, ${p.color || '#ffffff'} 8%, rgba(15, 23, 42, 0.45)), rgba(15, 23, 42, 0.45))`;
-                        const cardBorder = isLeading ? `3px solid ${p.color || '#fbbf24'}` : `1.5px solid color-mix(in srgb, ${p.color || '#ffffff'} 35%, rgba(255,255,255,0.06))`;
+                        const cardBorder = isLeading ? `${Math.max(1, roundPx(3, ctx.scale))}px solid ${p.color || '#fbbf24'}` : `${Math.max(1, roundPx(1.5, ctx.scale))}px solid color-mix(in srgb, ${p.color || '#ffffff'} 35%, rgba(255,255,255,0.06))`;
                         const cardShadow = isLeading ? `0 0 ${roundPx(14, ctx.scale)}px color-mix(in srgb, ${p.color || '#fbbf24'} 40%, transparent)` : `0 0 ${roundPx(8, ctx.scale)}px color-mix(in srgb, ${p.color || '#ffffff'} 12%, transparent)`;
                         const borderSweepStyle = isLeading 
                             ? `background-size: 200% 100%; animation: gmdGoldSweep 3.5s linear infinite, gmdLeadingPulse 2s ease-in-out infinite;`
@@ -474,17 +474,17 @@
  
                         return `
                             <div style="display: flex; flex: 1; min-width: 0; transform: translate(${roundPx(pOffsetX, ctx.scale)}px, ${roundPx(pOffsetY, ctx.scale)}px) scale(${cardScale}); transition: all 0.3s ease; z-index: ${cardZIndex}; overflow: visible; box-sizing: border-box !important;">
-                                <div class="${motionClass}" style="position: relative; display: flex; align-items: center; gap: ${roundPx(8, ctx.scale)}px; flex: 1; min-width: 0; padding: ${isLeading ? `${roundPx(8, ctx.scale)}px ${roundPx(14, ctx.scale)}px` : `${roundPx(6, ctx.scale)}px ${roundPx(12, ctx.scale)}px`}; border-radius: 12px; box-shadow: ${cardShadow}; --anim-speed: ${animSpeed}s; overflow: visible; border: ${isLeading ? 'none' : cardBorder}; --glow-color: ${p.color || '#fbbf24'}; width: 100%; box-sizing: border-box !important;">
+                                <div class="${motionClass}" style="position: relative; display: flex; align-items: center; gap: ${roundPx(8, ctx.scale)}px; flex: 1; min-width: 0; padding: ${isLeading ? `${roundPx(8, ctx.scale)}px ${roundPx(14, ctx.scale)}px` : `${roundPx(6, ctx.scale)}px ${roundPx(12, ctx.scale)}px`}; border-radius: ${roundPx(12, ctx.scale)}px; box-shadow: ${cardShadow}; --anim-speed: ${animSpeed}s; overflow: visible; border: ${isLeading ? 'none' : cardBorder}; --glow-color: ${p.color || '#fbbf24'}; width: 100%; box-sizing: border-box !important;">
                                     
                                     ${isLeading ? `
                                     <!-- Leading Team Gold Sweep Background (No overflow clipping of avatar border) -->
-                                    <div style="position: absolute; inset: 0; border-radius: 12px; overflow: hidden; pointer-events: none; z-index: 0; border: ${cardBorder}; box-sizing: border-box !important;">
+                                    <div style="position: absolute; inset: 0; border-radius: ${roundPx(12, ctx.scale)}px; overflow: hidden; pointer-events: none; z-index: 0; border: ${cardBorder}; box-sizing: border-box !important;">
                                         <div style="position: absolute; inset: 0; background: ${cardBg}; z-index: 0;"></div>
                                         <div style="position: absolute; inset: -50%; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%); background-size: 200% 100%; animation: gmdGoldSweep 3.5s linear infinite; z-index: 1;"></div>
                                     </div>
                                     ` : `
                                     <!-- Normal Background -->
-                                    <div style="position: absolute; inset: 0; border-radius: 12px; background: ${cardBg}; z-index: 0; pointer-events: none; box-sizing: border-box !important;"></div>
+                                    <div style="position: absolute; inset: 0; border-radius: ${roundPx(12, ctx.scale)}px; background: ${cardBg}; z-index: 0; pointer-events: none; box-sizing: border-box !important;"></div>
                                     `}
                                     
                                     <!-- Content layer positioned relatively above the backgrounds -->
@@ -494,7 +494,7 @@
                                             <div style="font-weight: 800; font-size: ${pNameSize}px; color: ${nameColorOf(p, p.color)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; line-height: 1.1;">
                                                 ${text(ctx, p.name)}
                                             </div>
-                                            <div style="display: flex; align-items: center; gap: ${roundPx(6, ctx.scale)}px; font-weight: 900; font-size: ${pScoreSize}px; color: ${scoreColorOf(p)}; line-height: 1.1; margin-top: 4px; overflow: hidden; max-width: 100%;">
+                                            <div style="display: flex; align-items: center; gap: ${roundPx(6, ctx.scale)}px; font-weight: 900; font-size: ${pScoreSize}px; color: ${scoreColorOf(p)}; line-height: 1.1; margin-top: ${roundPx(4, ctx.scale)}px; overflow: hidden; max-width: 100%;">
                                                 <span class="gmd-pk-score-text" data-player-index="${idx}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;">${Number(p.score || 0).toLocaleString('vi-VN')}</span>
                                                 ${giftMedia ? `<span style="display: inline-flex; align-items: center; padding: ${roundPx(2, ctx.scale)}px; background: rgba(255,255,255,0.06); border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25)); flex-shrink: 0;">${giftMedia}</span>` : ''}
                                             </div>
@@ -511,16 +511,17 @@
             let accumPct = 0;
             const segmentsHTML = players.map((p, idx) => {
                 const score = Number(p.score) || 0;
-                const pPct = totalScore > 0 ? (score / totalScore) * 100 : 100 / players.length;
+                // Keep every team color visible when all scores are zero, while
+                // the displayed percentage remains the real value (0%).
+                const pPct = totalScore > 0 ? (score / totalScore) * 100 : 0;
+                const visualPct = totalScore > 0 ? pPct : (100 / players.length);
                 
-                let widthVal = Math.round(pPct);
+                let widthVal = Math.round(visualPct);
                 if (idx === players.length - 1) {
                     widthVal = 100 - accumPct;
                 } else {
                     accumPct += widthVal;
                 }
-                if (widthVal <= 0) return '';
-
                 // Color gradients based on preset style
                 let barBg = `linear-gradient(180deg, ${p.color}, ${p.color}cc)`;
                 if (style === 'fire_vs_ice' && players.length === 2) {
@@ -547,10 +548,9 @@
                         : `justify-content: flex-end; padding-right: ${roundPx(14, ctx.scale)}px;`;
                 }
 
-                // Only show percentage text if segment is wide enough to prevent visual clutter
-                const percentText = widthVal >= 8 
-                    ? `<div style="position: relative; z-index: 2; display: flex; align-items: center; width: 100%; height: 100%; box-sizing: border-box; font-weight: 900; font-size: ${timerSize}px; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.6); ${alignStyle} ${unskewText}"><span class="gmd-pk-segment-percent-text" data-player-index="${idx}">${pPct.toFixed(1)}%</span></div>`
-                    : '';
+                // Keep the label node mounted even at 0 width so live score
+                // updates can reveal this team without rebuilding the widget.
+                const percentText = `<div style="position: relative; z-index: 2; display: flex; align-items: center; width: 100%; height: 100%; box-sizing: border-box; font-weight: 900; font-size: ${timerSize}px; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.6); ${alignStyle} ${unskewText}"><span class="gmd-pk-segment-percent-text" data-player-index="${idx}">${pPct.toFixed(1)}%</span></div>`;
 
                 // Divider glow decoration
                 const dividerHTML = ((item.pkBarAnimation === 'divider-glow' || item.pkBarAnimation === 'glass-divider' || item.pkBarAnimation === 'electric-glass-divider' || item.pkBarAnimation === 'lightning-glass-divider') && idx < players.length - 1)
@@ -566,7 +566,7 @@
                 const electricHTML = '';
 
                 return `
-                    <div class="gmd-pk-segment" data-player-index="${idx}" style="width: ${widthVal}%; background: ${barBg}; height: 100%; display: flex; align-items: center; position: relative; box-shadow: inset 0 2px 4px rgba(255,255,255,0.15); transition: width 0.3s ease; ${segmentSkew}">
+                    <div class="gmd-pk-segment" data-player-index="${idx}" style="width: ${widthVal}%; min-width: 0; flex-shrink: 0; overflow: hidden; background: ${barBg}; height: 100%; display: flex; align-items: center; position: relative; box-shadow: inset 0 2px 4px rgba(255,255,255,0.15); transition: none; ${segmentSkew}">
                         ${stripesHTML}
                         ${electricHTML}
                         ${percentText}
@@ -792,7 +792,7 @@
             // Progress Bar Container with Sibling Electric Border Sibling
             const pbContainerHTML = `
                 <!-- Progress Bar Wrapper -->
-                <div class="gmd-pk-bar-wrapper" style="position: relative; width: 100%; height: ${length(ctx, item.barHeight, 32)}px;">
+                <div class="gmd-pk-bar-wrapper" style="position: relative; width: 100%; height: ${length(ctx, item.barHeight, 32)}px; transform: translateY(${roundPx(item.pkBarOffsetY !== undefined ? item.pkBarOffsetY : 0, ctx.scale)}px);">
                     <!-- Progress Bar Container -->
                     <div class="gmd-pk-bar-container" style="height: 100%; border-radius: ${radius}px; display: flex; background: rgba(0, 0, 0, 0.5); border: 1.5px solid rgba(255, 255, 255, 0.08); overflow: hidden; position: relative; width: 100%;">
                         ${innerBevelOverlay}

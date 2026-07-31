@@ -115,6 +115,8 @@
                 video.controls = false;
                 video.playsInline = true;
                 video.preload = 'auto';
+                video.muted = request.audioEnabled === false;
+                video.volume = Math.max(0, Math.min(1, Number.isFinite(Number(request.audioVolume)) ? Number(request.audioVolume) : 1));
                 video.src = request.effectUrl;
                 document.getElementById('effect-player-root').appendChild(video);
 

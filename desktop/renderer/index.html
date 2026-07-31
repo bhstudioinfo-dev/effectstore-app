@@ -1668,6 +1668,23 @@
                           </div>
                       </div>
                       
+                      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;margin-bottom:14px;">
+                          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
+                              <div>
+                                  <div style="font-size:12px;color:#fff;font-weight:700;">🔊 Âm thanh hiệu ứng</div>
+                                  <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Chỉ áp dụng cho effect của mapping này</div>
+                              </div>
+                              <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#fff;cursor:pointer;">
+                                  <input type="checkbox" id="mapping-audio-enabled" checked>
+                                  Bật âm thanh
+                              </label>
+                          </div>
+                          <div style="display:flex;align-items:center;gap:10px;">
+                              <input type="range" id="mapping-audio-volume" min="0" max="100" step="1" value="100" style="flex:1;">
+                              <output id="mapping-audio-volume-value" style="width:42px;text-align:right;font-size:12px;color:#fbbf24;font-weight:700;">100%</output>
+                          </div>
+                      </div>
+
                       <!-- Collapsible Trigger Conditions (Smart Mapping) -->
                       <details style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:8px 12px;margin-bottom:14px;cursor:pointer;">
                           <summary style="font-size:12px;font-weight:700;color:#fff;outline:none;user-select:none;">🛡️ Điều kiện nâng cao theo số lượng quà</summary>
@@ -1735,6 +1752,30 @@
 
         <!-- RIGHT SIDEBAR -->
         <aside class="sidebar-right">
+            <section class="live-control-deck" id="live-control-deck">
+                <div class="lcd-heading">
+                    <div><span class="lcd-live-dot"></span><strong>Live Control</strong></div>
+                    <span class="lcd-limit">Sẵn sàng</span>
+                </div>
+                <div class="lcd-scroll-area">
+                    <section class="lcd-section">
+                        <div class="lcd-section-head"><strong><i class="fas fa-wand-magic-sparkles"></i> Hiệu ứng</strong><span id="lcd-effect-limit">0/20</span></div>
+                        <div class="lcd-grid" id="lcd-effect-grid"></div>
+                        <button class="lcd-add lcd-add-wide" onclick="app.addControlDeckSlot(undefined,'effect')"><i class="fas fa-plus"></i> Thêm nút hiệu ứng</button>
+                    </section>
+                    <div class="lcd-divider"></div>
+                    <section class="lcd-section lcd-sound-section">
+                        <div class="lcd-section-head"><strong><i class="fas fa-volume-high"></i> Soundboard</strong><span id="lcd-sound-limit">0/20</span></div>
+                        <p class="lcd-section-note">Bấm để phát ngay trong lúc livestream</p>
+                        <div class="lcd-grid" id="lcd-sound-grid"></div>
+                        <div class="lcd-footer">
+                            <button class="lcd-add" onclick="app.addControlDeckSlot(undefined,'sound')"><i class="fas fa-plus"></i> Thêm sound</button>
+                            <button class="lcd-stop" onclick="app.stopControlDeckSounds()" title="Dừng toàn bộ sound"><i class="fas fa-stop"></i></button>
+                        </div>
+                    </section>
+                </div>
+                <div class="lcd-performance"><i class="fas fa-shield-halved"></i> 1 effect · tối đa 3 sound cùng lúc</div>
+            </section>
             <div class="ranking-card ranking-card-hot">
                 <div class="ranking-card-heading">
                     <h3><span class="ranking-fire"><i class="fas fa-fire"></i></span> Hiệu ứng đang hot</h3>
@@ -1777,6 +1818,24 @@
         </aside>
 
     </div> <!-- End Main Layout -->
+
+    <div id="lcd-effect-picker" class="lcd-modal" onclick="if(event.target===this) app.closeControlDeckPicker()">
+        <div class="lcd-modal-card">
+            <div class="lcd-modal-head"><div><strong>Chọn hiệu ứng</strong><small>Hiệu ứng đã sở hữu hoặc khách đã tải lên</small></div><button onclick="app.closeControlDeckPicker()">×</button></div>
+            <div class="lcd-effect-list" id="lcd-effect-list"></div>
+        </div>
+    </div>
+
+    <div id="lcd-sound-picker" class="lcd-modal" onclick="if(event.target===this) app.closeControlDeckSoundPicker()">
+        <div class="lcd-modal-card">
+            <div class="lcd-modal-head">
+                <div><strong>Thư viện Soundboard</strong><small>Sound được lưu cục bộ trên máy đang dùng LiveFlow</small></div>
+                <button onclick="app.closeControlDeckSoundPicker()">×</button>
+            </div>
+            <button class="lcd-upload-sound" onclick="app.uploadControlDeckSound()"><i class="fas fa-upload"></i> Tải sound từ máy tính</button>
+            <div class="lcd-effect-list" id="lcd-sound-list"></div>
+        </div>
+    </div>
 
     <!-- ===== 3. MODALS ===== -->
 

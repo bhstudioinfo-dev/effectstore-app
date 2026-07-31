@@ -433,7 +433,7 @@ router.post('/challenge-wheels/:id/test', authMiddleware, async (req, res) => {
 
 router.post('/map-gift', authMiddleware, async (req, res) => {
     try {
-        const { id, giftId, effectId, effectName, giftName, giftIcon, effects, playbackMode, minQuantity, maxQuantity, exactQuantity, cooldown, cooldownAction, triggerType, wheelId } = req.body;
+        const { id, giftId, effectId, effectName, giftName, giftIcon, effects, playbackMode, minQuantity, maxQuantity, exactQuantity, cooldown, cooldownAction, triggerType, wheelId, audioEnabled, audioVolume } = req.body;
         const userId = req.userId;
         if (id && !isValidResourceId(id)) {
             return res.status(400).json({ success: false, error: 'Invalid mapping ID' });
@@ -513,6 +513,8 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
             exactQuantity: (exactQuantity !== undefined && exactQuantity !== '' && exactQuantity !== null) ? Number(exactQuantity) : null,
             cooldown: cooldown !== undefined ? Number(cooldown) : 0,
             cooldownAction: cooldownAction || 'queue',
+            audioEnabled: audioEnabled !== false,
+            audioVolume: Math.max(0, Math.min(1, Number.isFinite(Number(audioVolume)) ? Number(audioVolume) : 1)),
             triggerType: normalizedTriggerType,
             wheelId: wheel ? wheel._id : null,
             updatedAt: Date.now()
@@ -544,6 +546,26 @@ async function waitForEffectPlayerReady(req, timeoutMs = 2500) {
     }
     return isReady();
 }
+router.put('/mappings/:id/audio', authMiddleware, async (req, res) => {
+    try {
+        if (!isValidResourceId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid mapping ID' });
+        }
+        const mapping = await GiftMapping.findOne(ownedResourceFilter(req.params.id, req.userId));
+        if (!mapping) return res.status(404).json({ success: false, error: 'Mapping not found' });
+
+        mapping.audioEnabled = req.body.audioEnabled !== false;
+        mapping.audioVolume = Math.max(0, Math.min(1,
+            Number.isFinite(Number(req.body.audioVolume)) ? Number(req.body.audioVolume) : 1
+        ));
+        mapping.updatedAt = Date.now();
+        await mapping.save();
+        return res.json({ success: true, mapping });
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 router.delete('/mappings/:id', authMiddleware, async (req, res) => {
     try {
         if (!isValidResourceId(req.params.id)) {
@@ -692,6 +714,8 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                         effectId: selEffectId,
                         effectName,
                         effectUrl,
+                        audioEnabled: mapping.audioEnabled !== false,
+                        audioVolume: mapping.audioVolume,
                         duration: dur < 100 ? dur * 1000 : dur,
                         playbackType: 'test_mapping',
                         priority: 0,
@@ -705,6 +729,8 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                         mappingId: mapping._id,
                         effects: mapping.effects,
                         playbackMode: mapping.playbackMode || 'random',
+                        audioEnabled: mapping.audioEnabled !== false,
+                        audioVolume: mapping.audioVolume,
                         playbackType: 'test_mapping',
                         priority: 0,
                         createdAt: Date.now(),
@@ -717,6 +743,8 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                     mappingId: mapping._id,
                     effects: mapping.effects,
                     playbackMode: mapping.playbackMode || 'random',
+                    audioEnabled: mapping.audioEnabled !== false,
+                    audioVolume: mapping.audioVolume,
                     playbackType: 'test_mapping',
                     priority: 0,
                     createdAt: Date.now(),
@@ -742,6 +770,8 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                 effectId,
                 effectName,
                 effectUrl,
+                audioEnabled: mapping.audioEnabled !== false,
+                audioVolume: mapping.audioVolume,
                 duration: finalDuration,
                 playbackType: 'test_mapping',
                 priority: 0,
@@ -845,6 +875,8 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
                 mappingId: mapping._id,
                 effects: mapping.effects,
                 playbackMode: mapping.playbackMode || 'random',
+                audioEnabled: mapping.audioEnabled !== false,
+                audioVolume: mapping.audioVolume,
                 playbackType: 'live_mapping',
                 priority: 100,
                 createdAt: Date.now(),
@@ -868,6 +900,8 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
                 effectId,
                 effectName: resolvedEffect.name || mapping.effectName || effectId,
                 effectUrl,
+                audioEnabled: mapping.audioEnabled !== false,
+                audioVolume: mapping.audioVolume,
                 duration,
                 playbackType: 'live_mapping',
                 priority: 100,

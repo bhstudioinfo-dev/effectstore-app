@@ -141,6 +141,8 @@ class PlaybackManager {
             effectUrl: item.effectUrl,
             duration: item.duration,
             playbackType: item.playbackType,
+            audioEnabled: item.audioEnabled !== false,
+            audioVolume: Math.max(0, Math.min(1, Number.isFinite(Number(item.audioVolume)) ? Number(item.audioVolume) : 1)),
             startedAt: Date.now()
         });
 

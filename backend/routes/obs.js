@@ -89,15 +89,6 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
         const effectId = String(req.body?.effectId || '').trim();
         if (!effectId) return res.status(400).json({ success: false, message: 'Thiếu mã hiệu ứng.' });
 
-        const queueStatus = effectQueue.getStatus();
-        if (queueStatus.status !== 'idle') {
-            return res.status(409).json({
-                success: false,
-                code: 'EFFECT_QUEUE_BUSY',
-                message: 'Đang có hiệu ứng khác chạy, vui lòng thử lại sau.'
-            });
-        }
-
         const effect = await resolveEffectForUser(req.userId, effectId);
         if (!effect) {
             return res.status(403).json({ success: false, message: 'Bạn chưa sở hữu hiệu ứng này.' });
@@ -148,14 +139,15 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             effectUrl,
             duration: durationMs,
             playbackType: 'preview_effect',
+            audioEnabled: req.body?.audioEnabled !== false,
+            audioVolume: Math.max(0, Math.min(1, Number.isFinite(Number(req.body?.audioVolume)) ? Number(req.body.audioVolume) : 1)),
             startedAt: Date.now()
         };
-        const broadcast = req.app.locals.broadcastToClients;
-        if (typeof broadcast !== 'function') {
-            return res.status(503).json({ success: false, message: 'Kênh effect_player chưa sẵn sàng.' });
-        }
-        broadcast('effect_player_play_request', payload);
-        return res.json({ success: true, duration: durationMs });
+        const queued = await effectQueue.add({ ...payload, userId: String(req.userId) });
+        if (!queued) return res.status(429).json({ success: false, message: 'Effect queue is full. Please try again.' });
+        const updatedStatus = effectQueue.getStatus();
+        return res.json({ success: true, queued: true, duration: durationMs, queueLength: updatedStatus.queueLength });
+
     } catch (error) {
         console.error('Effect player preview error:', error);
         return res.status(500).json({ success: false, message: 'Không thể xem thử hiệu ứng trên OBS.' });

@@ -512,16 +512,17 @@
             let accumPct = 0;
             const segmentsHTML = players.map((p, idx) => {
                 const score = Number(p.score) || 0;
-                const pPct = totalScore > 0 ? (score / totalScore) * 100 : 100 / players.length;
+                // Keep every team color visible when all scores are zero, while
+                // the displayed percentage remains the real value (0%).
+                const pPct = totalScore > 0 ? (score / totalScore) * 100 : 0;
+                const visualPct = totalScore > 0 ? pPct : (100 / players.length);
                 
-                let widthVal = Math.round(pPct);
+                let widthVal = Math.round(visualPct);
                 if (idx === players.length - 1) {
                     widthVal = 100 - accumPct;
                 } else {
                     accumPct += widthVal;
                 }
-                if (widthVal <= 0) return '';
-
                 // Color gradients based on preset style
                 let barBg = `linear-gradient(180deg, ${p.color}, ${p.color}cc)`;
                 if (style === 'fire_vs_ice' && players.length === 2) {
@@ -548,10 +549,9 @@
                         : `justify-content: flex-end; padding-right: ${roundPx(14, ctx.scale)}px;`;
                 }
 
-                // Only show percentage text if segment is wide enough to prevent visual clutter
-                const percentText = widthVal >= 8 
-                    ? `<div style="position: relative; z-index: 2; display: flex; align-items: center; width: 100%; height: 100%; box-sizing: border-box; font-weight: 900; font-size: ${timerSize}px; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.6); ${alignStyle} ${unskewText}"><span class="gmd-pk-segment-percent-text" data-player-index="${idx}">${pPct.toFixed(1)}%</span></div>`
-                    : '';
+                // Keep the label node mounted even at 0 width so live score
+                // updates can reveal this team without rebuilding the widget.
+                const percentText = `<div style="position: relative; z-index: 2; display: flex; align-items: center; width: 100%; height: 100%; box-sizing: border-box; font-weight: 900; font-size: ${timerSize}px; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.6); ${alignStyle} ${unskewText}"><span class="gmd-pk-segment-percent-text" data-player-index="${idx}">${pPct.toFixed(1)}%</span></div>`;
 
                 // Divider glow decoration
                 const dividerHTML = ((item.pkBarAnimation === 'divider-glow' || item.pkBarAnimation === 'glass-divider' || item.pkBarAnimation === 'electric-glass-divider' || item.pkBarAnimation === 'lightning-glass-divider') && idx < players.length - 1)
@@ -567,7 +567,7 @@
                 const electricHTML = '';
 
                 return `
-                    <div class="gmd-pk-segment" data-player-index="${idx}" style="width: ${widthVal}%; background: ${barBg}; height: 100%; display: flex; align-items: center; position: relative; box-shadow: inset 0 2px 4px rgba(255,255,255,0.15); transition: width 0.3s ease; ${segmentSkew}">
+                    <div class="gmd-pk-segment" data-player-index="${idx}" style="width: ${widthVal}%; min-width: 0; flex-shrink: 0; overflow: hidden; background: ${barBg}; height: 100%; display: flex; align-items: center; position: relative; box-shadow: inset 0 2px 4px rgba(255,255,255,0.15); transition: none; ${segmentSkew}">
                         ${stripesHTML}
                         ${electricHTML}
                         ${percentText}
@@ -793,7 +793,7 @@
             // Progress Bar Container with Sibling Electric Border Sibling
             const pbContainerHTML = `
                 <!-- Progress Bar Wrapper -->
-                <div class="gmd-pk-bar-wrapper" style="position: relative; width: 100%; height: ${length(ctx, item.barHeight, 32)}px;">
+                <div class="gmd-pk-bar-wrapper" style="position: relative; width: 100%; height: ${length(ctx, item.barHeight, 32)}px; transform: translateY(${roundPx(item.pkBarOffsetY !== undefined ? item.pkBarOffsetY : 0, ctx.scale)}px);">
                     <!-- Progress Bar Container -->
                     <div class="gmd-pk-bar-container" style="height: 100%; border-radius: ${radius}px; display: flex; background: rgba(0, 0, 0, 0.5); border: 1.5px solid rgba(255, 255, 255, 0.08); overflow: hidden; position: relative; width: 100%;">
                         ${innerBevelOverlay}

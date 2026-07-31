@@ -1252,6 +1252,8 @@
                     valueFontSize: item.valueFontSize,
                     contentOffsetY: item.contentOffsetY,
                     timerOffsetY: item.timerOffsetY,
+                    pkBarOffsetY: item.pkBarOffsetY,
+                    talentLiveContentScale: item.talentLiveContentScale,
                     hideBg: item.hideBg,
                     useCustomBg: item.useCustomBg,
                     bgColor: item.bgColor,
@@ -1442,12 +1444,25 @@
                             const talentRowHeight = isTalentBoard && item.talentCompetition?.showAvatar ? 34 : 28;
                             const talentRequiredHeight = 120 + (talentCount * talentRowHeight);
                             const talentBaseHeight = Math.max(refH, talentRequiredHeight);
+                            const isFlexibleTalentLive = item.type === 'talent-live' && item.lockRatio !== true;
+                            if (isFlexibleTalentLive && !(Number(item.talentLiveContentScale) > 0)) {
+                                // Capture the current visual size once. Unlocked width/height
+                                // edits resize the board, not its typography or avatar content.
+                                item.talentLiveContentScale = Math.max(0.08, item.width / refW);
+                            }
                             // Talent boards may be taller than the base design. Let the
                             // content scale up with the board height so the border and
                             // all configured rows fill the resized board instead of
                             // leaving a short, wide panel.
-                            const talentContentScale = isTalentBoard ? Math.max(0.25, item.height / talentBaseHeight) : 1;
+                            const talentContentScale = isTalentBoard
+                                ? Math.max(0.08, isFlexibleTalentLive
+                                    ? (Number(item.talentLiveContentScale) || (item.width / refW))
+                                    : (item.height / talentBaseHeight))
+                                : 1;
                             const talentContentWidth = isTalentBoard ? Math.max(240, item.width / talentContentScale) : refW;
+                            const talentContentHeight = isFlexibleTalentLive
+                                ? Math.max(1, item.height / talentContentScale)
+                                : talentBaseHeight;
                             // The visible podium only occupies the center portion of the 900x560
                             // design. Fit against that footprint so trimming empty board space does
                             // not immediately shrink the title and avatars.
@@ -1468,8 +1483,8 @@
                                     ${responsivePodiumHTML}
                                 </div>
                             ` : isTalentBoard ? `
-                                <div class="gmd-visual" style="width:100%;height:100%;position:relative;overflow:visible;">
-                                    <div class="gmd-visual-scaled-wrapper gmd-talent-size-aware" style="width:${talentContentWidth}px;height:${talentBaseHeight}px;transform:scale(${talentContentScale});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">
+                                <div class="gmd-visual" style="width:100%;height:100%;position:relative;overflow:hidden;">
+                                    <div class="gmd-visual-scaled-wrapper gmd-talent-size-aware" style="width:${talentContentWidth}px;height:${talentContentHeight}px;transform:scale(${talentContentScale});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">
                                         ${widgetHTML}
                                     </div>
                                 </div>
@@ -1916,6 +1931,7 @@
         changePkTeamCount(count) {
             const selected = this.items.find((x) => x.id === this.selectedId);
             if (!selected) return;
+            const previousCount = Number(selected.teamCount) || (Array.isArray(selected.pkPlayers) ? selected.pkPlayers.length : 0);
             selected.teamCount = count;
 
             if (!Array.isArray(selected.pkPlayers)) {
@@ -1934,7 +1950,7 @@
                 const idx = selected.pkPlayers.length;
                 selected.pkPlayers.push({
                     name: `ĐỘI ${idx + 1}`,
-                    score: idx === 0 ? 120 : (idx === 1 ? 80 : 50),
+                    score: 0,
                     color: defaultColors[idx] || '#ff007f',
                     giftId: defaultGifts[idx % defaultGifts.length].id,
                     giftName: defaultGifts[idx % defaultGifts.length].name,
@@ -1945,6 +1961,17 @@
 
             if (selected.pkPlayers.length > count) {
                 selected.pkPlayers = selected.pkPlayers.slice(0, count);
+            }
+
+            // A team-count change starts a fresh preview match. Do not retain
+            // demo scores that can make a newly-added team own 100% immediately.
+            if (previousCount !== count) {
+                selected.pkPlayers.forEach((player) => {
+                    player.score = 0;
+                });
+                selected.timerRunning = false;
+                selected.timerStartedAt = null;
+                selected.timerRemainingSeconds = Number(selected.timerDurationSeconds) || 1200;
             }
 
             this.invalidateItemVisual(selected);
@@ -2204,14 +2231,18 @@
             players.forEach((p, idx) => {
                 const segmentEl = el.querySelector(`.gmd-pk-segment[data-player-index="${idx}"]`);
                 if (segmentEl) {
-                    const rawPct = total > 0 ? (Number(p.score || 0) / total) * 100 : (100 / players.length);
-                    let widthVal = Math.round(rawPct);
+                    const rawPct = total > 0 ? (Number(p.score || 0) / total) * 100 : 0;
+                    const visualPct = total > 0 ? rawPct : (100 / players.length);
+                    let widthVal = Math.round(visualPct);
                     if (idx === players.length - 1) {
                         widthVal = 100 - accumPct;
                     } else {
                         accumPct += widthVal;
                     }
-                    widthVal = Math.max(5, widthVal);
+                    widthVal = Math.max(0, widthVal);
+                    // Initial rendering is immediate; only genuine score changes
+                    // should animate between the already-visible team segments.
+                    segmentEl.style.transition = 'width 0.3s ease';
                     segmentEl.style.width = `${widthVal}%`;
 
                     const pctTextEl = el.querySelector(`.gmd-pk-segment-percent-text[data-player-index="${idx}"]`);
@@ -2277,6 +2308,9 @@
                 this.renderInspector();
                 this.syncLayoutState();
             } else {
+                // The leader/card decorations can change after a score update.
+                // Force a fresh widget render instead of reusing the cached PK DOM.
+                this.invalidateItemVisual(selected);
                 this.renderCanvas();
                 this.renderInspector();
                 this.syncLayoutState();
@@ -2290,14 +2324,12 @@
                 p.score = 0;
             });
 
-            if (this.trySelectivePkScoreUpdate(selected)) {
-                this.renderInspector();
-                this.syncLayoutState();
-            } else {
-                this.renderCanvas();
-                this.renderInspector();
-                this.syncLayoutState();
-            }
+            // Reset also removes the current leader state, so a complete visual
+            // refresh is required even though the widget structure is unchanged.
+            this.invalidateItemVisual(selected);
+            this.renderCanvas();
+            this.renderInspector();
+            this.syncLayoutState();
         }
 
         toggleTimerRunning(start) {
@@ -3061,6 +3093,9 @@
                 }
                 if (i.type === 'goal-bar' && i.barStyle === 'pk' && Number(cleanItem.pkContentScale) > 0) {
                     itemExport.pkContentScale = Number(cleanItem.pkContentScale) * ((sx + sy) / 2);
+                }
+                if (i.type === 'talent-live' && Number(cleanItem.talentLiveContentScale) > 0) {
+                    itemExport.talentLiveContentScale = Number(cleanItem.talentLiveContentScale) * ((sx + sy) / 2);
                 }
                 if (i.type === 'gift-stack-group') {
                     const avgScale = (sx + sy) / 2;
@@ -5346,6 +5381,17 @@
                                 </select>
                             </div>
 
+                            <div class="gmd-field" style="margin-top: 6px;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                                    <label style="font-size:11px;margin:0;">Vị trí thanh tiến trình lên / xuống</label>
+                                    <div class="gmd-inline-input gmd-inline-input-single" style="max-width:72px;margin:0;">
+                                        <input class="gmd-input gmd-input-compact" type="number" min="-80" max="120" data-goal-key="pkBarOffsetY" value="${selected.pkBarOffsetY !== undefined ? selected.pkBarOffsetY : 0}">
+                                        <span>px</span>
+                                    </div>
+                                </div>
+                                <input class="gmd-range" type="range" min="-80" max="120" step="1" data-goal-key="pkBarOffsetY" value="${selected.pkBarOffsetY !== undefined ? selected.pkBarOffsetY : 0}">
+                            </div>
+
                             <div class="gmd-field gmd-toggle-row" style="margin-top: 6px;">
                                 <label style="font-size: 11px;">Hiển thị chữ đối kháng</label>
                                 <label class="gmd-switch">
@@ -6919,7 +6965,7 @@
                 return;
             }
 
-            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'backgroundOpacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'contributorAvatarSize', 'iconSize', 'progressSize', 'goalIconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'giftTextGap', 'labelGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerOffsetY', 'bgColorGradientAngle'].includes(key)) {
+            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'backgroundOpacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'contributorAvatarSize', 'iconSize', 'progressSize', 'goalIconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'giftTextGap', 'labelGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerOffsetY', 'pkBarOffsetY', 'bgColorGradientAngle'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
                     const previousW = Math.max(1, Number(item.w) || Number(item.width) || 1);
@@ -7044,6 +7090,9 @@
                             item.pkContentScale = Math.max(0.15, visiblePkScale);
                         }
                     } else {
+                        if (item.type === 'talent-live') {
+                            item.talentLiveContentScale = Math.max(0.08, Number(item.width || 900) / 900);
+                        }
                         if (item.type === 'goal-list') {
                             item.goalListContentScale = Math.max(0.15, visibleGoalListScale);
                         }
@@ -7826,6 +7875,7 @@
                             showTimer: true,
                             timerDuration: '00:20:00',
                             timerOffsetY: 8,
+                            pkBarOffsetY: 0,
                             showTopContributors: true,
                             enableAuraEffect: true,
                             auraIntensity: 'normal',
@@ -7836,8 +7886,8 @@
                             pkNameColorMode: 'white',
                             pkScoreColorMode: 'white',
                             pkPlayers: [
-                                { name: 'ĐỘI ĐỎ', score: 120, color: '#ef4444', giftId: 'rose', giftName: 'Rose', iconMode: 'preset', iconPreset: 'lion' },
-                                { name: 'ĐỘI XANH', score: 80, color: '#3b82f6', giftId: 'coffee', giftName: 'Coffee', iconMode: 'preset', iconPreset: 'wolf' }
+                                { name: 'ĐỘI ĐỎ', score: 0, color: '#ef4444', giftId: 'rose', giftName: 'Rose', iconMode: 'preset', iconPreset: 'lion' },
+                                { name: 'ĐỘI XANH', score: 0, color: '#3b82f6', giftId: 'coffee', giftName: 'Coffee', iconMode: 'preset', iconPreset: 'wolf' }
                             ]
                         }
                     ]
@@ -8108,6 +8158,9 @@
                     }
                     if (i.type === 'goal-bar' && i.barStyle === 'pk' && Number(i.pkContentScale) > 0) {
                         itemExport.pkContentScale = Number(i.pkContentScale) * ((sx + sy) / 2);
+                    }
+                    if (i.type === 'talent-live' && Number(i.talentLiveContentScale) > 0) {
+                        itemExport.talentLiveContentScale = Number(i.talentLiveContentScale) * ((sx + sy) / 2);
                     }
                     return itemExport;
                 });

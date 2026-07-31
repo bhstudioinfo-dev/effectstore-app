@@ -1613,10 +1613,18 @@
             const talentRowHeight = isTalentBoard && item.talentCompetition?.showAvatar ? 38 : 28;
             const talentRequiredHeight = 120 + (talentCount * talentRowHeight);
             const talentBaseHeight = Math.max(refH, talentRequiredHeight);
+            const isFlexibleTalentLive = item.type === 'talent-live' && item.lockRatio !== true;
             // Keep OBS in lockstep with the Designer: a resized Talent board may
             // scale above the base reference size so its border encloses every row.
-            const talentContentScale = isTalentBoard ? Math.max(0.25, boardHeight / talentBaseHeight) : 1;
+            const talentContentScale = isTalentBoard
+              ? Math.max(0.08, isFlexibleTalentLive
+                ? (Number(item.talentLiveContentScale) || (boardWidth / refW))
+                : (boardHeight / talentBaseHeight))
+              : 1;
             const talentContentWidth = isTalentBoard ? Math.max(240, boardWidth / talentContentScale) : refW;
+            const talentContentHeight = isFlexibleTalentLive
+              ? Math.max(1, boardHeight / talentContentScale)
+              : talentBaseHeight;
             const podiumContentScale = Math.min(boardWidth / 620, boardHeight / 330);
             const podiumContentLeft = ((boardWidth / 2) - ((refW * podiumContentScale) / 2)) * s;
             const podiumContentTop = ((boardHeight / 2) - ((refH * podiumContentScale) / 2)) * s;
@@ -1690,7 +1698,7 @@
                 ${widgetHTML}
               </div>
             ` : isTalentBoard ? `
-              <div class="gmd-visual-scaled-wrapper gmd-talent-size-aware" style="width:${talentContentWidth}px;height:${talentBaseHeight}px;transform:scale(${talentContentScale * s});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">
+              <div class="gmd-visual-scaled-wrapper gmd-talent-size-aware" style="width:${talentContentWidth}px;height:${talentContentHeight}px;transform:scale(${talentContentScale * s});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">
                 ${widgetHTML}
               </div>
             ` : `
@@ -1803,7 +1811,7 @@
 
     function shouldFadeForPlayback(data) {
       const type = data && (data.playbackType || data.currentPlaybackType);
-      const decision = type === 'live_mapping' || type === 'test_mapping';
+      const decision = type === 'live_mapping' || type === 'test_mapping' || type === 'preview_effect';
       console.log('[DEBUG] shouldFadeForPlayback: type =', type, 'decision =', decision, 'data =', data);
       return decision;
     }

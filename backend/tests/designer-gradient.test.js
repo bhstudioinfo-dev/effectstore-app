@@ -160,8 +160,78 @@ assert.ok(designerSource.includes('item.lockedPreviewW = Number(item.width || 90
 assert.ok(designerSource.includes('item.goalListContentScale = Math.max(0.15, visibleGoalListScale)'));
 assert.ok(designerSource.includes('itemExport.goalListContentScale = (Number('));
 assert.ok(designerSource.includes('data-goal-key="timerOffsetY"'));
+assert.ok(designerSource.includes('data-goal-key="pkBarOffsetY"'));
+assert.ok(designerSource.includes("'timerOffsetY', 'pkBarOffsetY'"));
 assert.ok(designerSource.includes('target.pkContentScale = Math.max(0.15'));
 assert.ok(designerSource.includes('itemExport.pkContentScale = Number('));
+assert.ok(designerSource.includes('item.width / Number(item.pkLockedPreviewW)'));
+assert.ok(designerSource.includes('item.height / Number(item.pkLockedPreviewH)'));
+assert.ok(designerSource.includes("const isFlexibleTalentLive = item.type === 'talent-live' && item.lockRatio !== true"));
+assert.ok(designerSource.includes('Number(item.talentLiveContentScale) || (item.width / refW)'));
+assert.ok(designerSource.includes('itemExport.talentLiveContentScale = Number('));
+assert.ok(designerSource.includes('Math.max(1, item.height / talentContentScale)'));
+assert.ok(designerSource.includes('item.talentLiveContentScale = Math.max(0.08, item.width / refW)'));
+assert.ok(!designerSource.includes('target.talentLiveContentScale = Math.max(0.08, target.width / 900)'));
+assert.ok(!designerSource.includes('item.talentLiveContentScale = Math.max(0.08, item.width / 900)'));
+assert.ok(designerSource.includes('const previousCount = Number(selected.teamCount)'));
+assert.ok(designerSource.includes('if (previousCount !== count)'));
+assert.ok(designerSource.includes('player.score = 0'));
+assert.ok(!designerSource.includes("score: idx === 0 ? 120 : (idx === 1 ? 80 : 50)"));
+assert.ok(designerSource.includes('const rawPct = total > 0 ? (Number(p.score || 0) / total) * 100 : 0'));
+assert.ok(designerSource.includes('const visualPct = total > 0 ? rawPct : (100 / players.length)'));
+assert.ok(
+    designerSource.includes('this.invalidateItemVisual(selected);\n                this.renderCanvas();'),
+    'PK score changes that alter the leader must invalidate the cached widget visual'
+);
+assert.ok(
+    designerSource.includes('// Reset also removes the current leader state'),
+    'Resetting PK scores must force a complete visual refresh'
+);
+
+const desktopRenderEngineSource = fs.readFileSync(desktopPath, 'utf8');
+const overlayRenderEngineSource = fs.readFileSync(overlayPath, 'utf8');
+for (const renderEngineSource of [desktopRenderEngineSource, overlayRenderEngineSource]) {
+    assert.ok(
+        renderEngineSource.includes('const pPct = totalScore > 0 ? (score / totalScore) * 100 : 0'),
+        'A PK bar with no score must display a real 0% label'
+    );
+    assert.ok(
+        renderEngineSource.includes('const visualPct = totalScore > 0 ? pPct : (100 / players.length)'),
+        'A zero-score PK bar must retain equally divided team colors'
+    );
+    assert.ok(
+        renderEngineSource.includes('transition: none; ${segmentSkew}'),
+        'PK team colors must be visible immediately on initial render'
+    );
+    assert.ok(
+        renderEngineSource.includes('item.pkBarOffsetY !== undefined ? item.pkBarOffsetY : 0'),
+        'PK progress bar vertical offset must be shared by designer and OBS renderers'
+    );
+    assert.ok(
+        !renderEngineSource.includes("if (widthVal <= 0) return '';"),
+        'Zero-width PK teams must remain mounted so later donations can reveal their color'
+    );
+    assert.ok(
+        renderEngineSource.includes('min-width: 0; flex-shrink: 0; overflow: hidden; background:'),
+        'PK segments must preserve their calculated widths and hide zero-width labels'
+    );
+}
+assert.ok(
+    designerSource.includes("segmentEl.style.transition = 'width 0.3s ease'"),
+    'Existing PK segments should still animate smoothly when scores change'
+);
+assert.ok(
+    desktopRenderEngineSource.includes('border-radius: ${roundPx(12, ctx.scale)}px'),
+    'Designer PK team-card radius must scale with its preview context'
+);
+assert.ok(
+    desktopRenderEngineSource.includes('${Math.max(1, roundPx(1.5, ctx.scale))}px solid color-mix'),
+    'Designer PK team-card border must remain visible at small preview scales'
+);
+assert.ok(
+    desktopRenderEngineSource.includes('giftIcon && players.length === 2'),
+    'Designer must not crowd multi-team PK cards with per-team gift icons'
+);
 
 const overlaySource = fs.readFileSync(
     path.join(root, 'backend', 'public', 'gift-menu-overlay.html'),
@@ -172,5 +242,8 @@ assert.ok(overlaySource.includes('gmd-goal-circle-responsive-overlay'));
 assert.ok(overlaySource.includes('gmd-goal-list-responsive-overlay'));
 assert.ok(overlaySource.includes('Number(item.unlockedContentScale) || 1'));
 assert.ok(overlaySource.includes('Number(item.goalListContentScale) || Number(item.lockedContentScale)'));
+assert.ok(overlaySource.includes("const isFlexibleTalentLive = item.type === 'talent-live' && item.lockRatio !== true"));
+assert.ok(overlaySource.includes('Number(item.talentLiveContentScale) || (boardWidth / refW)'));
+assert.ok(overlaySource.includes('Math.max(1, boardHeight / talentContentScale)'));
 
 console.log('designer gradient tests passed');

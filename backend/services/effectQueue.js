@@ -104,6 +104,8 @@ class EffectQueue {
             giftData: input.giftData || null,
             effects: input.effects || [],
             playbackMode: input.playbackMode || 'random',
+            audioEnabled: input.audioEnabled !== false,
+            audioVolume: Math.max(0, Math.min(1, Number.isFinite(Number(input.audioVolume)) ? Number(input.audioVolume) : 1)),
             userId: input.userId || null,
             eventKey: String(input.eventKey || input.giftData?.eventId || input.giftData?.msgId || '').trim() || null
         };

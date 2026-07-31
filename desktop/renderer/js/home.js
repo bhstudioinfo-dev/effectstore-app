@@ -35,6 +35,9 @@ class EffectStoreApp {
         this.selectedGift = null;
         this.selectedEffect = null;
         this.giftMappings = [];
+        this.controlDeckTab = 'effect';
+        this.controlDeck = this.loadControlDeckState();
+        this.controlDeckAudios = [];
 
         // Cài đặt TTS (Text to Speech)
         this.isTTSGiftEnabled = localStorage.getItem('es_tts_gift_enabled') !== 'false';
@@ -105,6 +108,9 @@ class EffectStoreApp {
                 await this.loadEffects();
                 this.loadCart();
                 this.updateUI();
+                this.renderControlDeck();
+                this.syncControlDeckHotkeys();
+                window.electronAPI?.onControlDeckTrigger?.((slotId) => this.triggerControlDeckSlot(slotId));
 
                 this.pollSystemStatus();
                 setInterval(() => this.pollSystemStatus(), 5000);
@@ -1779,7 +1785,7 @@ class EffectStoreApp {
         this.updateUI();
         this.showNotification('success', '🎉 Chúc mừng! Đơn hàng đã được kích hoạt thành công.');
     }
-    async previewEffectOnOBS(effectId) {
+    async previewEffectOnOBS(effectId, playbackOptions = {}) {
         const button = document.activeElement?.tagName === 'BUTTON' ? document.activeElement : null;
         const originalText = button?.innerHTML;
         if (button) {
@@ -1794,13 +1800,15 @@ class EffectStoreApp {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.authToken}`
                 },
-                body: JSON.stringify({ effectId })
+                body: JSON.stringify({ effectId, ...playbackOptions })
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok || !data.success) {
                 throw new Error(data.message || data.error || 'OBS hoặc trình phát hiệu ứng chưa sẵn sàng. Hãy kiểm tra kết nối rồi thử lại.');
             }
-            this.showNotification('success', 'Đang xem thử trên OBS');
+            this.showNotification('success', Number(data.queueLength) > 0
+                ? `Đã thêm vào hàng chờ (${data.queueLength} hiệu ứng đang chờ)`
+                : 'Đang phát hiệu ứng trên OBS');
             return true;
         } catch (error) {
             console.error('Effect player preview error:', error);
@@ -2962,6 +2970,7 @@ class EffectStoreApp {
 
     switchView(view) {
         this.currentView = view;
+        document.body.dataset.currentView = view;
         document.querySelectorAll('.menu-item-new').forEach(i => i.classList.remove('active'));
         const activeNav = Array.from(document.querySelectorAll('.menu-item-new')).find(el =>
             el.getAttribute('onclick')?.includes(`'${view}'`)
@@ -3031,6 +3040,288 @@ class EffectStoreApp {
         } else {
             if (this.logsInterval) clearInterval(this.logsInterval);
         }
+    }
+
+    loadControlDeckState() {
+        const fallback = { effect: { visible: 10, slots: [] }, sound: { visible: 10, slots: [] } };
+        try {
+            const saved = JSON.parse(localStorage.getItem('liveflow_control_deck') || 'null');
+            for (const type of ['effect', 'sound']) {
+                fallback[type].visible = Math.max(10, Math.min(20, Number(saved?.[type]?.visible) || 10));
+                fallback[type].slots = Array.isArray(saved?.[type]?.slots) ? saved[type].slots.slice(0, 20) : [];
+            }
+        } catch (_error) {}
+        return fallback;
+    }
+
+    saveControlDeckState() {
+        localStorage.setItem('liveflow_control_deck', JSON.stringify(this.controlDeck));
+        this.syncControlDeckHotkeys();
+    }
+
+    switchControlDeckTab(type) {
+        if (!['effect', 'sound'].includes(type)) return;
+        this.controlDeckTab = type;
+        document.querySelectorAll('[data-lcd-tab]').forEach((button) => button.classList.toggle('active', button.dataset.lcdTab === type));
+        this.renderControlDeck();
+    }
+
+    renderControlDeck() {
+        const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        for (const type of ['effect', 'sound']) {
+            const grid = document.getElementById(`lcd-${type}-grid`);
+            if (!grid) continue;
+            const state = this.controlDeck[type];
+            const slotsByIndex = new Map(state.slots.map((slot) => [Number(slot.index), slot]));
+            const cards = [];
+            for (let index = 0; index < state.visible; index += 1) {
+                const slot = slotsByIndex.get(index);
+                if (!slot) {
+                    cards.push(`<button class="lcd-slot empty" onclick="app.addControlDeckSlot(${index},'${type}')" title="Thêm ${type === 'effect' ? 'hiệu ứng' : 'âm thanh'}"><i class="fas fa-plus"></i></button>`);
+                    continue;
+                }
+                const image = slot.thumbUrl
+                    ? `<img class="lcd-slot-icon" src="${escapeHtml(slot.thumbUrl)}" alt="">`
+                    : `<span class="lcd-slot-icon"><i class="fas ${type === 'effect' ? 'fa-wand-magic-sparkles' : 'fa-music'}"></i></span>`;
+                cards.push(`<div class="lcd-slot" role="button" tabindex="0" id="lcd-slot-${escapeHtml(slot.id)}" onclick="app.triggerControlDeckSlot('${escapeHtml(slot.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.triggerControlDeckSlot('${escapeHtml(slot.id)}')}">
+                    <button class="lcd-slot-remove" onclick="event.stopPropagation();app.removeControlDeckSlot('${escapeHtml(slot.id)}')" title="Xóa nút">×</button>
+                    ${image}<span class="lcd-slot-name">${escapeHtml(slot.name)}</span>
+                    <span class="lcd-slot-key" onclick="event.stopPropagation();app.beginControlDeckHotkey('${escapeHtml(slot.id)}')">⌨ ${escapeHtml(slot.hotkey || 'Gán phím')}</span>
+                    ${type === 'effect' ? '<span class="lcd-slot-status"></span>' : ''}
+                    <input class="lcd-slot-volume" aria-label="Âm lượng" type="range" min="0" max="100" value="${Math.round((Number.isFinite(Number(slot.volume)) ? Number(slot.volume) : 1) * 100)}" onclick="event.stopPropagation()" oninput="event.stopPropagation();app.updateControlDeckVolume('${escapeHtml(slot.id)}',this.value)">
+                </div>`);
+            }
+            grid.innerHTML = cards.join('');
+            const limit = document.getElementById(`lcd-${type}-limit`);
+            if (limit) limit.textContent = `${state.slots.length}/${state.visible} · tối đa 20`;
+        }
+    }
+
+    async addControlDeckSlot(preferredIndex, requestedType = this.controlDeckTab) {
+        const type = ['effect', 'sound'].includes(requestedType) ? requestedType : 'effect';
+        const state = this.controlDeck[type];
+        const occupied = new Set(state.slots.map((slot) => Number(slot.index)));
+        let index = Number.isInteger(preferredIndex) ? preferredIndex : -1;
+        if (index < 0 || occupied.has(index)) index = Array.from({ length: state.visible }, (_, i) => i).find((i) => !occupied.has(i));
+        if (index === undefined || index < 0) {
+            if (state.visible >= 20) return this.showNotification('info', 'Live Control đã đạt giới hạn 20 nút cho tab này.');
+            index = state.visible;
+            state.visible += 1;
+        }
+        this.pendingControlDeckIndex = index;
+        if (type === 'sound') {
+            return this.openControlDeckSoundPicker();
+        }
+        this.openControlDeckEffectPicker();
+    }
+
+    async openControlDeckSoundPicker() {
+        const modal = document.getElementById('lcd-sound-picker');
+        const list = document.getElementById('lcd-sound-list');
+        if (!modal || !list) return;
+        list.innerHTML = '<div style="color:#94a3b8;padding:24px;text-align:center;grid-column:1/-1">Đang tải thư viện sound...</div>';
+        modal.classList.add('open');
+        let result;
+        try {
+            if (!window.electronAPI?.invoke) throw new Error('Cầu nối Electron chưa sẵn sàng.');
+            result = await Promise.race([
+                window.electronAPI.invoke('control-deck:list-sounds'),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Tiến trình LiveFlow chưa nạp mô-đun Soundboard.')), 5000))
+            ]);
+        } catch (error) {
+            console.error('Load Soundboard library error:', error);
+            list.innerHTML = `<div style="color:#fca5a5;padding:24px;text-align:center;grid-column:1/-1;line-height:1.55">${String(error?.message || '').includes('No handler registered') || String(error?.message || '').includes('chưa nạp')
+                ? 'Soundboard chưa được nạp ở tiến trình chính.<br><strong>Hãy thoát hoàn toàn LiveFlow rồi mở lại ứng dụng.</strong>'
+                : 'Không thể đọc thư viện sound trên máy.<br>Hãy khởi động lại LiveFlow và thử lại.'}</div>`;
+            return;
+        }
+        if (!result?.success) {
+            list.innerHTML = '<div style="color:#f87171;padding:24px;text-align:center;grid-column:1/-1">Không thể đọc thư viện sound trên máy.</div>';
+            return;
+        }
+        const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        list.innerHTML = result.sounds?.length ? result.sounds.map((sound) => `
+            <button class="lcd-effect-option lcd-sound-option" onclick="app.selectControlDeckSound('${escapeHtml(sound.id)}')">
+                <span class="lcd-slot-icon"><i class="fas fa-music"></i></span><strong>${escapeHtml(sound.name || 'Sound')}</strong>
+            </button>`).join('') : '<div style="color:#94a3b8;padding:24px;text-align:center;grid-column:1/-1">Chưa có sound đã lưu. Hãy tải sound đầu tiên từ máy tính.</div>';
+        this.controlDeckSoundLibrary = result.sounds || [];
+    }
+
+    closeControlDeckSoundPicker() { document.getElementById('lcd-sound-picker')?.classList.remove('open'); }
+
+    addSoundLibraryItemToDeck(sound) {
+        if (!sound) return;
+        this.controlDeck.sound.slots.push({
+            ...sound,
+            id: `deck-sound-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            soundId: sound.id,
+            index: this.pendingControlDeckIndex,
+            type: 'sound',
+            volume: 1,
+            hotkey: ''
+        });
+        this.closeControlDeckSoundPicker();
+        this.saveControlDeckState();
+        this.renderControlDeck();
+    }
+
+    selectControlDeckSound(soundId) {
+        this.addSoundLibraryItemToDeck((this.controlDeckSoundLibrary || []).find((sound) => String(sound.id) === String(soundId)));
+    }
+
+    async uploadControlDeckSound() {
+        let result;
+        try {
+            if (!window.electronAPI?.invoke) throw new Error('Cầu nối Electron chưa sẵn sàng.');
+            result = await window.electronAPI.invoke('control-deck:choose-sound');
+        } catch (error) {
+            console.error('Upload Soundboard file error:', error);
+            this.showNotification('error', String(error?.message || '').includes('No handler registered')
+                ? 'Soundboard chưa được nạp. Hãy thoát hoàn toàn rồi mở lại LiveFlow.'
+                : 'Không mở được trình chọn file. Hãy khởi động lại LiveFlow.');
+            return;
+        }
+        if (!result?.success) {
+            if (!result?.canceled) this.showNotification('error', result?.error || 'Không thể thêm âm thanh.');
+            return;
+        }
+        this.addSoundLibraryItemToDeck(result.sound);
+        this.showNotification('success', 'Đã lưu sound vào máy và thêm vào Soundboard.');
+    }
+
+    openControlDeckEffectPicker() {
+        const modal = document.getElementById('lcd-effect-picker');
+        const list = document.getElementById('lcd-effect-list');
+        if (!modal || !list) return;
+        const effects = [...(this.ownedEffects || []), ...(this.mappingEffects || []), ...(this.personalEffects || [])]
+            .filter((effect, index, items) => items.findIndex((candidate) => String(candidate._id || candidate.id) === String(effect._id || effect.id)) === index);
+        const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        list.innerHTML = effects.length ? effects.map((effect) => {
+            const id = effect._id || effect.id;
+            const thumb = effect.thumbUrl ? (/^https?:/i.test(effect.thumbUrl) ? effect.thumbUrl : `${this.API_URL}${effect.thumbUrl}`) : '';
+            return `<button class="lcd-effect-option" onclick="app.selectControlDeckEffect('${escapeHtml(id)}')">${thumb ? `<img src="${escapeHtml(thumb)}" alt="">` : '<div class="lcd-slot-icon"><i class="fas fa-wand-magic-sparkles"></i></div>'}<strong>${escapeHtml(effect.name || effect.effectName || 'Hiệu ứng')}</strong></button>`;
+        }).join('') : '<div style="color:#94a3b8;padding:30px;text-align:center;grid-column:1/-1">Bạn chưa có hiệu ứng. Hãy thêm hoặc mua hiệu ứng trước.</div>';
+        modal.classList.add('open');
+    }
+
+    closeControlDeckPicker() { document.getElementById('lcd-effect-picker')?.classList.remove('open'); }
+
+    selectControlDeckEffect(effectId) {
+        const effects = [...(this.ownedEffects || []), ...(this.mappingEffects || []), ...(this.personalEffects || [])];
+        const effect = effects.find((item) => String(item._id || item.id) === String(effectId));
+        if (!effect) return;
+        const thumbUrl = effect.thumbUrl ? (/^https?:/i.test(effect.thumbUrl) ? effect.thumbUrl : `${this.API_URL}${effect.thumbUrl}`) : '';
+        this.controlDeck.effect.slots.push({ id: `deck-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, effectId: String(effectId), index: this.pendingControlDeckIndex, type: 'effect', name: effect.name || effect.effectName || 'Hiệu ứng', thumbUrl, hotkey: '', volume: 1 });
+        this.closeControlDeckPicker();
+        this.saveControlDeckState();
+        this.renderControlDeck();
+    }
+
+    findControlDeckSlot(slotId) {
+        for (const type of ['effect', 'sound']) {
+            const slot = this.controlDeck[type].slots.find((item) => item.id === slotId);
+            if (slot) return slot;
+        }
+        return null;
+    }
+
+    async triggerControlDeckSlot(slotId) {
+        const slot = this.findControlDeckSlot(slotId);
+        if (!slot) return;
+        const element = document.getElementById(`lcd-slot-${slot.id}`);
+        element?.classList.add('running');
+        if (slot.type === 'effect') {
+            await this.previewEffectOnOBS(slot.effectId, { audioEnabled: Number(slot.volume) > 0, audioVolume: Number(slot.volume) || 0 });
+            setTimeout(() => element?.classList.remove('running'), 900);
+            return;
+        }
+        this.controlDeckAudios = this.controlDeckAudios.filter((audio) => !audio.paused && !audio.ended);
+        if (this.controlDeckAudios.length >= 3) {
+            const oldest = this.controlDeckAudios.shift();
+            oldest.pause();
+        }
+        const audio = new Audio();
+        audio.preload = 'auto';
+        audio.src = slot.url;
+        audio.volume = Math.max(0, Math.min(1, Number.isFinite(Number(slot.volume)) ? Number(slot.volume) : 1));
+        this.controlDeckAudios.push(audio);
+        audio.onended = () => { element?.classList.remove('running'); this.controlDeckAudios = this.controlDeckAudios.filter((item) => item !== audio); };
+        audio.onerror = () => { element?.classList.remove('running'); this.showNotification('error', 'Không thể phát file âm thanh này.'); };
+        try {
+            const mediaResponse = await fetch(slot.url, { method: 'HEAD', cache: 'no-store' });
+            if (!mediaResponse.ok) throw new Error(`Không tìm thấy sound đã lưu trên máy (${mediaResponse.status}).`);
+            await audio.play();
+        } catch (error) {
+            this.controlDeckAudios = this.controlDeckAudios.filter((item) => item !== audio);
+            element?.classList.remove('running');
+            this.showNotification('error', error.message || 'Không thể phát sound. Hãy thêm lại file âm thanh.');
+        }
+    }
+
+    stopControlDeckSounds() {
+        this.controlDeckAudios.forEach((audio) => { audio.pause(); audio.currentTime = 0; });
+        this.controlDeckAudios = [];
+        document.querySelectorAll('.lcd-slot.running').forEach((element) => element.classList.remove('running'));
+    }
+
+    updateControlDeckVolume(slotId, percent) {
+        const slot = this.findControlDeckSlot(slotId);
+        if (!slot) return;
+        slot.volume = Math.max(0, Math.min(100, Number(percent) || 0)) / 100;
+        localStorage.setItem('liveflow_control_deck', JSON.stringify(this.controlDeck));
+    }
+
+    updateControlDeckQueueStatus(status = {}) {
+        const currentId = String(status.currentEffectId || '');
+        const queuedIds = new Set((status.queue || []).map((item) => String(item.effectId || '')));
+        for (const slot of this.controlDeck?.effect?.slots || []) {
+            const element = document.getElementById(`lcd-slot-${slot.id}`);
+            const badge = element?.querySelector('.lcd-slot-status');
+            if (!element || !badge) continue;
+            const isRunning = status.status === 'playing' && currentId === String(slot.effectId);
+            const isQueued = !isRunning && queuedIds.has(String(slot.effectId));
+            element.classList.toggle('running', isRunning);
+            element.classList.toggle('queued', isQueued);
+            badge.textContent = isRunning
+                ? `${(Math.max(0, Number(status.remainingMs) || 0) / 1000).toFixed(1)}s`
+                : (isQueued ? 'Đang chờ' : '');
+        }
+    }
+
+    removeControlDeckSlot(slotId) {
+        for (const type of ['effect', 'sound']) this.controlDeck[type].slots = this.controlDeck[type].slots.filter((slot) => slot.id !== slotId);
+        this.saveControlDeckState();
+        this.renderControlDeck();
+    }
+
+    beginControlDeckHotkey(slotId) {
+        this.showNotification('info', 'Nhấn tổ hợp phím muốn gán (Esc để hủy, Backspace để xóa).');
+        const handler = (event) => {
+            event.preventDefault(); event.stopPropagation();
+            if (event.key === 'Escape') return window.removeEventListener('keydown', handler, true);
+            const slot = this.findControlDeckSlot(slotId);
+            if (!slot) return window.removeEventListener('keydown', handler, true);
+            if (event.key === 'Backspace') slot.hotkey = '';
+            else {
+                const modifiers = [];
+                if (event.ctrlKey || event.metaKey) modifiers.push('CommandOrControl');
+                if (event.altKey) modifiers.push('Alt');
+                if (event.shiftKey) modifiers.push('Shift');
+                const ignored = new Set(['Control', 'Meta', 'Alt', 'Shift']);
+                if (ignored.has(event.key) || !modifiers.length) return;
+                const key = event.key.length === 1 ? event.key.toUpperCase() : event.key;
+                slot.hotkey = [...modifiers, key].join('+');
+            }
+            window.removeEventListener('keydown', handler, true);
+            this.saveControlDeckState(); this.renderControlDeck();
+        };
+        window.addEventListener('keydown', handler, true);
+    }
+
+    async syncControlDeckHotkeys() {
+        const bindings = ['effect', 'sound'].flatMap((type) => this.controlDeck[type].slots)
+            .filter((slot) => slot.hotkey).map((slot) => ({ slotId: slot.id, accelerator: slot.hotkey }));
+        await window.electronAPI?.invoke('control-deck:set-hotkeys', bindings).catch(() => null);
     }
 
     async uploadEffect() {
@@ -4131,6 +4422,11 @@ class EffectStoreApp {
         this.startEffectQueueStatusPolling();
         const triggerSelect = document.getElementById('mapping-trigger-type');
         if (triggerSelect) triggerSelect.onchange = () => this.updateMappingConfigPanel();
+        const audioVolume = document.getElementById('mapping-audio-volume');
+        if (audioVolume) audioVolume.oninput = () => {
+            const output = document.getElementById('mapping-audio-volume-value');
+            if (output) output.textContent = `${audioVolume.value}%`;
+        };
     }
 
     startEffectQueueStatusPolling() {
@@ -4162,6 +4458,7 @@ class EffectStoreApp {
             if (!res.ok) return;
             const status = await res.json();
             this.effectQueueStatus = status;
+            this.updateControlDeckQueueStatus(status);
             const hasLocalTestTimer = this.testMappingTimer && this.testMappingTimer.until > Date.now();
             if (!this.isEffectQueueBusy() && !hasLocalTestTimer) {
                 this.activeTestMappingId = null;
@@ -4720,6 +5017,8 @@ class EffectStoreApp {
             const maxQtyVal = document.getElementById('mapping-max-qty')?.value || '';
             const exactQtyVal = document.getElementById('mapping-exact-qty')?.value || '';
             const modeVal = document.getElementById('mapping-playback-mode')?.value || 'random';
+            const audioEnabledVal = document.getElementById('mapping-audio-enabled')?.checked !== false;
+            const audioVolumeVal = Number(document.getElementById('mapping-audio-volume')?.value ?? 100);
 
             const payload = {
                 giftId: this.selectedGift.id, 
@@ -4735,7 +5034,9 @@ class EffectStoreApp {
                 maxQuantity: maxQtyVal ? Number(maxQtyVal) : null,
                 exactQuantity: exactQtyVal ? Number(exactQtyVal) : null,
                 cooldown: cooldownVal ? Number(cooldownVal) : 0,
-                cooldownAction: cooldownActionVal
+                cooldownAction: cooldownActionVal,
+                audioEnabled: audioEnabledVal,
+                audioVolume: Math.max(0, Math.min(100, audioVolumeVal)) / 100
             };
 
             const res = await fetch(`${this.API_URL}/api/tiktok/map-gift`, {
@@ -4818,6 +5119,10 @@ class EffectStoreApp {
                         if (badges.length > 0) {
                             detailBadges = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;width:100%;">${badges.join('')}</div>`;
                         }
+                        const mappingAudioEnabled = m.audioEnabled !== false;
+                        const mappingAudioPercent = Math.round(Math.max(0, Math.min(1,
+                            Number.isFinite(Number(m.audioVolume)) ? Number(m.audioVolume) : 1
+                        )) * 100);
 
                         return `
                                 <div class="mapping-list-item" style="flex-wrap:wrap;height:auto;padding:12px 16px;">
@@ -4838,6 +5143,14 @@ class EffectStoreApp {
                                         </div>
                                     </div>
                                     ${detailBadges}
+                                    <div style="display:flex;align-items:center;gap:10px;width:100%;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.06);">
+                                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#fff;white-space:nowrap;cursor:pointer;">
+                                            <input type="checkbox" ${mappingAudioEnabled ? 'checked' : ''} onchange="app.updateMappingAudio('${m._id}', this.checked, document.getElementById('mapping-volume-${m._id}').value)">
+                                            🔊 Âm thanh
+                                        </label>
+                                        <input id="mapping-volume-${m._id}" type="range" min="0" max="100" value="${mappingAudioPercent}" style="flex:1;max-width:220px;" oninput="document.getElementById('mapping-volume-value-${m._id}').textContent=this.value+'%'" onchange="app.updateMappingAudio('${m._id}', this.closest('.mapping-list-item').querySelector('input[type=checkbox]').checked, this.value)">
+                                        <span id="mapping-volume-value-${m._id}" style="font-size:11px;color:#fbbf24;font-weight:700;min-width:34px;text-align:right;">${mappingAudioPercent}%</span>
+                                    </div>
                                 </div>
                             `
 }).join('');
@@ -4886,6 +5199,31 @@ class EffectStoreApp {
         }
     }
 
+
+    async updateMappingAudio(id, audioEnabled, percent) {
+        const audioVolume = Math.max(0, Math.min(100, Number(percent) || 0)) / 100;
+        try {
+            const response = await fetch(`${this.API_URL}/api/tiktok/mappings/${id}/audio`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`
+                },
+                body: JSON.stringify({ audioEnabled: Boolean(audioEnabled), audioVolume })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || data.error || 'Không thể lưu âm lượng');
+            const mapping = (this.giftMappings || []).find((entry) => String(entry._id) === String(id));
+            if (mapping) {
+                mapping.audioEnabled = Boolean(audioEnabled);
+                mapping.audioVolume = audioVolume;
+            }
+            this.showNotification('success', audioEnabled ? `🔊 Âm lượng effect: ${Math.round(audioVolume * 100)}%` : '🔇 Đã tắt âm thanh effect');
+        } catch (error) {
+            this.showNotification('error', `Không thể lưu âm thanh: ${error.message}`);
+            await this.loadMappings();
+        }
+    }
 
     async testMapping(event, id) {
         const btn = event.currentTarget;

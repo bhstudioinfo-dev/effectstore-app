@@ -9,6 +9,9 @@ const AutoLaunch = require('auto-launch');
 const { startManagedBackend, stopManagedBackend, updateMongoUri, backendStatus, ensureBackendConfig } = require('./backend-manager');
 const { sanitizeDiagnosticText } = require('./diagnostics');
 
+// Soundboard hotkeys are intentional user actions even when the renderer is not focused.
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 let mainWindow;
 let tray;
 let localServer;
@@ -71,6 +74,7 @@ process.on('uncaughtException', (error) => writeMainProcessError('uncaughtExcept
 process.on('unhandledRejection', (error) => writeMainProcessError('unhandledRejection', error));
 const effectsPath = path.join(appDataPath, 'effects');
 const customEffectsPath = path.join(appDataPath, 'custom-effects');
+const soundboardPath = path.join(appDataPath, 'soundboard');
 const CUSTOM_EFFECT_LARGE_FILE_WARNING_BYTES = 200 * 1024 * 1024;
 const MAX_CUSTOM_EFFECT_BYTES = 500 * 1024 * 1024;
 const CUSTOM_EFFECT_MAX_SECONDS = 15;
@@ -82,6 +86,7 @@ if (!fs.existsSync(effectsPath)) {
     fs.mkdirSync(effectsPath, { recursive: true });
 }
 if (!fs.existsSync(customEffectsPath)) fs.mkdirSync(customEffectsPath, { recursive: true });
+if (!fs.existsSync(soundboardPath)) fs.mkdirSync(soundboardPath, { recursive: true });
 
 function getFfmpegPath() {
     try {
@@ -311,6 +316,11 @@ function startLocalServer() {
     expressApp.use('/renderer', express.static(path.join(__dirname, 'renderer')));
     expressApp.use('/effects', express.static(effectsPath));
     expressApp.use('/custom-effects', express.static(customEffectsPath, {
+        fallthrough: false,
+        dotfiles: 'deny',
+        index: false
+    }));
+    expressApp.use('/soundboard', express.static(soundboardPath, {
         fallthrough: false,
         dotfiles: 'deny',
         index: false
@@ -815,6 +825,72 @@ ipcMain.handle('get-hotkeys', () => {
         return JSON.parse(fs.readFileSync(hotkeyPath, 'utf8'));
     }
     return {};
+});
+
+ipcMain.handle('control-deck:choose-sound', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Chọn âm thanh cho Live Control Deck',
+        properties: ['openFile'],
+        filters: [{ name: 'Âm thanh', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'aac'] }]
+    });
+    if (result.canceled || !result.filePaths[0]) return { success: false, canceled: true };
+    const source = result.filePaths[0];
+    const ext = path.extname(source).toLowerCase();
+    const allowed = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac']);
+    if (!allowed.has(ext)) return { success: false, error: 'Định dạng âm thanh không được hỗ trợ.' };
+    const stat = fs.statSync(source);
+    if (stat.size > 30 * 1024 * 1024) return { success: false, error: 'Âm thanh phải nhỏ hơn 30MB để bảo vệ hiệu suất livestream.' };
+    const id = `sound-${crypto.randomUUID()}`;
+    const fileName = `${id}${ext}`;
+    fs.copyFileSync(source, path.join(soundboardPath, fileName));
+    const libraryPath = path.join(soundboardPath, 'library.json');
+    let library = [];
+    try { library = JSON.parse(fs.readFileSync(libraryPath, 'utf8')); } catch (_error) {}
+    const sound = {
+        id,
+        name: path.basename(source, ext).slice(0, 60),
+        fileName,
+        url: `http://127.0.0.1:${PORT}/soundboard/${fileName}`,
+        bytes: stat.size,
+        createdAt: new Date().toISOString()
+    };
+    library = [...(Array.isArray(library) ? library : []).filter((item) => item?.id !== id), sound];
+    fs.writeFileSync(libraryPath, JSON.stringify(library, null, 2), 'utf8');
+    return {
+        success: true,
+        sound
+    };
+});
+
+ipcMain.handle('control-deck:list-sounds', async () => {
+    const libraryPath = path.join(soundboardPath, 'library.json');
+    try {
+        const library = JSON.parse(fs.readFileSync(libraryPath, 'utf8'));
+        const sounds = (Array.isArray(library) ? library : []).filter((sound) => {
+            const fileName = path.basename(String(sound?.fileName || ''));
+            return fileName && fs.existsSync(path.join(soundboardPath, fileName));
+        }).map((sound) => ({ ...sound, url: `http://127.0.0.1:${PORT}/soundboard/${path.basename(sound.fileName)}` }));
+        return { success: true, sounds };
+    } catch (_error) {
+        return { success: true, sounds: [] };
+    }
+});
+
+ipcMain.handle('control-deck:set-hotkeys', async (_event, bindings = []) => {
+    globalShortcut.unregisterAll();
+    registerHotkeys();
+    const registered = [];
+    for (const binding of Array.isArray(bindings) ? bindings.slice(0, 40) : []) {
+        const accelerator = String(binding?.accelerator || '').trim();
+        const slotId = String(binding?.slotId || '').trim();
+        if (!accelerator || !slotId) continue;
+        try {
+            if (globalShortcut.register(accelerator, () => mainWindow?.webContents.send('control-deck-trigger', slotId))) {
+                registered.push(slotId);
+            }
+        } catch (_error) {}
+    }
+    return { success: true, registered };
 });
 
 ipcMain.handle('save-effect-file', async (event, { effectId, data }) => {

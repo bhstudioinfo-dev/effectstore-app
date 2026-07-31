@@ -21,6 +21,8 @@ const GiftMappingSchema = new mongoose.Schema({
     exactQuantity: { type: Number, default: null },
     cooldown: { type: Number, default: 0 },
     cooldownAction: { type: String, default: 'queue' },
+    audioEnabled: { type: Boolean, default: true },
+    audioVolume: { type: Number, min: 0, max: 1, default: 1 },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
