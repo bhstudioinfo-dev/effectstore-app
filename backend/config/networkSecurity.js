@@ -22,6 +22,7 @@ function getAllowedOrigins() {
 function isAllowedOrigin(origin) {
     if (!origin || origin === 'null') return true;
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
+    if (origin.startsWith('file://') || origin.startsWith('vscode-file://')) return true;
     return getAllowedOrigins().has(origin);
 }
 
