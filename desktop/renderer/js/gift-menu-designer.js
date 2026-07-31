@@ -732,7 +732,7 @@
 
         repairLegacyVietnameseText(value) {
             let result = String(value ?? '');
-            if (!/(?:Ã|Â|Ä|áº|á»|â|ðŸ)/.test(result)) return result;
+            if (!/(?:\u00c3|\u00c2|\u00c4|\u00e1\u00ba|\u00e1\u00bb|\u00e2|\u00f0\u0178)/.test(result)) return result;
             const cp1252 = new Map([
                 ['€', 0x80], ['‚', 0x82], ['ƒ', 0x83], ['„', 0x84], ['…', 0x85],
                 ['†', 0x86], ['‡', 0x87], ['ˆ', 0x88], ['‰', 0x89], ['Š', 0x8a],
@@ -741,7 +741,7 @@
                 ['˜', 0x98], ['™', 0x99], ['š', 0x9a], ['›', 0x9b], ['œ', 0x9c],
                 ['ž', 0x9e], ['Ÿ', 0x9f]
             ]);
-            const corruptionScore = (text) => (String(text).match(/Ã|Â|Ä|áº|á»|â|ðŸ/g) || []).length;
+            const corruptionScore = (text) => (String(text).match(/\u00c3|\u00c2|\u00c4|\u00e1\u00ba|\u00e1\u00bb|\u00e2|\u00f0\u0178/g) || []).length;
             for (let pass = 0; pass < 2; pass += 1) {
                 const bytes = [];
                 let convertible = true;
