@@ -43,8 +43,8 @@
     }
 
   </style>
-  <link rel="stylesheet" href="/gift-menu-renderer.css?v=11" />
-  <script src="/shared-render-engine.js?v=1.0.10"></script>
+  <link rel="stylesheet" href="/gift-menu-renderer.css?v=13" />
+  <script src="/shared-render-engine.js?v=1.0.15"></script>
   <style id="gmd-inline-renderer">
 #gift-menu-designer-view {
     height: calc(100vh - 150px);
@@ -1551,15 +1551,26 @@
           }
           
           if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
-            let refW = item.lockedW || item.w || 900;
-            let refH = item.lockedH || item.h || 160;
-            if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
-              refW = 900;
-              refH = 560;
-            }
-            if (item.type === 'talent-live') { refW = 900; refH = 300; }
-            if (item.type === 'talent-leaderboard') { refW = 900; refH = 430; }
-            if (item.type === 'challenge-wheel') { refW = 720; refH = 760; }
+            // Keep the OBS reference sizes identical to the Designer. These
+            // values describe the widget's native design space and must not
+            // change when the saved board width/height changes.
+            const widgetReferenceSizes = {
+              'boss-bar': [840, 180],
+              combo: [800, 220],
+              'mystery-chests': [900, 240],
+              'top-contributors': [900, 560],
+              'podium-contributors': [900, 560],
+              'goal-list': [900, 480],
+              'talent-live': [900, 300],
+              'talent-leaderboard': [900, 430],
+              'challenge-wheel': [720, 760],
+              'goal-circle': [280, 320]
+            };
+            const referenceSize = item.type === 'goal-bar'
+              ? [900, item.barStyle === 'pk' ? 180 : 160]
+              : widgetReferenceSizes[item.type];
+            let refW = referenceSize ? referenceSize[0] : (item.lockedW || item.w || 900);
+            let refH = referenceSize ? referenceSize[1] : (item.lockedH || item.h || 160);
 
             el.style.left = `${Math.round(offsetX + (item.x || 0) * s)}px`;
             el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
@@ -1571,6 +1582,9 @@
             const scaleY = (item.height || refH / 3) / refH;
             // Match Designer semantics: an unlocked board may use independent width/height.
             const isPodiumBoard = item.type === 'top-contributors' || item.type === 'podium-contributors';
+            const isPkBoard = item.type === 'goal-bar' && item.barStyle === 'pk';
+            const isGoalCircleBoard = item.type === 'goal-circle';
+            const isGoalListBoard = item.type === 'goal-list';
             const savedBoardRatio = Number(item.lockedW) > 0 && Number(item.lockedH) > 0
               ? Number(item.lockedW) / Number(item.lockedH)
               : (900 / 560);
@@ -1583,6 +1597,12 @@
             const contentTop = preserveContentRatio ? Math.max(0, (((item.height || refH / 3) - refH * uniformScale) / 2) * s) : 0;
 
             const isFlexiblePodium = isPodiumBoard && (item.lockRatio === false || hasCustomBoardRatio);
+            // The Designer renders Top Donate directly inside the resized board
+            // and scales only its internal typography/content. OBS previously
+            // used a second 900x560 wrapper fitted against a 620x330 footprint,
+            // which made the content larger than the saved bounds and allowed
+            // avatars/text to spill outside the board.
+            const isTopDonateBoard = item.type === 'top-contributors';
             const boardWidth = item.width || refW / 3;
             const boardHeight = item.height || refH / 3;
             const isTalentBoard = item.type === 'talent-live' || item.type === 'talent-leaderboard';
@@ -1603,8 +1623,65 @@
             const transparentWidgetHTML = isFlexiblePodium && window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
               ? window.MenuDesignerSharedRenderEngine.renderByType({ ...item, hideBg: true }, { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary })
               : '';
+            const topDonateScale = Math.max(0.15, Math.min(scaleX, scaleY));
+            const responsiveTopDonateHTML = isTopDonateBoard && window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
+              ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: topDonateScale * s, apiBase: '', escapeText: true, gifts: giftsLibrary })
+              : '';
+            const pkRenderScale = isPkBoard
+              ? Math.max(0.15, item.lockRatio === false
+                ? (Number(item.pkContentScale) || Math.min(scaleX, scaleY))
+                : (Number(item.pkContentScale) > 0
+                  && Number(item.lockedW) > 0
+                  && Number(item.lockedH) > 0
+                  ? Number(item.pkContentScale) * Math.min(
+                    boardWidth / Number(item.lockedW),
+                    boardHeight / Number(item.lockedH)
+                  )
+                  : Math.min(scaleX, scaleY)))
+              : 1;
+            const responsivePkHTML = isPkBoard && window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
+              ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: pkRenderScale * s, apiBase: '', escapeText: true, gifts: giftsLibrary })
+              : '';
+            const goalCircleRenderScale = isGoalCircleBoard ? Math.max(0.15, Math.min(scaleX, scaleY)) : 1;
+            const responsiveGoalCircleHTML = isGoalCircleBoard && window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
+              ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: goalCircleRenderScale * s, apiBase: '', escapeText: true, gifts: giftsLibrary })
+              : '';
+            // Match the Designer: an unlocked goal list may be shortened
+            // vertically without shrinking its text, icons or rows.
+            const goalListRenderScale = isGoalListBoard
+              ? Math.max(0.15, item.lockRatio === false
+                ? (Number(item.goalListContentScale) || Number(item.unlockedContentScale) || 1)
+                : ((Number(item.goalListContentScale) || Number(item.lockedContentScale)) > 0
+                  && Number(item.lockedW) > 0
+                  && Number(item.lockedH) > 0
+                  ? (Number(item.goalListContentScale) || Number(item.lockedContentScale)) * Math.min(
+                    boardWidth / Number(item.lockedW),
+                    boardHeight / Number(item.lockedH)
+                  )
+                  : Math.min(scaleX, scaleY)))
+              : 1;
+            const responsiveGoalListHTML = isGoalListBoard && window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
+              ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: goalListRenderScale * s, apiBase: '', escapeText: true, gifts: giftsLibrary })
+              : '';
 
-            el.innerHTML = isFlexiblePodium ? `
+            el.style.overflow = (isTopDonateBoard || isPkBoard || isGoalCircleBoard || isGoalListBoard) ? 'hidden' : '';
+            el.innerHTML = isGoalListBoard ? `
+              <div class="gmd-visual gmd-goal-list-responsive-overlay" style="width:100%;height:100%;position:relative;overflow:hidden;pointer-events:none;box-sizing:border-box;">
+                ${responsiveGoalListHTML}
+              </div>
+            ` : isGoalCircleBoard ? `
+              <div class="gmd-visual gmd-goal-circle-responsive-overlay" style="width:100%;height:100%;position:relative;overflow:hidden;pointer-events:none;box-sizing:border-box;">
+                ${responsiveGoalCircleHTML}
+              </div>
+            ` : isPkBoard ? `
+              <div class="gmd-visual gmd-pk-responsive-overlay" style="width:100%;height:100%;position:relative;overflow:hidden;pointer-events:none;box-sizing:border-box;">
+                ${responsivePkHTML}
+              </div>
+            ` : isTopDonateBoard ? `
+              <div class="gmd-visual gmd-contributors-responsive-overlay" style="width:100%;height:100%;position:relative;overflow:hidden;pointer-events:none;box-sizing:border-box;">
+                ${responsiveTopDonateHTML}
+              </div>
+            ` : isFlexiblePodium ? `
               <style>.gmd-board-bg-only > .gmd-podium-widget > * { visibility:hidden !important; }</style>
               <div class="gmd-visual-scaled-wrapper" style="z-index:1; width:${refW}px; height:${refH}px; transform:scale(${podiumContentScale * s}); transform-origin:top left; position:absolute; top:${podiumContentTop}px; left:${podiumContentLeft}px; pointer-events:none;">
                 ${transparentWidgetHTML}
@@ -1747,8 +1824,77 @@
       const duration = Math.max(1500, Number(data.durationMs) || 6500);
       const hideAfter = Math.max(duration, Number(data.autoHideMs) || 7000);
       const resultVisual = data.resultImage ? `<img src="${safe(data.resultImage)}" alt="Kết quả" style="max-width:220px;max-height:140px;display:block;margin:0 auto 6px;border-radius:12px;object-fit:contain;">` : '';
-      host.innerHTML = `<div class="gmd-wheel-backdrop"><div class="gmd-wheel-card"><div class="gmd-wheel-title">🎡 ${safe(data.title || 'VÒNG QUAY THỬ THÁCH')}</div><div class="gmd-wheel-subtitle">${safe(data.nickname || 'Khán giả')} tặng ${safe(data.giftName || 'quà')}</div><div class="gmd-wheel-pointer">▼</div><div class="gmd-wheel-disc" style="--wheel-gradient:conic-gradient(${gradient});--wheel-rotation:${targetRotation}deg;--wheel-duration:${duration}ms;"><div class="gmd-wheel-labels">${segments.map((segment, index) => { const angle = index * step + step / 2; const radialAngle = angle + 90; const readableAngle = radialAngle > 180 && radialAngle < 360 ? radialAngle + 180 : radialAngle; return `<span style="--i:${index};--count:${segments.length};--label-angle:${readableAngle}deg;">${safe(segment.label)}</span>`; }).join('')}</div><div class="gmd-wheel-center">QUAY</div></div><div class="gmd-wheel-result">${resultVisual}Kết quả: <b>${safe(data.resultLabel || '')}</b></div></div></div>`;
       const presentation = data.presentation && typeof data.presentation === 'object' ? data.presentation : {};
+      let staticWheel = document.querySelector('#overlay-root .gmd-static-challenge-wheel');
+      if (!staticWheel && presentation.renderItem && window.MenuDesignerSharedRenderEngine?.renderByType) {
+        // The active menu may not contain a wheel. Rebuild the saved mapping
+        // snapshot with the exact same wrapper math used by the static overlay.
+        const item = { ...presentation.renderItem, segments };
+        const exportW = 1080;
+        const exportH = 1920;
+        const scale = Math.min(window.innerWidth / exportW, window.innerHeight / exportH) || 1;
+        const offsetX = Math.round((window.innerWidth - (exportW * scale)) / 2);
+        const offsetY = Math.round((window.innerHeight - (exportH * scale)) / 2);
+        const refW = 720;
+        const refH = 760;
+        const boardWidth = Number(item.width || item.w) || refW;
+        const boardHeight = Number(item.height || item.h) || refH;
+        const wrapperScaleX = (boardWidth / refW) * scale;
+        const wrapperScaleY = (boardHeight / refH) * scale;
+        const savedWheel = document.createElement('div');
+        savedWheel.className = 'gmd-item gmd-export-item';
+        savedWheel.style.position = 'absolute';
+        savedWheel.style.left = `${Math.round(offsetX + (Number(item.x) || 0) * scale)}px`;
+        savedWheel.style.top = `${Math.round(offsetY + (Number(item.y) || 0) * scale)}px`;
+        savedWheel.style.width = `${Math.round(boardWidth * scale)}px`;
+        savedWheel.style.height = `${Math.round(boardHeight * scale)}px`;
+        savedWheel.style.zIndex = String(Number(item.zIndex) || 1);
+        const widgetHTML = window.MenuDesignerSharedRenderEngine.renderByType(
+          item,
+          { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary }
+        );
+        savedWheel.innerHTML = `<div class="gmd-visual-scaled-wrapper" style="width:${refW}px;height:${refH}px;transform:scale(${wrapperScaleX},${wrapperScaleY});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">${widgetHTML}</div>`;
+        staticWheel = savedWheel;
+      }
+      if (staticWheel) {
+        // Reuse the exact element already rendered from the saved OBS layout.
+        // Rebuilding it with a second geometry calculation caused the mapping
+        // test to appear smaller and at a different position.
+        const liveWheel = staticWheel.cloneNode(true);
+        liveWheel.classList.remove('gmd-static-challenge-wheel');
+        liveWheel.classList.add('gmd-live-wheel-clone');
+        liveWheel.style.visibility = 'visible';
+        liveWheel.style.opacity = '1';
+        const widget = liveWheel.querySelector('.gmd-challenge-wheel-widget');
+        const disc = widget?.querySelector(':scope > div:last-child');
+        const staticLabels = liveWheel.querySelectorAll('.gmd-wheel-static-labels span');
+        if (disc) {
+          disc.style.background = `conic-gradient(${gradient})`;
+          disc.style.setProperty('transition', `transform ${duration}ms cubic-bezier(.12,.72,.08,1)`, 'important');
+          disc.style.setProperty('transform', 'rotateX(12deg) rotateZ(0deg)', 'important');
+        }
+        staticLabels.forEach((label, index) => {
+          if (segments[index]) label.textContent = segments[index].label;
+        });
+        const resultBox = document.createElement('div');
+        resultBox.className = 'gmd-wheel-result';
+        resultBox.innerHTML = `${resultVisual}Kết quả: <b>${safe(data.resultLabel || '')}</b>`;
+        liveWheel.appendChild(resultBox);
+        host.appendChild(liveWheel);
+        document.body.appendChild(host);
+        document.body.classList.add('gmd-live-wheel-active');
+        window.setTimeout(() => {
+          host.classList.add('is-spinning');
+          disc?.style.setProperty('transform', `rotateX(12deg) rotateZ(${targetRotation}deg)`, 'important');
+        }, 30);
+        window.setTimeout(() => host.classList.add('is-finished'), duration);
+        window.setTimeout(() => {
+          host.remove();
+          document.body.classList.remove('gmd-live-wheel-active');
+        }, hideAfter + 500);
+        return;
+      }
+      host.innerHTML = `<div class="gmd-wheel-backdrop"><div class="gmd-wheel-card"><div class="gmd-wheel-title">🎡 ${safe(data.title || 'VÒNG QUAY THỬ THÁCH')}</div><div class="gmd-wheel-subtitle">${safe(data.nickname || 'Khán giả')} tặng ${safe(data.giftName || 'quà')}</div><div class="gmd-wheel-pointer">▼</div><div class="gmd-wheel-disc" style="--wheel-gradient:conic-gradient(${gradient});--wheel-rotation:${targetRotation}deg;--wheel-duration:${duration}ms;"><div class="gmd-wheel-labels">${segments.map((segment, index) => { const angle = index * step + step / 2; const radialAngle = angle + 90; const readableAngle = radialAngle > 180 && radialAngle < 360 ? radialAngle + 180 : radialAngle; return `<span style="--i:${index};--count:${segments.length};--label-angle:${readableAngle}deg;">${safe(segment.label)}</span>`; }).join('')}</div><div class="gmd-wheel-center">QUAY</div></div><div class="gmd-wheel-result">${resultVisual}Kết quả: <b>${safe(data.resultLabel || '')}</b></div></div></div>`;
       const card = host.querySelector('.gmd-wheel-card');
       const backdrop = host.querySelector('.gmd-wheel-backdrop');
       const disc = host.querySelector('.gmd-wheel-disc');

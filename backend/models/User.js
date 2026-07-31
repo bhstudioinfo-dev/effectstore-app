@@ -5,6 +5,18 @@ const UserSchema = new mongoose.Schema({
     password: { type: String, required: true },
     name: { type: String },
     phone: { type: String, required: true },
+    supportProfile: {
+        tiktokUsername: { type: String, default: '' },
+        birthday: { type: String, default: '' },
+        region: { type: String, default: '' },
+        userType: { type: String, default: '' },
+        primaryNeed: { type: String, default: '' },
+        preferredContact: { type: String, default: 'zalo' },
+        contactTime: { type: String, default: '' }
+    },
+    marketingConsent: { type: Boolean, default: false },
+    termsAcceptedAt: Date,
+    profileUpdatedAt: Date,
     machineId: { type: String },
     subscription: { type: String, default: 'free' },
     subscriptionExpiresAt: { type: Date },
@@ -12,7 +24,11 @@ const UserSchema = new mongoose.Schema({
     purchasedEffects: [{
         effectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Effect' },
         purchasedAt: { type: Date, default: Date.now },
-        licenseKey: { type: String }
+        licenseKey: { type: String },
+        acquisitionType: { type: String, enum: ['free', 'paid', 'legacy'], default: 'legacy' },
+        acquisitionPrice: { type: Number, min: 0 },
+        useCount: { type: Number, default: 0 },
+        lastUsedAt: { type: Date }
     }],
     customEffects: [{
         localId: { type: String, required: true },

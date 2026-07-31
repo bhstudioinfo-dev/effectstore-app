@@ -3,6 +3,8 @@ const router = express.Router();
 const obsService = require('../services/obsService');
 const { authMiddleware } = require('../middleware/auth');
 const Effect = require('../models/Effect');
+const GiftMenuLayout = require('../models/GiftMenuLayout');
+const User = require('../models/User');
 const OBSSettings = require('../models/OBSSettings');
 const { issueEffectAccessToken, verifyEffectAccessToken } = require('../services/effectAccessToken');
 const fs = require('fs');
@@ -16,6 +18,8 @@ const {
 const effectRoutes = require('./effects');
 const { getOverlayAccessToken } = require('../config/networkSecurity');
 const { paths: dataPaths } = require('../config/dataPaths');
+const { isValidResourceId, ownedResourceFilter } = require('../utils/accessControl');
+const { getEntitlements, validateDesignerItems } = require('../config/planEntitlements');
 
 async function getObsConnectionConfig() {
     try {
@@ -271,8 +275,13 @@ router.post('/setup-effect', authMiddleware, async (req, res) => {
 });
 
 // Setup/Update Gift Menu overlay source in OBS
-router.post('/setup-gift-menu', authMiddleware, async (_req, res) => {
+router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
     try {
+        const layoutId = req.body?.layoutId;
+        if (!isValidResourceId(layoutId)) {
+            return res.status(400).json({ success: false, message: 'Thiết kế xuất OBS không hợp lệ' });
+        }
+
         if (!obsService.isConnected()) {
             const config = await getObsConnectionConfig();
             await obsService.connect(config.host, config.port, config.password);
@@ -281,6 +290,25 @@ router.post('/setup-gift-menu', authMiddleware, async (_req, res) => {
         if (!obsService.isConnected()) {
             return res.status(503).json({ success: false, message: 'OBS chưa kết nối' });
         }
+
+        // Browsing/activating layouts only changes the editor. Publishing the
+        // file consumed by OBS happens exclusively through "Save & Export".
+        const publishedLayout = await GiftMenuLayout.findOne(ownedResourceFilter(
+            layoutId,
+            req.userId,
+            { isTemplate: false }
+        ));
+        if (!publishedLayout) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy thiết kế để xuất OBS' });
+        }
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
+        const entitlements = getEntitlements(user);
+        const exportViolation = validateDesignerItems(publishedLayout.items, entitlements) ||
+            validateDesignerItems(publishedLayout.exportedItems, entitlements);
+        if (exportViolation) return res.status(403).json(exportViolation);
+
+        fs.writeFileSync(dataPaths.giftMenuLayoutPath, JSON.stringify(publishedLayout, null, 2), 'utf8');
 
         const PORT = process.env.PORT || 9000;
         const sceneName = 'EffectStore';
@@ -311,37 +339,40 @@ router.post('/setup-gift-menu', authMiddleware, async (_req, res) => {
         let item = sceneItems.find((x) => giftMenuSourceNames.includes(x.sourceName));
         const sourceName = item?.sourceName || defaultSourceName;
 
+        const browserSettings = {
+            url,
+            width: sourceWidth,
+            height: sourceHeight,
+            fps: 60,
+            fps_custom: true,
+            css: '',
+            shutdown: false,
+            restart_when_active: false
+        };
+
         if (!item) {
             await obsService.obs.call('CreateInput', {
                 sceneName,
                 inputName: sourceName,
                 inputKind: 'browser_source',
-                inputSettings: {
-                    url,
-                    width: sourceWidth,
-                    height: sourceHeight,
-                    fps: 60,
-                    fps_custom: true,
-                    css: '',
-                    shutdown: false,
-                    restart_when_active: true
-                }
+                inputSettings: browserSettings
             });
             const { sceneItems: newItems } = await obsService.obs.call('GetSceneItemList', { sceneName });
             item = newItems.find((x) => x.sourceName === sourceName);
         } else {
+            // OBS CEF can keep the previous document alive even when only the
+            // query string changes. Detach it first so Save & Export always
+            // starts a fresh renderer instead of occasionally showing black.
             await obsService.obs.call('SetInputSettings', {
                 inputName: sourceName,
-                inputSettings: {
-                    url,
-                    width: sourceWidth,
-                    height: sourceHeight,
-                    fps: 60,
-                    fps_custom: true,
-                    css: '',
-                    shutdown: false,
-                    restart_when_active: true
-                }
+                inputSettings: { url: 'about:blank' },
+                overlay: true
+            });
+            await new Promise((resolve) => setTimeout(resolve, 120));
+            await obsService.obs.call('SetInputSettings', {
+                inputName: sourceName,
+                inputSettings: browserSettings,
+                overlay: true
             });
         }
 
@@ -393,7 +424,13 @@ router.post('/trigger', authMiddleware, async (req, res) => {
         const { effectId, duration } = req.body;
         const effectQueue = require('../services/effectQueue');
 
-        const queued = await effectQueue.add(effectId, duration, null, req.body?.effectName || effectId);
+        const queued = await effectQueue.add({
+            effectId,
+            duration,
+            effectName: req.body?.effectName || effectId,
+            playbackType: 'preview_effect',
+            userId: String(req.userId)
+        });
         if (!queued) {
             return res.status(422).json({
                 success: false,

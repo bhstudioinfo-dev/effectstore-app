@@ -52,9 +52,47 @@ async function calculateOrder(effectIds, user) {
     return { effectIds: ids, amount };
 }
 
+async function claimFreeEffects(effectIds, user) {
+    const ids = normalizeEffectIds(effectIds);
+    if (ids.length === 0) {
+        throw Object.assign(new Error('Free claim must contain at least one item.'), { status: 400 });
+    }
+    if (ids.some((id) => !mongoose.isObjectIdOrHexString(id))) {
+        throw Object.assign(new Error('Free claim contains an invalid effect ID.'), { status: 400 });
+    }
+
+    const effects = await Effect.find({ _id: { $in: ids }, isActive: true }).lean();
+    if (effects.length !== ids.length) {
+        throw Object.assign(new Error('One or more effects are unavailable.'), { status: 400 });
+    }
+    if (effects.some((effect) => effectiveEffectPrice(effect) !== 0)) {
+        throw Object.assign(new Error('One or more effects require payment.'), { status: 400 });
+    }
+
+    const ownedIds = new Set((user.purchasedEffects || []).map((item) => String(item.effectId?._id || item.effectId || '')));
+    const claimedIds = effects.map((effect) => String(effect._id)).filter((id) => !ownedIds.has(id));
+    for (const effectId of claimedIds) {
+        user.purchasedEffects.push({
+            effectId,
+            purchasedAt: new Date(),
+            acquisitionType: 'free',
+            acquisitionPrice: 0,
+            useCount: 0
+        });
+    }
+    if (claimedIds.length) await user.save();
+
+    return { claimedIds, alreadyOwnedIds: ids.filter((id) => ownedIds.has(id)) };
+}
+
 async function grantPayment(payment) {
     const user = await User.findById(payment.userId);
     if (!user) throw new Error('Payment user not found.');
+    const paidEffectIds = payment.effectIds.filter((itemId) => !SUBSCRIPTION_PRODUCTS[itemId]);
+    const paidEffects = paidEffectIds.length
+        ? await Effect.find({ _id: { $in: paidEffectIds } }).lean()
+        : [];
+    const paidEffectsById = new Map(paidEffects.map((effect) => [String(effect._id), effect]));
 
     for (const itemId of payment.effectIds) {
         const subscription = SUBSCRIPTION_PRODUCTS[itemId];
@@ -68,7 +106,16 @@ async function grantPayment(payment) {
         }
 
         const exists = user.purchasedEffects.some((entry) => String(entry.effectId) === String(itemId));
-        if (!exists) user.purchasedEffects.push({ effectId: itemId, purchasedAt: new Date() });
+        if (!exists) {
+            const effect = paidEffectsById.get(String(itemId));
+            user.purchasedEffects.push({
+                effectId: itemId,
+                purchasedAt: new Date(),
+                acquisitionType: 'paid',
+                acquisitionPrice: effect ? effectiveEffectPrice(effect) : undefined,
+                useCount: 0
+            });
+        }
     }
 
     user.totalSpent = (user.totalSpent || 0) + Number(payment.amount || 0);
@@ -106,5 +153,6 @@ module.exports = {
     normalizeEffectIds,
     effectiveEffectPrice,
     calculateOrder,
+    claimFreeEffects,
     approvePayment
 };

@@ -37,6 +37,7 @@
             this._saveInFlight = false;
             this._saveQueuedRequest = null;
             this._saveQueuedResolvers = [];
+            this._trialTemplateNoticeShown = new Set();
             this.auraOptions = [
                 { value: 'None', label: 'Không có' },
                 { value: 'Glow', label: 'Glow (Tỏa sáng)' },
@@ -66,6 +67,15 @@
 
         get token() {
             return (window.app && window.app.authToken) || localStorage.getItem('token') || localStorage.getItem('effectstore_auth_token') || '';
+        }
+
+        get lastOpenedLayoutStorageKey() {
+            const userId = window.app?.currentUser?._id || window.app?.currentUser?.id || 'current-user';
+            return `giftMenuDesignerLastOpenedLayoutId:${userId}`;
+        }
+
+        rememberOpenedLayout(layoutId) {
+            if (layoutId) localStorage.setItem(this.lastOpenedLayoutStorageKey, String(layoutId));
         }
 
         get isAdmin() {
@@ -342,7 +352,7 @@
             this.mount.innerHTML = `
                 <div class="gift-menu-designer">
                     <div class="gmd-headline">
-                        <div class="gmd-brand">EffectStore <span>|</span> Thiết kế bảng quà <em>Pro</em></div>
+                        <div class="gmd-brand">LiveFlow <span>|</span> Thiết kế bảng quà <em>Pro</em></div>
                     </div>
                     <div class="gmd-toolbar">
                         <div class="gmd-group">
@@ -600,7 +610,7 @@
                     listEl.innerHTML = purchasedOnly.map(t => {
                         const price = Math.max(0, Number(t.price) || 0);
                         const isOwned = Boolean(t.isPurchased) || price === 0;
-                        const actionText = t.isUsed ? 'Đã sử dụng' : (isOwned ? 'Sử dụng' : `Mua ${price.toLocaleString('vi-VN')}đ`);
+                        const actionText = t.isUsed ? 'Mở tùy chỉnh' : (isOwned ? 'Sử dụng' : `Mua ${price.toLocaleString('vi-VN')}đ`);
                         const bgStyle = isOwned ? 'background:#10b981;' : 'background:#8b5cf6;';
                         return `
                             <div class="gmd-tmpl-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px; gap:8px;">
@@ -631,6 +641,17 @@
             }
         }
 
+        async openLibraryLayout(layoutId) {
+            await this.loadLayoutsList();
+            const layout = (this.layouts || []).find((item) => String(item._id) === String(layoutId));
+            if (!layout) return { success: false };
+            await this.loadLayout(layout);
+            if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('success', 'Đã mở thiết kế để tùy chỉnh.');
+            }
+            return { success: true, layout };
+        }
+
         async buyOrUseTemplateFromSidebar(templateId) {
             if (!this._usingTemplateIds) this._usingTemplateIds = new Set();
             const templateKey = String(templateId);
@@ -644,6 +665,9 @@
                     alert('Chức năng thanh toán tạm thời không khả dụng.');
                 }
                 return;
+            }
+            if (template?.isUsed && template.usedLayoutId) {
+                return this.openLibraryLayout(template.usedLayoutId);
             }
             this._usingTemplateIds.add(templateKey);
             const useButtons = Array.from(this.mount.querySelectorAll('.gmd-btn-use-tmpl'))
@@ -670,7 +694,7 @@
                     }
                 }
                 await this.loadLayoutsList();
-                await this.loadLayout();
+                await this.loadLayout(data.layout);
                 await this.loadTemplatesList();
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('success', data.reused ? 'Đã mở thiết kế bạn từng sử dụng.' : 'Đã thêm mẫu vào thư viện của bạn.');
@@ -704,6 +728,42 @@
             return String(value ?? '').replace(/[&<>"']/g, (char) => ({
                 '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
             }[char]));
+        }
+
+        repairLegacyVietnameseText(value) {
+            let result = String(value ?? '');
+            if (!/(?:Ã|Â|Ä|áº|á»|â|ðŸ)/.test(result)) return result;
+            const cp1252 = new Map([
+                ['€', 0x80], ['‚', 0x82], ['ƒ', 0x83], ['„', 0x84], ['…', 0x85],
+                ['†', 0x86], ['‡', 0x87], ['ˆ', 0x88], ['‰', 0x89], ['Š', 0x8a],
+                ['‹', 0x8b], ['Œ', 0x8c], ['Ž', 0x8e], ['‘', 0x91], ['’', 0x92],
+                ['“', 0x93], ['”', 0x94], ['•', 0x95], ['–', 0x96], ['—', 0x97],
+                ['˜', 0x98], ['™', 0x99], ['š', 0x9a], ['›', 0x9b], ['œ', 0x9c],
+                ['ž', 0x9e], ['Ÿ', 0x9f]
+            ]);
+            const corruptionScore = (text) => (String(text).match(/Ã|Â|Ä|áº|á»|â|ðŸ/g) || []).length;
+            for (let pass = 0; pass < 2; pass += 1) {
+                const bytes = [];
+                let convertible = true;
+                for (const char of result) {
+                    const code = char.codePointAt(0);
+                    if (code <= 0xff) bytes.push(code);
+                    else if (cp1252.has(char)) bytes.push(cp1252.get(char));
+                    else {
+                        convertible = false;
+                        break;
+                    }
+                }
+                if (!convertible) break;
+                try {
+                    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes));
+                    if (corruptionScore(decoded) >= corruptionScore(result)) break;
+                    result = decoded;
+                } catch (_error) {
+                    break;
+                }
+            }
+            return result;
         }
 
         renderGiftLibrary() {
@@ -764,12 +824,18 @@
                 iconText: gift.displayText || gift.name || gift.id,
                 iconTextColor: gift.textColor || '#ffffff',
                 iconTextSize: Number(gift.textSize) || 20,
+                showIconTextBg: false,
+                iconTextBgStyle: 'classic',
+                iconTextBgColor: '#000000',
+                iconTextBgGradientFrom: '#a855f7',
+                iconTextBgGradientTo: '#22d3ee',
+                iconTextBgOpacity: 100,
                 isVideoIcon: Boolean(gift.isVideo) || this.isVideoAsset(gift.icon),
                 x, y, width: 84, height: 84, rotation: 0,
                 showName: true, textSize: 13, textColor: '#f7cb64', textGap: 4, textAlign: 'center',
                 textPosition: 'bottom',
                 subtext: '', showTextBg: false, textBgStyle: 'classic', textBgColor: '#000000',
-                textBgGradientFrom: '#a855f7', textBgGradientTo: '#22d3ee',
+                textBgGradientFrom: '#a855f7', textBgGradientTo: '#22d3ee', textBgOpacity: 100,
                 auraType: 'None', auraColor: '#d7b2ff', auraShape: 'Circle',
                 animationType: 'None', animationSpeed: 1, auraSpeed: 1, auraScale: 1, zIndex: this.items.length + 1,
                 visible: true, locked: false, lockRatio: true
@@ -941,6 +1007,8 @@
                 subtextSize: 10,
                 textPosition: 'bottom',
                 textGap: 4,
+                giftTextGap: 4,
+                labelGap: 4,
                 textColor: '#ffffff',
                 showName: true,
                 showPanel: true,
@@ -1119,6 +1187,11 @@
                     el.style.overflow = '';
                     el.style.pointerEvents = '';
                 }
+                // A locked layer must be completely transparent to canvas
+                // pointer hit-testing. This lets clicks pass through to an
+                // unlocked layer underneath while the locked layer remains
+                // selectable/unlockable from the Layers panel.
+                el.style.pointerEvents = item.locked ? 'none' : 'auto';
 
                 // Decouple content changes from selection changes using signatures
                 const visualContainer = el.querySelector('.gmd-visual-container');
@@ -1133,6 +1206,31 @@
                     name: item.name,
                     giftId: item.giftId,
                     giftName: item.giftName,
+                    iconUrl: item.iconUrl,
+                    iconDisplayMode: item.iconDisplayMode,
+                    iconText: item.iconText,
+                    iconTextColor: item.iconTextColor,
+                    iconTextSize: item.iconTextSize,
+                    showIconTextBg: item.showIconTextBg,
+                    iconTextBgStyle: item.iconTextBgStyle,
+                    iconTextBgColor: item.iconTextBgColor,
+                    iconTextBgGradientFrom: item.iconTextBgGradientFrom,
+                    iconTextBgGradientTo: item.iconTextBgGradientTo,
+                    iconTextBgOpacity: item.iconTextBgOpacity,
+                    showName: item.showName,
+                    textPosition: item.textPosition,
+                    textAlign: item.textAlign,
+                    textSize: item.textSize,
+                    textGap: item.textGap,
+                    textColor: item.textColor,
+                    subtext: item.subtext,
+                    showTextBg: item.showTextBg,
+                    textBgStyle: item.textBgStyle,
+                    textBgColor: item.textBgColor,
+                    textBgGradientFrom: item.textBgGradientFrom,
+                    textBgGradientTo: item.textBgGradientTo,
+                    textBgOpacity: item.textBgOpacity,
+                    backgroundOpacity: item.backgroundOpacity,
                     targetCount: item.targetCount,
                     centerIcon: item.centerIcon,
                     subtitleText: item.subtitleText,
@@ -1141,6 +1239,8 @@
                     useBarGradient: item.useBarGradient,
                     progressShape: item.progressShape,
                     progressEffect: item.progressEffect,
+                    progressSize: item.progressSize,
+                    goalIconSize: item.goalIconSize,
                     showPercentage: item.showPercentage,
                     pctFontSize: item.pctFontSize,
                     fontSize: item.fontSize,
@@ -1151,6 +1251,7 @@
                     subtitleFontSize: item.subtitleFontSize,
                     valueFontSize: item.valueFontSize,
                     contentOffsetY: item.contentOffsetY,
+                    timerOffsetY: item.timerOffsetY,
                     hideBg: item.hideBg,
                     useCustomBg: item.useCustomBg,
                     bgColor: item.bgColor,
@@ -1192,6 +1293,8 @@
                     childAlign: item.childAlign,
                     iconSize: item.iconSize,
                     gap: item.gap,
+                    giftTextGap: item.giftTextGap,
+                    labelGap: item.labelGap,
                     textPosition: item.textPosition,
                     textSize: item.textSize,
                     subtextSize: item.subtextSize,
@@ -1216,6 +1319,7 @@
                         textSize: child.textSize,
                         textColor: child.textColor,
                         textGap: child.textGap,
+                        iconTextGap: child.iconTextGap,
                         textAlign: child.textAlign,
                         showTextBg: child.showTextBg,
                         textBgStyle: child.textBgStyle,
@@ -1247,18 +1351,26 @@
                                 : '';
                             visualContainer.innerHTML = groupHTML;
                         } else if (item.type && item.type !== 'gift') {
-                            let refW = item.lockedW || item.w || 900;
-                            let refH = item.lockedH || item.h || 160;
-                            if (item.type === 'boss-bar') { refW = 840; refH = 180; }
-                            else if (item.type === 'combo') { refW = 800; refH = 220; }
-                            else if (item.type === 'mystery-chests') { refW = 900; refH = 240; }
-                            else if (item.type === 'top-contributors' || item.type === 'podium-contributors') { refW = 900; refH = 560; }
-                            else if (item.type === 'goal-list') { refW = 900; refH = item.h || 700; }
-                            else if (item.type === 'talent-live') { refW = 900; refH = 300; }
-                            else if (item.type === 'talent-leaderboard') { refW = 900; refH = 430; }
-                            else if (item.type === 'challenge-wheel') { refW = 720; refH = 760; }
-                            else if (item.type === 'goal-bar') { refW = 900; refH = 160; }
-                            else if (item.type === 'goal-circle') { refW = 280; refH = 320; }
+                            // Every widget type has one stable design-space size.
+                            // Using item.w/item.h here makes the reference size change
+                            // together with the board, so its content no longer scales.
+                            const widgetReferenceSizes = {
+                                'boss-bar': [840, 180],
+                                combo: [800, 220],
+                                'mystery-chests': [900, 240],
+                                'top-contributors': [900, 560],
+                                'podium-contributors': [900, 560],
+                                'goal-list': [900, 480],
+                                'talent-live': [900, 300],
+                                'talent-leaderboard': [900, 430],
+                                'challenge-wheel': [720, 760],
+                                'goal-circle': [280, 320]
+                            };
+                            const referenceSize = item.type === 'goal-bar'
+                                ? [900, item.barStyle === 'pk' ? 180 : 160]
+                                : widgetReferenceSizes[item.type];
+                            let refW = referenceSize ? referenceSize[0] : (item.lockedW || item.w || 900);
+                            let refH = referenceSize ? referenceSize[1] : (item.lockedH || item.h || 160);
 
                             const scaleX = item.width / refW;
                             const scaleY = item.height / refH;
@@ -1266,11 +1378,14 @@
                             // explicitly locked it. When unlocked, width and height must be
                             // independent so the board itself fills the requested bounds.
                             const isPodiumBoard = item.type === 'top-contributors' || item.type === 'podium-contributors';
-                            const savedBoardRatio = Number(item.lockedW) > 0 && Number(item.lockedH) > 0
-                                ? Number(item.lockedW) / Number(item.lockedH)
-                                : (900 / 560);
-                            const hasCustomBoardRatio = isPodiumBoard && Math.abs(savedBoardRatio - (900 / 560)) > 0.01;
-                            const preserveContentRatio = isPodiumBoard && item.lockRatio !== false && !hasCustomBoardRatio;
+                            const isPkBoard = item.type === 'goal-bar' && item.barStyle === 'pk';
+                            const isGoalCircleBoard = item.type === 'goal-circle';
+                            const isGoalListBoard = item.type === 'goal-list';
+                            // A locked contributors board must always use one uniformly
+                            // scaled visual. Previously a custom locked ratio still went
+                            // through the flexible two-layer renderer, producing a
+                            // stretched/duplicated board when aspect lock was enabled.
+                            const preserveContentRatio = isPodiumBoard && item.lockRatio !== false;
                             const contentScaleX = preserveContentRatio ? Math.min(scaleX, scaleY) : scaleX;
                             const contentScaleY = preserveContentRatio ? Math.min(scaleX, scaleY) : scaleY;
                             const contentLeft = preserveContentRatio ? Math.max(0, (item.width - refW * contentScaleX) / 2) : 0;
@@ -1280,7 +1395,48 @@
                                 ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
                                 : '';
 
-                            const isFlexiblePodium = isPodiumBoard && (item.lockRatio === false || hasCustomBoardRatio);
+                            const podiumRenderScale = isPodiumBoard
+                                ? Math.max(0.15, Math.min(scaleX, scaleY))
+                                : 1;
+                            const responsivePodiumHTML = isPodiumBoard && this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                                ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: podiumRenderScale, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
+                                : '';
+                            const pkRenderScale = isPkBoard
+                                ? Math.max(0.15, item.lockRatio === false
+                                    ? (Number(item.pkContentScale) || Math.min(scaleX, scaleY))
+                                    : (Number(item.pkContentScale) > 0
+                                        && Number(item.pkLockedPreviewW) > 0
+                                        && Number(item.pkLockedPreviewH) > 0
+                                        ? Number(item.pkContentScale) * Math.min(
+                                            item.width / Number(item.pkLockedPreviewW),
+                                            item.height / Number(item.pkLockedPreviewH)
+                                        )
+                                        : Math.min(scaleX, scaleY)))
+                                : 1;
+                            const responsivePkHTML = isPkBoard && this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                                ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: pkRenderScale, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
+                                : '';
+                            const goalCircleRenderScale = isGoalCircleBoard
+                                ? Math.max(0.15, Math.min(scaleX, scaleY))
+                                : 1;
+                            const responsiveGoalCircleHTML = isGoalCircleBoard && this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                                ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: goalCircleRenderScale, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
+                                : '';
+                            const goalListRenderScale = isGoalListBoard
+                                ? Math.max(0.15, item.lockRatio === false
+                                    ? (Number(item.goalListContentScale) || Number(item.unlockedContentScale) || 1)
+                                    : ((Number(item.goalListContentScale) || Number(item.lockedContentScale)) > 0
+                                        && Number(item.lockedPreviewW) > 0
+                                        && Number(item.lockedPreviewH) > 0
+                                        ? (Number(item.goalListContentScale) || Number(item.lockedContentScale)) * Math.min(
+                                            item.width / Number(item.lockedPreviewW),
+                                            item.height / Number(item.lockedPreviewH)
+                                        )
+                                        : Math.min(scaleX, scaleY)))
+                                : 1;
+                            const responsiveGoalListHTML = isGoalListBoard && this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                                ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: goalListRenderScale, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
+                                : '';
                             const isTalentBoard = item.type === 'talent-live' || item.type === 'talent-leaderboard';
                             const talentCount = isTalentBoard && item.talentCompetition ? Math.min(Number(item.talentCompetition.maxRanking) || 8, (item.talentCompetition.participants || []).length || 1) : 0;
                             const talentRowHeight = isTalentBoard && item.talentCompetition?.showAvatar ? 34 : 28;
@@ -1295,22 +1451,21 @@
                             // The visible podium only occupies the center portion of the 900x560
                             // design. Fit against that footprint so trimming empty board space does
                             // not immediately shrink the title and avatars.
-                            const podiumContentScale = Math.min(item.width / 620, item.height / 330);
-                            const podiumContentLeft = (item.width / 2) - ((refW * podiumContentScale) / 2);
-                            const podiumContentTop = (item.height / 2) - ((refH * podiumContentScale) / 2);
-                            const transparentWidgetHTML = isFlexiblePodium && this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
-                                ? this.sharedRenderEngine.renderByType({ ...item, hideBg: true }, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
-                                : '';
-
-                            visualContainer.innerHTML = isFlexiblePodium ? `
-                                <div class="gmd-visual" style="width:100%; height:100%; position:relative; overflow:visible;">
-                                    <style>.gmd-board-bg-only > .gmd-podium-widget > * { visibility:hidden !important; }</style>
-                                    <div class="gmd-visual-scaled-wrapper" style="z-index:1; width:${refW}px; height:${refH}px; transform:scale(${podiumContentScale}); transform-origin:top left; position:absolute; top:${podiumContentTop}px; left:${podiumContentLeft}px; pointer-events:none;">
-                                        ${transparentWidgetHTML}
-                                    </div>
-                                    <div class="gmd-visual-scaled-wrapper gmd-board-bg-only" style="z-index:0; width:${refW}px; height:${refH}px; transform:scale(${scaleX}, ${scaleY}); transform-origin:top left; position:absolute; inset:0 auto auto 0; pointer-events:none;">
-                                        ${widgetHTML}
-                                    </div>
+                            visualContainer.innerHTML = isGoalListBoard ? `
+                                <div class="gmd-visual gmd-goal-list-responsive-preview" style="width:100%;height:100%;position:relative;overflow:hidden;pointer-events:none;">
+                                    ${responsiveGoalListHTML}
+                                </div>
+                            ` : isGoalCircleBoard ? `
+                                <div class="gmd-visual gmd-goal-circle-responsive-preview" style="width:100%;height:100%;position:relative;overflow:hidden;pointer-events:none;">
+                                    ${responsiveGoalCircleHTML}
+                                </div>
+                            ` : isPkBoard ? `
+                                <div class="gmd-visual gmd-pk-responsive-preview" style="width:100%;height:100%;position:relative;overflow:hidden;pointer-events:none;">
+                                    ${responsivePkHTML}
+                                </div>
+                            ` : isPodiumBoard ? `
+                                <div class="gmd-visual gmd-contributors-responsive-preview" style="width:100%;height:100%;position:relative;overflow:hidden;pointer-events:none;">
+                                    ${responsivePodiumHTML}
                                 </div>
                             ` : isTalentBoard ? `
                                 <div class="gmd-visual" style="width:100%;height:100%;position:relative;overflow:visible;">
@@ -1328,31 +1483,32 @@
                             // Challenge-wheel labels are rendered by the shared
                             // renderer. Do not decorate a second label layer here.
                         } else {
-                        const auraShapeVars = this.getAuraShapeVars(item.auraShape);
-                        const lightSweepOverlay = '';
-                        const labelBgStyle = this.getGiftLabelBackgroundStyle(item);
-                        visualContainer.innerHTML = `
+                            const auraShapeVars = this.getAuraShapeVars(item.auraShape);
+                            const lightSweepOverlay = '';
+                            const labelBgStyle = this.getGiftLabelBackgroundStyle(item);
+                            const iconTextBgStyle = this.getIconTextBackgroundStyle(item);
+                            visualContainer.innerHTML = `
                             <div class="gmd-visual ${this.getMotionClass(item.animationType)} ${this.getAuraClass(item.auraType)}" style="--aura-color:${item.auraColor};${auraShapeVars};--anim-speed:${item.animationSpeed}s;--aura-speed:${item.auraSpeed || 1}s;--aura-scale:${item.auraScale || 1};--icon-url:url('${item.iconUrl}');">
                                 <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-back"></span>
                                 <span class="gmd-icon-wrap" style="--icon-url:url('${item.iconUrl}')">
                                     ${item.iconDisplayMode === 'text'
-                                ? `<span class="gmd-text-gift-icon" style="color:${item.iconTextColor || '#ffffff'};font-size:${Number(item.iconTextSize) || 20}px;">${this.escapeHtml(item.iconText || item.name)}</span>`
-                                : (item.isVideoIcon || this.isVideoAsset(item.iconUrl)
-                                    ? `<video src="${this.escapeHtml(item.iconUrl)}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>`
-                                    : `<img src="${this.escapeHtml(item.iconUrl)}" alt="${this.escapeHtml(item.name)}">`)}
+                                    ? `<span class="gmd-text-gift-icon" style="color:${item.iconTextColor || '#ffffff'};font-size:${Number(item.iconTextSize) || 20}px;${iconTextBgStyle}">${this.escapeHtml(item.iconText || item.name)}</span>`
+                                    : (item.isVideoIcon || this.isVideoAsset(item.iconUrl)
+                                        ? `<video src="${this.escapeHtml(item.iconUrl)}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>`
+                                        : `<img src="${this.escapeHtml(item.iconUrl)}" alt="${this.escapeHtml(item.name)}">`)}
                                     ${lightSweepOverlay}
                                 </span>
                                 <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-front"></span>
                             </div>
                             ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;text-align:${item.textAlign || 'center'};${labelBgStyle}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;">${this.escapeHtml(item.name)}</div>${item.subtext ? `<div style="font-size:${Math.max(5, Math.round((Number(item.textSize) || 13) * .78))}px;opacity:.8;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:2px;">${this.escapeHtml(item.subtext)}</div>` : ''}</div>` : ''}
                         `;
+                        }
+                        visualContainer.dataset.itemState = JSON.stringify(item);
+                    } else {
+                        this.patchWidgetDOM(visualContainer, item);
+                        visualContainer.dataset.itemState = JSON.stringify(item);
                     }
-                    visualContainer.dataset.itemState = JSON.stringify(item);
-                } else {
-                    this.patchWidgetDOM(visualContainer, item);
-                    visualContainer.dataset.itemState = JSON.stringify(item);
                 }
-            }
 
                 // Selection overlay updates independently (no visual container redraw, no animation reset!)
                 const selectionSignature = JSON.stringify({
@@ -1483,8 +1639,7 @@
                         ${sorted.length ? sorted.map((item) => `
                             <div class="gmd-layer-item ${this.isSelected(item.id) ? 'active' : ''}">
                                 <button class="gmd-layer-main" data-action="layer-select" data-layer-id="${item.id}">
-                                    <img src="${item.iconUrl}" alt="${item.name}">
-                                    <span>${item.name}</span>
+                                    <span title="${this.escapeHtml(item.name || 'Layer')}">${this.escapeHtml(item.name || 'Layer')}</span>
                                 </button>
                                 <div class="gmd-layer-actions">
                                     <button class="gmd-layer-btn" title="Lên trên" data-action="layer-up" data-layer-id="${item.id}"><i class="fas fa-arrow-up"></i></button>
@@ -1578,6 +1733,23 @@
                         <div class="gmd-field"><label>Màu chữ</label><input class="gmd-color" type="color" data-key="iconTextColor" value="${selected.iconTextColor || '#ffffff'}"></div>
                         <div class="gmd-field"><label>Cỡ chữ</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="10" max="40" data-key="iconTextSize" value="${Number(selected.iconTextSize) || 20}"><span>px</span></div></div>
                         <input class="gmd-range" type="range" min="10" max="40" data-key="iconTextSize" value="${Number(selected.iconTextSize) || 20}">
+                        <div class="gmd-field gmd-toggle-row">
+                            <label>Bật nền chữ thay icon</label>
+                            <label class="gmd-switch"><input type="checkbox" data-key="showIconTextBg" ${selected.showIconTextBg ? 'checked' : ''}><span></span></label>
+                        </div>
+                        ${selected.showIconTextBg ? `
+                        <div class="gmd-field"><label>Kiểu nền chữ thay icon</label>${this.renderSelect('iconTextBgStyle', selected.iconTextBgStyle || 'classic', [
+                { value: 'classic', label: 'Cổ điển (Classic)' },
+                { value: 'glass', label: 'Gương kính (Glass)' },
+                { value: 'neon', label: 'Khung cổ thuật (Mystic)' },
+                { value: 'holo', label: 'Hologram' },
+                { value: 'light-sweep', label: 'Quét sáng' }
+            ])}</div>
+                        ${(selected.iconTextBgStyle || 'classic') === 'classic' ? `<div class="gmd-field"><label>Màu nền</label><input class="gmd-color" type="color" data-key="iconTextBgColor" value="${selected.iconTextBgColor || '#000000'}"></div>` : ''}
+                        ${selected.iconTextBgStyle === 'neon' ? `<div class="gmd-row"><div class="gmd-field"><label>Gradient 1</label><input class="gmd-color" type="color" data-key="iconTextBgGradientFrom" value="${selected.iconTextBgGradientFrom || '#a855f7'}"></div><div class="gmd-field"><label>Gradient 2</label><input class="gmd-color" type="color" data-key="iconTextBgGradientTo" value="${selected.iconTextBgGradientTo || '#22d3ee'}"></div></div>` : ''}
+                        <div class="gmd-field"><label>Độ mờ nền chữ thay icon</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="100" data-key="iconTextBgOpacity" value="${selected.iconTextBgOpacity !== undefined ? selected.iconTextBgOpacity : 100}"><span>%</span></div></div>
+                        <input class="gmd-range" type="range" min="0" max="100" step="1" data-key="iconTextBgOpacity" value="${selected.iconTextBgOpacity !== undefined ? selected.iconTextBgOpacity : 100}">
+                        ` : ''}
                     </div>
                     ` : ''}
 
@@ -1675,6 +1847,8 @@
                 { value: 'light-sweep', label: 'Quét sáng' }
             ])}</div>
                             ${(selected.textBgStyle || 'classic') === 'classic' ? `<div class="gmd-field"><label>M&#224;u n&#7873;n ch&#7919;</label><input class="gmd-color" type="color" data-key="textBgColor" value="${selected.textBgColor && selected.textBgColor.startsWith('#') ? selected.textBgColor.slice(0, 7) : '#000000'}"></div>` : ''}
+                            <div class="gmd-field"><label>Độ mờ nền tên/nhãn</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="100" data-key="textBgOpacity" value="${selected.textBgOpacity !== undefined ? selected.textBgOpacity : (selected.backgroundOpacity !== undefined ? selected.backgroundOpacity : 100)}"><span>%</span></div></div>
+                            <input class="gmd-range" type="range" min="0" max="100" step="1" data-key="textBgOpacity" value="${selected.textBgOpacity !== undefined ? selected.textBgOpacity : (selected.backgroundOpacity !== undefined ? selected.backgroundOpacity : 100)}">
                             ${selected.textBgStyle === 'neon' ? `
                             <div class="gmd-row">
                                 <div class="gmd-field"><label>M&#224;u gradient 1</label><input class="gmd-color" type="color" data-key="textBgGradientFrom" value="${selected.textBgGradientFrom || '#a855f7'}"></div>
@@ -1810,7 +1984,7 @@
             if (this._autoSaveTimer) clearTimeout(this._autoSaveTimer);
             this._autoSaveTimer = setTimeout(() => {
                 this._autoSaveTimer = null;
-                this.saveLayout(false, false);
+                this.saveLayout(false, false, false);
             }, 300);
         }
 
@@ -1936,7 +2110,7 @@
             input.onchange = async () => {
                 const file = input.files[0];
                 if (!file) return;
-                
+
                 try {
                     const uploadedUrl = await this.uploadPlayerAvatarAsset(file, 'avatar-frame');
                     if (uploadedUrl) {
@@ -1970,7 +2144,7 @@
             let prevLeaderIdx = -1;
             let prevLeaderCount = 0;
             let prevHasScores = false;
-            
+
             players.forEach((p, idx) => {
                 const scoreEl = el.querySelector(`.gmd-pk-score-text[data-player-index="${idx}"]`);
                 if (scoreEl) {
@@ -2203,6 +2377,8 @@
 
             if (key === 'showTextBg') {
                 child[key] = Boolean(value);
+            } else if (key === 'iconTextGap') {
+                child[key] = Math.max(0, Math.min(120, Number(value) || 0));
             } else {
                 child[key] = value;
             }
@@ -2231,9 +2407,9 @@
             const selectedItems = this.getSelectedItems().filter((x) => !x.locked);
 
             selectedItems.forEach((item) => {
-                if (key === 'showName' || key === 'showTextBg' || key === 'lockRatio') {
+                if (key === 'showName' || key === 'showTextBg' || key === 'showIconTextBg' || key === 'lockRatio') {
                     item[key] = Boolean(value);
-                } else if (['x', 'y', 'width', 'height', 'rotation', 'textSize', 'textGap', 'iconTextSize', 'animationSpeed', 'auraSpeed', 'auraScale'].includes(key)) {
+                } else if (['x', 'y', 'width', 'height', 'rotation', 'textSize', 'textGap', 'iconTextSize', 'animationSpeed', 'auraSpeed', 'auraScale', 'backgroundOpacity', 'textBgOpacity', 'iconTextBgOpacity'].includes(key)) {
                     const previousWidth = Math.max(1, Number(item.width) || 1);
                     const previousHeight = Math.max(1, Number(item.height) || 1);
                     item[key] = Number(value);
@@ -2255,6 +2431,9 @@
                     if (key === 'textSize') {
                         item[key] = Math.max(6, Math.min(48, item[key] || 13));
                     }
+                    if (key === 'backgroundOpacity' || key === 'textBgOpacity' || key === 'iconTextBgOpacity') {
+                        item[key] = Math.max(0, Math.min(100, Number(item[key])));
+                    }
                     this.clampInsideCanvas(item);
                 } else if (key === 'auraColor') {
                     let v = String(value || '').trim();
@@ -2271,7 +2450,7 @@
             });
 
             this.renderCanvas();
-            if (refreshInspector || key === 'showTextBg' || key === 'textBgStyle') this.renderInspector();
+            if (refreshInspector || key === 'showTextBg' || key === 'textBgStyle' || key === 'showIconTextBg' || key === 'iconTextBgStyle') this.renderInspector();
             if (pushHist) this.pushHistory('update-item');
         }
 
@@ -2415,38 +2594,128 @@
         }
 
         applySnapForItem(baseX, baseY, item) {
-            if (!this.snapEnabled) return { x: baseX, y: baseY, guideX: null, guideY: null };
+            if (!this.snapEnabled) return { x: baseX, y: baseY, guideX: null, guideY: null, guideXLabel: '', guideYLabel: '' };
             const threshold = 8;
             const safe = this.coordinateEngine && typeof this.coordinateEngine.getSafeArea === 'function'
                 ? this.coordinateEngine.getSafeArea(this.aspectRatio)
                 : { x: 0, y: 0, width: this.canvasSize.width, height: this.canvasSize.height };
             const cx = Math.round(safe.x + (safe.width - item.width) / 2);
             const cy = Math.round(safe.y + (safe.height - item.height) / 2);
-            const candidatesX = [safe.x, cx, safe.x + safe.width - item.width];
-            const candidatesY = [safe.y, cy, safe.y + safe.height - item.height];
+            const candidatesX = [
+                { value: safe.x, guide: safe.x, label: 'Cùng mép trái vùng an toàn' },
+                { value: cx, guide: safe.x + safe.width / 2, label: 'Căn giữa vùng an toàn' },
+                { value: safe.x + safe.width - item.width, guide: safe.x + safe.width, label: 'Cùng mép phải vùng an toàn' }
+            ];
+            const candidatesY = [
+                { value: safe.y, guide: safe.y, label: 'Cùng mép trên vùng an toàn' },
+                { value: cy, guide: safe.y + safe.height / 2, label: 'Căn giữa vùng an toàn' },
+                { value: safe.y + safe.height - item.height, guide: safe.y + safe.height, label: 'Cùng mép dưới vùng an toàn' }
+            ];
+            const movingIds = new Set(this.dragState?.movingIds || [item.id]);
+            const others = this.items.filter((entry) =>
+                !movingIds.has(entry.id) && entry.visible !== false
+            );
+            const movingXAnchors = [
+                { offset: 0, kind: 'mép trái' },
+                { offset: item.width / 2, kind: 'tâm ngang' },
+                { offset: item.width, kind: 'mép phải' }
+            ];
+            const movingYAnchors = [
+                { offset: 0, kind: 'mép trên' },
+                { offset: item.height / 2, kind: 'tâm dọc' },
+                { offset: item.height, kind: 'mép dưới' }
+            ];
+            others.forEach((other) => {
+                const name = String(other.name || other.giftName || 'layer');
+                const targetX = [other.x, other.x + other.width / 2, other.x + other.width];
+                const targetY = [other.y, other.y + other.height / 2, other.y + other.height];
+                movingXAnchors.forEach((anchor) => targetX.forEach((target) => {
+                    candidatesX.push({
+                        value: target - anchor.offset,
+                        guide: target,
+                        label: `${anchor.kind} theo “${name}”`
+                    });
+                }));
+                movingYAnchors.forEach((anchor) => targetY.forEach((target) => {
+                    candidatesY.push({
+                        value: target - anchor.offset,
+                        guide: target,
+                        label: `${anchor.kind} theo “${name}”`
+                    });
+                }));
+            });
+
+            // When the moving layer fits between two existing layers, offer
+            // the exact midpoint that creates equal gaps on both sides.
+            for (let a = 0; a < others.length; a += 1) {
+                for (let b = a + 1; b < others.length; b += 1) {
+                    const first = others[a];
+                    const second = others[b];
+                    const left = first.x <= second.x ? first : second;
+                    const right = left === first ? second : first;
+                    const horizontalRoom = right.x - (left.x + left.width);
+                    const overlapsVertically = left.y < right.y + right.height && right.y < left.y + left.height;
+                    if (horizontalRoom >= item.width && overlapsVertically) {
+                        const gap = (horizontalRoom - item.width) / 2;
+                        candidatesX.push({
+                            value: left.x + left.width + gap,
+                            guide: left.x + left.width + gap + item.width / 2,
+                            label: `Khoảng cách ngang đều: ${Math.round(gap)} px`
+                        });
+                    }
+                    const top = first.y <= second.y ? first : second;
+                    const bottom = top === first ? second : first;
+                    const verticalRoom = bottom.y - (top.y + top.height);
+                    const overlapsHorizontally = top.x < bottom.x + bottom.width && bottom.x < top.x + top.width;
+                    if (verticalRoom >= item.height && overlapsHorizontally) {
+                        const gap = (verticalRoom - item.height) / 2;
+                        candidatesY.push({
+                            value: top.y + top.height + gap,
+                            guide: top.y + top.height + gap + item.height / 2,
+                            label: `Khoảng cách dọc đều: ${Math.round(gap)} px`
+                        });
+                    }
+                }
+            }
             let x = baseX;
             let y = baseY;
             let guideX = null;
             let guideY = null;
-            candidatesX.forEach((v) => {
-                if (Math.abs(x - v) <= threshold) { x = v; guideX = Math.round(v + (item.width / 2)); }
-            });
-            candidatesY.forEach((v) => {
-                if (Math.abs(y - v) <= threshold) { y = v; guideY = Math.round(v + (item.height / 2)); }
-            });
-            return { x, y, guideX, guideY };
+            let guideXLabel = '';
+            let guideYLabel = '';
+            const bestX = candidatesX
+                .map((candidate) => ({ ...candidate, distance: Math.abs(baseX - candidate.value) }))
+                .filter((candidate) => candidate.distance <= threshold)
+                .sort((a, b) => a.distance - b.distance)[0];
+            const bestY = candidatesY
+                .map((candidate) => ({ ...candidate, distance: Math.abs(baseY - candidate.value) }))
+                .filter((candidate) => candidate.distance <= threshold)
+                .sort((a, b) => a.distance - b.distance)[0];
+            if (bestX) {
+                x = Math.round(bestX.value);
+                guideX = Math.round(bestX.guide);
+                guideXLabel = bestX.label;
+            }
+            if (bestY) {
+                y = Math.round(bestY.value);
+                guideY = Math.round(bestY.guide);
+                guideYLabel = bestY.label;
+            }
+            return { x, y, guideX, guideY, guideXLabel, guideYLabel };
         }
 
-        updateGuides(guideX = null, guideY = null) {
+        updateGuides(guideX = null, guideY = null, guideXLabel = '', guideYLabel = '') {
             const gx = this.mount.querySelector('#gmd-guide-x');
             const gy = this.mount.querySelector('#gmd-guide-y');
             if (gx) {
                 gx.style.display = guideX == null ? 'none' : 'block';
                 if (guideX != null) gx.style.left = `${guideX}px`;
+                gx.dataset.label = guideXLabel || '';
             }
             if (gy) {
                 gy.style.display = guideY == null ? 'none' : 'block';
                 if (guideY != null) gy.style.top = `${guideY}px`;
+                gy.dataset.label = guideYLabel || '';
             }
         }
 
@@ -2456,14 +2725,23 @@
                 const oldSafe = this.coordinateEngine.getSafeArea(oldRatio);
                 const nextSafe = this.coordinateEngine.getSafeArea(ratio);
                 this.items.forEach((item) => {
-                    const nx = (Number(item.x) - oldSafe.x) / oldSafe.width;
-                    const ny = (Number(item.y) - oldSafe.y) / oldSafe.height;
-                    const nw = Number(item.width) / oldSafe.width;
-                    const nh = Number(item.height) / oldSafe.height;
-                    item.x = Math.round(nextSafe.x + nx * nextSafe.width);
-                    item.y = Math.round(nextSafe.y + ny * nextSafe.height);
-                    item.width = Math.max(10, Math.round(nw * nextSafe.width));
-                    item.height = Math.max(10, Math.round(nh * nextSafe.height));
+                    const oldWidth = Math.max(1, Number(item.width) || 1);
+                    const oldHeight = Math.max(1, Number(item.height) || 1);
+                    const centerX = (Number(item.x) + oldWidth / 2 - oldSafe.x) / oldSafe.width;
+                    const centerY = (Number(item.y) + oldHeight / 2 - oldSafe.y) / oldSafe.height;
+                    if (item.lockRatio) {
+                        const uniformScale = Math.min(
+                            nextSafe.width / oldSafe.width,
+                            nextSafe.height / oldSafe.height
+                        );
+                        item.width = Math.max(10, Math.round(oldWidth * uniformScale));
+                        item.height = Math.max(10, Math.round(oldHeight * uniformScale));
+                    } else {
+                        item.width = Math.max(10, Math.round((oldWidth / oldSafe.width) * nextSafe.width));
+                        item.height = Math.max(10, Math.round((oldHeight / oldSafe.height) * nextSafe.height));
+                    }
+                    item.x = Math.round(nextSafe.x + centerX * nextSafe.width - item.width / 2);
+                    item.y = Math.round(nextSafe.y + centerY * nextSafe.height - item.height / 2);
                 });
             }
             this.aspectRatio = ratio;
@@ -2659,7 +2937,7 @@
             });
         }
 
-        async saveLayout(showToast = true, forcePromptName = false) {
+        async saveLayout(showToast = true, forcePromptName = false, allowNamePrompt = true) {
             if (this._autoSaveTimer) {
                 clearTimeout(this._autoSaveTimer);
                 this._autoSaveTimer = null;
@@ -2668,7 +2946,8 @@
             if (this._saveInFlight) {
                 this._saveQueuedRequest = {
                     showToast: Boolean(showToast) || Boolean(this._saveQueuedRequest && this._saveQueuedRequest.showToast),
-                    forcePromptName: Boolean(forcePromptName) || Boolean(this._saveQueuedRequest && this._saveQueuedRequest.forcePromptName)
+                    forcePromptName: Boolean(forcePromptName) || Boolean(this._saveQueuedRequest && this._saveQueuedRequest.forcePromptName),
+                    allowNamePrompt: Boolean(allowNamePrompt) || Boolean(this._saveQueuedRequest && this._saveQueuedRequest.allowNamePrompt)
                 };
                 return new Promise((resolve) => {
                     this._saveQueuedResolvers.push(resolve);
@@ -2678,7 +2957,7 @@
             this._saveInFlight = true;
             let result = false;
             try {
-                result = await this._performSaveLayout(showToast, forcePromptName);
+                result = await this._performSaveLayout(showToast, forcePromptName, allowNamePrompt);
             } catch (err) {
                 console.error('❌ Failed to save layout:', err);
                 result = false;
@@ -2690,17 +2969,22 @@
                 const queuedRequest = this._saveQueuedRequest;
                 const queuedResolvers = this._saveQueuedResolvers.splice(0);
                 this._saveQueuedRequest = null;
-                const queuedResult = await this.saveLayout(queuedRequest.showToast, queuedRequest.forcePromptName);
+                const queuedResult = await this.saveLayout(queuedRequest.showToast, queuedRequest.forcePromptName, queuedRequest.allowNamePrompt);
                 queuedResolvers.forEach((resolve) => resolve(queuedResult));
             }
 
             return result;
         }
 
-        async _performSaveLayout(showToast = true, forcePromptName = false) {
+        async _performSaveLayout(showToast = true, forcePromptName = false, allowNamePrompt = true) {
             const savingTemplateDraft = Boolean(this._templateDraft);
             let nameToSave = this.currentLayoutName || 'Menu mới';
-            if (forcePromptName || !this.currentLayoutId || this.currentLayoutName === 'Menu mặc định' || this.currentLayoutName === 'New Menu') {
+            // A saved layout keeps its identity even when its display name is still
+            // "Menu mặc định". Only a genuinely new draft (no id) or an explicit
+            // rename/save-as action should ask the user for a name.
+            const needsName = forcePromptName || !this.currentLayoutId;
+            if (needsName && !allowNamePrompt) return false;
+            if (needsName) {
                 const name = await this.showPromptModal('Nhập tên thiết kế để lưu:', this.currentLayoutName || 'Menu mới');
                 if (name === null) return false; // user cancelled naming
                 nameToSave = name.trim() || 'Menu mới';
@@ -2766,10 +3050,17 @@
                 }
                 if (i.type === 'goal-list' && Array.isArray(cleanItem.goals)) {
                     const avgScale = (sx + sy) / 2;
+                    itemExport.goalListContentScale = (Number(cleanItem.goalListContentScale)
+                        || Number(cleanItem.unlockedContentScale)
+                        || Number(cleanItem.lockedContentScale)
+                        || 1) * avgScale;
                     itemExport.goals = cleanItem.goals.map((goal) => ({
                         ...goal,
                         iconTextSize: Number(goal.iconTextSize || 16) * avgScale
                     }));
+                }
+                if (i.type === 'goal-bar' && i.barStyle === 'pk' && Number(cleanItem.pkContentScale) > 0) {
+                    itemExport.pkContentScale = Number(cleanItem.pkContentScale) * ((sx + sy) / 2);
                 }
                 if (i.type === 'gift-stack-group') {
                     const avgScale = (sx + sy) / 2;
@@ -2793,6 +3084,7 @@
                 id: this.currentLayoutId || undefined,
                 createNew: savingTemplateDraft,
                 name: nameToSave,
+                draftOnly: true,
                 version: 2,
                 savedAt: new Date().toISOString(),
                 aspectRatio: this.aspectRatio,
@@ -2811,9 +3103,13 @@
                     this.currentLayoutId = data.layout._id;
                     this.currentLayoutName = data.layout.name;
                     this._templateDraft = false;
+                    this.rememberOpenedLayout(this.currentLayoutId);
                     localStorage.setItem('giftMenuDesignerLayoutV2', JSON.stringify(payload));
                 } else {
-                    if (this.handlePlanLimit(data, 'layouts')) return false;
+                    if (data && data.upgradeRequired === true) {
+                        if (showToast) this.handlePlanLimit(data, 'layouts');
+                        return false;
+                    }
                     throw new Error((data && (data.message || data.error)) || `HTTP ${res.status}`);
                 }
             } catch (err) {
@@ -2839,6 +3135,11 @@
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || !data.success) {
+                    if (this.handlePlanLimit(data, 'export')) {
+                        const planError = new Error(data.message || 'Thiết kế cần gói cao hơn để xuất OBS');
+                        planError.isPlanLimit = true;
+                        throw planError;
+                    }
                     const msg = (data && (data.message || data.error)) || 'Không thể kết nối OBS';
                     throw new Error(msg);
                 }
@@ -2860,7 +3161,7 @@
                     window.app.showNotification('success', `Đã lưu & kết nối OBS (${data.sourceName || 'gift_menu_overlay'})`);
                 }
             } catch (e) {
-                if (window.app && typeof window.app.showNotification === 'function') {
+                if (!e.isPlanLimit && window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('error', `Lưu & xuất thất bại: ${e.message || 'Lỗi không xác định'}`);
                 }
             }
@@ -2878,7 +3179,10 @@
                 if (res.ok) {
                     const data = await res.json();
                     if (data && data.success && Array.isArray(data.layouts)) {
-                        this.layouts = data.layouts;
+                        this.layouts = data.layouts.map((layout) => ({
+                            ...layout,
+                            name: this.repairLegacyVietnameseText(layout.name)
+                        }));
                     }
                 }
             } catch (_e) {
@@ -2894,6 +3198,19 @@
             }
             let payload = sourcePayload;
             let loadedFromDb = Boolean(sourcePayload);
+            if (!payload && Array.isArray(this.layouts) && this.layouts.length) {
+                let preferredId = localStorage.getItem(this.lastOpenedLayoutStorageKey);
+                if (!preferredId) {
+                    try {
+                        const previousSave = JSON.parse(localStorage.getItem('giftMenuDesignerLayoutV2') || 'null');
+                        preferredId = previousSave?.id || previousSave?._id || null;
+                    } catch (_e) { }
+                }
+                if (preferredId) {
+                    payload = this.layouts.find((layout) => String(layout._id) === String(preferredId)) || null;
+                    loadedFromDb = Boolean(payload);
+                }
+            }
             if (!payload && this.token) {
                 try {
                     const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
@@ -2910,6 +3227,7 @@
             if (!payload && !loadedFromDb) {
                 try { payload = JSON.parse(localStorage.getItem('giftMenuDesignerLayoutV2') || 'null'); } catch (_e) { payload = null; }
             }
+            if (payload?.name) payload.name = this.repairLegacyVietnameseText(payload.name);
             if (!payload) {
                 if (loadedFromDb) {
                     localStorage.removeItem('giftMenuDesignerLayoutV2');
@@ -2926,6 +3244,7 @@
             }
             this.currentLayoutId = asTemplateDraft ? null : (payload._id || null);
             this._templateDraft = Boolean(asTemplateDraft);
+            if (this.currentLayoutId) this.rememberOpenedLayout(this.currentLayoutId);
             this.currentLayoutName = payload.name || 'Menu mặc định';
             this.aspectRatio = payload.aspectRatio || '9:16';
             this.items = Array.isArray(payload.items) ? payload.items.map((item, idx) => {
@@ -3008,6 +3327,7 @@
                     }
                     this.currentLayoutId = data.layout._id;
                     this.currentLayoutName = data.layout.name;
+                    this.rememberOpenedLayout(this.currentLayoutId);
                     this.items = [];
                     this.clearSelection();
                     this.setAspectRatio('9:16');
@@ -3023,29 +3343,6 @@
             } catch (err) {
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('error', 'Không thể tạo thiết kế mới');
-                }
-            }
-        }
-
-        async activateLayout(layoutId) {
-            try {
-                if (window.app && typeof window.app.showNotification === 'function') {
-                    window.app.showNotification('info', 'Đang kích hoạt layout...');
-                }
-                const headers = { 'Content-Type': 'application/json' };
-                if (this.token) headers.Authorization = `Bearer ${this.token}`;
-                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout/${layoutId}/activate`, { method: 'PUT', headers });
-                const data = await res.json();
-                if (data && data.success) {
-                    if (window.app && typeof window.app.showNotification === 'function') {
-                        window.app.showNotification('success', 'Đã kích hoạt layout');
-                    }
-                    await this.loadLayoutsList();
-                    await this.loadLayout();
-                }
-            } catch (err) {
-                if (window.app && typeof window.app.showNotification === 'function') {
-                    window.app.showNotification('error', 'Không thể kích hoạt layout');
                 }
             }
         }
@@ -3118,15 +3415,15 @@
                 return;
             }
             box.innerHTML = this.layouts.map(layout => {
-                const isActive = layout.isActive || (this.currentLayoutId === layout._id);
+                const isOpen = this.currentLayoutId === layout._id;
                 return `
-                    <div class="gmd-my-library-item ${isActive ? 'active' : ''}" data-layout-id="${layout._id}">
+                    <div class="gmd-my-library-item ${isOpen ? 'active' : ''}" data-layout-id="${layout._id}" title="Mở để tùy chỉnh">
                         <div class="gmd-my-library-info">
                             <strong>${this.escapeHtml(layout.name || 'Menu không tên')}</strong>
                             <span>${(layout.items || []).length} phần quà</span>
                         </div>
                         <div class="gmd-my-library-actions">
-                            ${isActive ? '<i class="fas fa-check-circle active-check" title="Đang hoạt động"></i>' : `<button class="gmd-lib-btn activate-btn" data-action="activate-layout" data-layout-id="${layout._id}" title="Kích hoạt"><i class="fas fa-power-off"></i></button>`}
+                            ${isOpen ? '<i class="fas fa-check-circle active-check" title="Đang mở để chỉnh sửa"></i>' : `<button class="gmd-lib-btn open-btn" data-action="open-layout" data-layout-id="${layout._id}" title="Mở để tùy chỉnh"><i class="fas fa-folder-open"></i></button>`}
                             <button class="gmd-lib-btn rename-btn" data-action="rename-layout" data-layout-id="${layout._id}" title="Đổi tên"><i class="fas fa-edit"></i></button>
                             <button class="gmd-lib-btn delete-btn" data-action="delete-layout" data-layout-id="${layout._id}" title="Xóa"><i class="fas fa-trash-alt"></i></button>
                         </div>
@@ -3139,8 +3436,15 @@
             const w = this.canvasSize.width;
             const h = this.canvasSize.height;
             const minSize = item.type && item.type !== 'gift' ? 30 : 10;
-            item.width = Math.max(minSize, Math.min(item.width, w));
-            item.height = Math.max(minSize, Math.min(item.height, h));
+            let itemWidth = Math.max(1, Number(item.width) || minSize);
+            let itemHeight = Math.max(1, Number(item.height) || minSize);
+            if (item.lockRatio && (itemWidth > w || itemHeight > h)) {
+                const fitScale = Math.min(w / itemWidth, h / itemHeight, 1);
+                itemWidth *= fitScale;
+                itemHeight *= fitScale;
+            }
+            item.width = Math.max(minSize, Math.min(Math.round(itemWidth), w));
+            item.height = Math.max(minSize, Math.min(Math.round(itemHeight), h));
             item.x = Math.max(0, Math.min(item.x, w - item.width));
             item.y = Math.max(0, Math.min(item.y, h - item.height));
         }
@@ -3250,10 +3554,6 @@
                 const tmplCard = e.target.closest('.gmd-template-card');
                 if (tmplCard) {
                     const templateId = tmplCard.dataset.templateId;
-                    if (this.planKey === 'free' && templateId !== 'tmpl_neon_purple') {
-                        this.showUpgrade('templates', 'Gói miễn phí chỉ sử dụng được mẫu cơ bản. Nâng cấp lên Basic để mở thêm mẫu.');
-                        return;
-                    }
                     this.addTemplateToCanvas(templateId);
                     return;
                 }
@@ -3277,6 +3577,15 @@
                     this.clearSelection();
                     this.renderCanvas();
                     this.renderInspector();
+                }
+                const clickedLibraryItem = e.target.closest('.gmd-my-library-item');
+                if (!btn && clickedLibraryItem) {
+                    const layoutId = clickedLibraryItem.dataset.layoutId;
+                    if (layoutId && layoutId !== this.currentLayoutId) {
+                        const layout = this.layouts.find(x => x._id === layoutId);
+                        if (layout) this.loadLayout(layout);
+                    }
+                    return;
                 }
                 if (!btn) return;
                 const action = btn.dataset.action;
@@ -3353,8 +3662,12 @@
                     alert('Hướng dẫn thiết kế bảng quà\n\n• Kéo thả để di chuyển\n• Giữ Shift và nhấp chuột để chọn nhiều mục\n• Ctrl + D để nhân bản\n• Ctrl + Z / Ctrl + Y để hoàn tác / làm lại\n• Phím Delete để xóa\n• Giữ Ctrl và cuộn chuột để phóng to, thu nhỏ\n• Giữ phím cách hoặc chuột giữa để di chuyển vùng thiết kế');
                     return;
                 }
-                if (['layer-toggle-visible', 'layer-toggle-lock', 'layer-up', 'layer-down', 'align-left', 'align-center-x', 'align-right', 'align-top', 'align-center-y', 'align-bottom', 'distribute-x', 'distribute-y', 'create-stack-group', 'ungroup-stack'].includes(action) && !['business', 'studio', 'admin'].includes(this.planKey)) {
+                if (['layer-toggle-visible', 'layer-toggle-lock', 'layer-up', 'layer-down', 'align-left', 'align-center-x', 'align-right', 'align-top', 'align-center-y', 'align-bottom', 'distribute-x', 'distribute-y'].includes(action) && !['business', 'studio', 'admin'].includes(this.planKey)) {
                     this.showUpgrade('menuAdvanced', 'Hệ thống lớp nâng cao dành cho gói Pro.');
+                    return;
+                }
+                if (['create-stack-group', 'ungroup-stack'].includes(action) && this.planKey === 'free') {
+                    this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để gộp nhiều quà thành một nhóm.');
                     return;
                 }
                 if (action === 'save-new-template') {
@@ -3381,7 +3694,7 @@
                 if (libItem) {
                     const deleteBtn = e.target.closest('[data-action="delete-layout"]');
                     const renameBtn = e.target.closest('[data-action="rename-layout"]');
-                    const activateBtn = e.target.closest('[data-action="activate-layout"]');
+                    const openBtn = e.target.closest('[data-action="open-layout"]');
                     const layoutId = libItem.dataset.layoutId;
 
                     if (deleteBtn) {
@@ -3402,9 +3715,10 @@
                         }
                         return;
                     }
-                    if (activateBtn || (!deleteBtn && !renameBtn)) {
+                    if (openBtn || (!deleteBtn && !renameBtn)) {
                         if (layoutId && layoutId !== this.currentLayoutId) {
-                            this.activateLayout(layoutId);
+                            const layout = this.layouts.find(x => x._id === layoutId);
+                            if (layout) this.loadLayout(layout);
                         }
                         return;
                     }
@@ -3501,10 +3815,6 @@
                     const point = this.clientToCanvasPoint(e.clientX, e.clientY);
 
                     if (templateId) {
-                        if (this.planKey === 'free' && templateId !== 'tmpl_neon_purple') {
-                            this.showUpgrade('templates', 'Gói miễn phí chỉ sử dụng được mẫu cơ bản.');
-                            return;
-                        }
                         this.addTemplateToCanvas(templateId, point.x, point.y);
                         return;
                     }
@@ -3533,6 +3843,30 @@
             }
 
             this.mount.addEventListener('mousedown', (e) => {
+                const layerMain = e.target.closest('.gmd-layer-main[data-layer-id]');
+                if (layerMain && e.button === 0) {
+                    e.preventDefault();
+                    const layerId = layerMain.dataset.layerId;
+                    this.selectItem(layerId, e.shiftKey);
+                    const layerItem = this.items.find((entry) => entry.id === layerId);
+                    if (!layerItem || layerItem.locked || layerItem.visible === false) return;
+                    const moving = this.getSelectedItems().filter((entry) => !entry.locked && entry.visible !== false);
+                    const startPositions = Object.fromEntries(moving.map((entry) => [
+                        entry.id,
+                        { x: entry.x, y: entry.y }
+                    ]));
+                    this.dragState = {
+                        mode: 'move',
+                        id: layerItem.id,
+                        sx: e.clientX,
+                        sy: e.clientY,
+                        x: layerItem.x,
+                        y: layerItem.y,
+                        movingIds: moving.map((entry) => entry.id),
+                        startPositions
+                    };
+                    return;
+                }
                 const itemNode = e.target.closest('.gmd-item');
                 if (!itemNode) {
                     const canvas = this.mount.querySelector('#gmd-canvas');
@@ -3560,6 +3894,8 @@
                 if (!this.isSelected(item.id)) this.setSelection([item.id], item.id);
                 if (handle && handle.dataset.handle === 'resize') {
                     if (item.type === 'gift-stack-group') {
+                        const scalableKeys = ['iconSize', 'textSize', 'subtextSize', 'giftTextGap', 'labelGap', 'borderRadius', 'padding'];
+                        const childScalableKeys = ['iconTextGap', 'iconTextSize'];
                         this.dragState = {
                             mode: 'stack-resize',
                             id: item.id,
@@ -3568,7 +3904,11 @@
                             x: item.x,
                             y: item.y,
                             width: item.width,
-                            height: item.height
+                            height: item.height,
+                            contentMetrics: Object.fromEntries(scalableKeys.map((key) => [key, Number(item[key])]).filter(([, value]) => Number.isFinite(value))),
+                            childContentMetrics: (item.children || []).map((child) =>
+                                Object.fromEntries(childScalableKeys.map((key) => [key, Number(child[key])]).filter(([, value]) => Number.isFinite(value)))
+                            )
                         };
                         this.renderCanvas();
                         this.renderInspector();
@@ -3641,7 +3981,7 @@
                             domEl.style.top = movingItem.y + 'px';
                         }
                     });
-                    this.updateGuides(snapped.guideX, snapped.guideY);
+                    this.updateGuides(snapped.guideX, snapped.guideY, snapped.guideXLabel, snapped.guideYLabel);
                 } else if (this.dragState.mode === 'stack-resize') {
                     const finalScale = this.getFitScale() * this.zoomLevel;
                     const dx = (e.clientX - this.dragState.sx) / finalScale;
@@ -3650,6 +3990,17 @@
                     item.height = item.lockRatio
                         ? Math.max(30, Math.round(item.width * (this.dragState.height / this.dragState.width)))
                         : Math.max(30, Math.round(this.dragState.height + dy));
+                    if (item.lockRatio) {
+                        const contentScale = item.width / Math.max(1, this.dragState.width);
+                        Object.entries(this.dragState.contentMetrics || {}).forEach(([key, startValue]) => {
+                            item[key] = Math.max(key === 'giftTextGap' || key === 'labelGap' || key === 'padding' ? 0 : 1, Math.round(startValue * contentScale * 100) / 100);
+                        });
+                        (item.children || []).forEach((child, index) => {
+                            Object.entries(this.dragState.childContentMetrics?.[index] || {}).forEach(([key, startValue]) => {
+                                child[key] = Math.max(key === 'iconTextGap' ? 0 : 1, Math.round(startValue * contentScale * 100) / 100);
+                            });
+                        });
+                    }
                     this.clampInsideCanvas(item);
 
                     const map = {
@@ -3677,13 +4028,24 @@
                         if (!target || !start) return;
                         const isWidget = target.type && target.type !== 'gift';
                         if (isWidget) {
+                            if (target.type === 'goal-bar' && target.barStyle === 'pk'
+                                && target.lockRatio === false && !(Number(target.pkContentScale) > 0)) {
+                                target.pkContentScale = Math.max(0.15, Math.min(
+                                    Number(start.width || 900) / 900,
+                                    Number(start.height || 180) / 180
+                                ));
+                            }
                             if (target.lockRatio) {
                                 const ratio = start.height / start.width;
-                                target.width = Math.round(start.width + dx);
-                                target.height = Math.round(target.width * ratio);
+                                const widthFromPointer = Math.abs(dx) >= Math.abs(dy)
+                                    ? start.width + dx
+                                    : (start.height + dy) / Math.max(0.0001, ratio);
+                                const minimumWidth = Math.max(30, 30 / Math.max(0.0001, ratio));
+                                target.width = Math.max(minimumWidth, Math.round(widthFromPointer));
+                                target.height = Math.max(30, Math.round(target.width * ratio));
                             } else {
-                                target.width = Math.round(start.width + dx);
-                                target.height = Math.round(start.height + dy);
+                                target.width = Math.max(30, Math.round(start.width + dx));
+                                target.height = Math.max(30, Math.round(start.height + dy));
                             }
                             // Sync logical w/h
                             const map = {
@@ -3798,6 +4160,21 @@
                 } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') {
                     e.preventDefault();
                     this.redo();
+                } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) {
+                    const moving = this.getSelectedItems().filter((item) => !item.locked && item.visible !== false);
+                    if (!moving.length) return;
+                    e.preventDefault();
+                    const step = e.shiftKey ? 10 : 1;
+                    const dx = e.code === 'ArrowLeft' ? -step : (e.code === 'ArrowRight' ? step : 0);
+                    const dy = e.code === 'ArrowUp' ? -step : (e.code === 'ArrowDown' ? step : 0);
+                    moving.forEach((item) => {
+                        item.x = Math.round((Number(item.x) || 0) + dx);
+                        item.y = Math.round((Number(item.y) || 0) + dy);
+                        this.clampInsideCanvas(item);
+                    });
+                    this.renderCanvas();
+                    this.renderInspector();
+                    this.pushHistory('nudge-layer');
                 }
             });
         }
@@ -4020,12 +4397,15 @@
 
                 if (t.id === 'tmpl_talent_competition_live') previewHTML = `<div class="gmd-mini-widget" style="background:linear-gradient(155deg,#221434,#090d1f);border:1px solid #fbbf2475;border-radius:6px;padding:5px;width:100%;height:100%;display:flex;flex-direction:column;gap:3px;box-sizing:border-box;color:#fff;"><div style="text-align:center;color:#fbbf24;font-size:7px;font-weight:900;">🏆 Bảng xếp hạng Talent</div><div style="text-align:center;color:#c4b5fd;font-size:4px;font-weight:800;">VÒNG 1 • CẬP NHẬT TRỰC TIẾP</div><div style="display:flex;flex-direction:column;gap:2px;margin-top:3px;"><div style="display:flex;justify-content:space-between;padding:3px 4px;border-radius:3px;background:#fbbf2428;font-size:5px;font-weight:800;"><span>1　Hoàng Long</span><b style="color:#fbbf24;">10.000</b></div><div style="display:flex;justify-content:space-between;padding:3px 4px;border-radius:3px;background:#ffffff0b;font-size:5px;"><span>2　Minh Anh</span><b>0</b></div><div style="display:flex;justify-content:space-between;padding:3px 4px;border-radius:3px;background:#ffffff0b;font-size:5px;"><span>3　Bảo Ngọc</span><b>0</b></div></div></div>`;
                 const isPremium = Boolean(t.isPremium);
-                const priceTag = isPremium ? `${Number(t.price || 0).toLocaleString()}đ` : 'Miễn phí';
-                const isPlanLocked = this.actualPlanKey === 'free' && t.id !== 'tmpl_neon_purple';
+                const requiresBasic = this.actualPlanKey === 'free' && !['tmpl_neon_purple', 'tmpl_circular_heart_goal'].includes(t.id);
+                const priceTag = requiresBasic
+                    ? 'Basic khi xuất'
+                    : (isPremium ? `${Number(t.price || 0).toLocaleString()}đ` : 'Miễn phí');
+                const tagIsPaid = requiresBasic || isPremium;
 
                 return `
-                            <div class="gmd-template-card" draggable="true" data-template-id="${t.id}" data-plan-locked="${isPlanLocked ? 'true' : 'false'}" style="display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(255, 255, 255, 0.02); border: 1px solid ${isPlanLocked ? 'rgba(245,158,11,.35)' : 'rgba(255, 255, 255, 0.08)'}; border-radius: 8px; cursor: ${isPlanLocked ? 'pointer' : 'grab'}; position:relative;">
-                                ${isPlanLocked ? '<span style="position:absolute;right:5px;top:5px;z-index:2;padding:2px 5px;border-radius:5px;background:rgba(15,23,42,.9);color:#fbbf24;font-size:8px;font-weight:900;">🔒 BASIC</span>' : ''}
+                            <div class="gmd-template-card" draggable="true" data-template-id="${t.id}" data-plan-locked="false" style="display:flex;flex-direction:column;gap:6px;padding:8px;background:rgba(255,255,255,.02);border:1px solid ${requiresBasic ? 'rgba(245,158,11,.35)' : 'rgba(255,255,255,.08)'};border-radius:8px;cursor:grab;position:relative;">
+                                ${requiresBasic ? '<span style="position:absolute;right:5px;top:5px;z-index:2;padding:2px 5px;border-radius:5px;background:rgba(15,23,42,.9);color:#fbbf24;font-size:8px;font-weight:900;">✨ DÙNG THỬ</span>' : ''}
                                 <div class="gmd-template-preview-box" style="width: 100%; height: 60px; background: rgba(0,0,0,0.35); border-radius: 6px; display: flex; align-items: center; justify-content: center; padding: 4px; box-sizing: border-box; overflow: hidden;">
                                     ${previewHTML}
                                 </div>
@@ -4033,7 +4413,7 @@
                                     <div class="gmd-template-name" style="font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff;" title="${t.name}">${t.name}</div>
                                     <div class="gmd-template-meta" style="margin-top: 2px; display: flex; justify-content: space-between; align-items: center;">
                                         <span class="gmd-template-tag" style="font-size: 9px; color: #888;">${t.tag || 'Widget'}</span>
-                                        <span style="background: ${isPremium ? 'rgba(139,92,246,0.15)' : 'rgba(16,185,129,0.15)'}; color: ${isPremium ? '#c084fc' : '#10b981'}; font-weight: 800; border-radius: 4px; padding: 1px 4px; font-size: 9px;">${priceTag}</span>
+                                        <span style="background:${tagIsPaid ? 'rgba(245,158,11,.14)' : 'rgba(16,185,129,0.15)'};color:${tagIsPaid ? '#fbbf24' : '#10b981'};font-weight:800;border-radius:4px;padding:1px 4px;font-size:9px;">${priceTag}</span>
                                     </div>
                                 </div>
                             </div>
@@ -4092,14 +4472,21 @@
         }
 
         addTemplateToCanvas(templateId, dropX = null, dropY = null) {
-            if (this.planKey === 'free' && templateId !== 'tmpl_neon_purple') {
-                this.showUpgrade('templates', 'Gói miễn phí chỉ sử dụng được mẫu cơ bản. Nâng cấp lên Basic để mở thêm mẫu.');
-                return;
-            }
             const templates = this.getDefaultTemplates();
             const allTemplates = [...(this.customTemplates || []), ...templates];
             const tmpl = allTemplates.find(t => t.id === templateId);
             if (!tmpl) return;
+            const isBasicTrial = this.actualPlanKey === 'free'
+                && !['tmpl_neon_purple', 'tmpl_circular_heart_goal'].includes(templateId);
+            if (isBasicTrial && !this._trialTemplateNoticeShown.has(templateId)) {
+                this._trialTemplateNoticeShown.add(templateId);
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification(
+                        'info',
+                        `Đang dùng thử “${tmpl.name}”. Bạn có thể thiết kế và lưu bản nháp; cần Basic khi xuất sang OBS.`
+                    );
+                }
+            }
             (tmpl.layers || []).forEach((layer) => {
                 if (layer.type === 'talent-leaderboard' && layer.talentCompetition) {
                     layer.talentCompetition.showTop3 = false;
@@ -4410,11 +4797,47 @@
             const gradientTo = item.textBgGradientTo || '#22d3ee';
             let css = '';
             if (style === 'glass') css = 'background:rgba(255,255,255,.05);animation:gmdGlassBreath 4s ease-in-out infinite;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);';
-            else if (style === 'neon') css = `background-image:linear-gradient(rgba(8,8,12,.94),rgba(8,8,12,.94)),linear-gradient(135deg,${gradientFrom},${gradientTo});background-origin:border-box;background-clip:padding-box,border-box;border:1px solid transparent;--frame-color:${gradientFrom};--glow-soft:color-mix(in srgb,${gradientFrom} 8%,transparent);--glow-bright:color-mix(in srgb,${gradientTo} 22%,transparent);--inner-border-color:color-mix(in srgb,${gradientTo} 50%,white);animation:gmdMagicLiquidMorph 6s ease-in-out infinite,gmdMysticGlow 4s ease-in-out infinite;`;
+            else if (style === 'neon') css = `background:rgba(8,8,12,.94);border:2px solid transparent;--frame-from:${gradientFrom};--frame-to:${gradientTo};--frame-color:${gradientFrom};--glow-soft:color-mix(in srgb,${gradientFrom} 16%,transparent);--glow-bright:color-mix(in srgb,${gradientTo} 38%,transparent);--inner-border-color:color-mix(in srgb,${gradientTo} 50%,white);animation:gmdMagicLiquidMorph 6s ease-in-out infinite,gmdMysticGlow 4s ease-in-out infinite;`;
             else if (style === 'holo') css = 'background:linear-gradient(120deg,rgba(236,72,153,.18) 0%,rgba(56,189,248,.18) 40%,rgba(168,85,247,.18) 70%,rgba(236,72,153,.18) 100%);background-size:250% 100%;animation:gmdTextHoloShift 5s ease infinite;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);box-shadow:0 4px 12px rgba(0,0,0,.25);';
             else if (style === 'light-sweep' || style === 'dark-matte') css = 'background:linear-gradient(110deg,rgba(15,23,42,.85) 30%,rgba(255,255,255,.28) 50%,rgba(15,23,42,.85) 70%);background-size:200% 100%;animation:gmdTextLightSweep 3s linear infinite;border:1px solid rgba(255,255,255,.1);box-shadow:0 4px 12px rgba(0,0,0,.3);';
             else css = `background:${item.textBgColor || '#000000'};box-shadow:0 2px 6px rgba(0,0,0,.25);`;
+            const opacity = item.textBgOpacity !== undefined
+                ? item.textBgOpacity
+                : (item.backgroundOpacity !== undefined ? item.backgroundOpacity : 100);
+            if (style === 'neon') {
+                const alpha = Math.max(0, Math.min(100, Number(opacity))) / 100;
+                css = css.replace(/rgba\(8\s*,\s*8\s*,\s*12\s*,\s*[\d.]+\)/gi, `rgba(8,8,12,${alpha})`);
+            } else {
+                css = this.applyTextBackgroundOpacity(css, opacity);
+            }
             return `${css}padding:3px 8px;border-radius:6px;`;
+        }
+
+        getIconTextBackgroundStyle(item) {
+            if (item.showIconTextBg !== true) return '';
+            return this.getGiftLabelBackgroundStyle({
+                ...item,
+                showTextBg: true,
+                textBgStyle: item.iconTextBgStyle || 'classic',
+                textBgColor: item.iconTextBgColor || '#000000',
+                textBgGradientFrom: item.iconTextBgGradientFrom || '#a855f7',
+                textBgGradientTo: item.iconTextBgGradientTo || '#22d3ee',
+                textBgOpacity: item.iconTextBgOpacity !== undefined ? item.iconTextBgOpacity : 100
+            });
+        }
+
+        applyTextBackgroundOpacity(css, value) {
+            const opacity = Math.max(0, Math.min(100, Number(value ?? 100))) / 100;
+            const alphaHex = Math.round(255 * opacity).toString(16).padStart(2, '0');
+            const applyToValue = (background) => String(background)
+                .replace(/#([0-9a-f]{8})(?![0-9a-f])/gi, (_match, hex) => `#${hex.slice(0, 6)}${alphaHex}`)
+                .replace(/#([0-9a-f]{6})(?![0-9a-f])/gi, (_match, hex) => `#${hex}${alphaHex}`)
+                .replace(/rgba\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/gi,
+                    (_match, r, g, b) => `rgba(${r},${g},${b},${opacity})`);
+            return String(css || '').replace(
+                /(background(?:-image)?\s*:)([^;]+)/gi,
+                (_match, prefix, background) => `${prefix}${applyToValue(background)}`
+            );
         }
 
         async optimizePngUpload(file, maxDimension = 1600) {
@@ -4536,6 +4959,30 @@
             }
         }
 
+        addBackgroundOpacityControl(inspector, selected) {
+            if (!inspector || !selected || selected.type === 'media-asset') return;
+            const value = selected.backgroundOpacity !== undefined
+                ? Math.max(0, Math.min(100, Number(selected.backgroundOpacity)))
+                : 100;
+            const section = document.createElement('div');
+            section.className = 'gmd-section gmd-background-opacity-section';
+            section.innerHTML = `
+                <h4><i class="fas fa-adjust"></i> ĐỘ MỜ NỀN</h4>
+                <div class="gmd-field">
+                    <label>Độ mờ nền</label>
+                    <div class="gmd-inline-input gmd-inline-input-single">
+                        <input class="gmd-input gmd-input-compact" type="number" min="0" max="100" step="1" data-goal-key="backgroundOpacity" value="${value}">
+                        <span>%</span>
+                    </div>
+                </div>
+                <input class="gmd-range" type="range" min="0" max="100" step="1" data-goal-key="backgroundOpacity" value="${value}">
+                <small style="display:block;color:#94a3b8;font-size:9px;line-height:1.35;margin-top:5px;">Chỉ làm mờ nền; nội dung và viền vẫn giữ nguyên.</small>
+            `;
+            const selectedCard = inspector.querySelector('.gmd-selected-card');
+            if (selectedCard) selectedCard.insertAdjacentElement('afterend', section);
+            else inspector.prepend(section);
+        }
+
         renderGoalBoardInspector() {
             const inspector = this.mount.querySelector('#gmd-inspector');
             if (!inspector) return;
@@ -4560,6 +5007,14 @@
             if (!selected) {
                 inspector.innerHTML = '<div class="gmd-inspector-empty"><i class="fas fa-mouse-pointer"></i><p>Chọn một layer<br>trên canvas để tùy chỉnh</p></div>';
                 return;
+            }
+
+            // Repair layouts saved before background visibility and custom
+            // background became mutually exclusive. A configured custom
+            // background should be visible when the layout is reopened.
+            if (selected.hideBg && selected.useCustomBg) {
+                selected.hideBg = false;
+                this.invalidateItemVisual(selected);
             }
 
             const logical = this.stageToLogical(selected);
@@ -5092,6 +5547,16 @@
                                 <label style="font-size: 11px;">Thời gian đếm ngược</label>
                                 <input class="gmd-input" type="text" data-goal-key="timerDuration" value="${selected.timerDuration || '00:20:00'}" placeholder="hh:mm:ss" style="font-size: 11px; height: 26px; padding: 2px 6px;">
                             </div>
+                            <div class="gmd-field" style="margin-top: 4px;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                                    <label style="font-size:11px;margin:0;">Vị trí đồng hồ lên / xuống</label>
+                                    <div class="gmd-inline-input gmd-inline-input-single" style="max-width:72px;margin:0;">
+                                        <input class="gmd-input gmd-input-compact" type="number" min="-40" max="120" data-goal-key="timerOffsetY" value="${selected.timerOffsetY !== undefined ? selected.timerOffsetY : 8}">
+                                        <span>px</span>
+                                    </div>
+                                </div>
+                                <input class="gmd-range" type="range" min="-40" max="120" step="1" data-goal-key="timerOffsetY" value="${selected.timerOffsetY !== undefined ? selected.timerOffsetY : 8}">
+                            </div>
                             <div class="gmd-field" style="margin-top: 4px; display: flex; gap: 4px;">
                                 ${selected.timerRunning ? `
                                     <button class="gmd-btn" onclick="window.giftMenuDesigner.toggleTimerRunning(false)" style="flex: 1; height: 26px; font-size: 11px; padding: 2px 4px; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); cursor: pointer;"><i class="fas fa-pause"></i> Tạm dừng</button>
@@ -5115,6 +5580,7 @@
                         </div>
                     </div>
                 `;
+                this.addBackgroundOpacityControl(inspector, selected);
                 return;
             }
 
@@ -5244,10 +5710,10 @@
                             </div>
                         </div>
                         <div class="gmd-field">
-                            <label>Khoang cach qua</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="120" data-goal-key="gap" value="${selected.gap !== undefined ? selected.gap : 10}"><span>px</span></div>
+                            <label>Khoảng cách icon</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="120" data-goal-key="giftTextGap" value="${selected.giftTextGap !== undefined ? selected.giftTextGap : 4}"><span>px</span></div>
                         </div>
-                        <input class="gmd-range" type="range" min="0" max="80" data-goal-key="gap" value="${selected.gap !== undefined ? selected.gap : 10}">
+                        <input class="gmd-range" type="range" min="0" max="80" data-goal-key="giftTextGap" value="${selected.giftTextGap !== undefined ? selected.giftTextGap : 4}">
                         <div class="gmd-field">
                             <label>Kich thuoc icon</label>
                             <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="10" max="240" data-goal-key="iconSize" value="${selected.iconSize !== undefined ? selected.iconSize : 64}"><span>px</span></div>
@@ -5272,16 +5738,6 @@
                                 <option value="right" ${selected.textPosition === 'right' ? 'selected' : ''}>Phai</option>
                             </select>
                         </div>
-                        <div class="gmd-field">
-                            <label>Khoang cach chu</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="80" data-goal-key="textGap" value="${selected.textGap !== undefined ? selected.textGap : 4}"><span>px</span></div>
-                        </div>
-                        <input class="gmd-range" type="range" min="0" max="60" data-goal-key="textGap" value="${selected.textGap !== undefined ? selected.textGap : 4}">
-                        <div class="gmd-field">
-                            <label>Khoảng cách viền (Padding)</label>
-                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="80" data-goal-key="padding" value="${selected.padding !== undefined ? selected.padding : 8}"><span>px</span></div>
-                        </div>
-                        <input class="gmd-range" type="range" min="0" max="80" data-goal-key="padding" value="${selected.padding !== undefined ? selected.padding : 8}">
                         <div class="gmd-field">
                             <label>Bo góc (Border Radius)</label>
                             <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="64" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 8}"><span>px</span></div>
@@ -5371,6 +5827,11 @@
                             </select>
                         </div>
                         <div class="gmd-field">
+                            <label>Kích thước hình tiến trình</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="60" max="220" data-goal-key="progressSize" value="${selected.progressSize !== undefined ? selected.progressSize : 120}"><span>px</span></div>
+                            <input class="gmd-range" type="range" min="60" max="220" data-goal-key="progressSize" value="${selected.progressSize !== undefined ? selected.progressSize : 120}">
+                        </div>
+                        <div class="gmd-field">
                             <label>Hiệu ứng tiến trình</label>
                             <select class="gmd-select" data-goal-key="progressEffect">
                                 <option value="none" ${selected.progressEffect === 'none' || !selected.progressEffect ? 'selected' : ''}>Tĩnh (Không hiệu ứng)</option>
@@ -5397,6 +5858,11 @@
                                 <option value="🔥" ${centerIcon === '🔥' ? 'selected' : ''}>Lửa 🔥</option>
                                 <option value="gift-icon" ${centerIcon === 'gift-icon' ? 'selected' : ''}>Hình ảnh Quà tặng (Chọn ở trên)</option>
                             </select>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Kích thước quà mục tiêu</label>
+                            <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="12" max="120" data-goal-key="goalIconSize" value="${selected.goalIconSize !== undefined ? selected.goalIconSize : 44}"><span>px</span></div>
+                            <input class="gmd-range" type="range" min="12" max="120" data-goal-key="goalIconSize" value="${selected.goalIconSize !== undefined ? selected.goalIconSize : 44}">
                         </div>
                         <div class="gmd-field">
                             <label>Dòng phụ hiển thị</label>
@@ -5489,6 +5955,9 @@
                     </div>
                 `;
             } else if (selected.type === 'top-contributors' || selected.type === 'podium-contributors') {
+                const isPodiumContributorStyle = selected.contribStyle === 'podium-only'
+                    || selected.contribStyle === 'podium-table'
+                    || (!selected.contribStyle && selected.type === 'podium-contributors');
                 specificConfigHTML = `
                     <div class="gmd-section">
                         <h4><i class="fas fa-medal"></i> BẢNG VINH DANH</h4>
@@ -5577,6 +6046,13 @@
                                 <span></span>
                             </label>
                         </div>
+                        ${selected.showAvatar !== false ? `
+                            <div class="gmd-field">
+                                <label>Kích thước avatar người donate</label>
+                                <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="20" max="180" data-goal-key="contributorAvatarSize" value="${selected.contributorAvatarSize !== undefined ? selected.contributorAvatarSize : (isPodiumContributorStyle ? 88 : 48)}"><span>px</span></div>
+                            </div>
+                            <input class="gmd-range" type="range" min="20" max="180" data-goal-key="contributorAvatarSize" value="${selected.contributorAvatarSize !== undefined ? selected.contributorAvatarSize : (isPodiumContributorStyle ? 88 : 48)}">
+                        ` : ''}
                         <div class="gmd-field gmd-toggle-row">
                             <label>Hiển thị số tiền vinh danh (Value)</label>
                             <label class="gmd-switch">
@@ -5587,6 +6063,10 @@
                         <div class="gmd-field">
                             <label>Màu chủ đề bảng vinh danh</label>
                             <input class="gmd-color" type="color" data-goal-key="barColor" value="${selected.barColor || '#eab308'}">
+                        </div>
+                        <div class="gmd-field">
+                            <label>Màu viền bảng</label>
+                            <input class="gmd-color" type="color" data-goal-key="borderColor" value="${selected.borderColor || selected.barColor || '#eab308'}">
                         </div>
 
                         ${(selected.contribStyle === 'podium-only' || selected.contribStyle === 'podium-table' || (!selected.contribStyle && selected.type === 'podium-contributors')) ? `
@@ -5642,8 +6122,8 @@
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
                         ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 34)}
-                        ${makeCompactFontSizeField('Cỡ chữ Tên người dùng', 'rowFontSize', selected.type === 'podium-contributors' ? 22 : 30)}
-                        ${selected.type === 'podium-contributors' ? makeCompactFontSizeField('Cỡ chữ Điểm số (Value)', 'valueFontSize', 22) : ''}
+                        ${makeCompactFontSizeField('Cỡ chữ Tên người dùng', 'rowFontSize', isPodiumContributorStyle ? 22 : 30)}
+                        ${makeCompactFontSizeField('Cỡ chữ Điểm số (Value)', 'valueFontSize', isPodiumContributorStyle ? 22 : 30)}
                     </div>
                 `;
             } else if (selected.type === 'mystery-chests') {
@@ -5778,7 +6258,7 @@
                                     <div style="display:grid;grid-template-columns:1fr 82px;gap:5px;margin-top:5px;"><button class="gmd-btn" style="height:26px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onclick="window.giftMenuDesigner.triggerTalentAvatarUpload('${selected.id}', ${index})"><i class="fas fa-upload"></i> ${person.avatar ? 'Đổi ảnh đại diện' : 'Tải ảnh đại diện'}</button><input class="gmd-input" type="number" style="height:26px;" value="${Number(person.score) || 0}" title="Tổng điểm" onchange="window.giftMenuDesigner.updateTalentParticipant('${selected.id}', ${index}, 'score', this.value)"></div>
                                 </div>`).join('')}
                         </div>
-                        <button class="gmd-btn" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.addTalentParticipant('${selected.id}')"><i class="fas fa-user-plus"></i> Thêm thí sinh</button>
+                        <button class="gmd-btn" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.addTalentParticipant('${selected.id}')"><i class="fas fa-user-plus"></i> Thêm thí sinh${this.actualPlanKey === 'free' && participants.length >= 3 ? ' · BASIC' : ''}</button>
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-wand-magic-sparkles"></i> HIỂN THỊ & HIỆU ỨNG</h4>
@@ -5812,7 +6292,7 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-list-ol"></i> PHẦN 3: DANH SÁCH THỬ THÁCH</h4>
-                        <div style="display:flex;flex-direction:column;gap:7px;max-height:300px;overflow:auto;">${segments.map((segment,index)=>`<div style="padding:6px;border:1px solid rgba(255,255,255,.08);border-radius:8px;"><div style="display:flex;gap:5px;align-items:center;"><span style="width:20px;color:#fbbf24;font-weight:900;">${index+1}</span><input class="gmd-input" style="flex:1;min-width:0;" value="${this.escapeHtml(segment.label || '')}" onchange="window.giftMenuDesigner.updateChallengeSegment('${selected.id}',${index},'label',this.value)"><input class="gmd-color" style="width:34px;height:28px;padding:2px;" type="color" value="${segment.color || '#8b5cf6'}" onchange="window.giftMenuDesigner.updateChallengeSegment('${selected.id}',${index},'color',this.value)"></div><div style="display:flex;gap:5px;margin-top:5px;"><button class="gmd-btn" style="flex:1;height:25px;font-size:10px;" onclick="window.giftMenuDesigner.uploadChallengeSegmentImage('${selected.id}',${index})"><i class="fas fa-image"></i> ${segment.resultImage ? 'Đổi ảnh kết quả riêng' : 'Tải ảnh kết quả riêng'}</button>${segments.length > 2 ? `<button class="gmd-btn" style="width:32px;height:25px;font-size:10px;color:#f87171;" title="Xóa thử thách" onclick="window.giftMenuDesigner.removeChallengeSegment('${selected.id}',${index})"><i class="fas fa-trash"></i></button>` : ''}</div></div>`).join('')}</div>
+                        <div style="display:flex;flex-direction:column;gap:7px;max-height:300px;overflow:auto;">${segments.map((segment, index) => `<div style="padding:6px;border:1px solid rgba(255,255,255,.08);border-radius:8px;"><div style="display:flex;gap:5px;align-items:center;"><span style="width:20px;color:#fbbf24;font-weight:900;">${index + 1}</span><input class="gmd-input" style="flex:1;min-width:0;" value="${this.escapeHtml(segment.label || '')}" onchange="window.giftMenuDesigner.updateChallengeSegment('${selected.id}',${index},'label',this.value)"><input class="gmd-color" style="width:34px;height:28px;padding:2px;" type="color" value="${segment.color || '#8b5cf6'}" onchange="window.giftMenuDesigner.updateChallengeSegment('${selected.id}',${index},'color',this.value)"></div><div style="display:flex;gap:5px;margin-top:5px;"><button class="gmd-btn" style="flex:1;height:25px;font-size:10px;" onclick="window.giftMenuDesigner.uploadChallengeSegmentImage('${selected.id}',${index})"><i class="fas fa-image"></i> ${segment.resultImage ? 'Đổi ảnh kết quả riêng' : 'Tải ảnh kết quả riêng'}</button>${segments.length > 2 ? `<button class="gmd-btn" style="width:32px;height:25px;font-size:10px;color:#f87171;" title="Xóa thử thách" onclick="window.giftMenuDesigner.removeChallengeSegment('${selected.id}',${index})"><i class="fas fa-trash"></i></button>` : ''}</div></div>`).join('')}</div>
                         <button class="gmd-btn" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.addChallengeSegment('${selected.id}')"><i class="fas fa-plus"></i> Thêm thử thách</button>
                     </div>
                     <div class="gmd-section"><h4><i class="fas fa-vial"></i> KIỂM TRA</h4><div style="font-size:11px;color:#94a3b8;line-height:1.4;">Vòng quay sẽ xuất hiện trên OBS khi món quà được mapping và donate thực tế.</div></div>
@@ -6080,7 +6560,15 @@
                                         <input class="gmd-input gmd-input-compact" style="width:100%; font-size:11px; height:24px; padding:2px 4px;" data-child-index="${index}" data-child-key="subtext" value="${child.subtext || ''}">
                                     </div>
 
-
+                                    <div class="gmd-field" style="margin-top: 6px;">
+                                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                                            <label style="font-size: 11px;">Khoảng cách icon và chữ</label>
+                                            <div class="gmd-inline-input gmd-inline-input-single" style="max-width:66px;">
+                                                <input class="gmd-input gmd-input-compact" type="number" min="0" max="120" data-child-index="${index}" data-child-key="iconTextGap" value="${child.iconTextGap !== undefined ? child.iconTextGap : (selected.labelGap !== undefined ? selected.labelGap : 4)}"><span>px</span>
+                                            </div>
+                                        </div>
+                                        <input class="gmd-range" type="range" min="0" max="80" data-child-index="${index}" data-child-key="iconTextGap" value="${child.iconTextGap !== undefined ? child.iconTextGap : (selected.labelGap !== undefined ? selected.labelGap : 4)}">
+                                    </div>
 
                                     <div class="gmd-field gmd-toggle-row" style="margin-top: 6px;">
                                         <label style="font-size: 11px;">Bật nền chữ</label>
@@ -6190,12 +6678,14 @@
                                 <option value="right" ${selected.textAlign === 'right' ? 'selected' : ''}>Căn phải (Right)</option>
                             </select>
                         </div>
-                        <div class="gmd-field" style="margin-top: 6px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <label style="font-size: 11px; margin: 0;">Đệm lề viền (Padding)</label>
-                                <span class="gmd-slider-value-display" style="font-size: 11px; color: #bae6fd; font-weight: 700;">${selected.padding !== undefined ? selected.padding : 8}px</span>
-                            </div>
-                            <input class="gmd-range" type="range" min="0" max="60" data-goal-key="padding" value="${selected.padding !== undefined ? selected.padding : 8}" oninput="this.previousElementSibling.querySelector('.gmd-slider-value-display').innerText = this.value + 'px'">
+                        <div class="gmd-field" style="margin-top: 8px;">
+                            <label style="font-size: 11px;">Vị trí chữ (Tất cả)</label>
+                            <select class="gmd-select" data-goal-key="textPosition" style="width:100%; font-size:11px; padding:4px;">
+                                <option value="left" ${selected.textPosition === 'left' ? 'selected' : ''}>Bên trái icon</option>
+                                <option value="right" ${selected.textPosition === 'right' ? 'selected' : ''}>Bên phải icon</option>
+                                <option value="top" ${selected.textPosition === 'top' ? 'selected' : ''}>Phía trên icon</option>
+                                <option value="bottom" ${(selected.textPosition || 'bottom') === 'bottom' ? 'selected' : ''}>Phía dưới icon</option>
+                            </select>
                         </div>
                         ` : ''}
                         ${specificConfigHTML}
@@ -6399,6 +6889,7 @@
                 ${part2HTML}
                 ${part3HTML}
             `;
+            this.addBackgroundOpacityControl(inspector, selected);
             if (selected.type === 'talent-live' || selected.type === 'talent-leaderboard') {
                 this.applyTalentTitleEffect(selected);
                 const styleSection = document.createElement('div');
@@ -6423,21 +6914,31 @@
             const item = this.items.find((x) => x.id === this.selectedId);
             if (!item) return;
 
-            const freeStyleKeys = ['barColor', 'glowColor', 'bgColor', 'bgColorGradientFrom', 'bgColorGradientTo', 'bgColorGradientAngle', 'useCustomBg', 'useCustomBgGradient', 'textColor', 'useCustomTextColor', 'barStyle', 'panelEffect', 'borderEffect', 'panelColor', 'panelGradientFrom', 'panelGradientTo', 'borderColor', 'borderGradientFrom', 'borderGradientTo'];
-            if (this.planKey === 'free' && freeStyleKeys.includes(key)) {
-                this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu và dùng hiệu ứng đẹp mắt.');
-                return;
-            }
             if (this.planKey === 'pro' && ((key === 'panelEffect' && !['none', 'breathing'].includes(String(value))) || (key === 'borderEffect' && !['none', 'glow', 'pulse'].includes(String(value))))) {
                 this.showUpgrade('menuAdvanced', 'Tùy chỉnh chuyển động nâng cao dành cho gói Pro.');
                 return;
             }
 
-            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'iconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'bgColorGradientAngle'].includes(key)) {
+            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'backgroundOpacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'contributorAvatarSize', 'iconSize', 'progressSize', 'goalIconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'giftTextGap', 'labelGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerOffsetY', 'bgColorGradientAngle'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
                     const previousW = Math.max(1, Number(item.w) || Number(item.width) || 1);
                     const previousH = Math.max(1, Number(item.h) || Number(item.height) || 1);
+                    const scaleStackContents = (scale) => {
+                        if (item.type !== 'gift-stack-group' || !item.lockRatio || !Number.isFinite(scale) || scale <= 0) return;
+                        ['iconSize', 'textSize', 'subtextSize', 'giftTextGap', 'labelGap', 'borderRadius', 'padding'].forEach((prop) => {
+                            const current = Number(item[prop]);
+                            if (!Number.isFinite(current)) return;
+                            item[prop] = Math.max(['giftTextGap', 'labelGap', 'padding'].includes(prop) ? 0 : 1, Math.round(current * scale * 100) / 100);
+                        });
+                        (item.children || []).forEach((child) => {
+                            ['iconTextGap', 'iconTextSize'].forEach((prop) => {
+                                const current = Number(child[prop]);
+                                if (!Number.isFinite(current)) return;
+                                child[prop] = Math.max(prop === 'iconTextGap' ? 0 : 1, Math.round(current * scale * 100) / 100);
+                            });
+                        });
+                    };
                     const map = {
                         '9:16': { width: 360, height: 640, canvasW: 720, canvasH: 960 },
                         '16:9': { width: 640, height: 360, canvasW: 960, canvasH: 720 },
@@ -6459,6 +6960,7 @@
                     } else if (key === 'y') {
                         item.y = Math.round(safeOffset.y + numVal * stageSy);
                     } else if (key === 'w') {
+                        scaleStackContents(numVal / previousW);
                         item.w = numVal;
                         item.width = Math.round(numVal * stageSx);
                         if (item.lockRatio) {
@@ -6467,6 +6969,7 @@
                             item.h = Math.round(item.w * ratio);
                         }
                     } else if (key === 'h') {
+                        scaleStackContents(numVal / previousH);
                         item.h = numVal;
                         item.height = Math.round(numVal * stageSy);
                         if (item.lockRatio) {
@@ -6476,19 +6979,84 @@
                         }
                     }
                 } else {
-                    item[key] = numVal;
+                    item[key] = key === 'backgroundOpacity'
+                        ? Math.max(0, Math.min(100, numVal))
+                        : numVal;
                 }
             } else if (key === 'useCustomBgGradient') {
                 item[key] = typeof value === 'boolean' ? value : String(value) === 'true';
+                // Choosing a background style means the board background must be visible.
+                item.useCustomBg = true;
+                item.hideBg = false;
             } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg' || key === 'showName' || key === 'showVs' || key === 'loopEnabled' || key === 'showPanel' || key === 'showBorder' || key === 'useCustomPkBorderColor' || key === 'timerRunning' || key === 'showTimer') {
+                const wasLocked = item.lockRatio !== false;
+                let visibleGoalListScale = 1;
+                let visiblePkScale = 1;
+                if (key === 'lockRatio' && item.type === 'goal-list') {
+                    const storedScale = Number(item.goalListContentScale)
+                        || Number(item.lockedContentScale)
+                        || Number(item.unlockedContentScale)
+                        || 1;
+                    visibleGoalListScale = wasLocked
+                        && Number(item.lockedPreviewW) > 0
+                        && Number(item.lockedPreviewH) > 0
+                        ? storedScale * Math.min(
+                            Number(item.width || item.lockedPreviewW) / Number(item.lockedPreviewW),
+                            Number(item.height || item.lockedPreviewH) / Number(item.lockedPreviewH)
+                        )
+                        : storedScale;
+                }
+                if (key === 'lockRatio' && item.type === 'goal-bar' && item.barStyle === 'pk') {
+                    const storedScale = Number(item.pkContentScale)
+                        || Math.max(0.15, Math.min(
+                            Number(item.width || 900) / 900,
+                            Number(item.height || 180) / 180
+                        ));
+                    visiblePkScale = wasLocked
+                        && Number(item.pkLockedPreviewW) > 0
+                        && Number(item.pkLockedPreviewH) > 0
+                        ? storedScale * Math.min(
+                            Number(item.width || item.pkLockedPreviewW) / Number(item.pkLockedPreviewW),
+                            Number(item.height || item.pkLockedPreviewH) / Number(item.pkLockedPreviewH)
+                        )
+                        : storedScale;
+                }
                 item[key] = Boolean(value);
+                // These controls are mutually exclusive. Previously both could
+                // remain enabled, while hideBg silently won in the renderer.
+                if (key === 'useCustomBg' && item.useCustomBg) {
+                    item.hideBg = false;
+                } else if (key === 'hideBg' && item.hideBg) {
+                    item.useCustomBg = false;
+                }
                 if (key === 'lockRatio') {
                     if (item.lockRatio) {
                         item.lockedW = item.w || item.width;
                         item.lockedH = item.h || item.height;
+                        if (item.type === 'goal-list') {
+                            item.lockedPreviewW = Number(item.width || 900);
+                            item.lockedPreviewH = Number(item.height || 480);
+                            item.goalListContentScale = Math.max(0.15, visibleGoalListScale);
+                        }
+                        if (item.type === 'goal-bar' && item.barStyle === 'pk') {
+                            item.pkLockedPreviewW = Number(item.width || 900);
+                            item.pkLockedPreviewH = Number(item.height || 180);
+                            item.pkContentScale = Math.max(0.15, visiblePkScale);
+                        }
                     } else {
+                        if (item.type === 'goal-list') {
+                            item.goalListContentScale = Math.max(0.15, visibleGoalListScale);
+                        }
+                        if (item.type === 'goal-bar' && item.barStyle === 'pk') {
+                            item.pkContentScale = Math.max(0.15, visiblePkScale);
+                        }
                         delete item.lockedW;
                         delete item.lockedH;
+                        delete item.lockedContentScale;
+                        delete item.lockedPreviewW;
+                        delete item.lockedPreviewH;
+                        delete item.pkLockedPreviewW;
+                        delete item.pkLockedPreviewH;
                     }
                 }
             } else {
@@ -6526,9 +7094,15 @@
                 }
             });
 
+            if (key === 'backgroundOpacity' && item.type === 'gift-stack-group') {
+                this.patchStackGroupBackground(item);
+                if (pushHist) this.pushHistory('update-goal-item');
+                return;
+            }
+
             this.invalidateItemVisual(item);
             this.renderCanvas();
-            if (key === 'layoutDirection' || key === 'showVs' || key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage' || key === 'useBarGradient') {
+            if (key === 'layoutDirection' || key === 'showVs' || key === 'showAvatar' || key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage' || key === 'useBarGradient') {
                 this.renderInspector();
             }
             if (pushHist) {
@@ -6543,6 +7117,36 @@
             if (!visualContainer) return;
             delete visualContainer.dataset.contentSignature;
             delete visualContainer.dataset.itemState;
+        }
+
+        patchStackGroupBackground(item) {
+            if (!item || item.type !== 'gift-stack-group') return false;
+            const root = document.getElementById(`gmd-item-${item.id}`);
+            const panel = root?.querySelector('.gmd-stack-group-viewport');
+            if (!panel) return false;
+
+            const opacity = Math.max(0, Math.min(100, Number(item.backgroundOpacity ?? 100))) / 100;
+            const withAlpha = (value, fallback) => {
+                const color = String(value || fallback || '#0a0a14').trim();
+                const hexMatch = color.match(/^#([0-9a-f]{6})(?:[0-9a-f]{2})?$/i);
+                if (hexMatch) {
+                    const hex = hexMatch[1];
+                    return `rgba(${parseInt(hex.slice(0, 2), 16)}, ${parseInt(hex.slice(2, 4), 16)}, ${parseInt(hex.slice(4, 6), 16)}, ${opacity})`;
+                }
+                const rgbMatch = color.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
+                if (rgbMatch) return `rgba(${rgbMatch[1]}, ${rgbMatch[2]}, ${rgbMatch[3]}, ${opacity})`;
+                return color;
+            };
+
+            if (item.showPanel === false) {
+                panel.style.background = 'transparent';
+            } else if (item.panelFillType === 'gradient') {
+                const angle = Math.max(0, Math.min(360, Number(item.panelGradientAngle ?? 135)));
+                panel.style.background = `linear-gradient(${angle}deg, ${withAlpha(item.panelGradientFrom || item.panelColor, '#3b1f48')}, ${withAlpha(item.panelGradientTo, '#0a0a14')})`;
+            } else {
+                panel.style.background = withAlpha(item.panelColor || item.bgColor, '#0a0a14');
+            }
+            return true;
         }
 
         patchTalentLiveVisual(item) {
@@ -6831,7 +7435,7 @@
             return this.items.filter((item) => item && item.talentCompetition && item.talentCompetition.id === competitionId);
         }
 
-        updateTalentCompetition(itemId, updater, historyLabel = 'update-talent-competition', patchVisual = false) {
+        updateTalentCompetition(itemId, updater, historyLabel = 'update-talent-competition', patchVisual = false, refreshInspector = true) {
             const current = this.items.find((item) => item.id === itemId);
             if (!current || !current.talentCompetition) return;
             const next = JSON.parse(JSON.stringify(current.talentCompetition));
@@ -6841,9 +7445,9 @@
             });
             const patched = patchVisual && this.getTalentCompetitionItems(itemId).filter((item) => item.type === 'talent-live').every((item) => this.patchTalentLiveVisual(item));
             if (!patched) this.renderCanvas();
-            this.renderInspector();
+            if (refreshInspector) this.renderInspector();
             this.pushHistory(historyLabel);
-            this.saveLayout(false, false).catch(() => {});
+            this.saveLayout(false, false, false).catch(() => { });
         }
 
         setTalentActive(itemId, talentId) {
@@ -6897,17 +7501,30 @@
             if (live) return;
             this.renderInspector();
             this.pushHistory('update-challenge-wheel');
-            this.saveLayout(false, false).catch(() => {});
+            this.saveLayout(false, false).catch(() => { });
         }
 
         async saveChallengeWheel(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
             if (!item) return;
             const logical = this.stageToLogical(item);
-            const wheelId = item.challengeWheelId || item.wheelId;
+            let wheelId = item.challengeWheelId || item.wheelId;
             if (!wheelId) {
-                window.app?.showNotification?.('info', 'Hãy bấm Sử dụng mẫu một lần để tạo vòng quay cá nhân trước.');
-                return;
+                await this.saveLayout(false, false);
+                try {
+                    const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+                    const layoutRes = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout`, { headers });
+                    const layoutData = await layoutRes.json().catch(() => ({}));
+                    const linkedItem = (layoutData?.layout?.items || []).find((entry) =>
+                        entry?.type === 'challenge-wheel' && String(entry.id || '') === String(item.id || '')
+                    );
+                    wheelId = linkedItem?.challengeWheelId || linkedItem?.wheelId;
+                    if (wheelId) item.challengeWheelId = String(wheelId);
+                } catch (_error) { }
+                if (!wheelId) {
+                    window.app?.showNotification?.('error', 'Chưa liên kết được vòng quay này với Gift Mapping. Hãy mở lại mẫu rồi thử lại.');
+                    return;
+                }
             }
             try {
                 const res = await fetch(`${this.apiBase}/api/tiktok/challenge-wheels/${wheelId}`, {
@@ -6959,7 +7576,7 @@
             this.renderCanvas();
             this.renderInspector();
             this.pushHistory('update-challenge-segment');
-            this.saveLayout(false, false).catch(() => {});
+            this.saveLayout(false, false).catch(() => { });
         }
 
         addChallengeSegment(itemId) {
@@ -6972,7 +7589,7 @@
             this.renderCanvas();
             this.renderInspector();
             this.pushHistory('add-challenge-segment');
-            this.saveLayout(false, false).catch(() => {});
+            this.saveLayout(false, false).catch(() => { });
         }
 
         removeChallengeSegment(itemId, index) {
@@ -6983,7 +7600,7 @@
             this.renderCanvas();
             this.renderInspector();
             this.pushHistory('remove-challenge-segment');
-            this.saveLayout(false, false).catch(() => {});
+            this.saveLayout(false, false).catch(() => { });
         }
 
         previewChallengeWheelSpin(itemId) {
@@ -7111,7 +7728,7 @@
             if (live) return;
             this.renderInspector();
             this.pushHistory('update-talent-style');
-            this.saveLayout(false, false).catch(() => {});
+            this.saveLayout(false, false, false).catch(() => { });
         }
 
         applyTalentTitleEffect(item) {
@@ -7133,10 +7750,18 @@
                 const person = (competition.participants || [])[Number(index)];
                 if (!person) return;
                 person[key] = key === 'score' ? Math.max(0, Number(value) || 0) : value;
-            }, 'update-talent-participant');
+            }, 'update-talent-participant', false, key === 'avatar');
         }
 
         addTalentParticipant(itemId) {
+            const current = this.items.find((item) => item.id === itemId);
+            const participantCount = Array.isArray(current?.talentCompetition?.participants)
+                ? current.talentCompetition.participants.length
+                : 0;
+            if (this.actualPlanKey === 'free' && participantCount >= 3) {
+                this.showUpgrade('talentParticipants', 'Gói miễn phí hỗ trợ tối đa 3 thí sinh. Nâng cấp Basic để thêm thí sinh thứ 4 trở đi.');
+                return;
+            }
             this.updateTalentCompetition(itemId, (competition) => {
                 const participants = Array.isArray(competition.participants) ? competition.participants : [];
                 const index = participants.length + 1;
@@ -7200,6 +7825,7 @@
                             targetCount: 30000000,
                             showTimer: true,
                             timerDuration: '00:20:00',
+                            timerOffsetY: 8,
                             showTopContributors: true,
                             enableAuraEffect: true,
                             auraIntensity: 'normal',
@@ -7243,6 +7869,8 @@
                             targetCount: 500,
                             currentCount: 310,
                             centerIcon: '❤️',
+                            progressSize: 120,
+                            goalIconSize: 44,
                             subtitleText: '01:41:01 OFFLINE',
                             barColor: '#ff007f',
                             fontSize: 24,
@@ -7299,6 +7927,7 @@
                             visible: true,
                             locked: false,
                             barColor: '#eab308',
+                            borderColor: '#eab308',
                             limitCount: 3,
                             contribStyle: 'podium-only',
                             hideBg: true,
@@ -7324,23 +7953,27 @@
                             id: 'talent_live_widget', name: '🎤 Phần thi trực tiếp', type: 'talent-live',
                             x: 90, y: 570, w: 900, h: 300, width: 900, height: 300, zIndex: 1, visible: true, locked: false,
                             barColor: '#f43f5e', glowColor: '#8b5cf6', barHeight: 22, fontSize: 36, subtitleFontSize: 20, valueFontSize: 28, feedFontSize: 17,
-                            talentCompetition: { id: 'talent_default_competition', title: 'TALENT OF THE NIGHT', roundLabel: 'VÒNG 1', status: 'idle', durationSeconds: 180, remainingSeconds: 180, startedAt: null, activeTalentId: 'talent_minh_anh', goalAmount: 10000, pointsLabel: 'điểm', donationEffect: 'neon-sweep', showFeed: true, showAvatar: true, showTop3: true, maxRanking: 8, eventFeed: [], participants: [
-                                { id: 'talent_minh_anh', name: 'Minh Anh', performance: 'Mashup mùa hè', avatar: '', score: 0, roundScore: 0 },
-                                { id: 'talent_hoang_long', name: 'Hoàng Long', performance: 'Nhảy hiện đại', avatar: '', score: 0, roundScore: 0 },
-                                { id: 'talent_bao_ngoc', name: 'Bảo Ngọc', performance: 'Ca khúc tự chọn', avatar: '', score: 0, roundScore: 0 },
-                                { id: 'talent_tu_anh', name: 'Tú Anh', performance: 'Biểu diễn guitar', avatar: '', score: 0, roundScore: 0 }
-                            ] }
+                            talentCompetition: {
+                                id: 'talent_default_competition', title: 'TALENT OF THE NIGHT', roundLabel: 'VÒNG 1', status: 'idle', durationSeconds: 180, remainingSeconds: 180, startedAt: null, activeTalentId: 'talent_minh_anh', goalAmount: 10000, pointsLabel: 'điểm', donationEffect: 'neon-sweep', showFeed: true, showAvatar: true, showTop3: true, maxRanking: 8, eventFeed: [], participants: [
+                                    { id: 'talent_minh_anh', name: 'Minh Anh', performance: 'Mashup mùa hè', avatar: '', score: 0, roundScore: 0 },
+                                    { id: 'talent_hoang_long', name: 'Hoàng Long', performance: 'Nhảy hiện đại', avatar: '', score: 0, roundScore: 0 },
+                                    { id: 'talent_bao_ngoc', name: 'Bảo Ngọc', performance: 'Ca khúc tự chọn', avatar: '', score: 0, roundScore: 0 },
+                                    { id: 'talent_tu_anh', name: 'Tú Anh', performance: 'Biểu diễn guitar', avatar: '', score: 0, roundScore: 0 }
+                                ]
+                            }
                         },
                         {
                             id: 'talent_leaderboard_widget', name: '🏆 Bảng xếp hạng Talent', type: 'talent-leaderboard',
                             x: 90, y: 110, w: 900, h: 430, width: 900, height: 430, zIndex: 2, visible: true, locked: false,
                             barColor: '#fbbf24', fontSize: 32, subtitleFontSize: 16, rowFontSize: 18, valueFontSize: 16, lockRatio: false,
-                            talentCompetition: { id: 'talent_default_competition', title: 'TALENT OF THE NIGHT', roundLabel: 'VÒNG 1', status: 'idle', durationSeconds: 180, remainingSeconds: 180, startedAt: null, activeTalentId: 'talent_minh_anh', goalAmount: 10000, pointsLabel: 'điểm', donationEffect: 'neon-sweep', showFeed: true, showAvatar: true, showTop3: true, maxRanking: 8, eventFeed: [], participants: [
-                                { id: 'talent_minh_anh', name: 'Minh Anh', performance: 'Mashup mùa hè', avatar: '', score: 0, roundScore: 0 },
-                                { id: 'talent_hoang_long', name: 'Hoàng Long', performance: 'Nhảy hiện đại', avatar: '', score: 0, roundScore: 0 },
-                                { id: 'talent_bao_ngoc', name: 'Bảo Ngọc', performance: 'Ca khúc tự chọn', avatar: '', score: 0, roundScore: 0 },
-                                { id: 'talent_tu_anh', name: 'Tú Anh', performance: 'Biểu diễn guitar', avatar: '', score: 0, roundScore: 0 }
-                            ] }
+                            talentCompetition: {
+                                id: 'talent_default_competition', title: 'TALENT OF THE NIGHT', roundLabel: 'VÒNG 1', status: 'idle', durationSeconds: 180, remainingSeconds: 180, startedAt: null, activeTalentId: 'talent_minh_anh', goalAmount: 10000, pointsLabel: 'điểm', donationEffect: 'neon-sweep', showFeed: true, showAvatar: true, showTop3: true, maxRanking: 8, eventFeed: [], participants: [
+                                    { id: 'talent_minh_anh', name: 'Minh Anh', performance: 'Mashup mùa hè', avatar: '', score: 0, roundScore: 0 },
+                                    { id: 'talent_hoang_long', name: 'Hoàng Long', performance: 'Nhảy hiện đại', avatar: '', score: 0, roundScore: 0 },
+                                    { id: 'talent_bao_ngoc', name: 'Bảo Ngọc', performance: 'Ca khúc tự chọn', avatar: '', score: 0, roundScore: 0 },
+                                    { id: 'talent_tu_anh', name: 'Tú Anh', performance: 'Biểu diễn guitar', avatar: '', score: 0, roundScore: 0 }
+                                ]
+                            }
                         }
                     ]
                 }
@@ -7464,10 +8097,17 @@
                     }
                     if (i.type === 'goal-list' && Array.isArray(i.goals)) {
                         const avgScale = (sx + sy) / 2;
+                        itemExport.goalListContentScale = (Number(i.goalListContentScale)
+                            || Number(i.unlockedContentScale)
+                            || Number(i.lockedContentScale)
+                            || 1) * avgScale;
                         itemExport.goals = i.goals.map((goal) => ({
                             ...goal,
                             iconTextSize: Number(goal.iconTextSize || 16) * avgScale
                         }));
+                    }
+                    if (i.type === 'goal-bar' && i.barStyle === 'pk' && Number(i.pkContentScale) > 0) {
+                        itemExport.pkContentScale = Number(i.pkContentScale) * ((sx + sy) / 2);
                     }
                     return itemExport;
                 });

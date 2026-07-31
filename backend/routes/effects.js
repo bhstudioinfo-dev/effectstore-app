@@ -46,8 +46,18 @@ router.get('/effects', authMiddleware, async (req, res) => {
         if (category && category !== 'all') query.category = category;
         if (search) query.name = { $regex: search, $options: 'i' };
         
-        const effects = await Effect.find(query).sort({ uses: -1 });
-        res.json({ success: true, effects: effects.map((effect) => sanitizeEffectForCatalog(effect, req.userId)) });
+        const [effects, user] = await Promise.all([
+            Effect.find(query).sort({ uses: -1 }),
+            User.findById(req.userId).select('isAdmin purchasedEffects.effectId').lean()
+        ]);
+        const ownedIds = new Set((user?.purchasedEffects || []).map((entry) => String(entry.effectId || '')));
+        res.json({
+            success: true,
+            effects: effects.map((effect) => ({
+                ...sanitizeEffectForCatalog(effect, req.userId),
+                isOwned: user?.isAdmin === true || ownedIds.has(String(effect._id))
+            }))
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -56,7 +66,10 @@ router.get('/effects', authMiddleware, async (req, res) => {
 // Get trending effects
 router.get('/effects/trending', async (req, res) => {
     try {
-        const effects = await Effect.find({ isActive: true })
+        // Hot Trends is curated by the administrator. Do not fill empty slots
+        // with other active effects, otherwise the storefront shows products
+        // that were never selected in "Quản lý Hot Trends".
+        const effects = await Effect.find({ isActive: true, isTrending: true })
             .sort({ uses: -1 })
             .limit(5);
         res.json({ success: true, effects: effects.map(sanitizeEffectForCatalog) });

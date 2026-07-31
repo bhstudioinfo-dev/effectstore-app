@@ -1,16 +1,16 @@
 {
   "name": "effectstore-desktop",
   "version": "1.0.0",
-  "description": "EffectStore - Premium TikTok Live Effects",
+  "description": "LiveFlow - Premium Livestream Effects",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
     "build:verify": "electron-builder --dir -c.win.signAndEditExecutable=false"
   },
-  "author": "EffectStore",
-  "companyName": "EffectStore",
-  "copyright": "Copyright © 2026 EffectStore",
+  "author": "LiveFlow",
+  "companyName": "LiveFlow",
+  "copyright": "Copyright © 2026 LiveFlow",
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.0.0",
@@ -24,7 +24,7 @@
   },
   "build": {
     "appId": "com.effectstore.app",
-    "productName": "EffectStore",
+    "productName": "LiveFlow",
     "asarUnpack": [
       "node_modules/ffmpeg-static/**/*"
     ],
@@ -60,7 +60,7 @@
     ],
     "win": {
       "target": "nsis",
-      "artifactName": "EffectStore-Setup-${version}.${ext}"
+      "artifactName": "LiveFlow-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,

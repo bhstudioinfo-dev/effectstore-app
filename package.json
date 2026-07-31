@@ -1,7 +1,7 @@
 {
   "name": "effectstore",
   "version": "1.0.0",
-  "description": "EffectStore - Premium TikTok Live Effects Manager",
+  "description": "LiveFlow - Premium Livestream Effects Manager",
   "main": "desktop/main.js",
   "scripts": {
     "start": "npm --prefix desktop start",
@@ -20,7 +20,7 @@
     "live",
     "effects"
   ],
-  "author": "EffectStore Team",
+  "author": "LiveFlow Team",
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {

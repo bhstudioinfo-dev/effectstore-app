@@ -4,6 +4,7 @@ const path = require('path');
 
 const homeSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/js/home.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/index.html'), 'utf8');
+const effectsRouteSource = fs.readFileSync(path.join(__dirname, '../routes/effects.js'), 'utf8');
 
 const loadOwnedBody = homeSource.slice(
     homeSource.indexOf('async loadOwnedEffects()'),
@@ -20,5 +21,7 @@ assert.ok(!loadOwnedBody.includes('this.effects = data.effects'));
 assert.ok(!mappingBody.includes('this.effects = purchasedEffects'));
 assert.ok(indexSource.includes("filterCategory('all')"));
 assert.ok(indexSource.includes('🛍️ Tất cả'));
+
+assert.ok(effectsRouteSource.includes("Effect.find({ isActive: true, isTrending: true })"));
 
 console.log('store regression tests passed');

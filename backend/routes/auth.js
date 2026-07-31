@@ -48,6 +48,25 @@ function validateCredentials(email, password, requireStrongPassword = false) {
     return { normalizedEmail };
 }
 
+function normalizePhone(value) {
+    const raw = String(value || '').trim();
+    const normalized = raw.replace(/[^\d+]/g, '');
+    return /^\+?\d{8,15}$/.test(normalized) ? normalized : '';
+}
+
+function normalizeSupportProfile(value = {}) {
+    const birthday = String(value.birthday || '').trim();
+    return {
+        tiktokUsername: String(value.tiktokUsername || '').trim().replace(/^@+/, '').slice(0, 50),
+        birthday: /^\d{4}-\d{2}-\d{2}$/.test(birthday) ? birthday : '',
+        region: String(value.region || '').trim().slice(0, 80),
+        userType: ['streamer', 'agency', 'shop', 'studio'].includes(value.userType) ? value.userType : '',
+        primaryNeed: ['gift-effects', 'tts', 'gift-menu', 'pk-game'].includes(value.primaryNeed) ? value.primaryNeed : '',
+        preferredContact: ['zalo', 'phone', 'email'].includes(value.preferredContact) ? value.preferredContact : 'zalo',
+        contactTime: String(value.contactTime || '').trim().slice(0, 80)
+    };
+}
+
 router.get('/setup-status', async (_req, res) => {
     try {
         const adminExists = await User.exists({ isAdmin: true, isActive: true });
@@ -117,9 +136,12 @@ router.post('/setup-admin', setupRateLimiter, async (req, res) => {
 
 router.post('/register', registerRateLimiter, async (req, res) => {
     try {
-        const { email, password, name, phone, machineId } = req.body || {};
+        const { email, password, name, phone, machineId, supportProfile, marketingConsent, termsAccepted } = req.body || {};
         const validation = validateCredentials(email, password, true);
         if (validation.error) return res.status(400).json({ success: false, error: validation.error });
+        const normalizedPhone = normalizePhone(phone);
+        if (!normalizedPhone) return res.status(400).json({ success: false, error: 'Số điện thoại/Zalo không hợp lệ.' });
+        if (termsAccepted !== true) return res.status(400).json({ success: false, error: 'Bạn cần đồng ý với điều khoản và chính sách bảo mật.' });
 
         const normalizedEmail = validation.normalizedEmail;
         if (normalizedEmail === RESERVED_ADMIN_EMAIL) {
@@ -130,13 +152,19 @@ router.post('/register', registerRateLimiter, async (req, res) => {
         if (existingUser) {
             return res.status(400).json({ success: false, error: 'Email đã tồn tại.' });
         }
+        const phoneOwner = await User.exists({ phone: normalizedPhone });
+        if (phoneOwner) return res.status(409).json({ success: false, error: 'Số điện thoại/Zalo đã được sử dụng.' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await User.create({
             email: normalizedEmail,
             password: hashedPassword,
             name: String(name || normalizedEmail.split('@')[0]).trim().slice(0, 100),
-            phone: String(phone || 'N/A').trim().slice(0, 30),
+            phone: normalizedPhone,
+            supportProfile: normalizeSupportProfile(supportProfile),
+            marketingConsent: marketingConsent === true,
+            termsAcceptedAt: new Date(),
+            profileUpdatedAt: new Date(),
             machineId: machineId || null,
             activeDevices: machineId ? [machineId] : [],
             isAdmin: false
@@ -155,6 +183,9 @@ router.post('/register', registerRateLimiter, async (req, res) => {
                 id: user._id,
                 email: user.email,
                 name: user.name,
+                phone: user.phone,
+                supportProfile: user.supportProfile,
+                marketingConsent: user.marketingConsent,
                 isAdmin: false,
                 hasAdminUI: false,
                 customEffects: user.customEffects || []
@@ -215,6 +246,9 @@ router.post('/login', loginRateLimiter, async (req, res) => {
                 id: user._id,
                 email: user.email,
                 name: user.name,
+                phone: user.phone,
+                supportProfile: user.supportProfile,
+                marketingConsent: user.marketingConsent,
                 isAdmin,
                 hasAdminUI: isAdmin,
                 subscription: isAdmin ? 'admin' : (user.subscription || 'free'),
@@ -250,6 +284,9 @@ router.get('/me', authMiddleware, async (req, res) => {
                 id: user._id,
                 email: user.email,
                 name: user.name,
+                phone: user.phone,
+                supportProfile: user.supportProfile,
+                marketingConsent: user.marketingConsent,
                 isAdmin,
                 hasAdminUI: isAdmin,
                 subscription: isAdmin ? 'admin' : user.subscription,
@@ -260,6 +297,44 @@ router.get('/me', authMiddleware, async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({ success: false, error: 'Không thể tải thông tin tài khoản.' });
+    }
+});
+
+router.put('/profile', authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.userId);
+        if (!user || user.isActive === false) return res.status(404).json({ success: false, error: 'Không tìm thấy tài khoản.' });
+        const name = String(req.body?.name || '').trim().slice(0, 100);
+        const phone = normalizePhone(req.body?.phone);
+        if (!name) return res.status(400).json({ success: false, error: 'Tên hiển thị không được để trống.' });
+        if (!phone) return res.status(400).json({ success: false, error: 'Số điện thoại/Zalo không hợp lệ.' });
+        const phoneOwner = await User.exists({ phone, _id: { $ne: user._id } });
+        if (phoneOwner) return res.status(409).json({ success: false, error: 'Số điện thoại/Zalo đã được sử dụng.' });
+        user.name = name;
+        user.phone = phone;
+        user.supportProfile = normalizeSupportProfile(req.body?.supportProfile);
+        user.marketingConsent = req.body?.marketingConsent === true;
+        user.profileUpdatedAt = new Date();
+        await user.save();
+        return res.json({
+            success: true,
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                phone: user.phone,
+                supportProfile: user.supportProfile,
+                marketingConsent: user.marketingConsent,
+                isAdmin: isAdminUser(user),
+                hasAdminUI: isAdminUser(user),
+                subscription: isAdminUser(user) ? 'admin' : user.subscription,
+                subscriptionExpiresAt: user.subscriptionExpiresAt,
+                purchasedEffects: user.purchasedEffects || [],
+                customEffects: user.customEffects || []
+            }
+        });
+    } catch (_error) {
+        return res.status(500).json({ success: false, error: 'Không thể cập nhật hồ sơ.' });
     }
 });
 

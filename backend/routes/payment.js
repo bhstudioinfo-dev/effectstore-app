@@ -8,7 +8,7 @@ const Payment = require('../models/Payment');
 const User = require('../models/User');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const { isValidResourceId } = require('../utils/accessControl');
-const { calculateOrder, approvePayment } = require('../services/paymentService');
+const { calculateOrder, claimFreeEffects, approvePayment } = require('../services/paymentService');
 const { paths: dataPaths } = require('../config/dataPaths');
 
 const proofDirectory = dataPaths.tempDir;
@@ -76,6 +76,20 @@ router.post('/create-qr', authMiddleware, async (req, res) => {
     }
 });
 
+router.post('/claim-free', authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.userId).select('purchasedEffects isActive');
+        if (!user || user.isActive === false) return res.status(404).json({ success: false, error: 'User not found' });
+        const result = await claimFreeEffects(req.body?.effectIds, user);
+        return res.json({ success: true, ...result });
+    } catch (error) {
+        return res.status(error.status || 500).json({
+            success: false,
+            error: error.status ? error.message : 'Unable to claim free effects.'
+        });
+    }
+});
+
 router.post('/confirm', authMiddleware, upload.single('proof'), async (req, res) => {
     try {
         const orderId = String(req.body?.orderId || '').trim();
@@ -112,9 +126,13 @@ router.post('/confirm', authMiddleware, upload.single('proof'), async (req, res)
 
 router.get('/status/:orderId', authMiddleware, async (req, res) => {
     try {
-        const payment = await Payment.findOne({ orderId: req.params.orderId, userId: String(req.userId) }).select('status');
+        const payment = await Payment.findOne({ orderId: req.params.orderId, userId: String(req.userId) }).select('status rejectionReason');
         if (!payment) return res.status(404).json({ success: false, message: 'Payment order not found.' });
-        return res.json({ success: true, status: payment.status });
+        return res.json({
+            success: true,
+            status: payment.status,
+            rejectionReason: payment.status === 'rejected' ? payment.rejectionReason || null : null
+        });
     } catch (_error) {
         return res.status(500).json({ success: false, error: 'Unable to load payment status.' });
     }
@@ -151,7 +169,31 @@ router.post('/sepay-webhook', async (req, res) => {
 router.get('/admin/payments', authMiddleware, adminMiddleware, async (_req, res) => {
     try {
         const payments = await Payment.find().sort({ createdAt: -1 }).lean();
-        const safePayments = payments.map((payment) => ({ ...payment, proofImage: safeProofUrl(payment) }));
+        const userIds = [...new Set(payments.map((payment) => String(payment.userId || '')).filter(isValidResourceId))];
+        const effectIds = [...new Set(payments.flatMap((payment) => payment.effectIds || [])
+            .map(String)
+            .filter((id) => isValidResourceId(id)))];
+        const [users, effects] = await Promise.all([
+            User.find({ _id: { $in: userIds } })
+                .select('name email phone subscription subscriptionExpiresAt totalSpent createdAt')
+                .lean(),
+            effectIds.length
+                ? require('../models/Effect').find({ _id: { $in: effectIds } }).select('name price').lean()
+                : []
+        ]);
+        const usersById = new Map(users.map((user) => [String(user._id), user]));
+        const effectsById = new Map(effects.map((effect) => [String(effect._id), effect]));
+        const productName = (id) => {
+            if (id === 'SUBSCRIPTION_PRO') return 'Gói Basic · 30 ngày';
+            if (id === 'SUBSCRIPTION_BUSINESS') return 'Gói Pro · 30 ngày';
+            return effectsById.get(String(id))?.name || `Sản phẩm ${String(id).slice(-6)}`;
+        };
+        const safePayments = payments.map((payment) => ({
+            ...payment,
+            proofImage: safeProofUrl(payment),
+            user: usersById.get(String(payment.userId)) || null,
+            products: (payment.effectIds || []).map((id) => ({ id: String(id), name: productName(String(id)) }))
+        }));
         return res.json({ success: true, payments: safePayments });
     } catch (_error) {
         return res.status(500).json({ success: false, error: 'Unable to load payments.' });
@@ -172,6 +214,10 @@ router.post('/admin/approve', authMiddleware, adminMiddleware, async (req, res) 
         if (!isValidResourceId(paymentId)) return res.status(400).json({ success: false, error: 'Invalid payment ID' });
         const payment = await approvePayment(paymentId, ['pending']);
         if (!payment) return res.status(409).json({ success: false, message: 'Payment is not pending or is already being processed.' });
+        await Payment.updateOne(
+            { _id: payment._id },
+            { $set: { reviewedBy: String(req.userId), reviewedAt: new Date() }, $unset: { rejectionReason: 1 } }
+        );
         return res.json({ success: true, message: 'Payment approved.' });
     } catch (_error) {
         return res.status(500).json({ success: false, error: 'Unable to approve payment.' });
@@ -182,9 +228,11 @@ router.post('/admin/reject', authMiddleware, adminMiddleware, async (req, res) =
     try {
         const paymentId = req.body?.paymentId;
         if (!isValidResourceId(paymentId)) return res.status(400).json({ success: false, error: 'Invalid payment ID' });
+        const reason = String(req.body?.reason || '').trim();
+        if (!reason) return res.status(400).json({ success: false, error: 'Rejection reason is required.' });
         const payment = await Payment.findOneAndUpdate(
             { _id: paymentId, status: { $in: ['created', 'pending'] } },
-            { $set: { status: 'rejected' } },
+            { $set: { status: 'rejected', rejectionReason: reason.slice(0, 500), reviewedBy: String(req.userId), reviewedAt: new Date() } },
             { new: true }
         );
         if (!payment) return res.status(409).json({ success: false, message: 'Payment can no longer be rejected.' });

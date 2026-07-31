@@ -2,29 +2,32 @@ const PLAN_ENTITLEMENTS = Object.freeze({
     free: Object.freeze({
         key: 'free', label: 'Free', devices: 1, mappings: 5, customEffects: 5,
         layouts: 1, menuAssets: 0, goalTrackers: 1, commentsPerSession: 20,
-        ttsPerSession: 10, designerLevel: 'lite'
+        ttsPerSession: 10, designerLevel: 'lite', mappingAutomation: 'standard'
     }),
     pro: Object.freeze({
         key: 'pro', label: 'Basic', devices: 1, mappings: 30, customEffects: 100,
         layouts: 10, menuAssets: 20, goalTrackers: 10, commentsPerSession: Infinity,
-        ttsPerSession: Infinity, designerLevel: 'basic'
+        ttsPerSession: Infinity, designerLevel: 'basic', mappingAutomation: 'standard'
     }),
     business: Object.freeze({
         key: 'business', label: 'Pro', devices: 3, mappings: Infinity, customEffects: Infinity,
         layouts: Infinity, menuAssets: Infinity, goalTrackers: Infinity,
-        commentsPerSession: Infinity, ttsPerSession: Infinity, designerLevel: 'advanced'
+        commentsPerSession: Infinity, ttsPerSession: Infinity, designerLevel: 'advanced',
+        mappingAutomation: 'advanced'
     }),
     studio: Object.freeze({
         key: 'studio', label: 'Studio', devices: Infinity, mappings: Infinity,
         customEffects: Infinity, layouts: Infinity, menuAssets: Infinity,
         goalTrackers: Infinity, commentsPerSession: Infinity,
-        ttsPerSession: Infinity, designerLevel: 'studio'
+        ttsPerSession: Infinity, designerLevel: 'studio',
+        mappingAutomation: 'advanced'
     }),
     admin: Object.freeze({
         key: 'admin', label: 'Admin', devices: Infinity, mappings: Infinity,
         customEffects: Infinity, layouts: Infinity, menuAssets: Infinity,
         goalTrackers: Infinity, commentsPerSession: Infinity,
-        ttsPerSession: Infinity, designerLevel: 'studio'
+        ttsPerSession: Infinity, designerLevel: 'studio',
+        mappingAutomation: 'advanced'
     })
 });
 
@@ -64,6 +67,19 @@ function countGoalTrackers(items) {
 
 function validateDesignerItems(items, entitlements) {
     const list = Array.isArray(items) ? items : [];
+    const exceedsFreeTalentLimit = entitlements.key === 'free' && list.some(item =>
+        ['talent-live', 'talent-leaderboard'].includes(item?.type)
+        && Array.isArray(item?.talentCompetition?.participants)
+        && item.talentCompetition.participants.length > 3
+    );
+    if (exceedsFreeTalentLimit) {
+        return upgradePayload(
+            'talentParticipants',
+            'Gói Free hỗ trợ tối đa 3 thí sinh. Nâng cấp Basic để thêm thí sinh thứ 4 trở đi.',
+            entitlements
+        );
+    }
+
     const goalCount = countGoalTrackers(list);
     if (Number.isFinite(entitlements.goalTrackers) && goalCount > entitlements.goalTrackers) {
         return upgradePayload('goalTrackers', `Gói ${entitlements.label} chỉ hỗ trợ ${entitlements.goalTrackers} bảng mục tiêu.`, entitlements);
@@ -79,7 +95,7 @@ function validateDesignerItems(items, entitlements) {
 
     if (['lite', 'basic'].includes(entitlements.designerLevel)) {
         const usesAdvancedLayers = list.some(item => item && (
-            item.type === 'gift-stack-group' || item.locked === true || item.visible === false
+            item.locked === true || item.visible === false
         ));
         if (usesAdvancedLayers) {
             return upgradePayload('menuAdvanced', 'Hệ thống lớp nâng cao dành cho gói Pro.', entitlements);
@@ -87,15 +103,29 @@ function validateDesignerItems(items, entitlements) {
     }
 
     if (entitlements.designerLevel === 'lite') {
-        const usesAdvancedTemplateWidget = list.some(item => item && [
-            'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list',
+        const advancedTemplateItem = list.find(item => item && [
+            'boss-bar', 'mystery-chests', 'goal-list',
             'top-contributors', 'podium-contributors', 'combo'
         ].includes(item.type));
-        if (usesAdvancedTemplateWidget) {
-            return upgradePayload('templates', 'Gói Free chỉ sử dụng mẫu mục tiêu cơ bản.', entitlements);
+        if (advancedTemplateItem) {
+            const widgetLabels = {
+                'boss-bar': 'Thanh đối kháng',
+                'mystery-chests': 'Rương bí ẩn',
+                'goal-list': 'Danh sách mục tiêu',
+                'top-contributors': 'Top Supporters Board',
+                'podium-contributors': 'Bảng xếp hạng',
+                combo: 'Combo quà tặng'
+            };
+            const widgetName = widgetLabels[advancedTemplateItem.type] || advancedTemplateItem.name || 'Bảng nâng cao';
+            return upgradePayload(
+                'templates',
+                `“${widgetName}” là bảng thuộc gói Basic. Bạn vẫn có thể dùng thử và tùy chỉnh trong trình thiết kế; nâng cấp Basic để lưu và xuất bảng này sang OBS.`,
+                entitlements
+            );
         }
         const changesColors = list.some(item => {
             if (!item) return false;
+            if (item.type === 'goal-circle') return false;
             if (item.useCustomBg === true || item.useCustomTextColor === true) return true;
             if (item.barStyle && item.barStyle !== 'solid') return true;
             if (item.themeStyle && item.themeStyle !== 'default') return true;
@@ -108,7 +138,11 @@ function validateDesignerItems(items, entitlements) {
             return false;
         });
         if (changesColors) {
-            return upgradePayload('menuAdvanced', 'Nâng cấp Basic để thay đổi màu sắc menu.', entitlements);
+            return upgradePayload(
+                'menuAdvanced',
+                'Thiết kế đang sử dụng màu sắc hoặc kiểu hiển thị nâng cao. Bạn có thể tiếp tục dùng thử; nâng cấp Basic để lưu và xuất thiết kế này sang OBS.',
+                entitlements
+            );
         }
         const usesAdvanced = list.some(item => {
             if (!item) return false;
@@ -120,7 +154,11 @@ function validateDesignerItems(items, entitlements) {
                 item.type === 'gift-stack-group';
         });
         if (usesAdvanced) {
-            return upgradePayload('menuAdvanced', 'Nâng cấp Basic để dùng hiệu ứng động và menu quà tặng chuyên nghiệp.', entitlements);
+            return upgradePayload(
+                'menuAdvanced',
+                'Thiết kế đang sử dụng hiệu ứng hoặc tính năng nâng cao. Bạn có thể tiếp tục dùng thử; nâng cấp Basic để lưu và xuất thiết kế này sang OBS.',
+                entitlements
+            );
         }
     }
 
@@ -140,11 +178,30 @@ function validateDesignerItems(items, entitlements) {
     return null;
 }
 
+function validateMappingAutomation(payload, entitlements) {
+    if (entitlements?.mappingAutomation === 'advanced') return null;
+    const effects = Array.isArray(payload?.effects) ? payload.effects.filter(effect => effect?.effectId) : [];
+    const usesAdvanced = effects.length > 1 ||
+        String(payload?.playbackMode || 'random') === 'sequential' ||
+        Number(payload?.cooldown || 0) > 0 ||
+        (Number(payload?.cooldown || 0) > 0 && String(payload?.cooldownAction || 'queue') === 'ignore');
+    if (!usesAdvanced) return null;
+    return {
+        ...upgradePayload(
+            'automationAdvanced',
+            'Gộp nhiều hiệu ứng, chạy tuần tự và cooldown nâng cao dành cho gói Pro.',
+            entitlements
+        ),
+        recommendedPlan: 'business'
+    };
+}
+
 module.exports = {
     PLAN_ENTITLEMENTS,
     normalizePlan,
     getEntitlements,
     upgradePayload,
     countGoalTrackers,
-    validateDesignerItems
+    validateDesignerItems,
+    validateMappingAutomation
 };

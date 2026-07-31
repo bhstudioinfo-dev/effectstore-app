@@ -8,6 +8,9 @@ const PaymentSchema = new mongoose.Schema({
     amount: Number,
     hasProof: { type: Boolean, default: true },
     status: { type: String, default: 'pending' },
+    rejectionReason: String,
+    reviewedBy: String,
+    reviewedAt: Date,
     createdAt: { type: Date, default: Date.now }
 });
 

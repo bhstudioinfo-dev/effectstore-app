@@ -13,7 +13,7 @@ const { authMiddleware } = require('../middleware/auth');
 const GiftMenuLayout = require('../models/GiftMenuLayout');
 const multer = require('multer');
 const { spawn } = require('child_process');
-const { getEntitlements, upgradePayload, validateDesignerItems } = require('../config/planEntitlements');
+const { getEntitlements, upgradePayload, validateDesignerItems, validateMappingAutomation } = require('../config/planEntitlements');
 const {
     getUserAvailableEffects,
     resolveEffectForUser,
@@ -27,17 +27,51 @@ const { issueEffectAccessToken } = require('../services/effectAccessToken');
 const { isValidResourceId, ownedResourceFilter } = require('../utils/accessControl');
 const { paths: dataPaths } = require('../config/dataPaths');
 let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
-try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) {}
+try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) { }
 const giftMenuLayoutPath = dataPaths.giftMenuLayoutPath;
 const goalAssetDir = dataPaths.goalAssetsDir;
 const savedPresentationNumber = (presentation, key, fallback, allowZero = false) => {
     const saved = Number(presentation?.[key]);
     const backup = Number(fallback);
     const isDimension = key === 'boardWidth' || key === 'boardHeight';
-    if (Number.isFinite(saved) && (allowZero ? saved >= 0 : saved > 0)
-        && (!isDimension || !Number.isFinite(backup) || backup <= 0 || (saved >= backup * 0.75 && saved <= backup * 1.5))) return saved;
-    return Number.isFinite(backup) && (allowZero ? backup >= 0 : backup > 0) ? backup : 0;
+    const isExportLogical = presentation?.coordinateSpace === 'export-logical-v1';
+    if (Number.isFinite(saved) && (allowZero || saved > 0)
+        && (!isDimension || isExportLogical || !Number.isFinite(backup) || backup <= 0 || (saved >= backup * 0.75 && saved <= backup * 1.5))) return saved;
+    return Number.isFinite(backup) && (allowZero || backup > 0) ? backup : 0;
 };
+
+function buildChallengeWheelPresentation(item, exportedItem = item) {
+    const source = exportedItem || item || {};
+    const renderItem = JSON.parse(JSON.stringify({
+        ...source,
+        title: item?.title || source.title,
+        segments: Array.isArray(item?.segments) ? item.segments : source.segments
+    }));
+    delete renderItem.challengeWheelId;
+    delete renderItem.wheelId;
+    return {
+        coordinateSpace: 'export-logical-v1',
+        hideBorder: Boolean(item?.hideBorder),
+        hideBg: Boolean(item?.hideBg),
+        useCustomBg: Boolean(item?.useCustomBg),
+        useCustomBgGradient: Boolean(item?.useCustomBgGradient),
+        bgColor: String(item?.bgColor || ''),
+        bgColorGradientFrom: String(item?.bgColorGradientFrom || ''),
+        bgColorGradientTo: String(item?.bgColorGradientTo || ''),
+        ringEffect: String(item?.ringEffect || 'gold'),
+        borderColor: String(item?.borderColor || '#d6a84f'),
+        useCustomTextColor: Boolean(item?.useCustomTextColor),
+        textColor: String(item?.textColor || '#ffffff'),
+        labelFontSize: Number(source.labelFontSize || item?.labelFontSize) || 16,
+        titleFontSize: Number(source.titleFontSize || item?.titleFontSize) || 34,
+        subtitleFontSize: Number(source.subtitleFontSize || item?.subtitleFontSize) || 18,
+        boardX: Number(source.x) || 0,
+        boardY: Number.isFinite(Number(source.y)) ? Number(source.y) : 0,
+        boardWidth: Number(source.w || source.width) || 0,
+        boardHeight: Number(source.h || source.height) || 0,
+        renderItem
+    };
+}
 fs.mkdirSync(goalAssetDir, { recursive: true });
 const goalAssetUpload = multer({
     storage: multer.diskStorage({
@@ -86,7 +120,7 @@ function runFfmpeg(args, timeoutMs = 120000) {
             resolve(success);
         };
         const timer = setTimeout(() => {
-            try { child.kill(); } catch (_e) {}
+            try { child.kill(); } catch (_e) { }
             finish(false);
         }, timeoutMs);
         child.on('error', () => finish(false));
@@ -217,12 +251,19 @@ router.get('/challenge-wheels', authMiddleware, async (req, res) => {
                 await ChallengeWheel.findOneAndUpdate(
                     { userId: req.userId, sourceTemplateId: template._id },
                     {
-                        $set: {
+                        // Backfill only. An existing wheel belongs to the user
+                        // and may contain edited challenges/geometry, so merely
+                        // opening Gift Mapping must never reset it to the store
+                        // template.
+                        $setOnInsert: {
+                            userId: req.userId,
+                            sourceTemplateId: template._id,
                             name: template.name,
                             title: wheelItem.title || 'VÒNG QUAY THỬ THÁCH',
                             segments: wheelItem.segments || [],
                             durationMs: wheelItem.durationMs || 6500,
                             autoHideMs: wheelItem.autoHideMs || 7000,
+                            presentation: buildChallengeWheelPresentation(wheelItem, wheelItem),
                             isActive: true
                         }
                     },
@@ -302,7 +343,15 @@ router.put('/challenge-wheels/:id', authMiddleware, async (req, res) => {
         if (req.body.durationMs !== undefined) wheel.durationMs = Math.min(30000, Math.max(1500, Number(req.body.durationMs) || 6500));
         if (req.body.autoHideMs !== undefined) wheel.autoHideMs = Math.min(60000, Math.max(0, Number(req.body.autoHideMs) || 7000));
         if (req.body.noRepeat !== undefined) wheel.noRepeat = Boolean(req.body.noRepeat);
-        if (req.body.presentation && typeof req.body.presentation === 'object') wheel.presentation = req.body.presentation;
+        if (req.body.presentation && typeof req.body.presentation === 'object') {
+            // Keep the exported render snapshot written by the normal layout
+            // save. The dedicated wheel button updates presentation fields but
+            // must not make the wheel dependent on the currently active menu.
+            wheel.presentation = {
+                ...(wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {}),
+                ...req.body.presentation
+            };
+        }
         await wheel.save();
 
         // When the owner/admin edits the wheel that originated from a
@@ -425,16 +474,18 @@ router.post('/map-gift', authMiddleware, async (req, res) => {
         const isAdmin = user.isAdmin === true;
         const entitlements = getEntitlements(user);
         const maxMappings = entitlements.mappings;
+        const automationViolation = validateMappingAutomation(req.body || {}, entitlements);
+        if (!isAdmin && automationViolation) return res.status(403).json(automationViolation);
 
         const currentCount = await GiftMapping.countDocuments({ userId });
-        
+
         let existing = null;
         if (id) {
             existing = await GiftMapping.findOne(ownedResourceFilter(id, userId));
             if (!existing) return res.status(404).json({ success: false, error: 'Mapping not found' });
         } else {
-            existing = await GiftMapping.findOne({ 
-                userId, 
+            existing = await GiftMapping.findOne({
+                userId,
                 giftId,
                 minQuantity: minQuantity !== undefined ? Number(minQuantity) : 1,
                 maxQuantity: (maxQuantity !== undefined && maxQuantity !== '' && maxQuantity !== null) ? Number(maxQuantity) : null,
@@ -1027,9 +1078,6 @@ router.get('/gift-menu-layout', authMiddleware, async (req, res) => {
                 await layout.save();
             }
         }
-        if (layout) {
-            fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
-        }
         res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -1053,8 +1101,6 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             );
             if (!renamedLayout) return res.status(404).json({ success: false, error: 'Layout not found' });
             if (renamedLayout.isActive) {
-                fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(renamedLayout, null, 2), 'utf8');
-                
                 // Sync rename with Goal Board layout
                 const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
                 const goalBoardLayout = {
@@ -1100,8 +1146,10 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             }
         }
 
-        const designerViolation = validateDesignerItems(payload.items, entitlements) ||
-            validateDesignerItems(payload.exportedItems, entitlements);
+        const designerViolation = payload.draftOnly === true
+            ? null
+            : (validateDesignerItems(payload.items, entitlements) ||
+                validateDesignerItems(payload.exportedItems, entitlements));
         if (designerViolation) return res.status(403).json(designerViolation);
         if (!layout) {
             if (Number.isFinite(entitlements.layouts)) {
@@ -1148,29 +1196,50 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             );
             if (!layout) return res.status(404).json({ success: false, error: 'Layout not found' });
         }
-        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
-
         // Keep the mapped wheel record in sync with normal Designer saves.
         // Previously only the dedicated "Lưu cấu hình vòng quay" button
         // updated ChallengeWheel, so a user could edit the segment labels,
         // press the regular Save button, and still test the old published
         // segments from Gift Mapping.
         const wheelItemsToSync = (layout.items || []).filter((entry) => entry?.type === 'challenge-wheel');
+        let layoutWheelLinksChanged = false;
         for (const item of wheelItemsToSync) {
-            const wheelId = item.challengeWheelId || item.wheelId;
+            let wheelId = item.challengeWheelId || item.wheelId;
+            if (!isValidResourceId(wheelId) && layout.parentTemplateId) {
+                const linkedWheel = await ChallengeWheel.findOne({
+                    userId: req.userId,
+                    sourceTemplateId: layout.parentTemplateId,
+                    isActive: true
+                }).select('_id').lean();
+                wheelId = linkedWheel?._id;
+            }
             if (!isValidResourceId(wheelId) || !Array.isArray(item.segments) || item.segments.length < 2) continue;
-            await ChallengeWheel.findOneAndUpdate(
+            const exportedItem = (layout.exportedItems || []).find((entry) =>
+                entry?.type === 'challenge-wheel' && String(entry.id || '') === String(item.id || '')
+            ) || item;
+            const updatedWheel = await ChallengeWheel.findOneAndUpdate(
                 { _id: wheelId, userId: req.userId },
                 {
                     $set: {
                         title: String(item.title || '').trim() || undefined,
                         segments: item.segments,
                         durationMs: Math.min(30000, Math.max(1500, Number(item.durationMs) || 6500)),
-                        autoHideMs: Math.min(60000, Math.max(0, Number(item.autoHideMs) || 7000))
+                        autoHideMs: Math.min(60000, Math.max(0, Number(item.autoHideMs) || 7000)),
+                        presentation: buildChallengeWheelPresentation(item, exportedItem)
                     }
                 },
-                { new: false }
+                { new: true }
             );
+            if (!updatedWheel) continue;
+            const linkedWheelId = String(updatedWheel._id);
+            item.challengeWheelId = linkedWheelId;
+            if (exportedItem && exportedItem !== item) exportedItem.challengeWheelId = linkedWheelId;
+            layoutWheelLinksChanged = true;
+        }
+        if (layoutWheelLinksChanged) {
+            layout.markModified('items');
+            layout.markModified('exportedItems');
+            await layout.save();
         }
 
         // Sync with Goal Board layout
@@ -1227,7 +1296,6 @@ router.post('/gift-menu-layout/create', authMiddleware, async (req, res) => {
             isActive: true
         });
         await layout.save();
-        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
         res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -1247,7 +1315,6 @@ router.put('/gift-menu-layout/:layoutId/activate', authMiddleware, async (req, r
         await GiftMenuLayout.updateMany({ userId: req.userId, isTemplate: false }, { isActive: false });
         ownedLayout.isActive = true;
         const layout = await ownedLayout.save();
-        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
         res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -1269,9 +1336,6 @@ router.delete('/gift-menu-layout/:layoutId', authMiddleware, async (req, res) =>
             if (nextLayout) {
                 nextLayout.isActive = true;
                 await nextLayout.save();
-                fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(nextLayout, null, 2), 'utf8');
-            } else {
-                if (fs.existsSync(giftMenuLayoutPath)) fs.unlinkSync(giftMenuLayoutPath);
             }
         }
         res.json({ success: true });
@@ -1351,7 +1415,7 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
         if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
-        
+
         const price = Number(template.price) || 0;
         let hasPurchased = false;
         const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
@@ -1443,16 +1507,39 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
             { userId: req.userId, isTemplate: false, _id: { $ne: activeLayout._id } },
             { $set: { isActive: false } }
         );
-        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(activeLayout, null, 2), 'utf8');
         let challengeWheel = null;
         if (template.productType === 'challenge-wheel') {
             const wheelItem = (activeLayout.items || []).find((item) => item && item.type === 'challenge-wheel');
             if (wheelItem) {
-                challengeWheel = await ChallengeWheel.findOneAndUpdate(
-                    { userId: req.userId, sourceTemplateId: template._id },
-                    { $set: { name: template.name, title: wheelItem.title || 'VÒNG QUAY THỬ THÁCH', segments: wheelItem.segments || [], durationMs: wheelItem.durationMs || 6500, autoHideMs: wheelItem.autoHideMs || 7000, isActive: true } },
-                    { new: true, upsert: true, setDefaultsOnInsert: true }
-                );
+                const exportedWheelItem = (activeLayout.exportedItems || []).find((item) =>
+                    item?.type === 'challenge-wheel' && String(item.id || '') === String(wheelItem.id || '')
+                ) || wheelItem;
+                challengeWheel = await ChallengeWheel.findOne({
+                    userId: req.userId,
+                    sourceTemplateId: template._id
+                });
+                if (!challengeWheel) {
+                    challengeWheel = await ChallengeWheel.create({
+                        userId: req.userId,
+                        sourceTemplateId: template._id,
+                        name: template.name,
+                        title: wheelItem.title || 'VÒNG QUAY THỬ THÁCH',
+                        segments: wheelItem.segments || [],
+                        durationMs: wheelItem.durationMs || 6500,
+                        autoHideMs: wheelItem.autoHideMs || 7000,
+                        presentation: buildChallengeWheelPresentation(wheelItem, exportedWheelItem),
+                        isActive: true
+                    });
+                }
+                const challengeWheelId = String(challengeWheel._id);
+                const attachWheelId = (entry) => entry?.type === 'challenge-wheel'
+                    ? { ...entry, challengeWheelId }
+                    : entry;
+                activeLayout.items = (activeLayout.items || []).map(attachWheelId);
+                activeLayout.exportedItems = (activeLayout.exportedItems || []).map(attachWheelId);
+                activeLayout.markModified('items');
+                activeLayout.markModified('exportedItems');
+                await activeLayout.save();
             }
         }
         return res.json({ success: true, layout: activeLayout, challengeWheel, reused: Boolean(linkedLayout) });
@@ -1476,7 +1563,6 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
                 { $set: { isActive: true, parentTemplateId: template._id } },
                 { new: true }
             );
-            fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(activeLayout, null, 2), 'utf8');
             return res.json({ success: true, layout: activeLayout, reused: true });
         }
 
@@ -1508,7 +1594,6 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
             parentTemplateId: template._id
         });
         await layout.save();
-        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
         res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
@@ -1618,13 +1703,16 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
         const assetCount = fs.existsSync(userDir)
             ? fs.readdirSync(userDir, { withFileTypes: true }).filter(entry => entry.isFile()).length
             : 0;
-        const allowedAssets = entitlements.menuAssets === 0 ? 5 : entitlements.menuAssets;
-        if (Number.isFinite(allowedAssets) && assetCount >= allowedAssets) {
+        const allowedAssets = entitlements.menuAssets;
+        // Multer has already written the current upload into userDir, so the
+        // count includes this request's file. Allow exactly the advertised
+        // limit and reject only when the newly written file exceeds it.
+        if (Number.isFinite(allowedAssets) && assetCount > allowedAssets) {
             if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
             return res.status(403).json(upgradePayload(
                 'menuAssets',
                 entitlements.menuAssets === 0
-                    ? 'Bạn đã đạt giới hạn 5 tài nguyên thử nghiệm của tài khoản Free. Vui lòng nâng cấp Basic để lưu và sử dụng!'
+                    ? 'Gói Free chưa hỗ trợ tải tài nguyên riêng. Nâng cấp Basic để tải và sử dụng ảnh/video trong menu.'
                     : `Bạn đã dùng hết ${entitlements.menuAssets} tài nguyên menu của gói ${entitlements.label}.`,
                 entitlements
             ));
@@ -1633,13 +1721,13 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
         const ext = path.extname(req.file.filename).toLowerCase();
         const detectedExt = detectGoalAssetType(req.file.path);
         if (!detectedExt || detectedExt !== ext) {
-            try { fs.unlinkSync(req.file.path); } catch (_e) {}
+            try { fs.unlinkSync(req.file.path); } catch (_e) { }
             return res.status(400).json({ success: false, error: 'File không đúng định dạng PNG, GIF hoặc WebM' });
         }
         const optimization = await optimizeGoalAsset(req.file.path, ext);
         const maxFinalSize = { '.png': 8 * 1024 * 1024, '.gif': 12 * 1024 * 1024, '.webm': 20 * 1024 * 1024 }[ext];
         if (optimization.finalSize > maxFinalSize) {
-            try { fs.unlinkSync(req.file.path); } catch (_e) {}
+            try { fs.unlinkSync(req.file.path); } catch (_e) { }
             return res.status(413).json({ success: false, error: 'File vẫn quá nặng sau tối ưu. Vui lòng giảm độ phân giải hoặc thời lượng.' });
         }
         let publicUrl = `/uploads/goal-assets/${req.userId}/${req.file.filename}`;
@@ -1665,7 +1753,7 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
         });
     } catch (error) {
         if (req.file?.path && fs.existsSync(req.file.path)) {
-            try { fs.unlinkSync(req.file.path); } catch (_e) {}
+            try { fs.unlinkSync(req.file.path); } catch (_e) { }
         }
         res.status(500).json({ success: false, error: error.message });
     }

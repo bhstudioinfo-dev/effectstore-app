@@ -50,9 +50,10 @@ async function resolveWheelPresentation(userId, wheel) {
         // Designer canvas size). Reject that stale form when a canvas-size
         // fallback is available, so existing wheels migrate automatically.
         const isDimension = key === 'boardWidth' || key === 'boardHeight';
-        if (Number.isFinite(value) && (allowZero ? value >= 0 : value > 0)
-            && (!isDimension || !Number.isFinite(backup) || backup <= 0 || (value >= backup * 0.75 && value <= backup * 1.5))) return value;
-        return Number.isFinite(backup) && (allowZero ? backup >= 0 : backup > 0) ? backup : 0;
+        const isExportLogical = saved.coordinateSpace === 'export-logical-v1';
+        if (Number.isFinite(value) && (allowZero || value > 0)
+            && (!isDimension || isExportLogical || !Number.isFinite(backup) || backup <= 0 || (value >= backup * 0.75 && value <= backup * 1.5))) return value;
+        return Number.isFinite(backup) && (allowZero || backup > 0) ? backup : 0;
     };
     return {
         ...saved,
@@ -81,9 +82,10 @@ async function resolveWheelConfig(userId, wheel) {
         const value = Number(saved[key]);
         const backup = Number(fallback);
         const isDimension = key === 'boardWidth' || key === 'boardHeight';
-        if (Number.isFinite(value) && (allowZero ? value >= 0 : value > 0)
-            && (!isDimension || !Number.isFinite(backup) || backup <= 0 || (value >= backup * 0.75 && value <= backup * 1.5))) return value;
-        return Number.isFinite(backup) && (allowZero ? backup >= 0 : backup > 0) ? backup : 0;
+        const isExportLogical = saved.coordinateSpace === 'export-logical-v1';
+        if (Number.isFinite(value) && (allowZero || value > 0)
+            && (!isDimension || isExportLogical || !Number.isFinite(backup) || backup <= 0 || (value >= backup * 0.75 && value <= backup * 1.5))) return value;
+        return Number.isFinite(backup) && (allowZero || backup > 0) ? backup : 0;
     };
     return {
         ...wheel,

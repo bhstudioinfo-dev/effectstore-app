@@ -15,6 +15,11 @@ class EffectQueue {
             }
             this.process();
         });
+        eventBus.on('effect_playback_started', (item) => {
+            this.recordUsage(item).catch((error) => {
+                console.warn('Unable to record effect usage:', error.message);
+            });
+        });
     }
 
     setBroadcastFn(fn) {
@@ -102,6 +107,26 @@ class EffectQueue {
             userId: input.userId || null,
             eventKey: String(input.eventKey || input.giftData?.eventId || input.giftData?.msgId || '').trim() || null
         };
+    }
+
+    async recordUsage(item) {
+        const userId = String(item?.userId || '').trim();
+        const effectId = String(item?.effectId || '').trim();
+        if (!userId || !effectId || !/^[a-f\d]{24}$/i.test(userId) || !/^[a-f\d]{24}$/i.test(effectId)) return;
+
+        const User = require('../models/User');
+        const Effect = require('../models/Effect');
+        const usedAt = new Date();
+        await Promise.all([
+            User.updateOne(
+                { _id: userId, 'purchasedEffects.effectId': effectId },
+                {
+                    $inc: { totalUses: 1, 'purchasedEffects.$.useCount': 1 },
+                    $set: { 'purchasedEffects.$.lastUsedAt': usedAt }
+                }
+            ),
+            Effect.updateOne({ _id: effectId }, { $inc: { uses: 1 } })
+        ]);
     }
 
     isDuplicateEvent(item) {

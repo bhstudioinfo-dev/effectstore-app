@@ -20,7 +20,7 @@ const WS_PORT = 8081;
 const appDataPath = app.getPath('userData');
 function getSecretCodec() {
     if (!safeStorage.isEncryptionAvailable()) {
-        throw new Error('Hệ điều hành chưa cung cấp kho mã hóa an toàn cho cấu hình EffectStore.');
+        throw new Error('Hệ điều hành chưa cung cấp kho mã hóa an toàn cho cấu hình LiveFlow.');
     }
     return {
         protect: (value) => safeStorage.encryptString(String(value)).toString('base64'),
@@ -42,7 +42,7 @@ function getManagedBackendOptions() {
                 cwd: options.cwd,
                 env: options.env,
                 stdio: 'pipe',
-                serviceName: 'EffectStore Backend'
+                serviceName: 'LiveFlow Backend'
             })
             : null
     };
@@ -177,7 +177,7 @@ async function createCustomEffectThumbnail(inputPath, outputPath) {
 }
 
 const effectStoreLauncher = new AutoLaunch({
-    name: 'EffectStore',
+    name: 'LiveFlow',
     path: app.getPath('exe')
 });
 
@@ -263,13 +263,13 @@ function createTray() {
         tray = new Tray(trayIcon);
         
         const contextMenu = Menu.buildFromTemplate([
-            { label: 'Mở EffectStore', click: () => mainWindow.show() },
+            { label: 'Mở LiveFlow', click: () => mainWindow.show() },
             { label: 'Trigger Effect', click: () => triggerLegacyPreviewEffect('eff-001') },
             { type: 'separator' },
             { label: 'Thoát', click: () => app.quit() }
         ]);
         
-        tray.setToolTip('EffectStore - TikTok Live Effects');
+        tray.setToolTip('LiveFlow - Livestream Effects');
         tray.setContextMenu(contextMenu);
         
         tray.on('click', () => {
@@ -401,7 +401,7 @@ function showNotification(title, body) {
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) {
-    writeMainProcessError('singleInstanceLock', 'Lock was not acquired; another EffectStore instance may already be running.');
+    writeMainProcessError('singleInstanceLock', 'Lock was not acquired; another LiveFlow instance may already be running.');
     app.quit();
 } else {
     app.on('second-instance', () => {
@@ -418,7 +418,7 @@ app.whenReady().then(async () => {
         backendProcess = backend.process;
         await waitForDatabaseConnection(5000);
     } catch (error) {
-        dialog.showErrorBox('Không thể khởi động EffectStore Backend', error.message);
+        dialog.showErrorBox('Không thể khởi động LiveFlow Backend', error.message);
     }
     createWindow();
 });

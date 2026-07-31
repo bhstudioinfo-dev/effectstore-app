@@ -12,6 +12,7 @@ node_modules/
 
 # Backups and temporary files
 backups/
+scratch/
 _refactor_backup/
 *.bak
 *.tmp

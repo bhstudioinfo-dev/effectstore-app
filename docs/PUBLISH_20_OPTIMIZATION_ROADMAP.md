@@ -55,6 +55,8 @@ Mục tiêu: sau khi hệ thống mới chạy ổn định, loại bỏ đườ
 
 Chỉ thực hiện khi Giai đoạn A đã kiểm tra thật thành công.
 
+Trạng thái ngày 23/07/2026: **TẠM HOÃN THEO YÊU CẦU CỦA CHỦ DỰ ÁN**. Sẽ quay lại sau khi có điều kiện kiểm tra TikTok Live và OBS thật. Không được hiểu trạng thái tạm hoãn là đã hoàn thành Giai đoạn B.
+
 Không xóa code cũ trước khi:
 
 - Quà thật chạy ổn định.
@@ -72,6 +74,50 @@ Mục tiêu:
 - Có phiên bản sản phẩm và kiểm tra file.
 
 Đây là giai đoạn lớn và rủi ro cao. Phải làm trước trên môi trường thử nghiệm.
+
+### Giai đoạn C1 — Thiết kế hệ thống online tiết kiệm cho 10–20 khách đầu tiên
+
+Trạng thái: **ĐÃ LẬP KẾ HOẠCH — CHƯA TRIỂN KHAI**.
+
+Mục tiêu tài chính ban đầu: ưu tiên mức 0 USD/tháng trong thời gian thử nghiệm kín, chỉ nâng cấp khi bắt đầu bán thật hoặc dịch vụ miễn phí không còn đáp ứng.
+
+Kiến trúc dự kiến:
+
+- Ứng dụng trên máy khách tiếp tục kết nối TikTok Live, điều khiển OBS, quản lý hàng chờ và phát hiệu ứng.
+- Máy chủ online chỉ quản lý đăng nhập, sản phẩm, đơn hàng, gói sử dụng và quyền sở hữu hiệu ứng.
+- Hiệu ứng đã mua được tải có kiểm soát về máy khách và phát tại máy, không truyền video từ máy chủ cho mỗi món quà.
+- Hiệu ứng cá nhân và dữ liệu thiết kế riêng tiếp tục nằm trên máy khách trong giai đoạn đầu.
+
+Dịch vụ dự kiến cho giai đoạn thử nghiệm:
+
+- Koyeb Free: chạy máy chủ cửa hàng online.
+- MongoDB Atlas M0: lưu tài khoản, sản phẩm, đơn hàng và quyền sử dụng.
+- Cloudflare R2 Standard: lưu file hiệu ứng, video xem thử và ảnh sản phẩm.
+- Dùng địa chỉ miễn phí của Koyeb trước, chưa mua tên miền.
+
+Các bước thực hiện:
+
+1. Tách rõ chức năng online và chức năng phải chạy trên máy khách.
+2. Thiết kế dữ liệu tài khoản, sản phẩm, đơn hàng, quyền sở hữu, gói sử dụng và thiết bị.
+3. Thiết kế kho file riêng tư và đường tải có thời hạn cho người đã có quyền.
+4. Tạo máy chủ thử nghiệm và lưu bí mật bên ngoài mã nguồn.
+5. Kết nối ứng dụng Windows với máy chủ online nhưng vẫn giữ khả năng phát file cục bộ.
+6. Kiểm tra bằng ít nhất hai máy tính và nhiều tài khoản khác nhau.
+7. Thiết lập giới hạn chi phí, theo dõi dung lượng và phương án sao lưu.
+
+Điều kiện nâng cấp:
+
+- Khi bắt đầu thu tiền thật, ưu tiên chuyển máy chủ sang vùng Singapore.
+- Có thể bắt đầu bằng Koyeb eco-micro, sau đó tăng cấu hình nếu cần.
+- Chỉ nâng MongoDB hoặc Cloudflare R2 khi số liệu sử dụng thực tế vượt mức miễn phí.
+
+Điều kiện hoàn thành C1:
+
+- Có sơ đồ phân chia máy khách/máy chủ được chốt.
+- Có danh sách dữ liệu và API online cần xây dựng.
+- Có dự toán chi phí theo ba mức: thử nghiệm, 20 khách và mở rộng.
+- Có kế hoạch sao lưu, bảo mật bí mật và quay lại phiên bản cũ.
+- Chưa triển khai dịch vụ trả phí nếu chủ dự án chưa đồng ý.
 
 ## Giai đoạn D — Hoàn thiện giới hạn các gói
 

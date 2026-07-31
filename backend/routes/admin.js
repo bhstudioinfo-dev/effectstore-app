@@ -70,13 +70,13 @@ router.get('/dashboard', authMiddleware, adminMiddleware, async (req, res) => {
             Payment.find().sort({ createdAt: -1 }).limit(10).lean()
         ]);
 
-        res.json({ 
-            success: true, 
-            stats: { 
-                totalEffects, 
-                totalUsers, 
-                totalRevenue: totalRevenue[0]?.total || 0, 
-                pendingPayments 
+        res.json({
+            success: true,
+            stats: {
+                totalEffects,
+                totalUsers,
+                totalRevenue: totalRevenue[0]?.total || 0,
+                pendingPayments
             },
             recentPayments
         });
@@ -100,6 +100,57 @@ router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
         const users = await User.find().sort({ createdAt: -1 }).lean();
         res.json({ success: true, users });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.get('/effect-acquisitions', authMiddleware, adminMiddleware, async (_req, res) => {
+    try {
+        const users = await User.find({ isAdmin: { $ne: true } })
+            .select('name email phone subscription purchasedEffects')
+            .populate('purchasedEffects.effectId', 'name category icon price')
+            .lean();
+
+        const records = [];
+        for (const user of users) {
+            for (const purchase of user.purchasedEffects || []) {
+                if (!purchase.effectId) continue;
+                records.push({
+                    user: {
+                        id: String(user._id),
+                        name: user.name || 'Chưa đặt tên',
+                        email: user.email,
+                        phone: user.phone || '',
+                        subscription: user.subscription || 'free'
+                    },
+                    effect: {
+                        id: String(purchase.effectId._id),
+                        name: purchase.effectId.name,
+                        icon: purchase.effectId.icon || '🎬',
+                        category: purchase.effectId.category
+                    },
+                    acquiredAt: purchase.purchasedAt,
+                    acquisitionType: purchase.acquisitionType || (Number(purchase.acquisitionPrice) === 0 ? 'free' : 'legacy'),
+                    acquisitionPrice: Number.isFinite(Number(purchase.acquisitionPrice))
+                        ? Number(purchase.acquisitionPrice)
+                        : null,
+                    useCount: Number(purchase.useCount || 0),
+                    lastUsedAt: purchase.lastUsedAt || null
+                });
+            }
+        }
+        records.sort((a, b) => new Date(b.acquiredAt || 0) - new Date(a.acquiredAt || 0));
+        return res.json({
+            success: true,
+            summary: {
+                totalAcquisitions: records.length,
+                freeAcquisitions: records.filter((record) => record.acquisitionType === 'free').length,
+                paidAcquisitions: records.filter((record) => record.acquisitionType === 'paid').length,
+                totalUses: records.reduce((sum, record) => sum + record.useCount, 0)
+            },
+            records
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 router.put('/users/:userId/subscription', authMiddleware, adminMiddleware, async (req, res) => {
@@ -240,7 +291,7 @@ router.post('/gift-icons/upload', authMiddleware, adminMiddleware, iconUpload.si
         const targetPath = path.join(iconsDir, targetName);
 
         fs.copyFileSync(req.file.path, targetPath);
-        try { fs.unlinkSync(req.file.path); } catch (e) {}
+        try { fs.unlinkSync(req.file.path); } catch (e) { }
 
         res.json({ success: true, icon: `/assets/gift-icons/${targetName}` });
     } catch (error) {
@@ -262,7 +313,7 @@ router.post('/gift-icons/add', authMiddleware, adminMiddleware, iconUpload.singl
         const fileName = `${safeGiftId}${path.extname(req.file.originalname || '.png')}`;
         const targetPath = path.join(iconsDir, fileName);
         fs.copyFileSync(req.file.path, targetPath);
-        try { fs.unlinkSync(req.file.path); } catch (e) {}
+        try { fs.unlinkSync(req.file.path); } catch (e) { }
 
         await GiftConfig.findOneAndUpdate(
             { giftId: safeGiftId },
@@ -287,7 +338,7 @@ router.delete('/gift-icons/:giftId', authMiddleware, adminMiddleware, async (req
             const base = path.parse(file).name.toLowerCase().replace(/[-_]/g, '_');
             if (base === safeGiftId || base === safeGiftId.replace(/_/g, ' ')) {
                 const filePath = path.join(iconsDir, file);
-                try { fs.unlinkSync(filePath); } catch (e) {}
+                try { fs.unlinkSync(filePath); } catch (e) { }
             }
         });
 

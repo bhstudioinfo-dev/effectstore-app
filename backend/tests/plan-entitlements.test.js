@@ -3,6 +3,7 @@ const {
     PLAN_ENTITLEMENTS,
     getEntitlements,
     validateDesignerItems,
+    validateMappingAutomation,
     upgradePayload
 } = require('../config/planEntitlements');
 
@@ -35,12 +36,44 @@ assert.strictEqual(validateDesignerItems([
 assert.strictEqual(validateDesignerItems([{ type: 'media-asset', assetUrl: '/uploads/goal-assets/u/a.png' }], free).feature, 'menuAssets');
 assert.strictEqual(validateDesignerItems([{ type: 'gift', auraType: 'Glow' }], free).feature, 'menuAdvanced');
 assert.strictEqual(validateDesignerItems([{ type: 'gift', textColor: '#00ff00' }], free).feature, 'menuAdvanced');
-assert.strictEqual(validateDesignerItems([{ type: 'goal-circle' }], free).feature, 'templates');
+assert.strictEqual(validateDesignerItems([{ type: 'goal-circle' }], free), null);
+assert.strictEqual(validateDesignerItems([{
+    type: 'goal-circle',
+    useCustomBg: true,
+    useCustomTextColor: true,
+    progressShape: 'star',
+    progressEffect: 'rainbow',
+    useBarGradient: true,
+    progressSize: 180,
+    goalIconSize: 90
+}], free), null);
+const advancedBoardTrial = validateDesignerItems([{ type: 'boss-bar' }], free);
+assert.strictEqual(advancedBoardTrial.feature, 'templates');
+assert.match(advancedBoardTrial.message, /Thanh đối kháng/);
+assert.match(advancedBoardTrial.message, /lưu và xuất/);
+assert.strictEqual(validateDesignerItems([{
+    type: 'talent-live',
+    talentCompetition: { participants: [{}, {}, {}] }
+}], free), null);
+assert.strictEqual(validateDesignerItems([{
+    type: 'talent-live',
+    talentCompetition: { participants: [{}, {}, {}, {}] }
+}], free).feature, 'talentParticipants');
+assert.strictEqual(validateDesignerItems([{
+    type: 'talent-live',
+    talentCompetition: { participants: [{}, {}, {}, {}] }
+}], basic), null);
 assert.strictEqual(validateDesignerItems([{ type: 'gift', animationType: 'Shake' }], basic).feature, 'menuAdvanced');
 assert.strictEqual(validateDesignerItems([{ type: 'gift', animationType: 'Pulse', auraType: 'Glow' }], basic), null);
-assert.strictEqual(validateDesignerItems([{ type: 'gift-stack-group', children: [] }], basic).feature, 'menuAdvanced');
+assert.strictEqual(validateDesignerItems([{ type: 'gift-stack-group', children: [] }], basic), null);
+assert.strictEqual(validateDesignerItems([{ type: 'gift-stack-group', children: [], locked: true }], basic).feature, 'menuAdvanced');
 assert.strictEqual(validateDesignerItems(Array.from({ length: 11 }, () => ({ type: 'goal-bar' })), basic).feature, 'goalTrackers');
 assert.strictEqual(validateDesignerItems([{ type: 'gift', animationType: 'Shake', auraType: 'Electric Aura' }], pro), null);
+assert.strictEqual(validateMappingAutomation({ effects: [{ effectId: 'a' }] }, free), null);
+assert.strictEqual(validateMappingAutomation({ effects: [{ effectId: 'a' }, { effectId: 'b' }] }, basic).feature, 'automationAdvanced');
+assert.strictEqual(validateMappingAutomation({ playbackMode: 'sequential' }, basic).recommendedPlan, 'business');
+assert.strictEqual(validateMappingAutomation({ cooldown: 5, cooldownAction: 'ignore' }, basic).feature, 'automationAdvanced');
+assert.strictEqual(validateMappingAutomation({ effects: [{ effectId: 'a' }, { effectId: 'b' }], cooldown: 5 }, pro), null);
 
 const tiktokService = require('../services/tiktokService');
 tiktokService.currentLiveUserId = 'free-user';

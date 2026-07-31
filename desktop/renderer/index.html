@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EffectStore - Premium TikTok Live Effects</title>
+    <title>LiveFlow - Premium Livestream Effects</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <!-- Thêm Font Awesome để có icon đẹp -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -315,6 +315,118 @@
             box-shadow: 0 8px 25px rgba(236, 72, 153, 0.6), 0 0 15px rgba(124, 58, 237, 0.4);
             filter: brightness(1.15);
         }
+        .sidebar-promo-card {
+            min-height: 155px;
+            margin-bottom: 16px;
+            padding: 15px 14px 13px;
+            text-align: left;
+            cursor: pointer;
+            isolation: isolate;
+            background:
+                radial-gradient(circle at 90% 8%, rgba(236,72,153,.20), transparent 38%),
+                linear-gradient(145deg, rgba(52,24,92,.94), rgba(21,19,48,.98));
+            border-color: rgba(192,132,252,.34);
+            animation: sidebarPromoBorder 5s ease-in-out infinite;
+        }
+        .sidebar-promo-card::before {
+            opacity: .65;
+            animation-duration: 6s;
+        }
+        .sidebar-promo-card:focus-visible {
+            outline: 2px solid #c084fc;
+            outline-offset: 3px;
+        }
+        .sidebar-promo-orb {
+            position: absolute;
+            z-index: -1;
+            width: 76px;
+            height: 76px;
+            right: -24px;
+            top: -30px;
+            border-radius: 50%;
+            background: rgba(236,72,153,.24);
+            filter: blur(18px);
+            animation: sidebarPromoOrb 5s ease-in-out infinite;
+        }
+        .sidebar-promo-topline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 7px;
+            margin-bottom: 7px;
+        }
+        .sidebar-promo-icon {
+            font-size: 18px;
+            filter: drop-shadow(0 0 8px rgba(251,191,36,.45));
+        }
+        .sidebar-promo-badge {
+            padding: 4px 9px;
+            border: 1px solid #fbbf24;
+            border-radius: 999px;
+            background: rgba(180,83,9,.78);
+            color: #fff4c2;
+            font-size: 10px;
+            line-height: 1;
+            font-weight: 900;
+            letter-spacing: .03em;
+            white-space: nowrap;
+            text-shadow: 0 1px 3px rgba(0,0,0,.82);
+            box-shadow: 0 0 10px rgba(251,191,36,.16);
+        }
+        .sidebar-promo-title {
+            margin: 0 0 4px;
+            color: #fff;
+            font-size: 17px;
+            line-height: 1.2;
+            font-weight: 900;
+            letter-spacing: -.01em;
+        }
+        .sidebar-promo-description {
+            min-height: 34px;
+            margin: 0 0 10px;
+            color: #e2e8f0;
+            font-size: 12px;
+            line-height: 1.42;
+            font-weight: 550;
+        }
+        .sidebar-promo-button {
+            padding: 10px 11px;
+            border-radius: 9px;
+            font-size: 12px;
+            letter-spacing: .035em;
+            box-shadow: 0 5px 16px rgba(236,72,153,.25);
+            animation: none;
+        }
+        .sidebar-promo-button span {
+            display: inline-block;
+            margin-left: 3px;
+            transition: transform .2s ease;
+        }
+        .sidebar-promo-card:hover .sidebar-promo-button span {
+            transform: translateX(3px);
+        }
+        .sidebar-promo-card[data-plan="admin"],
+        .sidebar-promo-card[data-plan="studio"] {
+            background:
+                radial-gradient(circle at 90% 8%, rgba(34,211,238,.18), transparent 38%),
+                linear-gradient(145deg, rgba(13,51,65,.96), rgba(12,24,42,.98));
+            border-color: rgba(34,211,238,.32);
+            animation: none;
+        }
+        .sidebar-promo-card[data-plan="admin"] .sidebar-promo-badge,
+        .sidebar-promo-card[data-plan="studio"] .sidebar-promo-badge {
+            border-color: rgba(34,211,238,.3);
+            background: rgba(34,211,238,.09);
+            color: #a5f3fc;
+        }
+        @keyframes sidebarPromoBorder {
+            0%,100% { box-shadow: 0 8px 24px rgba(0,0,0,.35), 0 0 0 rgba(168,85,247,0); }
+            50% { box-shadow: 0 10px 28px rgba(0,0,0,.4), 0 0 18px rgba(168,85,247,.16); }
+        }
+        @keyframes sidebarPromoOrb {
+            0%,100% { transform: scale(.9); opacity:.55; }
+            50% { transform: scale(1.12); opacity:.9; }
+        }
         @keyframes borderGlow {
             0%, 100% { border-color: rgba(124, 58, 237, 0.25); box-shadow: 0 0 15px rgba(124, 58, 237, 0.1), inset 0 0 15px rgba(124, 58, 237, 0.05); }
             50% { border-color: rgba(236, 72, 153, 0.5); box-shadow: 0 0 25px rgba(236, 72, 153, 0.25), inset 0 0 25px rgba(236, 72, 153, 0.08); }
@@ -373,12 +485,12 @@
     <div id="database-setup-modal" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
         <div style="width:min(560px,100%);background:#111827;border:1px solid #374151;border-radius:20px;padding:28px;color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.55);">
             <h2 style="margin:0 0 10px;">Thiết lập cơ sở dữ liệu</h2>
-            <p style="margin:0 0 18px;color:#cbd5e1;line-height:1.6;">EffectStore chưa kết nối được MongoDB. Hãy nhập URI MongoDB Atlas hoặc MongoDB server của bạn. URI sẽ được mã hóa bằng kho bảo mật của Windows.</p>
+            <p style="margin:0 0 18px;color:#cbd5e1;line-height:1.6;">LiveFlow chưa kết nối được MongoDB. Hãy nhập URI MongoDB Atlas hoặc MongoDB server của bạn. URI sẽ được mã hóa bằng kho bảo mật của Windows.</p>
             <label for="database-setup-uri" style="display:block;margin-bottom:8px;font-weight:700;">MongoDB URI</label>
             <input id="database-setup-uri" type="password" autocomplete="off" placeholder="mongodb+srv://user:password@cluster/effectstore" style="width:100%;box-sizing:border-box;padding:13px 14px;border-radius:10px;border:1px solid #4b5563;background:#030712;color:#fff;">
             <div id="database-setup-error" style="min-height:22px;margin-top:10px;color:#fca5a5;font-size:13px;"></div>
             <button id="database-setup-save" onclick="app.saveDatabaseSetup()" style="width:100%;padding:13px;border:0;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;cursor:pointer;">Lưu và kiểm tra kết nối</button>
-            <p style="margin:14px 0 0;color:#94a3b8;font-size:12px;line-height:1.5;">EffectStore không hiển thị lại URI đã lưu. Bạn có thể thay đổi URI bằng màn hình này khi database mất kết nối.</p>
+            <p style="margin:14px 0 0;color:#94a3b8;font-size:12px;line-height:1.5;">LiveFlow không hiển thị lại URI đã lưu. Bạn có thể thay đổi URI bằng màn hình này khi database mất kết nối.</p>
         </div>
     </div>
     <div id="admin-setup-modal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
@@ -399,8 +511,8 @@
     <div id="auth-modal" class="auth-modal-overlay show">
         <div class="auth-modal-content">
             <div class="auth-header">
-                <span class="auth-logo-icon">🎬</span>
-                <h2>EffectStore Premium</h2>
+                <img class="auth-logo-icon" src="assets/images/live-flow-app-icon.png" alt="LiveFlow">
+                <h2>LiveFlow Premium</h2>
                 <p>Đăng nhập để truy cập kho hiệu ứng TikTok Live</p>
             </div>
 
@@ -445,6 +557,30 @@
                     <label>🔑 Mật khẩu</label>
                     <input type="password" id="register-password" required minlength="8" maxlength="128" placeholder="Ít nhất 8 ký tự">
                 </div>
+                <div class="auth-form-group">
+                    <label>📱 Số điện thoại / Zalo</label>
+                    <input type="tel" id="register-phone" required maxlength="20" placeholder="Ví dụ: 0912345678">
+                </div>
+                <details class="auth-profile-details">
+                    <summary>Thêm thông tin để được hỗ trợ tốt hơn <span>Không bắt buộc</span></summary>
+                    <div class="auth-profile-details-body">
+                        <div class="auth-form-group"><label>🎵 TikTok username</label><input type="text" id="register-tiktok" maxlength="50" placeholder="@username"></div>
+                        <div class="auth-profile-grid">
+                            <div class="auth-form-group"><label>🎂 Ngày sinh</label><input type="date" id="register-birthday"></div>
+                            <div class="auth-form-group"><label>📍 Tỉnh/thành phố</label><input type="text" id="register-region" maxlength="80" placeholder="TP. Hồ Chí Minh"></div>
+                        </div>
+                        <div class="auth-profile-grid">
+                            <div class="auth-form-group"><label>Loại người dùng</label><select id="register-user-type"><option value="">Chọn loại</option><option value="streamer">Streamer cá nhân</option><option value="agency">Agency/Team livestream</option><option value="shop">Shop bán hàng</option><option value="studio">Studio</option></select></div>
+                            <div class="auth-form-group"><label>Nhu cầu chính</label><select id="register-primary-need"><option value="">Chọn nhu cầu</option><option value="gift-effects">Hiệu ứng quà tặng</option><option value="tts">TTS</option><option value="gift-menu">Bảng quà</option><option value="pk-game">PK/Mini game</option></select></div>
+                        </div>
+                        <div class="auth-profile-grid">
+                            <div class="auth-form-group"><label>Kênh hỗ trợ</label><select id="register-preferred-contact"><option value="zalo">Zalo</option><option value="phone">Điện thoại</option><option value="email">Email</option></select></div>
+                            <div class="auth-form-group"><label>Giờ thuận tiện</label><input type="text" id="register-contact-time" maxlength="80" placeholder="Ví dụ: 18:00–21:00"></div>
+                        </div>
+                    </div>
+                </details>
+                <label class="auth-consent-row"><input type="checkbox" id="register-terms" required><span>Tôi đồng ý với Điều khoản dịch vụ và Chính sách bảo mật.</span></label>
+                <label class="auth-consent-row"><input type="checkbox" id="register-marketing"><span>Tôi đồng ý nhận hướng dẫn và ưu đãi phù hợp. Có thể tắt bất cứ lúc nào.</span></label>
                 <button type="submit" class="auth-submit-btn">🚀 Đăng ký ngay</button>
                 <div class="auth-divider"><span>hoặc</span></div>
                 <button type="button" class="auth-btn-secondary" onclick="app.switchAuthTab('login')">← Quay lại đăng
@@ -458,8 +594,8 @@
 
     <!-- ===== 1. TOP NAVIGATION ===== -->
     <nav class="top-nav">
-        <div class="logo">
-            <i class="fas fa-film" style="margin-right: 8px; color: #a78bfa;"></i> EffectStore
+        <div class="logo" aria-label="Live Flow">
+            <img src="assets/images/live-flow-logo.png" alt="Live Flow">
         </div>
 
         <div class="search-bar">
@@ -506,11 +642,18 @@
                 </div>
             </div>
 
-            <div class="pro-card-premium" style="text-align: center; padding: 22px 14px; margin-bottom: 16px;">
-                <div class="cta-badge-text" style="font-size: 15px; margin-bottom: 2px;">🔥 TĂNG TƯƠNG TÁC</div>
-                <h4 style="font-size: 27px; font-weight: 900; color: #fff; margin: 0 0 10px 0; letter-spacing: 0.5px; background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: textGlowPulse 2.5s infinite ease-in-out;">LIVESTREAM</h4>
-                <div style="font-size: 11px; color: #94a3b8; line-height: 1.4; margin-bottom: 16px; font-weight: 500;">Nâng cấp để livestream chuyên nghiệp hơn</div>
-                <button class="premium-cta-btn" onclick="app.showPricing()">Xem các gói</button>
+            <div class="pro-card-premium sidebar-promo-card" id="sidebar-promo-card" role="button" tabindex="0"
+                onclick="app.handleSidebarPromo()"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.handleSidebarPromo();}">
+                <div class="sidebar-promo-orb"></div>
+                <div class="sidebar-promo-topline">
+                    <span class="sidebar-promo-icon" id="sidebar-promo-icon">✨</span>
+                    <span class="sidebar-promo-badge" id="sidebar-promo-badge">TỪ 6.600Đ/NGÀY</span>
+                </div>
+                <h4 class="sidebar-promo-title" id="sidebar-promo-title">Nâng tầm livestream</h4>
+                <p class="sidebar-promo-description" id="sidebar-promo-description">Mở thêm hiệu ứng, TTS và thiết kế chuyên nghiệp.</p>
+                <button class="premium-cta-btn sidebar-promo-button" id="sidebar-promo-button" type="button"
+                    onclick="event.stopPropagation();app.handleSidebarPromo()">XEM GÓI BASIC <span>→</span></button>
             </div>
 
             <!-- User Profile Card -->
@@ -565,7 +708,7 @@
                         <div style="font-size: 11px; opacity: 0.8; font-weight: 500;">Có <span id="admin-banner-pending-count">0</span> giao dịch đang chờ bạn xác nhận.</div>
                     </div>
                 </div>
-                <button onclick="switchView('admin')" style="background: #000; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;">Duyệt Ngay</button>
+                <button onclick="app.openPendingPaymentsModal()" style="background: #000; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;">Xem yêu cầu (<span id="admin-banner-pending-button-count">0</span>)</button>
             </div>
 
             <!-- ===== SYSTEM STATUS CARDS ===== -->
@@ -1003,6 +1146,38 @@
                     </div>
                     <div id="admin-users-list">
                         <!-- User Table -->
+                    </div>
+                </div>
+
+                <div class="admin-card-full"
+                    style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px; margin-top:24px;">
+                    <div class="card-header"
+                        style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;">
+                        <div>
+                            <h2 style="font-size:18px;margin:0;"><i class="fas fa-chart-line" style="color:#22d3ee;"></i> Khách hàng & hiệu ứng</h2>
+                            <p style="font-size:11px;color:var(--text-muted);margin:5px 0 0;">Theo dõi hiệu ứng miễn phí, trả phí và mức độ sử dụng.</p>
+                        </div>
+                        <button onclick="app.loadAdminEffectAcquisitions()"
+                            style="padding:8px 14px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);border-radius:8px;color:#67e8f9;cursor:pointer;">
+                            <i class="fas fa-sync-alt"></i> Làm mới
+                        </button>
+                    </div>
+                    <div id="admin-acquisition-summary"
+                        style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px;"></div>
+                    <div style="display:flex;gap:10px;margin-bottom:14px;">
+                        <input id="admin-acquisition-search" type="search" placeholder="Tìm tên, email, SĐT hoặc hiệu ứng..."
+                            oninput="app.renderAdminEffectAcquisitions()"
+                            style="flex:1;padding:10px 12px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#fff;">
+                        <select id="admin-acquisition-filter" onchange="app.renderAdminEffectAcquisitions()"
+                            style="padding:10px 12px;background:#111827;border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#fff;">
+                            <option value="all">Tất cả</option>
+                            <option value="free">Miễn phí</option>
+                            <option value="paid">Trả phí</option>
+                            <option value="legacy">Dữ liệu cũ</option>
+                        </select>
+                    </div>
+                    <div id="admin-acquisitions-list" style="overflow:auto;max-height:430px;">
+                        <div class="empty-state">Đang tải dữ liệu...</div>
                     </div>
                 </div>
             </div>
@@ -1560,17 +1735,19 @@
 
         <!-- RIGHT SIDEBAR -->
         <aside class="sidebar-right">
-            <div class="ranking-card">
-                <h3><i class="fas fa-fire" style="color: #ef4444;"></i> Hiệu ứng đang hot</h3>
+            <div class="ranking-card ranking-card-hot">
+                <div class="ranking-card-heading">
+                    <h3><span class="ranking-fire"><i class="fas fa-fire"></i></span> Hiệu ứng đang hot</h3>
+                    <span class="ranking-live-badge"><i></i> CẬP NHẬT</span>
+                </div>
                 <div class="ranking-list" id="trending-effects-list">
                     <div style="padding:20px;text-align:center;color:#6b7280;font-size:12px;">Đang tải...</div>
                 </div>
-                <div style="text-align: center; margin-top: 12px;"><a href="#"
-                        style="color: #a78bfa; font-size: 13px;">Xem bảng xếp hạng →</a></div>
+                <a class="ranking-explore-btn" href="#effects-grid">Khám phá hiệu ứng hot <span>→</span></a>
             </div>
 
             <div class="why-card">
-                <h3>Tại sao chọn EffectStore?</h3>
+                <h3>Tại sao chọn LiveFlow?</h3>
                 <div class="why-item"><i class="fas fa-check-circle"></i>
                     <div>
                         <h4>Dễ cài đặt</h4>
@@ -1662,6 +1839,11 @@
                     grid-template-columns: repeat(4, 1fr) !important;
                 }
             }
+            #pricing-modal .pricing-card { padding: 28px 20px; }
+            #pricing-modal .plan-header { margin-bottom: 18px; }
+            #pricing-modal .plan-features { gap: 10px; margin-bottom: 22px; }
+            #pricing-modal .plan-trust { min-height: 28px; margin-top: 9px; color: #94a3b8; font-size: 10px; line-height: 1.35; text-align: center; }
+            #pricing-modal .free-reassurance { color:#86efac; font-size:11px; font-weight:700; margin-top:8px; text-align:center; }
         </style>
         <div class="modal-content pricing-content"
             style="max-width: 1100px; padding: 40px; border-radius: 24px; background: rgba(11, 15, 26, 0.95); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.05); max-height: 90vh; overflow-y: auto; overflow-x: hidden;">
@@ -1673,9 +1855,9 @@
                 </div>
                 <h2
                     style="font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 10px; background: linear-gradient(to right, #fff, var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                    Chọn gói phù hợp</h2>
-                <p style="color: var(--text-secondary); font-size: 15px;">Effect đã mua = Sở hữu vĩnh viễn •
-                    Auto-connect OBS tự động</p>
+                    Chọn trải nghiệm phù hợp với bạn</h2>
+                <p style="color: var(--text-secondary); font-size: 15px;">Bạn luôn có thể tiếp tục dùng LiveFlow miễn phí. Nâng cấp khi cần thêm hiệu ứng và công cụ chuyên nghiệp.</p>
+                <p style="color:#86efac;font-size:11px;margin-top:8px;font-weight:700;">Không ép nâng cấp • Effect đã mua vẫn sở hữu vĩnh viễn • Kết nối OBS tự động</p>
             </div>
 
             <div class="pricing-grid">
@@ -1685,16 +1867,19 @@
                         <div style="background: #3b82f6; color: white; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">FREE</div>
                         <h3>Miễn phí</h3>
                         <div class="plan-price">0₫ <span>/tháng</span></div>
+                        <div class="free-reassurance">Dùng lâu dài, không giới hạn thời gian</div>
                     </div>
                     <div class="plan-features">
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 1 thiết bị</div>
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 5 hiệu ứng gắn quà</div>
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 5 hiệu ứng cá nhân</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Menu cơ bản: kéo thả, đổi chữ</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Bình luận & TTS dùng thử</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 1 bảng mục tiêu</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Thiết kế menu quà cơ bản</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 20 bình luận + 10 TTS mỗi phiên</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 1 bảng mục tiêu livestream</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Lưu 1 mẫu thiết kế</div>
                     </div>
-                    <button class="plan-btn" id="plan-btn-free">Gói hiện tại</button>
+                    <button class="plan-btn" id="plan-btn-free">TIẾP TỤC DÙNG MIỄN PHÍ</button>
+                    <div class="plan-trust">Không cần thanh toán • Nâng cấp bất cứ khi nào bạn cần</div>
                 </div>
 
                 <!-- Basic Plan -->
@@ -1707,19 +1892,20 @@
                             <del style="font-size: 14px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px;">250.000₫</del>
                             <div style="color: #fbbf24; font-size: 30px; font-weight: 900; text-shadow:0 0 18px rgba(251,191,36,.22);">199.000₫ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tháng</span></div>
                         </div>
-                        <div style="font-size: 11px; color: #fbbf24; margin-top: 8px; font-weight: 800;">Phù hợp với 90% streamer TikTok Live</div>
+                        <div style="font-size: 11px; color: #fbbf24; margin-top: 8px; font-weight: 800;">Dành cho streamer đang phát triển</div>
                     </div>
                     <div class="plan-features">
+                        <div class="feature" style="color:#fef3c7;font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;margin-right:8px;"></i> Bao gồm mọi tính năng Free</div>
                         <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 30 hiệu ứng gắn quà</div>
                         <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 100 hiệu ứng cá nhân</div>
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Menu quà tặng chuyên nghiệp</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hiệu ứng động đẹp mắt</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tải ảnh/video riêng vào menu</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 20 ảnh/video tải lên menu</div>
                         <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn bình luận</div>
                         <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn đọc tên/TTS</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 10 bảng mục tiêu livestream</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 10 thiết kế + 10 bảng mục tiêu</div>
                     </div>
-                    <button class="plan-btn active" id="plan-btn-pro" onclick="app.buySubscription('pro')" style="background:linear-gradient(135deg,#f59e0b,#f97316);box-shadow:0 10px 28px rgba(249,115,22,.3);">🚀 NÂNG CẤP BASIC</button>
+                    <button class="plan-btn active" id="plan-btn-pro" onclick="app.buySubscription('pro')" style="background:linear-gradient(135deg,#f59e0b,#f97316);box-shadow:0 10px 28px rgba(249,115,22,.3);">NÂNG CẤP BASIC</button>
+                    <div class="plan-trust">Chỉ khoảng 6.600đ/ngày • Không ảnh hưởng effect đã mua</div>
                 </div>
 
                 <!-- Pro Plan -->
@@ -1734,15 +1920,17 @@
                         </div>
                     </div>
                     <div class="plan-features">
+                        <div class="feature" style="color:#ddd6fe;font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;margin-right:8px;"></i> Bao gồm mọi tính năng Basic</div>
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn hiệu ứng</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn menu & layout</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tùy chỉnh menu nâng cao</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn thiết kế & tài nguyên</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Toàn bộ tùy chỉnh menu nâng cao</div>
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hiệu ứng chuyển động cao cấp</div>
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tự động hóa livestream nâng cao</div>
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Sử dụng trên 3 thiết bị</div>
                         <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hỗ trợ ưu tiên</div>
                     </div>
-                    <button class="plan-btn" id="plan-btn-business" onclick="app.buySubscription('business')">💎 NÂNG CẤP PRO</button>
+                    <button class="plan-btn" id="plan-btn-business" onclick="app.buySubscription('business')">NÂNG CẤP PRO</button>
+                    <div class="plan-trust">Cho streamer livestream thường xuyên và cần tự động hóa</div>
                 </div>
 
                 <!-- Studio Plan -->
@@ -1754,51 +1942,52 @@
                         <div style="color: #10b981; font-size: 28px; font-weight: 800; margin-top: 10px; height: 58px; display: flex; align-items: center; justify-content: center; gap: 4px;">Liên hệ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tùy chỉnh</span></div>
                     </div>
                     <div class="plan-features">
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn thiết bị</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Dành cho team vận hành</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hỗ trợ kỹ thuật riêng</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tùy chỉnh theo nhu cầu</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> API tích hợp riêng</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Giải pháp doanh nghiệp</div>
+                        <div class="feature" style="color:#a7f3d0;font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;margin-right:8px;"></i> Bao gồm mọi tính năng Pro</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Có thể triển khai nhiều tài khoản và thiết bị</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Có thể thiết lập vận hành cho team</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tư vấn đồng bộ thiết kế theo nhu cầu</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tích hợp API theo phạm vi thỏa thuận</div>
+                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hỗ trợ triển khai theo thỏa thuận</div>
                     </div>
-                    <button class="plan-btn" id="plan-btn-studio" onclick="app.openStudioContact();" style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white;">LIÊN HỆ NGAY</button>
+                    <button class="plan-btn" id="plan-btn-studio" onclick="app.openStudioContact();" style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white;">NHẬN TƯ VẤN</button>
+                    <div class="plan-trust">Trao đổi nhu cầu trước • Không cam kết mua</div>
                 </div>
+            </div>
+
+            <div style="margin-top:22px;padding:13px 18px;border-radius:14px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.18);text-align:center;color:#cbd5e1;font-size:12px;line-height:1.55;">
+                <strong style="color:#86efac;">Free để bắt đầu. Basic khi bạn muốn mở rộng.</strong>
+                Bạn không mất thiết kế hay effect đã mua khi chưa nâng cấp.
             </div>
 
             <div
                 style="margin-top: 40px; padding: 30px; background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(236, 72, 153, 0.05)); border-radius: 24px; border: 1px solid rgba(124, 58, 237, 0.2);">
                 <div
                     style="color: #fff; font-weight: 800; font-size: 18px; margin-bottom: 20px; text-align: center; letter-spacing: 1px;">
-                    💡 TẠI SAO 90% STREAMER CHỌN NÂNG CẤP?</div>
+                    💡 NÂNG CẤP KHI BẠN THẬT SỰ CẦN THÊM</div>
 
                 <div class="benefits-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
                     <div style="text-align: center;">
                         <div style="font-size: 24px; margin-bottom: 10px;">💰</div>
-                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Tăng Doanh Thu
+                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Tăng tương tác
                         </div>
-                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Kích thích donate
-                            nhờ hệ thống quà tặng thông minh.</p>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Bạn muốn quà tặng tạo phản hồi nổi bật và chuyên nghiệp hơn.</p>
                     </div>
                     <div style="text-align: center;">
                         <div style="font-size: 24px; margin-bottom: 10px;">⚡</div>
-                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Tiết Kiệm
-                            2h/Live</div>
-                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Tự động hóa hoàn
-                            toàn, kết nối OBS chỉ với 1-click.</p>
+                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Tiết kiệm thao tác</div>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Bạn cần tự động hóa nhiều hơn để tập trung vào nội dung livestream.</p>
                     </div>
                     <div style="text-align: center;">
                         <div style="font-size: 24px; margin-bottom: 10px;">🌟</div>
-                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Độc Quyền Trend
+                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Sáng tạo không giới hạn
                         </div>
-                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Cập nhật hiệu ứng
-                            mới nhất trước mọi đối thủ.</p>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Bạn cần thêm hiệu ứng, thiết kế và tài nguyên riêng cho kênh.</p>
                     </div>
                     <div style="text-align: center;">
                         <div style="font-size: 24px; margin-bottom: 10px;">🛡️</div>
-                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Hỗ Trợ VIP
+                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Hỗ trợ ưu tiên
                         </div>
-                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Đội ngũ kỹ thuật hỗ
-                            trợ riêng qua Zalo 24/7.</p>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Livestream là công việc và bạn cần được hỗ trợ nhanh khi có vấn đề.</p>
                     </div>
                 </div>
             </div>
@@ -2123,15 +2312,23 @@
                 </button>
             </div>
         </div>
-    <!-- Admin Alert Modal -->
-    <div id="admin-alert-modal" class="modal-new-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-        <div class="modal-new-content" style="background: #111827; border: 2px solid #ef4444; border-radius: 20px; padding: 30px; width: 450px; text-align: center; color: #fff; box-shadow: 0 10px 40px rgba(239, 68, 68, 0.5); animation: scaleUp 0.3s ease-out;">
-            <div style="font-size: 64px; margin-bottom: 20px; animation: bounceAlert 1s infinite alternate;">🚨</div>
-            <h2 style="color: #ef4444; margin-bottom: 12px; font-size: 24px; font-weight: 900; text-shadow: 0 0 10px rgba(239,68,68,0.5);">XÁC NHẬN CHUYỂN KHOẢN!</h2>
-            <p style="color: #d1d5db; font-size: 15px; line-height: 1.5; margin-bottom: 24px;">Hệ thống phát hiện có <b id="admin-modal-pending-count" style="color:#fbbf24; font-size: 18px;">0</b> giao dịch mua hàng hoặc gia hạn đang chờ xác nhận từ bạn.</p>
-            <div style="display: flex; gap: 12px; justify-content: center;">
-                <button onclick="document.getElementById('admin-alert-modal').style.display='none'" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 12px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; min-width: 120px;">Để sau</button>
-                <button onclick="document.getElementById('admin-alert-modal').style.display='none'; switchView('admin');" style="background: linear-gradient(135deg, #ef4444, #f59e0b); color: #fff; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); transition: all 0.2s; min-width: 140px;">Xử lý ngay</button>
+    </div>
+    <!-- Admin payment review queue -->
+    <div id="admin-alert-modal" class="modal-new-overlay" onclick="if(event.target===this) app.closePendingPaymentsModal()" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(10px);padding:24px;">
+        <div class="modal-new-content" style="background:#0b1220;border:1px solid rgba(251,191,36,.35);border-radius:20px;width:min(1120px,96vw);height:min(760px,90vh);color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.65);display:flex;flex-direction:column;overflow:hidden;animation:scaleUp .2s ease-out;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);">
+                <div>
+                    <h2 style="margin:0;font-size:20px;">Yêu cầu thanh toán <span id="admin-modal-pending-count" style="color:#fbbf24;">0</span></h2>
+                    <p style="margin:5px 0 0;color:#94a3b8;font-size:12px;">Xem và đối chiếu thông tin trước khi kích hoạt gói.</p>
+                </div>
+                <button onclick="app.closePendingPaymentsModal()" aria-label="Đóng" style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;cursor:pointer;font-size:18px;">×</button>
+            </div>
+            <div style="display:grid;grid-template-columns:minmax(290px,36%) 1fr;min-height:0;flex:1;">
+                <div style="border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;min-height:0;">
+                    <div style="padding:12px 14px;color:#94a3b8;font-size:11px;border-bottom:1px solid rgba(255,255,255,.06);">Đơn cũ nhất được xếp trước để tránh bỏ sót</div>
+                    <div id="admin-payment-review-list" style="padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px;"></div>
+                </div>
+                <div id="admin-payment-review-detail" style="padding:20px;overflow:auto;min-width:0;"></div>
             </div>
         </div>
     </div>

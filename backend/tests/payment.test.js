@@ -31,6 +31,7 @@ function middlewareNames(path, method) {
 }
 
 assert.ok(middlewareNames('/create-qr', 'post').includes('authMiddleware'));
+assert.ok(middlewareNames('/claim-free', 'post').includes('authMiddleware'));
 assert.ok(middlewareNames('/confirm', 'post').includes('authMiddleware'));
 assert.ok(middlewareNames('/status/:orderId', 'get').includes('authMiddleware'));
 assert.ok(middlewareNames('/admin/approve', 'post').includes('adminMiddleware'));
