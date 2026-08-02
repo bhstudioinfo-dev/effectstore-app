@@ -385,8 +385,8 @@
                                     </div>
                                     <div id="gmd-gift-list" class="gmd-gift-list" style="flex: 1; min-height: 0;"></div>
                                 </div>
-                                <div id="gmd-widgets-tab-content" style="display:none; flex: 1; flex-direction: column; min-height: 0; overflow-y: auto;">
-                                    <div class="gmd-template-grid" id="gmd-widgets-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                                <div id="gmd-widgets-tab-content" style="display:none; flex: 1; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden;">
+                                    <div id="gmd-widgets-list" style="display:flex; flex:1; min-height:0; min-width:0; width:100%; overflow:hidden;"></div>
                                 </div>
                                 <div id="gmd-assets-tab-content" style="display:none; flex: 1; flex-direction: column; min-height: 0; overflow-y: auto; gap: 8px;">
                                     <div class="gmd-asset-upload-row" style="display: flex; gap: 8px; margin-bottom: 8px; flex-shrink: 0;">
@@ -4297,7 +4297,7 @@
             const allTemplates = [...(this.customTemplates || []), ...standardTemplates];
 
             listEl.innerHTML = `
-                <div class="gmd-template-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: calc(100vh - 280px); overflow-y: auto;">
+                <div class="gmd-template-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;height:100%;min-width:0;min-height:0;max-height:none;overflow-x:hidden;overflow-y:auto;box-sizing:border-box;padding-right:4px;align-content:start;">
                     ${allTemplates.map(t => {
                 let previewHTML = '';
                 if (t.id === 'tmpl_pk_versus_bar') {
@@ -4439,7 +4439,7 @@
                 const tagIsPaid = requiresBasic || isPremium;
 
                 return `
-                            <div class="gmd-template-card" draggable="true" data-template-id="${t.id}" data-plan-locked="false" style="display:flex;flex-direction:column;gap:6px;padding:8px;background:rgba(255,255,255,.02);border:1px solid ${requiresBasic ? 'rgba(245,158,11,.35)' : 'rgba(255,255,255,.08)'};border-radius:8px;cursor:grab;position:relative;">
+                            <div class="gmd-template-card" draggable="true" data-template-id="${t.id}" data-plan-locked="false" style="display:flex;flex-direction:column;gap:6px;min-width:0;width:100%;box-sizing:border-box;padding:8px;background:rgba(255,255,255,.02);border:1px solid ${requiresBasic ? 'rgba(245,158,11,.35)' : 'rgba(255,255,255,.08)'};border-radius:8px;cursor:grab;position:relative;">
                                 ${requiresBasic ? '<span style="position:absolute;right:5px;top:5px;z-index:2;padding:2px 5px;border-radius:5px;background:rgba(15,23,42,.9);color:#fbbf24;font-size:8px;font-weight:900;">✨ DÙNG THỬ</span>' : ''}
                                 <div class="gmd-template-preview-box" style="width: 100%; height: 60px; background: rgba(0,0,0,0.35); border-radius: 6px; display: flex; align-items: center; justify-content: center; padding: 4px; box-sizing: border-box; overflow: hidden;">
                                     ${previewHTML}
@@ -5479,6 +5479,13 @@
                                     <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" data-goal-key="timerFontSize" value="${selected.timerFontSize || 24}"><span>px</span></div>
                                 </div>
                                 <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="10" max="48" data-goal-key="timerFontSize" value="${selected.timerFontSize || 24}">
+                            </div>
+                            <div class="gmd-field" style="margin-top: 6px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                                    <label style="margin: 0; font-size: 11px;">Cỡ chữ Đối kháng (VS)</label>
+                                    <div class="gmd-inline-input gmd-inline-input-single" style="max-width: 60px; margin: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(5,12,28,.4);"><input class="gmd-input gmd-input-compact" style="padding: 2px 4px !important; font-size: 11px; height: 18px;" type="number" min="10" max="80" data-goal-key="versusFontSize" value="${selected.versusFontSize || 38}"><span>px</span></div>
+                                </div>
+                                <input class="gmd-range" style="height: 4px; margin-top: 2px;" type="range" min="10" max="80" data-goal-key="versusFontSize" value="${selected.versusFontSize || 38}">
                             </div>
                             <div class="gmd-field" style="margin-top: 6px;">
                                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
@@ -6965,7 +6972,7 @@
                 return;
             }
 
-            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'backgroundOpacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'contributorAvatarSize', 'iconSize', 'progressSize', 'goalIconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'giftTextGap', 'labelGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerOffsetY', 'pkBarOffsetY', 'bgColorGradientAngle'].includes(key)) {
+            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'backgroundOpacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'contributorAvatarSize', 'iconSize', 'progressSize', 'goalIconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'giftTextGap', 'labelGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerOffsetY', 'pkBarOffsetY', 'versusFontSize', 'bgColorGradientAngle'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
                     const previousW = Math.max(1, Number(item.w) || Number(item.width) || 1);
@@ -7882,6 +7889,7 @@
                             fontSize: 30,
                             scoreFontSize: 36,
                             timerFontSize: 24,
+                            versusFontSize: 38,
                             barHeight: 32,
                             pkNameColorMode: 'white',
                             pkScoreColorMode: 'white',
@@ -8118,9 +8126,32 @@
                     : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
                 const sx = exportSize.width / safeSize.width;
                 const sy = exportSize.height / safeSize.height;
-                const exportedItems = this.items.map((i) => {
+                // A template published while a widget still has test/simulated
+                // data (from "Giả lập" preview buttons) must not bake that demo
+                // state into the product buyers receive. Restore real values the
+                // same way the regular Save flow already does before saving.
+                const cleanRuntimeItem = (item) => {
+                    const cleanItem = JSON.parse(JSON.stringify(item));
+                    if (cleanItem._originalCurrentCount !== undefined) cleanItem.currentCount = cleanItem._originalCurrentCount;
+                    if (cleanItem._originalContributors !== undefined) cleanItem.contributors = cleanItem._originalContributors;
+                    if (cleanItem._originalComboCount !== undefined) cleanItem.comboCount = cleanItem._originalComboCount;
+                    if (Array.isArray(cleanItem.goals)) {
+                        cleanItem.goals = cleanItem.goals.map((goal) => {
+                            if (goal._originalCurrent !== undefined) goal.current = goal._originalCurrent;
+                            delete goal._originalCurrent;
+                            return goal;
+                        });
+                    }
+                    delete cleanItem._originalCurrentCount;
+                    delete cleanItem._originalContributors;
+                    delete cleanItem._originalComboCount;
+                    return cleanItem;
+                };
+                const cleanItems = this.items.map(cleanRuntimeItem);
+                const exportedItems = cleanItems.map((cleanItem, index) => {
+                    const i = this.items[index];
                     const itemExport = {
-                        ...i,
+                        ...cleanItem,
                         x: Math.round((i.x - safeOffset.x) * sx),
                         y: Math.round((i.y - safeOffset.y) * sy),
                         width: Math.round(i.width * sx),
@@ -8145,13 +8176,13 @@
                         itemExport.padding = Number(i.padding !== undefined ? i.padding : 8) * avgScale;
                         itemExport.loopEnabled = Boolean(i.loopEnabled);
                     }
-                    if (i.type === 'goal-list' && Array.isArray(i.goals)) {
+                    if (i.type === 'goal-list' && Array.isArray(cleanItem.goals)) {
                         const avgScale = (sx + sy) / 2;
-                        itemExport.goalListContentScale = (Number(i.goalListContentScale)
-                            || Number(i.unlockedContentScale)
-                            || Number(i.lockedContentScale)
+                        itemExport.goalListContentScale = (Number(cleanItem.goalListContentScale)
+                            || Number(cleanItem.unlockedContentScale)
+                            || Number(cleanItem.lockedContentScale)
                             || 1) * avgScale;
-                        itemExport.goals = i.goals.map((goal) => ({
+                        itemExport.goals = cleanItem.goals.map((goal) => ({
                             ...goal,
                             iconTextSize: Number(goal.iconTextSize || 16) * avgScale
                         }));
@@ -8171,7 +8202,7 @@
                     canvasSize: liveCanvasSize,
                     safeArea: { ...safeSize, ...safeOffset },
                     exportSize,
-                    items: this.items.map((i) => ({ ...i })),
+                    items: cleanItems,
                     exportedItems
                 };
 

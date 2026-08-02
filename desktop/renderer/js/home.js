@@ -999,10 +999,11 @@ class EffectStoreApp {
         this.showNotification('warning', 'Vui lòng tắt mở lại app để kích hoạt upload hiệu ứng cá nhân.');
     }
 
-    openPersonalEffectUpload() {
+    openPersonalEffectUpload(assignToControlDeck = false) {
+        this.pendingPersonalEffectDeckIndex = assignToControlDeck ? this.pendingControlDeckIndex : null;
         this.pendingPersonalEffectFiles = null;
         this.showModal('Tải hiệu ứng cá nhân', `<div style="display:grid;gap:14px;color:#cbd5e1;">
-            <div style="padding:12px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);font-size:12px;line-height:1.6;"><b style="color:#93c5fd;">ℹ️ Lưu ý về hiệu ứng cá nhân</b><br>File được lưu trực tiếp trên máy tính này và không tải lên máy chủ BH Studio.<br>• Chỉ nhận video MP4, MOV, AVI hoặc WebM dưới 500MB.<br>• File trên 200MB có thể mất vài phút để tối ưu, nên làm trước khi livestream.<br>• App sẽ tối ưu thành WebM VP9 dọc 9:16, tối đa 15 giây để chạy mượt hơn.<br>• App không tự xóa nền; nền trong suốt chỉ có nếu video gốc có alpha.<br>• Đổi máy hoặc cài lại ứng dụng sẽ không tự khôi phục.</div>
+            <div style="padding:12px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);font-size:12px;line-height:1.6;"><b style="color:#93c5fd;">ℹ️ Lưu ý về hiệu ứng cá nhân</b><br>File được lưu trực tiếp trên máy tính này và không tải lên máy chủ LiveFlow.<br>• Chỉ nhận video MP4, MOV, AVI hoặc WebM dưới 500MB.<br>• File trên 200MB có thể mất vài phút để tối ưu, nên làm trước khi livestream.<br>• App sẽ tối ưu thành WebM VP9 dọc 9:16, tối đa 15 giây để chạy mượt hơn.<br>• App không tự xóa nền; nền trong suốt chỉ có nếu video gốc có alpha.<br>• Đổi máy hoặc cài lại ứng dụng sẽ không tự khôi phục.</div>
             <label style="display:grid;gap:6px;font-size:12px;">Tên hiệu ứng<input id="personal-effect-name" maxlength="80" class="upload-form-input" placeholder="Ví dụ: Pháo hoa cảm ơn"></label>
             <button onclick="app.choosePersonalEffectFiles()" style="padding:12px;border:1px dashed rgba(167,139,250,.55);border-radius:10px;background:rgba(124,58,237,.1);color:#ddd6fe;cursor:pointer;font-weight:700;">Chọn video hiệu ứng</button>
             <div id="personal-effect-file-status" style="font-size:12px;color:#94a3b8;">Chưa chọn video</div>
@@ -1074,10 +1075,24 @@ class EffectStoreApp {
                     { localId: registerId, name, machineId: this.machineId, duration, createdAt: new Date().toISOString() }
                 ];
             }
+            const controlDeckIndex = Number.isInteger(this.pendingPersonalEffectDeckIndex)
+                ? this.pendingPersonalEffectDeckIndex
+                : null;
+            this.pendingPersonalEffectDeckIndex = null;
             this.closeModal();
             await this.loadOwnedEffects();
             if (this.currentView === 'gift-mapping') await this.loadEffectsForMapping();
-            this.showNotification('success', 'Đã thêm hiệu ứng cá nhân vào mục Gán quà với hiệu ứng.');
+            if (controlDeckIndex !== null) {
+                const uploadedEffect = (this.personalEffects || []).find((effect) => String(effect._id || effect.id) === registerId);
+                if (uploadedEffect) {
+                    this.addControlDeckEffectToSlot(uploadedEffect, controlDeckIndex);
+                    this.showNotification('success', 'Đã tải hiệu ứng lên máy và thêm vào Live Control.');
+                } else {
+                    this.showNotification('warning', 'Đã lưu hiệu ứng nhưng chưa thể gán vào Live Control. Hãy chọn lại trong thư viện.');
+                }
+            } else {
+                this.showNotification('success', 'Đã thêm hiệu ứng cá nhân vào mục Gán quà với hiệu ứng.');
+            }
         } catch (error) {
             if (this.isCustomEffectBridgeMissing(error)) return this.showCustomEffectRestartNotice();
             console.error('Save personal effect error:', error);
@@ -3204,17 +3219,40 @@ class EffectStoreApp {
         modal.classList.add('open');
     }
 
+    uploadControlDeckEffect() {
+        this.closeControlDeckPicker();
+        this.openPersonalEffectUpload(true);
+    }
+
     closeControlDeckPicker() { document.getElementById('lcd-effect-picker')?.classList.remove('open'); }
+
+    addControlDeckEffectToSlot(effect, index = this.pendingControlDeckIndex) {
+        if (!effect || !Number.isInteger(index)) return false;
+        const effectId = effect._id || effect.id;
+        if (!effectId) return false;
+        const thumbUrl = effect.thumbUrl ? (/^https?:/i.test(effect.thumbUrl) ? effect.thumbUrl : `${this.API_URL}${effect.thumbUrl}`) : '';
+        this.controlDeck.effect.slots = this.controlDeck.effect.slots.filter((slot) => Number(slot.index) !== index);
+        this.controlDeck.effect.slots.push({
+            id: `deck-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            effectId: String(effectId),
+            index,
+            type: 'effect',
+            name: effect.name || effect.effectName || 'Hiệu ứng',
+            thumbUrl,
+            hotkey: '',
+            volume: 1
+        });
+        this.closeControlDeckPicker();
+        this.saveControlDeckState();
+        this.renderControlDeck();
+        return true;
+    }
 
     selectControlDeckEffect(effectId) {
         const effects = [...(this.ownedEffects || []), ...(this.mappingEffects || []), ...(this.personalEffects || [])];
         const effect = effects.find((item) => String(item._id || item.id) === String(effectId));
         if (!effect) return;
-        const thumbUrl = effect.thumbUrl ? (/^https?:/i.test(effect.thumbUrl) ? effect.thumbUrl : `${this.API_URL}${effect.thumbUrl}`) : '';
-        this.controlDeck.effect.slots.push({ id: `deck-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, effectId: String(effectId), index: this.pendingControlDeckIndex, type: 'effect', name: effect.name || effect.effectName || 'Hiệu ứng', thumbUrl, hotkey: '', volume: 1 });
-        this.closeControlDeckPicker();
-        this.saveControlDeckState();
-        this.renderControlDeck();
+        this.addControlDeckEffectToSlot(effect);
     }
 
     findControlDeckSlot(slotId) {

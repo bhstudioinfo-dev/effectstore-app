@@ -1487,23 +1487,6 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
         };
         let linkedLayout = await GiftMenuLayout.findOne(templateLayoutFilter).sort({ isActive: -1, updatedAt: -1 });
 
-        // Link one legacy copy by name before attempting to create anything.
-        if (!linkedLayout) {
-            linkedLayout = await GiftMenuLayout.findOneAndUpdate(
-                {
-                    userId: req.userId,
-                    isTemplate: false,
-                    name: template.name,
-                    $or: [
-                        { parentTemplateId: { $exists: false } },
-                        { parentTemplateId: null }
-                    ]
-                },
-                { $set: { parentTemplateId: template._id } },
-                { new: true, sort: { isActive: -1, updatedAt: -1 } }
-            );
-        }
-
         if (!linkedLayout && Number.isFinite(entitlements.layouts)) {
             const layoutCount = await GiftMenuLayout.countDocuments({ userId: req.userId, isTemplate: false });
             if (layoutCount >= entitlements.layouts) {

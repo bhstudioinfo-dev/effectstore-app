@@ -1,0 +1,4 @@
+interface:
+  display_name: "LiveFlow App Expert"
+  short_description: "Hiểu và phát triển toàn bộ hệ thống LiveFlow"
+  default_prompt: "Use $liveflow-app to inspect and safely implement this LiveFlow request."

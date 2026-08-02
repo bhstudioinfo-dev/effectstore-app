@@ -389,6 +389,9 @@
                     const p2OffsetY = p2.headerOffsetY !== undefined ? Number(p2.headerOffsetY) : Number(item.headerOffsetY || 0);
 
                     const vsOffsetY = (p1OffsetY + p2OffsetY) / 2;
+                    const versusFontSize = item.versusFontSize !== undefined
+                        ? font(ctx, item.versusFontSize, 38)
+                        : font(ctx, Math.round(p1NameSize * 1.3), 38);
                     const motionMap = { Pulse: 'anim-pulse', Bounce: 'anim-bounce', Float: 'anim-float', Zoom: 'anim-zoom', Shake: 'anim-shake' };
                     const p1MotionClass = p1Leading ? (motionMap[item.animationType] || '') : '';
                     const p1AnimSpeed = Math.max(0.2, Number(item.animationSpeed) || 1);
@@ -418,7 +421,7 @@
                         </div>
  
                         <!-- Chữ đối kháng -->
-                        ${item.showVs !== false ? `<div class="gmd-pk-vs-text" style="font-size: ${font(ctx, Math.round(p1NameSize * 1.3), 38)}px; font-weight: 950; color: #ffffff; text-shadow: 0 0 ${roundPx(12, ctx.scale)}px rgba(255,255,255,0.45); padding: 0 ${roundPx(16, ctx.scale)}px; display: flex; align-items: center; justify-content: center; font-style: italic; transform: translateY(${roundPx(vsOffsetY, ctx.scale)}px); transition: transform 0.2s ease;">
+                        ${item.showVs !== false ? `<div class="gmd-pk-vs-text" style="font-size: ${versusFontSize}px; font-weight: 950; color: #ffffff; text-shadow: 0 0 ${roundPx(12, ctx.scale)}px rgba(255,255,255,0.45); padding: 0 ${roundPx(16, ctx.scale)}px; display: flex; align-items: center; justify-content: center; font-style: italic; transform: translateY(${roundPx(vsOffsetY, ctx.scale)}px); transition: transform 0.2s ease;">
                             ${text(ctx, item.vsText || 'VS')}
                         </div>` : ''}
  
@@ -1303,7 +1306,7 @@
         const headerInfo = renderWidgetHeader(item, ctx, 'BANG VINH DANH', color, 'gmd-contrib-header');
         return `
             ${headerInfo.styleInject}
-            <div class="gmd-contributors-widget" style="background:${widgetBackground(item, `radial-gradient(circle at center, ${color}1a, #0a0a14)`)};border:1px solid ${widgetBorderColor(item, color)};border-radius:${roundPx(24, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(20, ctx.scale)}px ${color}33, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`};padding:${roundPx(12, ctx.scale)}px;display:flex;flex-direction:column;justify-content:center;height:100%;box-sizing:border-box;width:100%;overflow:hidden;">
+            <div class="gmd-contributors-widget" style="background:${item.hideBg ? 'transparent' : widgetBackground(item, `radial-gradient(circle at center, ${color}1a, #0a0a14)`)};border:1px solid ${item.hideBg ? 'transparent' : widgetBorderColor(item, color)};border-radius:${roundPx(24, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(20, ctx.scale)}px ${color}33, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`};backdrop-filter:${item.hideBg ? 'none' : `blur(${roundPx(8, ctx.scale)}px)`};-webkit-backdrop-filter:${item.hideBg ? 'none' : `blur(${roundPx(8, ctx.scale)}px)`};padding:${roundPx(12, ctx.scale)}px;display:flex;flex-direction:column;justify-content:center;height:100%;box-sizing:border-box;width:100%;overflow:hidden;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; gap: ${roundPx(6, ctx.scale)}px; width: 100%;">
                     ${headerInfo.titleHTML}
                     <div class="gmd-contrib-list" style="display: flex; flex-direction: column; gap: ${roundPx(6, ctx.scale)}px;">
@@ -1417,14 +1420,16 @@
 
         return `
             ${headerInfo.styleInject}
-            <div class="gmd-podium-widget" style="background: ${widgetBackground(item, 'radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)')} !important; border: 1px solid ${widgetBorderColor(item, '#eab308')} !important; box-shadow: ${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(217, 70, 239, 0.25), 0 ${roundPx(12, ctx.scale)}px ${roundPx(48, ctx.scale)}px rgba(0,0,0,0.7)`} !important; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(paddingVal, ctx.scale)}px; display: flex; flex-direction: column; justify-content: ${justifyVal}; height: 100%; box-sizing: border-box; width: 100%; overflow: hidden;">
+            <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : widgetBackground(item, 'radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)')} !important; border: 1px solid ${item.hideBg ? 'transparent' : widgetBorderColor(item, '#eab308')} !important; box-shadow: ${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(217, 70, 239, 0.25), 0 ${roundPx(12, ctx.scale)}px ${roundPx(48, ctx.scale)}px rgba(0,0,0,0.7)`} !important; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(paddingVal, ctx.scale)}px; display: flex; flex-direction: column; justify-content: ${justifyVal}; height: 100%; box-sizing: border-box; width: 100%; overflow: hidden;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; width: 100%; ${isTable ? 'height: 100%;' : ''} box-sizing: border-box;">
                     ${headerInfo.titleHTML}
+                    ${contributors.length > 0 ? `
                     <div class="gmd-podium-podium" style="gap: 0; margin-top: ${roundPx(item.podiumHeaderGap !== undefined ? item.podiumHeaderGap : 8, ctx.scale)}px; justify-content: center; flex-shrink: 0; flex: none !important;">
                         ${person(1, 2, size2)}
                         ${person(0, 1, size1)}
                         ${person(2, 3, size2)}
                     </div>
+                    ` : ''}
                     ${tableHTML}
                 </div>
             </div>

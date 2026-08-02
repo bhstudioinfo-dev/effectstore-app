@@ -1488,69 +1488,35 @@
     }
 
     let lastLayoutSignature = '';
+    const itemElementCache = new Map();
 
-    function render(layout) {
-      const root = document.getElementById('overlay-root') || document.body;
-      if (!root) {
-        window.addEventListener('DOMContentLoaded', () => render(layout));
-        return;
+    // Builds (or rebuilds) the DOM node for exactly one layout item. Kept
+    // separate from render() so render() can reuse an existing node when an
+    // item's data hasn't changed, instead of tearing down the whole overlay.
+    function buildItemElement(item, ctx) {
+      const { s, offsetX, offsetY, exportW, layout } = ctx;
+      const el = document.createElement('div');
+      el.className = 'gmd-item gmd-export-item';
+      if (item.type === 'challenge-wheel') el.classList.add('gmd-static-challenge-wheel');
+
+      if (item.type === 'gift-stack-group') {
+        const overlayItem = {
+          ...item,
+          renderScale: Number(item.renderScale) || Math.max(1, Math.min(4, exportW / ((layout.safeArea && layout.safeArea.width) || exportW || 1)))
+        };
+        el.style.left = `${Math.round(offsetX + (item.x || 0) * s)}px`;
+        el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
+        el.style.width = `${Math.round((item.width || 120) * s)}px`;
+        el.style.height = `${Math.round((item.height || 180) * s)}px`;
+        el.style.zIndex = String(Number(item.zIndex) || 1);
+        el.style.overflow = 'hidden';
+        el.innerHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderGiftStackGroup === 'function'
+          ? window.MenuDesignerSharedRenderEngine.renderGiftStackGroup(overlayItem, { mode: 'overlay', scale: s, apiBase: '', escapeText: true })
+          : '';
+        return el;
       }
-      const items = Array.isArray(layout.exportedItems)
-        ? layout.exportedItems
-        : (Array.isArray(layout.items) ? layout.items : []);
 
-      if (items.length === 0) {
-        if (new URLSearchParams(window.location.search).get('preview') === 'true') {
-          root.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #94a3b8; font-family: Inter, sans-serif; text-align: center; padding: 24px; box-sizing: border-box;">
-              <div style="font-size: 54px; margin-bottom: 16px; animation: gmdFloat 3s ease-in-out infinite;">🎨</div>
-              <h2 style="color: #fff; margin: 0 0 12px 0; font-size: 24px; font-weight: 800;">Xem trước bảng quà</h2>
-              <p style="margin: 4px 0; font-size: 15px; line-height: 1.5;">Thiết kế của bạn hiện đang trống hoặc chưa được lưu.</p>
-              <p style="font-size: 13px; color: #64748b; margin-top: 8px;">Hãy thêm các phần quà/bảng mục tiêu trên Canvas của designer và bấm <strong>Lưu</strong>.</p>
-            </div>
-          `;
-          return;
-        }
-      }
-
-      const exportW = Number(layout.exportSize && layout.exportSize.width) || 1080;
-      const exportH = Number(layout.exportSize && layout.exportSize.height) || 1920;
-      const sx = window.innerWidth / exportW;
-      const sy = window.innerHeight / exportH;
-      const s = Math.min(sx, sy) || 1;
-      
-      const offsetX = Math.round((window.innerWidth - (exportW * s)) / 2);
-      const offsetY = Math.round((window.innerHeight - (exportH * s)) / 2);
-
-      root.innerHTML = '';
-
-      [...items]
-        .filter((item) => item && item.visible !== false)
-        .sort((a, b) => (Number(a.zIndex) || 0) - (Number(b.zIndex) || 0))
-        .forEach((item) => {
-          const el = document.createElement('div');
-          el.className = 'gmd-item gmd-export-item';
-          if (item.type === 'challenge-wheel') el.classList.add('gmd-static-challenge-wheel');
-
-          if (item.type === 'gift-stack-group') {
-            const overlayItem = {
-              ...item,
-              renderScale: Number(item.renderScale) || Math.max(1, Math.min(4, exportW / ((layout.safeArea && layout.safeArea.width) || exportW || 1)))
-            };
-            el.style.left = `${Math.round(offsetX + (item.x || 0) * s)}px`;
-            el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
-            el.style.width = `${Math.round((item.width || 120) * s)}px`;
-            el.style.height = `${Math.round((item.height || 180) * s)}px`;
-            el.style.zIndex = String(Number(item.zIndex) || 1);
-            el.style.overflow = 'hidden';
-            el.innerHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderGiftStackGroup === 'function'
-              ? window.MenuDesignerSharedRenderEngine.renderGiftStackGroup(overlayItem, { mode: 'overlay', scale: s, apiBase: '', escapeText: true })
-              : '';
-            root.appendChild(el);
-            return;
-          }
-          
-          if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
+      if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
             // Keep the OBS reference sizes identical to the Designer. These
             // values describe the widget's native design space and must not
             // change when the saved board width/height changes.
@@ -1735,9 +1701,78 @@
             el.innerHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
               ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: s, apiBase: '', escapeText: true, gifts: giftsLibrary })
               : '';
+      }
+      return el;
+    }
+
+    function render(layout) {
+      const root = document.getElementById('overlay-root') || document.body;
+      if (!root) {
+        window.addEventListener('DOMContentLoaded', () => render(layout));
+        return;
+      }
+      const items = Array.isArray(layout.exportedItems)
+        ? layout.exportedItems
+        : (Array.isArray(layout.items) ? layout.items : []);
+
+      if (items.length === 0) {
+        if (new URLSearchParams(window.location.search).get('preview') === 'true') {
+          itemElementCache.forEach((entry) => entry.el.remove());
+          itemElementCache.clear();
+          root.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #94a3b8; font-family: Inter, sans-serif; text-align: center; padding: 24px; box-sizing: border-box;">
+              <div style="font-size: 54px; margin-bottom: 16px; animation: gmdFloat 3s ease-in-out infinite;">🎨</div>
+              <h2 style="color: #fff; margin: 0 0 12px 0; font-size: 24px; font-weight: 800;">Xem trước bảng quà</h2>
+              <p style="margin: 4px 0; font-size: 15px; line-height: 1.5;">Thiết kế của bạn hiện đang trống hoặc chưa được lưu.</p>
+              <p style="font-size: 13px; color: #64748b; margin-top: 8px;">Hãy thêm các phần quà/bảng mục tiêu trên Canvas của designer và bấm <strong>Lưu</strong>.</p>
+            </div>
+          `;
+          return;
+        }
+      }
+
+      const exportW = Number(layout.exportSize && layout.exportSize.width) || 1080;
+      const exportH = Number(layout.exportSize && layout.exportSize.height) || 1920;
+      const sx = window.innerWidth / exportW;
+      const sy = window.innerHeight / exportH;
+      const s = Math.min(sx, sy) || 1;
+
+      const offsetX = Math.round((window.innerWidth - (exportW * s)) / 2);
+      const offsetY = Math.round((window.innerHeight - (exportH * s)) / 2);
+
+      // Only rebuild the DOM node for an item whose data actually changed
+      // since the last render. Untouched items keep their existing element
+      // (moved into place via appendChild, which does not restart already-
+      // running CSS animations), so a single gift/counter update no longer
+      // restarts marquee/spin/sweep loops on every other widget on screen.
+      const positionKey = `${s.toFixed(4)}|${offsetX}|${offsetY}`;
+      const ctx = { s, offsetX, offsetY, exportW, layout };
+      const currentIds = new Set();
+
+      [...items]
+        .filter((item) => item && item.visible !== false)
+        .sort((a, b) => (Number(a.zIndex) || 0) - (Number(b.zIndex) || 0))
+        .forEach((item, index) => {
+          const id = item.id || `__idx_${index}_${item.type || 'item'}`;
+          currentIds.add(id);
+          const sig = `${positionKey}|${JSON.stringify(item)}`;
+          const cached = itemElementCache.get(id);
+          if (cached && cached.sig === sig) {
+            root.appendChild(cached.el);
+            return;
           }
+          const el = buildItemElement(item, ctx);
+          if (cached) cached.el.remove();
+          itemElementCache.set(id, { el, sig });
           root.appendChild(el);
         });
+
+      itemElementCache.forEach((entry, id) => {
+        if (!currentIds.has(id)) {
+          entry.el.remove();
+          itemElementCache.delete(id);
+        }
+      });
     }
 
     let giftsLibrary = [];
