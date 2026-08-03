@@ -15,7 +15,7 @@ const { isValidResourceId } = require('../utils/accessControl');
 const { getUserAvailableEffects, resolveEffectForUser } = require('../services/effectLibraryService');
 const { issueEffectAccessToken, buildEffectStreamUrl, verifyEffectAccessToken } = require('../services/effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
-const { isAssetStoreConfigured, uploadEncryptedEffect, downloadEncryptedEffect } = require('../services/effectAssetStore');
+const { isAssetStoreConfigured, uploadEncryptedEffect, downloadEncryptedEffect, uploadThumbnail } = require('../services/effectAssetStore');
 
 // Ensure directories
 const encryptedEffectsDir = dataPaths.encryptedEffectsDir;
@@ -402,7 +402,13 @@ function getVideoDuration(filePath) {
 router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (req, res) => {
     try {
         const { name, category, price, originalPrice, description, icon, isComposite, timeline } = req.body;
+        // Generated upfront (instead of letting Mongo assign one on create)
+        // so the file name, the R2 key, and the effect's real _id are all
+        // identical — the shared store and every other machine's
+        // download-on-miss fallback key everything by this same id.
+        const effectId = new mongoose.Types.ObjectId().toString();
         const effectData = {
+            _id: effectId,
             name, category,
             price: parseFloat(price),
             originalPrice: parseFloat(originalPrice) || 0,
@@ -411,18 +417,11 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
             isComposite: isComposite === 'true' || isComposite === true,
             timeline: timeline ? (typeof timeline === 'string' ? JSON.parse(timeline) : timeline) : {}
         };
-        
+
         const effectFile = req.files ? req.files.find(f => f.fieldname === 'effectFile') : null;
         const thumbFile = req.files ? req.files.find(f => f.fieldname === 'thumb') : null;
-        
+
         if (effectFile) {
-            // This has to be the effect's real Mongo _id, not just a local
-            // filename convenience — the shared R2 store and every other
-            // machine's download-on-miss fallback (see streamEffectById
-            // below) key the file by the same id the URL/database uses.
-            // Generating it upfront and handing it to Effect.create() below
-            // keeps file name, R2 key, and _id all identical.
-            const effectId = new mongoose.Types.ObjectId().toString();
             const previewPath = path.join(previewsDir, `${effectId}.webm`);
             fs.copyFileSync(effectFile.path, previewPath);
             const duration = await getVideoDuration(previewPath);
@@ -442,7 +441,6 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
                 }
             }
 
-            effectData._id = effectId;
             effectData.previewFilePath = previewPath;
             effectData.encryptedFilePath = encryptedPath;
             effectData.duration = duration;
@@ -453,10 +451,17 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
         }
 
         if (thumbFile) {
-            const thumbPath = path.join(thumbsDir, `${Date.now()}.png`);
+            const thumbPath = path.join(thumbsDir, `${effectId}.png`);
             fs.copyFileSync(thumbFile.path, thumbPath);
             effectData.thumbFilePath = thumbPath;
             effectData.thumbUrl = `/uploads/thumbs/${path.basename(thumbPath)}`;
+            if (isAssetStoreConfigured()) {
+                try {
+                    await uploadThumbnail(effectId, thumbPath);
+                } catch (uploadError) {
+                    console.error(`⚠️  Could not upload thumbnail for ${effectId} to shared store:`, uploadError.message);
+                }
+            }
             try { fs.unlinkSync(thumbFile.path); } catch (e) {}
         }
         
@@ -496,6 +501,13 @@ router.post('/effects/:id/update', authMiddleware, adminMiddleware, upload.any()
             fs.copyFileSync(thumbFile.path, thumbPath);
             effect.thumbFilePath = thumbPath;
             effect.thumbUrl = `/uploads/thumbs/${effect._id}.png`;
+            if (isAssetStoreConfigured()) {
+                try {
+                    await uploadThumbnail(String(effect._id), thumbPath);
+                } catch (uploadError) {
+                    console.error(`⚠️  Could not upload thumbnail for ${effect._id} to shared store:`, uploadError.message);
+                }
+            }
             try { fs.unlinkSync(thumbFile.path); } catch (e) {}
         }
 

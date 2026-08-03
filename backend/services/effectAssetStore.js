@@ -72,9 +72,39 @@ async function downloadEncryptedEffect(effectId) {
     }
 }
 
+// Thumbnails are plain marketing images (not the protected video content),
+// so unlike the effect file above they're stored as-is, no encryption step.
+function keyForThumbnail(effectId) {
+    return `thumbs/${effectId}.png`;
+}
+
+async function uploadThumbnail(effectId, localFilePath) {
+    const fs = require('fs');
+    await getClient().send(new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: keyForThumbnail(effectId),
+        Body: fs.createReadStream(localFilePath),
+        ContentType: 'image/png'
+    }));
+}
+
+async function downloadThumbnail(effectId) {
+    try {
+        const result = await getClient().send(new GetObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: keyForThumbnail(effectId)
+        }));
+        return result.Body;
+    } catch (_error) {
+        return null;
+    }
+}
+
 module.exports = {
     isAssetStoreConfigured,
     uploadEncryptedEffect,
     effectExistsRemotely,
-    downloadEncryptedEffect
+    downloadEncryptedEffect,
+    uploadThumbnail,
+    downloadThumbnail
 };

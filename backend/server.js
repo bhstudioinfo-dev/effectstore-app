@@ -98,6 +98,35 @@ app.use('/uploads/effects', (_req, res) => {
 app.use('/uploads/temp', (_req, res) => {
     res.status(404).json({ success: false, error: 'Private uploads are not publicly available.' });
 });
+// A thumbnail created on one machine (e.g. the central server, since effect
+// creation is proxied there) never automatically appears on any other
+// machine's disk — unlike the effect video itself, thumbnails aren't
+// sensitive, so on a miss just fetch the plain image from the shared store
+// once and cache it, then let the static handler below serve it normally.
+app.get('/uploads/thumbs/:filename', async (req, res, next) => {
+    try {
+        const localPath = path.join(dataPaths.thumbsDir, req.params.filename);
+        if (fs.existsSync(localPath)) return next();
+        const { isAssetStoreConfigured, downloadThumbnail } = require('./services/effectAssetStore');
+        if (!isAssetStoreConfigured()) return next();
+        const effectId = path.basename(req.params.filename, path.extname(req.params.filename));
+        const remoteStream = await downloadThumbnail(effectId);
+        if (!remoteStream) return next();
+        fs.mkdirSync(dataPaths.thumbsDir, { recursive: true });
+        const tempPath = `${localPath}.downloading-${process.pid}-${Date.now()}`;
+        await new Promise((resolve, reject) => {
+            const fileStream = fs.createWriteStream(tempPath);
+            remoteStream.on('error', reject);
+            fileStream.on('error', reject);
+            fileStream.on('finish', resolve);
+            remoteStream.pipe(fileStream);
+        });
+        fs.renameSync(tempPath, localPath);
+        return next();
+    } catch (_error) {
+        return next();
+    }
+});
 app.use('/uploads', express.static(dataPaths.uploadsDir, {
     maxAge: '1y',
     immutable: true
