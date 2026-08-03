@@ -53,10 +53,21 @@ async function encryptVideo(inputPath, outputPath) {
  * @returns {ReadStream} - Decrypted video stream
  */
 function decryptVideoStream(encryptedPath) {
-    const iv = fs.readFileSync(encryptedPath, { end: IV_LENGTH - 1 });
+    // fs.readFileSync has no start/end option (that's only for
+    // createReadStream) — it silently ignored { end: IV_LENGTH - 1 } and
+    // read the WHOLE file as the "IV", which happened to never get
+    // exercised before because playback almost always found an already-
+    // unencrypted local copy first. Read exactly the first 16 bytes instead.
+    const fd = fs.openSync(encryptedPath, 'r');
+    const iv = Buffer.alloc(IV_LENGTH);
+    try {
+        fs.readSync(fd, iv, 0, IV_LENGTH, 0);
+    } finally {
+        fs.closeSync(fd);
+    }
     const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
     const input = fs.createReadStream(encryptedPath, { start: IV_LENGTH });
-    
+
     return input.pipe(decipher);
 }
 
