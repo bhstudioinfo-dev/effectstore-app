@@ -3,6 +3,7 @@ const router = express.Router();
 const Effect = require('../models/Effect');
 const User = require('../models/User');
 const GiftMapping = require('../models/GiftMapping');
+const GiftMenuLayout = require('../models/GiftMenuLayout');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
@@ -51,11 +52,27 @@ router.get('/effects', authMiddleware, async (req, res) => {
             User.findById(req.userId).select('isAdmin purchasedEffects.effectId').lean()
         ]);
         const ownedIds = new Set((user?.purchasedEffects || []).map((entry) => String(entry.effectId || '')));
+
+        // menu_template products can be a full ready-to-use layout, or a smaller
+        // packaged widget (e.g. a goal board) meant to be added into an existing
+        // design. Look up the source layout's category so the storefront can
+        // label these differently and avoid customers expecting a full layout.
+        const templateEffectIds = effects
+            .filter((effect) => effect.category === 'menu_template' && isValidResourceId(effect.fileUrl))
+            .map((effect) => effect.fileUrl);
+        let widgetTemplateIds = new Set();
+        if (templateEffectIds.length) {
+            const widgetLayouts = await GiftMenuLayout.find({ _id: { $in: templateEffectIds }, category: 'goal_board' })
+                .select('_id').lean();
+            widgetTemplateIds = new Set(widgetLayouts.map((layout) => String(layout._id)));
+        }
+
         res.json({
             success: true,
             effects: effects.map((effect) => ({
                 ...sanitizeEffectForCatalog(effect, req.userId),
-                isOwned: user?.isAdmin === true || ownedIds.has(String(effect._id))
+                isOwned: user?.isAdmin === true || ownedIds.has(String(effect._id)),
+                isWidgetTemplate: effect.category === 'menu_template' && widgetTemplateIds.has(String(effect.fileUrl))
             }))
         });
     } catch (error) {

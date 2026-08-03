@@ -1037,7 +1037,7 @@ router.get('/gift-menu-templates', authMiddleware, async (req, res) => {
         const isBusiness = user ? user.subscription === 'business' : false;
 
         const [templates, userLayouts] = await Promise.all([
-            GiftMenuLayout.find({ isTemplate: true }).sort({ updatedAt: -1 }).lean(),
+            GiftMenuLayout.find({ isTemplate: true, category: { $ne: 'goal_board' } }).sort({ updatedAt: -1 }).lean(),
             GiftMenuLayout.find({ userId: req.userId, isTemplate: false }).select('_id name parentTemplateId').lean()
         ]);
         const usedTemplateIds = new Set(userLayouts.filter(layout => layout.parentTemplateId).map(layout => String(layout.parentTemplateId)));
@@ -1381,31 +1381,57 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
         const user = await User.findById(req.userId);
         const isAdmin = Boolean(user && user.isAdmin === true);
         if (!isAdmin) return res.status(403).json({ success: false, error: 'Unauthorized' });
-        const activeLayout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true, isTemplate: false });
-        if (!activeLayout) return res.status(400).json({ success: false, error: 'No active layout to publish' });
         const payload = req.body || {};
+        const activeLayout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true, isTemplate: false });
+        const sourceLayout = payload.layoutData && Array.isArray(payload.layoutData.items)
+            ? payload.layoutData
+            : activeLayout;
+        if (!sourceLayout) return res.status(400).json({ success: false, error: 'No layout to publish' });
+        if (!Array.isArray(sourceLayout.items) || sourceLayout.items.length === 0) {
+            return res.status(400).json({ success: false, error: 'Template must contain at least one layer' });
+        }
         const price = Math.max(0, Number(payload.price) || 0);
         const originalPrice = Math.max(price, Number(payload.originalPrice) || 0);
-        const template = new GiftMenuLayout({
+        const requestedPlan = String(payload.requiredPlan || 'free').toLowerCase();
+        const requiredPlan = ['free', 'basic', 'pro'].includes(requestedPlan) ? requestedPlan : 'free';
+        const templatePayload = {
             userId: req.userId,
-            name: String(payload.name || activeLayout.name + ' - Template').trim(),
-            version: activeLayout.version || 2,
+            name: String(payload.name || `${sourceLayout.name || 'Layout'} - Template`).trim(),
+            version: sourceLayout.version || 2,
             savedAt: new Date(),
-            aspectRatio: activeLayout.aspectRatio,
-            canvasSize: activeLayout.canvasSize,
-            safeArea: activeLayout.safeArea,
-            exportSize: activeLayout.exportSize,
-            items: activeLayout.items,
-            exportedItems: activeLayout.exportedItems,
+            aspectRatio: sourceLayout.aspectRatio || '9:16',
+            canvasSize: sourceLayout.canvasSize,
+            safeArea: sourceLayout.safeArea,
+            exportSize: sourceLayout.exportSize,
+            items: sourceLayout.items,
+            exportedItems: Array.isArray(sourceLayout.exportedItems) && sourceLayout.exportedItems.length
+                ? sourceLayout.exportedItems
+                : sourceLayout.items,
             isTemplate: true,
-            productType: Array.isArray(activeLayout.items) && activeLayout.items.some((item) => item && item.type === 'challenge-wheel') ? 'challenge-wheel' : 'standard',
-            category: String(payload.category || activeLayout.category || 'all'),
+            productType: sourceLayout.items.some((item) => item && item.type === 'challenge-wheel') ? 'challenge-wheel' : 'standard',
+            category: String(payload.category || sourceLayout.category || 'all'),
             price,
             originalPrice,
             description: String(payload.description || '').trim(),
             icon: String(payload.icon || '📋').trim() || '📋',
-            isPremium: price > 0
-        });
+            isPremium: price > 0,
+            requiredPlan,
+            editableSchema: Array.isArray(payload.editableSchema) ? payload.editableSchema : []
+        };
+        let template = null;
+        if (payload.templateId && isValidResourceId(payload.templateId)) {
+            template = await GiftMenuLayout.findOne({
+                _id: payload.templateId,
+                userId: req.userId,
+                isTemplate: true,
+                category: 'goal_board'
+            });
+        }
+        if (template) {
+            Object.assign(template, templatePayload);
+        } else {
+            template = new GiftMenuLayout(templatePayload);
+        }
         await template.save();
 
         // Automatically sync to Effect product
@@ -1695,7 +1721,94 @@ router.get('/goal-board/assets', authMiddleware, async (req, res) => {
 });
 
 router.get('/goal-board/templates', authMiddleware, async (req, res) => {
-    res.json({ success: true, customTemplates: [] });
+    try {
+        const [user, templates] = await Promise.all([
+            User.findById(req.userId).select('isAdmin subscription purchasedEffects'),
+            GiftMenuLayout.find({ isTemplate: true, category: 'goal_board' }).sort({ updatedAt: -1 }).lean()
+        ]);
+        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+        const templateIds = templates.map(template => String(template._id));
+        const products = templateIds.length
+            ? await Effect.find({ category: 'menu_template', fileUrl: { $in: templateIds } }).select('_id fileUrl').lean()
+            : [];
+        const productByTemplate = new Map(products.map(product => [String(product.fileUrl), product]));
+        const purchasedIds = new Set((user.purchasedEffects || []).map(entry => String(entry.effectId || '')));
+        const privileged = user.isAdmin === true || user.subscription === 'business';
+
+        // Buyer counts are only needed by admins, to warn before a delete revokes access.
+        let purchaseCountByProduct = new Map();
+        if (user.isAdmin === true && products.length) {
+            const productIds = products.map(product => product._id);
+            const counts = await User.aggregate([
+                { $unwind: '$purchasedEffects' },
+                { $match: { 'purchasedEffects.effectId': { $in: productIds } } },
+                { $group: { _id: '$purchasedEffects.effectId', count: { $sum: 1 } } }
+            ]);
+            purchaseCountByProduct = new Map(counts.map(entry => [String(entry._id), entry.count]));
+        }
+
+        const customTemplates = templates.map(template => {
+            const templateId = String(template._id);
+            const product = productByTemplate.get(templateId);
+            const price = Math.max(0, Number(template.price) || 0);
+            return {
+                id: `server_goal_${templateId}`,
+                serverTemplateId: templateId,
+                productEffectId: product ? String(product._id) : '',
+                name: template.name,
+                tag: 'Mẫu bán',
+                category: 'goal_board',
+                tags: ['goal-board', 'custom'],
+                icon: template.icon || '🎯',
+                description: template.description || '',
+                isPremium: price > 0,
+                price,
+                originalPrice: Math.max(price, Number(template.originalPrice) || 0),
+                requiredPlan: template.requiredPlan || 'free',
+                editableSchema: Array.isArray(template.editableSchema) ? template.editableSchema : [],
+                owned: privileged || price === 0 || Boolean(product && purchasedIds.has(String(product._id))),
+                purchaseCount: product ? (purchaseCountByProduct.get(String(product._id)) || 0) : 0,
+                layers: Array.isArray(template.items) ? template.items : []
+            };
+        });
+        res.json({ success: true, customTemplates });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.delete('/goal-board/templates/:templateId', authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.userId).select('isAdmin');
+        if (!user || user.isAdmin !== true) {
+            return res.status(403).json({ success: false, error: 'Chỉ quản trị viên được xóa mẫu đã đóng gói.' });
+        }
+        if (!isValidResourceId(req.params.templateId)) {
+            return res.status(400).json({ success: false, error: 'Mã mẫu không hợp lệ.' });
+        }
+        const template = await GiftMenuLayout.findOneAndDelete({
+            _id: req.params.templateId,
+            userId: req.userId,
+            isTemplate: true,
+            category: 'goal_board'
+        });
+        if (!template) return res.status(404).json({ success: false, error: 'Không tìm thấy mẫu để xóa.' });
+
+        const product = await Effect.findOneAndDelete({
+            category: 'menu_template',
+            fileUrl: String(template._id)
+        });
+        if (product) {
+            await User.updateMany(
+                { 'purchasedEffects.effectId': product._id },
+                { $pull: { purchasedEffects: { effectId: product._id } } }
+            );
+        }
+        res.json({ success: true, templateId: String(template._id), productDeleted: Boolean(product) });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('assetFile'), async (req, res) => {

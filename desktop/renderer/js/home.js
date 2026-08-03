@@ -1957,15 +1957,22 @@ class EffectStoreApp {
         const flashSaleGrid = document.getElementById('flash-sale-effects');
 
         if (this.currentView === 'store') {
+            // Packaged goal-board combos are sold only from the Gift Menu Designer's
+            // own "Mục tiêu" tab, never browsable in the Store grid. Filter only the
+            // display list here — this.storeEffects/this.effects must keep the full
+            // data, since addToCart()/showEffectDetail() still look items up there
+            // when the Designer's own buy button adds one to the cart.
+            const isHiddenFromStore = (e) => e.category === 'menu_template' && e.isWidgetTemplate;
             if (storeGrid) {
-                this._renderGrid(storeGrid, this.storeEffects, filter, search, 'store');
+                const visibleStoreEffects = this.storeEffects.filter(e => !isHiddenFromStore(e));
+                this._renderGrid(storeGrid, visibleStoreEffects, filter, search, 'store');
             }
             if (flashSaleGrid) {
                 const flashEffects = this.storeEffects.filter(e => {
                     const now = new Date();
                     const endsAt = e.flashSaleEndsAt ? new Date(e.flashSaleEndsAt) : null;
                     return e.isFlashSale && endsAt && endsAt > now;
-                });
+                }).filter(e => !isHiddenFromStore(e));
                 this._renderGrid(flashSaleGrid, flashEffects, 'all', '', 'store');
             }
             this.startMiniFlashSaleTimers();
@@ -2237,8 +2244,14 @@ class EffectStoreApp {
 
                 const cardClass = `effect-card ${isOwned ? 'owned' : ''} ${isPending ? 'pending' : ''}`;
                 const priceColor = 'var(--accent)';
+                const templateKindBadge = effect.category === 'menu_template'
+                    ? (effect.isWidgetTemplate
+                        ? `<div class="template-kind-badge" title="Chỉ thêm vào thiết kế hiện tại, không thay cả bảng" style="position:absolute; top:10px; left:10px; background:rgba(8,145,178,0.85); color:white; padding:3px 7px; border-radius:6px; font-size:9px; font-weight:800; z-index:10;">🧩 Mảnh ghép</div>`
+                        : `<div class="template-kind-badge" title="Thay thế toàn bộ bảng đang thiết kế" style="position:absolute; top:10px; left:10px; background:rgba(124,58,237,0.85); color:white; padding:3px 7px; border-radius:6px; font-size:9px; font-weight:800; z-index:10;">📦 Mẫu đầy đủ</div>`)
+                    : '';
 
                 return `<div class="${cardClass}" style="position: relative;" data-cat="${effect.category}" data-price="${currentPrice}" data-name="${effect.name}">
+                            ${templateKindBadge}
                             ${effect.isTrending ? `<div class="hot-badge" style="position:absolute; top:10px; right:10px; background:linear-gradient(45deg, #f093fb 0%, #f5576c 100%); color:white; padding:4px 8px; border-radius:8px; font-size:10px; font-weight:bold; z-index:10; box-shadow:0 4px 15px rgba(245,87,108,0.4);"><i class="fas fa-fire"></i> HOT</div>` : ''}
                             <div class="effect-thumbnail">
                                 ${previewHTML}
@@ -2375,7 +2388,10 @@ class EffectStoreApp {
             : '';
 
         document.getElementById('detail-name').textContent = `${effect.icon || '🎬'} ${effect.name}`;
-        document.getElementById('detail-category').textContent = this.getCategoryName(effect.category);
+        const templateKindSuffix = effect.category === 'menu_template'
+            ? (effect.isWidgetTemplate ? ' · 🧩 Mảnh ghép (thêm vào thiết kế hiện tại)' : ' · 📦 Mẫu đầy đủ (thay cả bảng)')
+            : '';
+        document.getElementById('detail-category').textContent = this.getCategoryName(effect.category) + templateKindSuffix;
         document.getElementById('detail-price').textContent = isOwned ? 'Đã Sở Hữu' : this.formatPrice(effect.price);
         document.getElementById('detail-original-price').textContent = effect.originalPrice > effect.price ? this.formatPrice(effect.originalPrice) : '';
         document.getElementById('detail-desc-text').textContent = effect.description || 'Không có mô tả chi tiết.';
@@ -2654,6 +2670,11 @@ class EffectStoreApp {
                         `;
                     }
 
+                    // template-bundle deliberately excluded: it positions every child
+                    // as a percentage of its OWN width/height (like a plain gift item),
+                    // so it must use the simple 1:1 wrapper below, not the fixed
+                    // reference-box + transform:scale wrapper meant for widgets with a
+                    // hand-authored fixed design size.
                     const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text', 'challenge-wheel'];
                     if (customWidgetTypes.includes(item.type)) {
                         const refW = item.lockedW || item.w || 900;
@@ -2848,6 +2869,11 @@ class EffectStoreApp {
                         `;
                     }
 
+                    // template-bundle deliberately excluded: it positions every child
+                    // as a percentage of its OWN width/height (like a plain gift item),
+                    // so it must use the simple 1:1 wrapper below, not the fixed
+                    // reference-box + transform:scale wrapper meant for widgets with a
+                    // hand-authored fixed design size.
                     const customWidgetTypes = ['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text', 'challenge-wheel'];
                     if (customWidgetTypes.includes(item.type)) {
                         const refW = item.lockedW || item.w || 900;

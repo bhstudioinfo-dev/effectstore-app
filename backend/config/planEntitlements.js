@@ -57,16 +57,34 @@ function upgradePayload(feature, message, entitlements) {
     };
 }
 
+// A packaged template-bundle (or gift-stack-group) hides its real widgets one
+// level deep in `children`. Every type-based limit check must see those too,
+// otherwise a free-plan user could bundle several gated widgets into one
+// top-level item and bypass the per-plan cap entirely.
+function flattenDesignerItems(items) {
+    const list = Array.isArray(items) ? items : [];
+    const flat = [];
+    list.forEach((item) => {
+        if (!item) return;
+        flat.push(item);
+        if (Array.isArray(item.children)) {
+            item.children.forEach((child) => { if (child) flat.push(child); });
+        }
+    });
+    return flat;
+}
+
 function countGoalTrackers(items) {
     const goalTypes = new Set([
         'goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests',
         'goal-list', 'top-contributors', 'podium-contributors', 'combo'
     ]);
-    return Array.isArray(items) ? items.filter(item => item && goalTypes.has(item.type)).length : 0;
+    return flattenDesignerItems(items).filter(item => goalTypes.has(item.type)).length;
 }
 
 function validateDesignerItems(items, entitlements) {
     const list = Array.isArray(items) ? items : [];
+    const flatList = flattenDesignerItems(list);
     const exceedsFreeTalentLimit = entitlements.key === 'free' && list.some(item =>
         ['talent-live', 'talent-leaderboard'].includes(item?.type)
         && Array.isArray(item?.talentCompetition?.participants)
@@ -85,7 +103,7 @@ function validateDesignerItems(items, entitlements) {
         return upgradePayload('goalTrackers', `Gói ${entitlements.label} chỉ hỗ trợ ${entitlements.goalTrackers} bảng mục tiêu.`, entitlements);
     }
 
-    const hasCustomAsset = list.some(item => {
+    const hasCustomAsset = flatList.some(item => {
         const url = String(item?.assetUrl || item?.iconUrl || '');
         return item?.type === 'media-asset' || url.includes('/uploads/goal-assets/');
     });
@@ -103,7 +121,7 @@ function validateDesignerItems(items, entitlements) {
     }
 
     if (entitlements.designerLevel === 'lite') {
-        const advancedTemplateItem = list.find(item => item && [
+        const advancedTemplateItem = flatList.find(item => item && [
             'boss-bar', 'mystery-chests', 'goal-list',
             'top-contributors', 'podium-contributors', 'combo'
         ].includes(item.type));

@@ -1479,6 +1479,51 @@
         `;
     }
 
+    function renderTemplateBundle(item, options) {
+        const ctx = createContext(options);
+        const children = Array.isArray(item.children) ? item.children : [];
+        if (!children.length) return '<div class="gmd-template-bundle-widget" style="width:100%;height:100%;"></div>';
+        const bw = Math.max(1, Number(item.width || item.w) || 1);
+        const bh = Math.max(1, Number(item.height || item.h) || 1);
+        // Widgets with a fixed design-space size need their own reference box +
+        // uniform scale wrapper (same convention the designer/overlay already use
+        // for top-level widgets), otherwise their internal layout renders at native
+        // px size instead of fitting the child's allotted slot inside the bundle.
+        const widgetReferenceSizes = {
+            'boss-bar': [840, 180], combo: [800, 220], 'mystery-chests': [900, 240],
+            'top-contributors': [900, 560], 'podium-contributors': [900, 560],
+            'goal-list': [900, 480], 'goal-circle': [280, 320]
+        };
+        const html = children.map((child, index) => {
+            if (!child || child.visible === false) return '';
+            const cx = Number(child.x) || 0;
+            const cy = Number(child.y) || 0;
+            const cw = Math.max(1, Number(child.width || child.w) || 1);
+            const ch = Math.max(1, Number(child.height || child.h) || 1);
+            const refSize = child.type === 'goal-bar'
+                ? [900, child.barStyle === 'pk' ? 180 : 160]
+                : widgetReferenceSizes[child.type];
+            let innerHTML;
+            if (refSize) {
+                const [refW, refH] = refSize;
+                // ctx.scale carries the caller's own design-to-final-px ratio (1 for
+                // the designer canvas, the OBS overlay's runtime "s", or a preview
+                // thumbnail's shrink factor). A ref-box child's own transform only
+                // knows the fixed design/slot ratio, so this must be folded in too or
+                // its content stops matching the % slot its wrapper actually renders
+                // at in that caller's context.
+                const scaleX = (cw / refW) * ctx.scale;
+                const scaleY = (ch / refH) * ctx.scale;
+                const rendered = renderByType(child, { ...options, scale: 1 });
+                innerHTML = `<div style="position:absolute;left:0;top:0;width:${refW}px;height:${refH}px;transform:scale(${scaleX},${scaleY});transform-origin:top left;">${rendered}</div>`;
+            } else {
+                innerHTML = renderByType(child, options);
+            }
+            return `<div style="position:absolute;left:${(cx / bw) * 100}%;top:${(cy / bh) * 100}%;width:${(cw / bw) * 100}%;height:${(ch / bh) * 100}%;overflow:visible;z-index:${Number(child.zIndex) || index + 1};">${innerHTML}</div>`;
+        }).join('');
+        return `<div class="gmd-template-bundle-widget" style="position:relative;width:100%;height:100%;overflow:visible;">${html}</div>`;
+    }
+
     function renderGiftStackGroup(item, options) {
         const ctx = createContext(options);
         const children = Array.isArray(item.children) ? item.children : [];
@@ -1799,7 +1844,8 @@
             'talent-live': renderTalentLive,
             'talent-leaderboard': renderTalentLeaderboard,
             'challenge-wheel': renderChallengeWheel,
-            'gift-stack-group': renderGiftStackGroup
+            'gift-stack-group': renderGiftStackGroup,
+            'template-bundle': renderTemplateBundle
         };
         const renderer = map[type];
         if (!renderer) return '';
@@ -1831,6 +1877,7 @@
         renderTalentLive,
         renderTalentLeaderboard,
         renderGiftStackGroup,
+        renderTemplateBundle,
         renderByType
     });
 

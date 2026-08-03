@@ -1516,6 +1516,25 @@
         return el;
       }
 
+      if (item.type === 'template-bundle') {
+        // renderTemplateBundle positions every child as a percentage of THIS
+        // item's own width/height — it must fill this element directly. Routing
+        // it through the generic widget branch below (which sizes its wrapper
+        // using a fixed/hand-authored reference box instead of item.width) would
+        // throw off every child's percentage math, same reason gift-stack-group
+        // gets its own branch instead of the generic one.
+        el.style.left = `${Math.round(offsetX + (item.x || 0) * s)}px`;
+        el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
+        el.style.width = `${Math.round((item.width || 120) * s)}px`;
+        el.style.height = `${Math.round((item.height || 120) * s)}px`;
+        el.style.zIndex = String(Number(item.zIndex) || 1);
+        el.style.overflow = 'visible';
+        el.innerHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
+          ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: s, apiBase: '', escapeText: true, gifts: giftsLibrary })
+          : '';
+        return el;
+      }
+
       if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
             // Keep the OBS reference sizes identical to the Designer. These
             // values describe the widget's native design space and must not

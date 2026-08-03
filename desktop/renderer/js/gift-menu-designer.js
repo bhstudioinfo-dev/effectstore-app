@@ -9,6 +9,9 @@
             this.items = [];
             this.selectedId = null;
             this.selectedIds = [];
+            // Set to a template-bundle item's id while the user has "entered" it to
+            // edit individual children; null means every bundle is collapsed to 1 layer.
+            this.enteredGroupId = null;
             this.aspectRatio = '9:16';
             this.dragState = null;
             this.canvasSize = { width: 720, height: 960 };
@@ -87,6 +90,16 @@
             return String(window.app?.currentUser?.subscription || 'free').toLowerCase();
         }
 
+        templateNeedsHigherPlan(template) {
+            const rank = { free: 0, basic: 1, pro: 2, studio: 3, business: 4, admin: 5 };
+            const current = rank[this.actualPlanKey] ?? 0;
+            const explicitPlan = String(template?.requiredPlan || '').toLowerCase();
+            if (explicitPlan && explicitPlan !== 'free') return current < (rank[explicitPlan] ?? 0);
+            if (template?.serverTemplateId) return false;
+            return this.actualPlanKey === 'free'
+                && !['tmpl_neon_purple', 'tmpl_circular_heart_goal'].includes(template?.id);
+        }
+
         get planKey() {
             return 'admin';
         }
@@ -115,7 +128,16 @@
 
         countGoalTrackers(items = this.items) {
             const types = new Set(['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'combo']);
-            return Array.isArray(items) ? items.filter(item => item && types.has(item.type)).length : 0;
+            const list = Array.isArray(items) ? items : [];
+            // A packaged template-bundle hides its real widgets inside `children` —
+            // count those too so bundling can't bypass the per-plan goal-tracker cap.
+            const flat = [];
+            list.forEach((item) => {
+                if (!item) return;
+                flat.push(item);
+                if (Array.isArray(item.children)) flat.push(...item.children.filter(Boolean));
+            });
+            return flat.filter(item => types.has(item.type)).length;
         }
 
         onViewSwitch() {
@@ -124,6 +146,8 @@
             if (publishBtn) {
                 publishBtn.style.display = this.isAdmin ? 'inline-block' : 'none';
             }
+            const packageBtn = this.mount.querySelector('[data-action="package-goal-template"]');
+            if (packageBtn) packageBtn.style.display = this.isAdmin ? 'inline-flex' : 'none';
             this.loadDataIfNeeded();
         }
 
@@ -440,6 +464,7 @@
                                     </div>
                                     <div class="gmd-tool-group">
                                         <button class="gmd-btn" data-action="create-stack-group" title="Gop qua"><i class="fas fa-layer-group"></i> Gop qua</button>
+                                        <button class="gmd-btn" data-action="package-goal-template" title="Dong goi cac layer da chon thanh mau bang muc tieu" style="display:none;background:linear-gradient(135deg,#0891b2,#7c3aed);color:#fff;border-color:rgba(34,211,238,.45);"><i class="fas fa-box"></i> Dong goi mau</button>
                                         <button class="gmd-btn icon" data-action="duplicate"><i class="far fa-clone"></i></button>
                                         <button class="gmd-btn icon" data-action="delete"><i class="far fa-trash-alt"></i></button>
                                     </div>
@@ -499,6 +524,9 @@
                 this.selectedId = data.selectedId || null;
                 this.selectedIds = Array.isArray(data.selectedIds) ? data.selectedIds : (this.selectedId ? [this.selectedId] : []);
                 this.aspectRatio = data.aspectRatio || '9:16';
+                // Undo/redo jumps to a different item snapshot; a bundle "entered" for
+                // editing before the jump has no reliable meaning afterward.
+                this.enteredGroupId = null;
                 this.syncSelectionAfterDataChange();
                 this.mount.querySelectorAll('[data-ratio]').forEach((b) => b.classList.toggle('active', b.dataset.ratio === this.aspectRatio));
                 this.updateCanvasSizeByRatio();
@@ -551,6 +579,12 @@
             const unique = Array.from(new Set(ids.filter(Boolean)));
             this.selectedIds = unique;
             this.selectedId = primaryId && unique.includes(primaryId) ? primaryId : (unique[0] || null);
+            // Selecting a child inside an "entered" bundle never goes through this
+            // method (it assigns selectedId/selectedIds directly). So any call here
+            // is a top-level selection change, meaning the user has moved on from
+            // whichever bundle was entered — collapse it back to 1 layer so the
+            // canvas and inspector can never show a contradictory in-between state.
+            if (this.enteredGroupId) this.enteredGroupId = null;
         }
 
         clearSelection() {
@@ -560,6 +594,20 @@
 
         getSelectedItems() {
             return this.items.filter((i) => this.selectedIds.includes(i.id));
+        }
+
+        // Resolves an id to its live item object, checking top-level items first and
+        // falling back to the entered template-bundle's children (which aren't part
+        // of this.items). Drag/inspector code should use this instead of a raw
+        // this.items.find(...) so editing one piece inside an "entered" bundle works.
+        findInteractiveItem(id) {
+            const top = this.items.find((x) => x.id === id);
+            if (top) return top;
+            if (this.enteredGroupId) {
+                const bundle = this.items.find((x) => x.id === this.enteredGroupId && x.type === 'template-bundle');
+                if (bundle) return (bundle.children || []).find((child) => child.id === id) || null;
+            }
+            return null;
         }
 
         syncSelectionAfterDataChange() {
@@ -652,7 +700,43 @@
             return { success: true, layout };
         }
 
+        async tryOpenPurchasedGoalTemplate(templateId) {
+            const templateKey = String(templateId);
+            let goalTemplate = (this.customTemplates || []).find((item) => String(item.serverTemplateId) === templateKey);
+            if (!goalTemplate) {
+                await this.loadGoalTemplates();
+                goalTemplate = (this.customTemplates || []).find((item) => String(item.serverTemplateId) === templateKey);
+            }
+            if (!goalTemplate) return null;
+
+            if (!goalTemplate.owned) {
+                // Packaged goal-board combos are bought right here in the Designer,
+                // not from the Store — add to cart and open checkout inline instead
+                // of navigating away to a Store page that no longer lists them.
+                if (goalTemplate.productEffectId && window.app && typeof window.app.addToCart === 'function') {
+                    window.app.addToCart(goalTemplate.productEffectId);
+                    if (typeof window.app.openCart === 'function') window.app.openCart();
+                } else {
+                    window.app?.showNotification?.('error', 'Chức năng thanh toán tạm thời không khả dụng.');
+                }
+                return { success: false };
+            }
+
+            const itemCountBefore = this.items.length;
+            this.addTemplateToCanvas(goalTemplate.id);
+            if (this.items.length === itemCountBefore) {
+                return { success: false };
+            }
+            if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('success', `Đã thêm “${goalTemplate.name}” vào bảng thiết kế của bạn.`);
+            }
+            return { success: true };
+        }
+
         async buyOrUseTemplateFromSidebar(templateId) {
+            const goalTemplateResult = await this.tryOpenPurchasedGoalTemplate(templateId);
+            if (goalTemplateResult) return goalTemplateResult;
+
             if (!this._usingTemplateIds) this._usingTemplateIds = new Set();
             const templateKey = String(templateId);
             if (this._usingTemplateIds.has(templateKey)) return;
@@ -1144,7 +1228,26 @@
 
             const activeIds = new Set();
 
-            this.items.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).forEach((item) => {
+            // While a template-bundle is "entered" for editing, temporarily render its
+            // children as ordinary top-level canvas items (translated to absolute stage
+            // coordinates) instead of the bundle's own collapsed content. This reuses
+            // every existing per-item render/select/drag code path for free.
+            const enteredBundle = this.enteredGroupId
+                ? this.items.find((entry) => entry.id === this.enteredGroupId && entry.type === 'template-bundle')
+                : null;
+            if (this.enteredGroupId && !enteredBundle) this.enteredGroupId = null;
+            const renderList = enteredBundle
+                ? this.items
+                    .filter((entry) => entry.id !== enteredBundle.id)
+                    .concat((enteredBundle.children || []).map((child) => ({
+                        ...child,
+                        x: (Number(enteredBundle.x) || 0) + (Number(child.x) || 0),
+                        y: (Number(enteredBundle.y) || 0) + (Number(child.y) || 0),
+                        __bundleParentId: enteredBundle.id
+                    })))
+                : this.items;
+
+            renderList.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).forEach((item) => {
                 if (item.visible === false) return;
                 const domId = `gmd-item-${item.id}`;
                 activeIds.add(domId);
@@ -1336,6 +1439,14 @@
                         auraSpeed: child.auraSpeed,
                         auraScale: child.auraScale
                     })) : undefined,
+                    // A template-bundle's children can be any widget type with any
+                    // field (position, size, color, text...). Snapshot every field so
+                    // ANY edit made while "entered" invalidates the cached HTML and the
+                    // collapsed view repaints with the latest design instead of stale
+                    // content from whenever the bundle was first built.
+                    bundleChildren: item.type === 'template-bundle' && Array.isArray(item.children)
+                        ? item.children.map((child) => ({ ...child }))
+                        : undefined,
                     goals: Array.isArray(item.goals) ? item.goals.map(g => ({ id: g.id, text: g.text, target: g.target, giftId: g.giftId })) : undefined,
                     pkPlayers: Array.isArray(item.pkPlayers) ? item.pkPlayers.map(p => ({ name: p.name, giftId: p.giftId, target: p.target })) : undefined,
                     talentCompetition: item.talentCompetition,
@@ -1352,6 +1463,17 @@
                                 ? this.sharedRenderEngine.renderGiftStackGroup(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true })
                                 : '';
                             visualContainer.innerHTML = groupHTML;
+                        } else if (item.type === 'template-bundle') {
+                            // renderTemplateBundle already positions every child as a
+                            // percentage of THIS item's own width/height — it must fill
+                            // the visual container directly. Wrapping it in the generic
+                            // widget branch's fixed-reference-box + transform:scale below
+                            // (meant for widgets with a hand-authored fixed design size)
+                            // would size its container using item.w instead of
+                            // item.width, throwing off every child's percentage math.
+                            visualContainer.innerHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                                ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
+                                : '';
                         } else if (item.type && item.type !== 'gift') {
                             // Every widget type has one stable design-space size.
                             // Using item.w/item.h here makes the reference size change
@@ -1556,7 +1678,68 @@
                 if (!activeIds.has(n.id)) n.remove();
             });
 
+            // Entered-bundle visual affordance: outline the bundle's original footprint
+            // and offer a clear way back out to the collapsed 1-layer view.
+            let enteredFrame = document.getElementById('gmd-entered-bundle-frame');
+            if (enteredBundle) {
+                if (!enteredFrame) {
+                    enteredFrame = document.createElement('div');
+                    enteredFrame.id = 'gmd-entered-bundle-frame';
+                    enteredFrame.innerHTML = `
+                        <span class="gmd-entered-bundle-label"></span>
+                        <button type="button" class="gmd-entered-bundle-exit" data-action="exit-bundle">Xong ✓</button>
+                    `;
+                    stage.appendChild(enteredFrame);
+                }
+                Object.assign(enteredFrame.style, {
+                    position: 'absolute',
+                    left: `${enteredBundle.x}px`,
+                    top: `${enteredBundle.y}px`,
+                    width: `${enteredBundle.width}px`,
+                    height: `${enteredBundle.height}px`,
+                    border: '2px dashed rgba(34, 211, 238, 0.85)',
+                    borderRadius: '10px',
+                    pointerEvents: 'none',
+                    zIndex: '99998'
+                });
+                const label = enteredFrame.querySelector('.gmd-entered-bundle-label');
+                if (label) {
+                    label.textContent = `Đang sửa bên trong: ${enteredBundle.name || 'Combo'}`;
+                    label.style.cssText = 'position:absolute;left:0;top:-28px;padding:4px 10px;border-radius:6px;background:rgba(8,16,34,.96);border:1px solid rgba(34,211,238,.55);color:#67e8f9;font-size:11px;font-weight:800;white-space:nowrap;pointer-events:none;';
+                }
+                const exitBtn = enteredFrame.querySelector('.gmd-entered-bundle-exit');
+                if (exitBtn) {
+                    exitBtn.style.cssText = 'position:absolute;right:0;top:-32px;padding:5px 12px;border-radius:7px;border:1px solid rgba(34,211,238,.6);background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;font-size:11px;font-weight:900;cursor:pointer;pointer-events:auto;';
+                    exitBtn.onclick = () => this.exitBundleEditing();
+                }
+            } else if (enteredFrame) {
+                enteredFrame.remove();
+            }
+
             this.applyZoom();
+        }
+
+        enterBundleEditing(bundleId) {
+            const bundle = this.items.find((entry) => entry.id === bundleId && entry.type === 'template-bundle');
+            if (!bundle || bundle.locked) return;
+            // setSelection() auto-exits any entered bundle, so clear the selection
+            // BEFORE marking this bundle as entered, not after.
+            this.setSelection([], null);
+            this.enteredGroupId = bundleId;
+            this.renderCanvas();
+            this.renderInspector();
+            if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('info', `Đang sửa bên trong "${bundle.name || 'Combo'}". Chọn 1 mảnh để chỉnh, hoặc bấm "Xong" để đóng lại.`);
+            }
+        }
+
+        exitBundleEditing() {
+            if (!this.enteredGroupId) return;
+            const bundleId = this.enteredGroupId;
+            this.enteredGroupId = null;
+            this.setSelection([bundleId], bundleId);
+            this.renderCanvas();
+            this.renderInspector();
         }
 
         patchWidgetDOM(container, item) {
@@ -1680,9 +1863,20 @@
                 inspector.innerHTML = this.renderLayerPanel();
                 return;
             }
-            const selected = this.items.find((x) => x.id === this.selectedId);
+            const selected = this.findInteractiveItem(this.selectedId);
             if (!selected) {
-                inspector.innerHTML = '<div class="gmd-inspector-empty"><i class="fas fa-mouse-pointer"></i><p>Chọn một quà tặng hoặc widget<br>trên canvas để tùy chỉnh</p><small>(Giữ Shift để chọn nhiều)</small></div>';
+                inspector.innerHTML = this.enteredGroupId
+                    ? '<div class="gmd-inspector-empty"><i class="fas fa-box-open"></i><p>Đang sửa bên trong combo<br>Chọn 1 mảnh trên canvas để chỉnh</p><small>Bấm "Xong" hoặc Esc để đóng lại thành 1 layer</small></div>'
+                    : '<div class="gmd-inspector-empty"><i class="fas fa-mouse-pointer"></i><p>Chọn một quà tặng hoặc widget<br>trên canvas để tùy chỉnh</p><small>(Giữ Shift để chọn nhiều)</small></div>';
+                return;
+            }
+            if (selected.templatePermissions?.editable === false) {
+                inspector.innerHTML = `
+                    <div class="gmd-inspector-empty" style="height:auto;min-height:210px;padding:22px;">
+                        <i class="fas fa-lock" style="color:#fbbf24;"></i>
+                        <p style="color:#f8fafc;font-weight:900;">Layer được bảo vệ bởi tác giả mẫu</p>
+                        <small>Bạn vẫn có thể di chuyển cả mẫu trên canvas. Các thuộc tính riêng của layer này không được phép chỉnh sửa.</small>
+                    </div>`;
                 return;
             }
             if (selected.type && selected.type !== 'gift') {
@@ -2302,6 +2496,12 @@
             const player = selected.pkPlayers[playerIdx];
             if (!player) return;
 
+            // Remember the real score from before any test button was pressed, the
+            // same way live-donation progress is backed up, so Save/Export never
+            // bakes this fake preview number into what OBS actually shows.
+            if (selected._originalPkPlayers === undefined) {
+                selected._originalPkPlayers = selected.pkPlayers.map((p) => ({ score: Number(p.score) || 0 }));
+            }
             player.score = (Number(player.score) || 0) + Number(addPoints);
 
             if (this.trySelectivePkScoreUpdate(selected)) {
@@ -2320,6 +2520,9 @@
         resetPkScores() {
             const selected = this.items.find((x) => x.id === this.selectedId);
             if (!selected || !Array.isArray(selected.pkPlayers)) return;
+            if (selected._originalPkPlayers === undefined) {
+                selected._originalPkPlayers = selected.pkPlayers.map((p) => ({ score: Number(p.score) || 0 }));
+            }
             selected.pkPlayers.forEach(p => {
                 p.score = 0;
             });
@@ -2426,7 +2629,7 @@
         }
 
         updateSelectedItem(key, value, refreshInspector = true, pushHist = true) {
-            const primaryItem = this.items.find((x) => x.id === this.selectedId);
+            const primaryItem = this.findInteractiveItem(this.selectedId);
             if (!primaryItem) return;
             if (this.planKey === 'free' && ['animationType', 'auraType', 'auraColor', 'showTextBg', 'textBgStyle', 'textBgColor', 'textBgGradientFrom', 'textBgGradientTo', 'textColor', 'iconTextColor'].includes(key)) {
                 this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu và dùng hiệu ứng động.');
@@ -2436,7 +2639,11 @@
                 this.showUpgrade('menuAdvanced', 'Hiệu ứng chuyển động cao cấp dành cho gói Pro.');
                 return;
             }
-            const selectedItems = this.getSelectedItems().filter((x) => !x.locked);
+            // A selected child inside an "entered" bundle isn't part of this.items, so
+            // it can't go through the normal multi-select machinery — edit it alone.
+            const selectedItems = this.items.includes(primaryItem)
+                ? this.getSelectedItems().filter((x) => !x.locked)
+                : [primaryItem].filter((x) => !x.locked);
 
             selectedItems.forEach((item) => {
                 if (key === 'showName' || key === 'showTextBg' || key === 'showIconTextBg' || key === 'lockRatio') {
@@ -3058,9 +3265,16 @@
                         return goal;
                     });
                 }
+                if (Array.isArray(cleanItem._originalPkPlayers) && Array.isArray(cleanItem.pkPlayers)) {
+                    cleanItem.pkPlayers = cleanItem.pkPlayers.map((player, idx) => ({
+                        ...player,
+                        score: cleanItem._originalPkPlayers[idx] ? cleanItem._originalPkPlayers[idx].score : player.score
+                    }));
+                }
                 delete cleanItem._originalCurrentCount;
                 delete cleanItem._originalContributors;
                 delete cleanItem._originalComboCount;
+                delete cleanItem._originalPkPlayers;
                 return cleanItem;
             };
             const cleanItems = this.items.map(cleanRuntimeItem);
@@ -3112,6 +3326,28 @@
                     itemExport.borderRadius = Number(i.borderRadius !== undefined ? i.borderRadius : 8) * avgScale;
                     itemExport.padding = Number(i.padding !== undefined ? i.padding : 8) * avgScale;
                     itemExport.loopEnabled = Boolean(i.loopEnabled);
+                }
+                if (i.type === 'template-bundle') {
+                    // Children are stored relative to the bundle's own stage-space box.
+                    // The bundle's box just got rescaled to export size above, so every
+                    // child must be rescaled by the same factor to keep the composition.
+                    itemExport.children = Array.isArray(i.children) ? i.children.map((child) => {
+                        const childExport = {
+                            ...child,
+                            x: Math.round(Number(child.x || 0) * sx),
+                            y: Math.round(Number(child.y || 0) * sy),
+                            width: Math.round(Number(child.width || 0) * sx),
+                            height: Math.round(Number(child.height || 0) * sy)
+                        };
+                        if (child.type && child.type !== 'gift') {
+                            childExport.w = childExport.width;
+                            childExport.h = childExport.height;
+                        }
+                        if (child.type === 'text' && Number(child.fontSize) > 0) {
+                            childExport.fontSize = Math.round(Number(child.fontSize) * ((sx + sy) / 2));
+                        }
+                        return childExport;
+                    }) : [];
                 }
                 return itemExport;
             });
@@ -3186,6 +3422,27 @@
 
         async saveAndExport() {
             try {
+                const unpaidTemplateLayer = this.items.find((item) =>
+                    item?.sourceTemplateOwned === false && Number(item?.sourceTemplatePrice) > 0
+                );
+                if (unpaidTemplateLayer) {
+                    window.app?.showNotification?.(
+                        'warning',
+                        `Mẫu “${unpaidTemplateLayer.sourceTemplateName || 'bảng mục tiêu'}” cần được mua trước khi Lưu & Xuất sang OBS.`
+                    );
+                    return;
+                }
+                const rank = { free: 0, basic: 1, pro: 2, studio: 3, business: 4, admin: 5 };
+                const currentRank = rank[this.actualPlanKey] ?? 0;
+                const lockedPlanLayer = this.items.find((item) => {
+                    const required = String(item?.sourceTemplateRequiredPlan || 'free').toLowerCase();
+                    return currentRank < (rank[required] ?? 0);
+                });
+                if (lockedPlanLayer) {
+                    const required = String(lockedPlanLayer.sourceTemplateRequiredPlan || 'basic');
+                    this.showUpgrade('templates', `Mẫu “${lockedPlanLayer.sourceTemplateName || 'bảng mục tiêu'}” cần gói ${required.toUpperCase()} để xuất sang OBS.`);
+                    return;
+                }
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('info', 'Đang lưu và đẩy Gift Menu lên OBS...');
                 }
@@ -3333,8 +3590,12 @@
                         : (item.loopDirection === 'top-to-bottom' ? 'top-to-bottom' : 'bottom-to-top');
                     normalized.loopSpeed = item.loopSpeed !== undefined ? Number(item.loopSpeed) : 15;
                 }
+                if (item.type === 'template-bundle') {
+                    normalized.children = Array.isArray(item.children) ? item.children.map((child) => ({ ...child })) : [];
+                }
                 return normalized;
             }) : [];
+            this.enteredGroupId = null;
             this.migrateLegacyStackGroups();
             this.setSelection(this.items[0] ? [this.items[0].id] : [], this.items[0] ? this.items[0].id : null);
             this.setAspectRatio(this.aspectRatio);
@@ -3586,10 +3847,17 @@
                 }
 
                 // Unified Widget/Template Card Clicks
+                const deleteGoalTemplateBtn = e.target.closest('[data-delete-goal-template]');
+                if (deleteGoalTemplateBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.deletePublishedGoalTemplate(deleteGoalTemplateBtn.dataset.deleteGoalTemplate);
+                    return;
+                }
                 const tmplCard = e.target.closest('.gmd-template-card');
                 if (tmplCard) {
                     const templateId = tmplCard.dataset.templateId;
-                    this.addTemplateToCanvas(templateId);
+                    this.showTemplatePreview(templateId);
                     return;
                 }
                 const assetCard = e.target.closest('.gmd-asset-card');
@@ -3683,6 +3951,10 @@
                 if (action === 'distribute-y') this.applyDistribute('y');
                 if (action === 'create-stack-group') {
                     this.createStackGroupFromSelection();
+                    return;
+                }
+                if (action === 'package-goal-template') {
+                    this.showPackageGoalTemplateModal();
                     return;
                 }
                 if (action === 'ungroup-stack') {
@@ -3910,23 +4182,37 @@
                         e.preventDefault();
                         this.dragState = { mode: 'pan', sx: e.clientX, sy: e.clientY, panX: this.panX, panY: this.panY };
                         canvas.classList.add('is-panning');
+                        return;
+                    }
+                    // Clicking empty canvas while editing inside a bundle closes it back to 1 layer.
+                    if (this.enteredGroupId && canvas && canvas.contains(e.target)) {
+                        this.exitBundleEditing();
                     }
                     return;
                 }
                 e.preventDefault(); // Prevent browser default drag/selection ghosts!
-                const item = this.items.find((x) => x.id === itemNode.dataset.itemId);
+                const item = this.findInteractiveItem(itemNode.dataset.itemId);
                 if (!item) return;
+                const isChildItem = !this.items.includes(item);
                 if (e.shiftKey) {
                     return;
                 }
                 if (item.locked) {
-                    this.setSelection([item.id], item.id);
+                    if (isChildItem) { this.selectedId = item.id; this.selectedIds = [item.id]; }
+                    else this.setSelection([item.id], item.id);
                     this.renderCanvas();
                     this.renderInspector();
                     return;
                 }
                 const handle = e.target.closest('[data-handle]');
-                if (!this.isSelected(item.id)) this.setSelection([item.id], item.id);
+                if (isChildItem) {
+                    // Editing one piece inside an "entered" bundle: single-select only,
+                    // no multi-select/groupId plumbing needed for a piece this scoped.
+                    this.selectedId = item.id;
+                    this.selectedIds = [item.id];
+                } else if (!this.isSelected(item.id)) {
+                    this.setSelection([item.id], item.id);
+                }
                 if (handle && handle.dataset.handle === 'resize') {
                     if (item.type === 'gift-stack-group') {
                         const scalableKeys = ['iconSize', 'textSize', 'subtextSize', 'giftTextGap', 'labelGap', 'borderRadius', 'padding'];
@@ -3949,29 +4235,47 @@
                         this.renderInspector();
                         return;
                     }
-                    let moving = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
-                    const groupIds = new Set(moving.map(m => m.groupId).filter(Boolean));
-                    if (groupIds.size > 0) {
-                        const extra = this.items.filter(x => groupIds.has(x.groupId) && !x.locked && x.visible !== false);
-                        moving = Array.from(new Set([...moving, ...extra]));
+                    if (item.type === 'template-bundle') {
+                        // A packaged bundle always resizes as one uniform block so every
+                        // piece inside keeps the exact composition it was designed with.
+                        this.dragState = {
+                            mode: 'bundle-resize',
+                            id: item.id,
+                            sx: e.clientX,
+                            sy: e.clientY,
+                            startWidth: item.width,
+                            startHeight: item.height,
+                            startChildren: (item.children || []).map((child) => ({
+                                id: child.id, x: child.x, y: child.y, width: child.width, height: child.height, fontSize: child.fontSize || 36
+                            }))
+                        };
+                        this.renderCanvas();
+                        this.renderInspector();
+                        return;
                     }
+                    const moving = isChildItem ? [item] : this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
                     const startSizes = Object.fromEntries(moving.map((m) => [m.id, { width: m.width, height: m.height, fontSize: m.fontSize || 36 }]));
                     this.dragState = { mode: 'resize', id: item.id, sx: e.clientX, sy: e.clientY, width: item.width, height: item.height, movingIds: moving.map((m) => m.id), startSizes };
                 } else if (handle && handle.dataset.handle === 'rotate') {
-                    const moving = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
+                    const moving = isChildItem ? [item] : this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
                     const startRotations = Object.fromEntries(moving.map((m) => [m.id, m.rotation]));
                     this.dragState = { mode: 'rotate', id: item.id, sx: e.clientX, startRot: item.rotation, movingIds: moving.map((m) => m.id), startRotations };
                 } else {
-                    let moving = this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
-                    const groupIds = new Set(moving.map(m => m.groupId).filter(Boolean));
-                    if (groupIds.size > 0) {
-                        const extra = this.items.filter(x => groupIds.has(x.groupId) && !x.locked && x.visible !== false);
-                        moving = Array.from(new Set([...moving, ...extra]));
-                    }
+                    const moving = isChildItem ? [item] : this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
                     const startPositions = Object.fromEntries(moving.map((m) => [m.id, { x: m.x, y: m.y }]));
                     this.dragState = { mode: 'move', id: item.id, sx: e.clientX, sy: e.clientY, x: item.x, y: item.y, movingIds: moving.map((m) => m.id), startPositions };
                 }
                 this.renderCanvas();
+            });
+
+            this.mount.addEventListener('dblclick', (e) => {
+                const itemNode = e.target.closest('.gmd-item');
+                if (!itemNode) return;
+                const item = this.findInteractiveItem(itemNode.dataset.itemId);
+                if (!item || !this.items.includes(item)) return; // only entering a top-level bundle is supported
+                if (item.type !== 'template-bundle') return;
+                e.preventDefault();
+                this.enterBundleEditing(item.id);
             });
 
             window.addEventListener('mousemove', (e) => {
@@ -3984,7 +4288,7 @@
                     return;
                 }
 
-                const item = this.items.find((x) => x.id === this.dragState.id);
+                const item = this.findInteractiveItem(this.dragState.id);
                 if (this.dragState.mode === 'pan') {
                     this.panX = this.dragState.panX + (e.clientX - this.dragState.sx);
                     this.panY = this.dragState.panY + (e.clientY - this.dragState.sy);
@@ -3998,22 +4302,38 @@
                     const dy = ((e.clientY - this.dragState.sy) / finalScale);
                     const baseX = Math.round(this.dragState.x + dx);
                     const baseY = Math.round(this.dragState.y + dy);
-                    const snapped = this.applySnapForItem(baseX, baseY, item);
+                    // A bundle child's x/y is relative to its bundle, not the canvas —
+                    // the snap system compares against absolute canvas/sibling
+                    // positions, which would snap a small relative offset to a huge,
+                    // wrong absolute value. Skip snapping for children entirely.
+                    const isChildDrag = !this.items.includes(item);
+                    const snapped = isChildDrag
+                        ? { x: baseX, y: baseY, guideX: null, guideY: null, guideXLabel: '', guideYLabel: '' }
+                        : this.applySnapForItem(baseX, baseY, item);
                     const snapDx = snapped.x - this.dragState.x;
                     const snapDy = snapped.y - this.dragState.y;
+                    const enteredBundleForDrag = isChildDrag && this.enteredGroupId
+                        ? this.items.find((x) => x.id === this.enteredGroupId && x.type === 'template-bundle')
+                        : null;
                     (this.dragState.movingIds || [item.id]).forEach((id) => {
-                        const movingItem = this.items.find((x) => x.id === id);
+                        const movingItem = this.findInteractiveItem(id);
                         const start = this.dragState.startPositions ? this.dragState.startPositions[id] : null;
                         if (!movingItem || !start) return;
                         movingItem.x = Math.round(start.x + snapDx);
                         movingItem.y = Math.round(start.y + snapDy);
                         this.clampInsideCanvas(movingItem);
 
-                        // Ultra Performance Direct DOM updates
+                        // Ultra Performance Direct DOM updates. A bundle child's DOM node
+                        // is drawn at an ABSOLUTE stage position (bundle.x + child.x), but
+                        // movingItem.x/y here is the child's own RELATIVE value — add the
+                        // bundle's own position back in, or the element jumps to the
+                        // canvas's top-left corner mid-drag.
                         const domEl = document.getElementById('gmd-item-' + id);
                         if (domEl) {
-                            domEl.style.left = movingItem.x + 'px';
-                            domEl.style.top = movingItem.y + 'px';
+                            const domX = enteredBundleForDrag ? movingItem.x + (Number(enteredBundleForDrag.x) || 0) : movingItem.x;
+                            const domY = enteredBundleForDrag ? movingItem.y + (Number(enteredBundleForDrag.y) || 0) : movingItem.y;
+                            domEl.style.left = domX + 'px';
+                            domEl.style.top = domY + 'px';
                         }
                     });
                     this.updateGuides(snapped.guideX, snapped.guideY, snapped.guideXLabel, snapped.guideYLabel);
@@ -4058,7 +4378,7 @@
                     const dy = (e.clientY - this.dragState.sy) / finalScale;
                     const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
                     (this.dragState.movingIds || [item.id]).forEach((id) => {
-                        const target = this.items.find((x) => x.id === id);
+                        const target = this.findInteractiveItem(id);
                         const start = this.dragState.startSizes ? this.dragState.startSizes[id] : null;
                         if (!target || !start) return;
                         const isWidget = target.type && target.type !== 'gift';
@@ -4111,10 +4431,50 @@
                         this.clampInsideCanvas(target);
                     });
                     this.renderCanvas();
+                } else if (this.dragState.mode === 'bundle-resize') {
+                    // A packaged bundle always scales as one uniform block: the bundle's
+                    // own box and every child's relative x/y/width/height scale by the
+                    // same factor from the bundle's own top-left, so the composition the
+                    // admin designed never distorts or drifts out of alignment.
+                    const finalScale = this.getFitScale() * this.zoomLevel;
+                    const dx = (e.clientX - this.dragState.sx) / finalScale;
+                    const dy = (e.clientY - this.dragState.sy) / finalScale;
+                    const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+                    const scale = Math.max(0.1, (this.dragState.startWidth + delta) / Math.max(1, this.dragState.startWidth));
+                    const map = {
+                        '9:16': { width: 360, height: 640 },
+                        '16:9': { width: 640, height: 360 },
+                        '1:1': { width: 480, height: 480 }
+                    };
+                    const cfg = map[this.aspectRatio] || map['9:16'];
+                    const exportSize = this.aspectRatio === '9:16'
+                        ? { width: 1080, height: 1920 }
+                        : (this.aspectRatio === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1080 });
+                    const sx = exportSize.width / cfg.width;
+                    const sy = exportSize.height / cfg.height;
+                    item.width = Math.max(20, Math.round(this.dragState.startWidth * scale));
+                    item.height = Math.max(20, Math.round(this.dragState.startHeight * scale));
+                    item.w = Math.round(item.width * sx);
+                    item.h = Math.round(item.height * sy);
+                    (item.children || []).forEach((child) => {
+                        const start = (this.dragState.startChildren || []).find((c) => c.id === child.id);
+                        if (!start) return;
+                        child.x = Math.round(start.x * scale);
+                        child.y = Math.round(start.y * scale);
+                        child.width = Math.max(4, Math.round(start.width * scale));
+                        child.height = Math.max(4, Math.round(start.height * scale));
+                        child.w = Math.round(child.width * sx);
+                        child.h = Math.round(child.height * sy);
+                        if (child.type === 'text') {
+                            child.fontSize = Math.max(6, Math.round((start.fontSize || 36) * scale));
+                        }
+                    });
+                    this.clampInsideCanvas(item);
+                    this.renderCanvas();
                 } else if (this.dragState.mode === 'rotate') {
                     const deltaRot = Math.round((e.clientX - this.dragState.sx) * 0.7);
                     (this.dragState.movingIds || [item.id]).forEach((id) => {
-                        const target = this.items.find((x) => x.id === id);
+                        const target = this.findInteractiveItem(id);
                         const startRot = this.dragState.startRotations ? this.dragState.startRotations[id] : 0;
                         if (!target) return;
                         target.rotation = Math.round(startRot + deltaRot);
@@ -4183,7 +4543,10 @@
                 const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
                 if (activeTag === 'input' || activeTag === 'textarea') return;
 
-                if (e.code === 'Delete' || e.code === 'Backspace') {
+                if (e.code === 'Escape' && this.enteredGroupId) {
+                    e.preventDefault();
+                    this.exitBundleEditing();
+                } else if (e.code === 'Delete' || e.code === 'Backspace') {
                     e.preventDefault();
                     this.deleteSelected();
                 } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyD') {
@@ -4286,6 +4649,26 @@
             };
         }
 
+        // Pure logical→stage scale, no safe-area offset. Use this for a value that's
+        // relative to another item's own origin (a bundle child's offset/size inside
+        // its bundle) rather than an absolute canvas position — logicalToStage()
+        // always adds the safe-area offset, which only makes sense for a real
+        // top-level placement.
+        logicalDeltaToStage(x, y) {
+            const map = {
+                '9:16': { width: 360, height: 640, exportW: 1080, exportH: 1920 },
+                '16:9': { width: 640, height: 360, exportW: 1920, exportH: 1080 },
+                '1:1': { width: 480, height: 480, exportW: 1080, exportH: 1080 }
+            };
+            const cfg = (this.coordinateEngine && typeof this.coordinateEngine.getConfig === 'function')
+                ? this.coordinateEngine.getConfig(this.aspectRatio)
+                : (map[this.aspectRatio] || map['9:16']);
+            return {
+                x: Math.round((Number(x) || 0) * cfg.width / cfg.exportW),
+                y: Math.round((Number(y) || 0) * cfg.height / cfg.exportH)
+            };
+        }
+
         renderWidgetsList() {
             const listEl = this.mount.querySelector('#gmd-widgets-list');
             if (!listEl) return;
@@ -4300,7 +4683,24 @@
                 <div class="gmd-template-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;height:100%;min-width:0;min-height:0;max-height:none;overflow-x:hidden;overflow-y:auto;box-sizing:border-box;padding-right:4px;align-content:start;">
                     ${allTemplates.map(t => {
                 let previewHTML = '';
-                if (t.id === 'tmpl_pk_versus_bar') {
+                if (t.serverTemplateId && Array.isArray(t.layers) && t.layers.length) {
+                    // buildTemplatePreviewLayers fills 100%/100% of whatever frame it's
+                    // given. A fixed 680x430 (landscape) frame regardless of content
+                    // shape visibly squashes square/portrait content (e.g. a circular
+                    // goal-board combo turns into an oval) — fit the frame to the
+                    // template's own aspect ratio instead, "contain"-style within the
+                    // same 680x430 reference area.
+                    const contentAspect = this.getTemplateContentAspect(t);
+                    const frameAspect = 680 / 430;
+                    const frameW = contentAspect >= frameAspect ? 680 : Math.round(430 * contentAspect);
+                    const frameH = contentAspect >= frameAspect ? Math.round(680 / contentAspect) : 430;
+                    previewHTML = `
+                        <div style="position:relative;width:100%;height:100%;overflow:hidden;border-radius:5px;background:linear-gradient(145deg,#050816,#0b1224);">
+                            <div style="position:absolute;left:50%;top:50%;width:${frameW}px;height:${frameH}px;transform:translate(-50%,-50%) scale(.135);transform-origin:center;">
+                                ${this.buildTemplatePreviewLayers(t)}
+                            </div>
+                        </div>`;
+                } else if (t.id === 'tmpl_pk_versus_bar') {
                     previewHTML = `
                                 <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #0f172a 0%, #05070f 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box; position: relative;">
                                     <div style="display: flex; justify-content: space-between; font-size: 5px; color: #ef4444; font-weight: bold; line-height: 1;">
@@ -4432,7 +4832,7 @@
 
                 if (t.id === 'tmpl_talent_competition_live') previewHTML = `<div class="gmd-mini-widget" style="background:linear-gradient(155deg,#221434,#090d1f);border:1px solid #fbbf2475;border-radius:6px;padding:5px;width:100%;height:100%;display:flex;flex-direction:column;gap:3px;box-sizing:border-box;color:#fff;"><div style="text-align:center;color:#fbbf24;font-size:7px;font-weight:900;">🏆 Bảng xếp hạng Talent</div><div style="text-align:center;color:#c4b5fd;font-size:4px;font-weight:800;">VÒNG 1 • CẬP NHẬT TRỰC TIẾP</div><div style="display:flex;flex-direction:column;gap:2px;margin-top:3px;"><div style="display:flex;justify-content:space-between;padding:3px 4px;border-radius:3px;background:#fbbf2428;font-size:5px;font-weight:800;"><span>1　Hoàng Long</span><b style="color:#fbbf24;">10.000</b></div><div style="display:flex;justify-content:space-between;padding:3px 4px;border-radius:3px;background:#ffffff0b;font-size:5px;"><span>2　Minh Anh</span><b>0</b></div><div style="display:flex;justify-content:space-between;padding:3px 4px;border-radius:3px;background:#ffffff0b;font-size:5px;"><span>3　Bảo Ngọc</span><b>0</b></div></div></div>`;
                 const isPremium = Boolean(t.isPremium);
-                const requiresBasic = this.actualPlanKey === 'free' && !['tmpl_neon_purple', 'tmpl_circular_heart_goal'].includes(t.id);
+                const requiresBasic = this.templateNeedsHigherPlan(t);
                 const priceTag = requiresBasic
                     ? 'Basic khi xuất'
                     : (isPremium ? `${Number(t.price || 0).toLocaleString()}đ` : 'Miễn phí');
@@ -4441,6 +4841,7 @@
                 return `
                             <div class="gmd-template-card" draggable="true" data-template-id="${t.id}" data-plan-locked="false" style="display:flex;flex-direction:column;gap:6px;min-width:0;width:100%;box-sizing:border-box;padding:8px;background:rgba(255,255,255,.02);border:1px solid ${requiresBasic ? 'rgba(245,158,11,.35)' : 'rgba(255,255,255,.08)'};border-radius:8px;cursor:grab;position:relative;">
                                 ${requiresBasic ? '<span style="position:absolute;right:5px;top:5px;z-index:2;padding:2px 5px;border-radius:5px;background:rgba(15,23,42,.9);color:#fbbf24;font-size:8px;font-weight:900;">✨ DÙNG THỬ</span>' : ''}
+                                ${this.isAdmin && t.serverTemplateId ? `<button type="button" data-delete-goal-template="${this.escapeHtml(t.serverTemplateId)}" title="Xóa mẫu đã đóng gói" style="position:absolute;left:5px;top:5px;z-index:4;width:22px;height:22px;border:1px solid rgba(248,113,113,.45);border-radius:6px;background:rgba(69,10,10,.9);color:#fca5a5;cursor:pointer;display:grid;place-items:center;"><i class="fas fa-trash" style="font-size:9px;"></i></button>` : ''}
                                 <div class="gmd-template-preview-box" style="width: 100%; height: 60px; background: rgba(0,0,0,0.35); border-radius: 6px; display: flex; align-items: center; justify-content: center; padding: 4px; box-sizing: border-box; overflow: hidden;">
                                     ${previewHTML}
                                 </div>
@@ -4456,6 +4857,179 @@
             }).join('')}
                 </div>
             `;
+        }
+
+        // Width/height ratio of a template's actual content bounding box (not the
+        // canvas/export size) — used to size a preview frame that matches the
+        // content's real shape instead of always assuming landscape.
+        getTemplateContentAspect(template) {
+            const layers = Array.isArray(template?.layers) ? template.layers : [];
+            if (!layers.length) return 1;
+            const xs = layers.map((l) => Number(l.x) || 0);
+            const ys = layers.map((l) => Number(l.y) || 0);
+            const x2s = layers.map((l) => (Number(l.x) || 0) + Math.max(1, Number(l.w || l.width) || 1));
+            const y2s = layers.map((l) => (Number(l.y) || 0) + Math.max(1, Number(l.h || l.height) || 1));
+            const w = Math.max(1, Math.max(...x2s) - Math.min(...xs));
+            const h = Math.max(1, Math.max(...y2s) - Math.min(...ys));
+            return w / h;
+        }
+
+        buildTemplatePreviewLayers(template) {
+            const layers = Array.isArray(template?.layers) ? template.layers : [];
+            if (!layers.length) return '<div style="color:#94a3b8;font-weight:700;">Kh\u00f4ng c\u00f3 d\u1eef li\u1ec7u xem tr\u01b0\u1edbc</div>';
+
+            const boxes = layers.map((layer) => ({
+                layer,
+                x: Number(layer.x) || 0,
+                y: Number(layer.y) || 0,
+                w: Math.max(1, Number(layer.w || layer.width) || 1),
+                h: Math.max(1, Number(layer.h || layer.height) || 1)
+            }));
+            const minX = Math.min(...boxes.map((box) => box.x));
+            const minY = Math.min(...boxes.map((box) => box.y));
+            const maxX = Math.max(...boxes.map((box) => box.x + box.w));
+            const maxY = Math.max(...boxes.map((box) => box.y + box.h));
+            const contentW = Math.max(1, maxX - minX);
+            const contentH = Math.max(1, maxY - minY);
+            const previewScale = Math.max(0.12, Math.min(680 / contentW, 430 / contentH));
+
+            return boxes.map(({ layer, x, y, w, h }, index) => {
+                const previewItem = { ...layer, width: w, height: h, w, h };
+                const rendered = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                    ? this.sharedRenderEngine.renderByType(previewItem, {
+                        mode: 'preview',
+                        scale: previewScale,
+                        apiBase: this.apiBase,
+                        escapeText: true,
+                        gifts: this.gifts,
+                        includeDesignerFallback: true
+                    })
+                    : '';
+                return `<div style="position:absolute;left:${((x - minX) / contentW) * 100}%;top:${((y - minY) / contentH) * 100}%;width:${(w / contentW) * 100}%;height:${(h / contentH) * 100}%;z-index:${Number(layer.zIndex) || index + 1};overflow:visible;">${rendered}</div>`;
+            }).join('');
+        }
+
+        showTemplatePreview(templateId) {
+            const allTemplates = [...(this.customTemplates || []), ...this.getDefaultTemplates()];
+            const template = allTemplates.find((entry) => entry.id === templateId);
+            if (!template) return;
+
+            document.getElementById('gmd-template-preview-modal')?.remove();
+            // A packaged template stores 1 "template-bundle" wrapper — for the info
+            // panel (layer count, has-animation), show the real pieces inside it.
+            const isSingleBundle = template.layers?.length === 1 && template.layers[0]?.type === 'template-bundle';
+            const effectivePreviewLayers = isSingleBundle ? (template.layers[0].children || []) : (template.layers || []);
+            const layerCount = effectivePreviewLayers.length;
+            const templateBoxes = (template.layers || []).map((layer) => ({
+                x: Number(layer.x) || 0,
+                y: Number(layer.y) || 0,
+                w: Math.max(1, Number(layer.w || layer.width) || 1),
+                h: Math.max(1, Number(layer.h || layer.height) || 1)
+            }));
+            const previewBounds = templateBoxes.length ? {
+                minX: Math.min(...templateBoxes.map((box) => box.x)),
+                minY: Math.min(...templateBoxes.map((box) => box.y)),
+                maxX: Math.max(...templateBoxes.map((box) => box.x + box.w)),
+                maxY: Math.max(...templateBoxes.map((box) => box.y + box.h))
+            } : { minX: 0, minY: 0, maxX: 9, maxY: 16 };
+            const previewAspect = Math.max(0.1, (previewBounds.maxX - previewBounds.minX) / Math.max(1, previewBounds.maxY - previewBounds.minY));
+            const hasAnimation = effectivePreviewLayers.some((layer) =>
+                layer.animationType || layer.borderEffect || layer.panelEffect || layer.autoScroll
+            );
+            const requiresBasic = this.templateNeedsHigherPlan(template);
+            const templatePrice = Math.max(0, Number(template.price) || 0);
+            const isServerTemplate = Boolean(template.serverTemplateId);
+            const isOwned = template.owned !== false;
+            const canPurchase = isServerTemplate && !isOwned && Boolean(template.productEffectId);
+            const purchaseLabel = templatePrice > 0
+                ? `Mua m\u1eabu - ${templatePrice.toLocaleString('vi-VN')}\u0111`
+                : 'Th\u00eam mi\u1ec5n ph\u00ed';
+            const primaryLabel = isOwned && isServerTemplate
+                ? 'M\u1edf m\u1eabu trong thi\u1ebft k\u1ebf'
+                : 'D\u00f9ng th\u1eed tr\u00ean thi\u1ebft k\u1ebf';
+            const ownershipLabel = !isServerTemplate
+                ? (requiresBasic ? 'Basic khi xu\u1ea5t' : 'C\u00f3 th\u1ec3 d\u00f9ng')
+                : (isOwned ? (templatePrice > 0 ? '\u0110\u00e3 s\u1edf h\u1eefu' : 'Mi\u1ec5n ph\u00ed') : `${templatePrice.toLocaleString('vi-VN')}\u0111`);
+            const modal = document.createElement('div');
+            modal.id = 'gmd-template-preview-modal';
+            modal.innerHTML = `
+                <div class="gmd-template-preview-dialog" role="dialog" aria-modal="true" aria-label="Xem tr\u01b0\u1edbc m\u1eabu b\u1ea3ng m\u1ee5c ti\u00eau">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px;">
+                        <div>
+                            <div style="font-size:20px;font-weight:950;color:#f8fafc;line-height:1.2;">${this.escapeHtml(template.name || 'B\u1ea3ng m\u1ee5c ti\u00eau')}</div>
+                            <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Preview tr\u1ef1c ti\u1ebfp t\u1eeb thi\u1ebft k\u1ebf th\u1ef1c t\u1ebf</div>
+                        </div>
+                        <button type="button" data-preview-close style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#111827;color:#fff;cursor:pointer;font-size:18px;">&times;</button>
+                    </div>
+                    <div class="gmd-template-preview-layout">
+                        <div class="gmd-template-live-preview">
+                            <div class="gmd-template-preview-stage-host" style="position:absolute;inset:22px;display:grid;place-items:center;overflow:hidden;">
+                                <div class="gmd-template-preview-stage" data-preview-aspect="${previewAspect}" style="position:relative;overflow:visible;">${this.buildTemplatePreviewLayers(template)}</div>
+                            </div>
+                            <span style="position:absolute;left:12px;bottom:10px;padding:4px 8px;border-radius:999px;background:rgba(3,7,18,.82);border:1px solid rgba(34,211,238,.28);color:#a5f3fc;font-size:10px;font-weight:800;">LIVE PREVIEW</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:12px;min-width:0;">
+                            <div class="gmd-template-preview-info">
+                                <div><span>Layer</span><strong>${layerCount}</strong></div>
+                                <div><span>Hi\u1ec7u \u1ee9ng</span><strong>${hasAnimation ? 'C\u00f3' : 'T\u0129nh'}</strong></div>
+                                <div><span>Quy\u1ec1n d\u00f9ng</span><strong>${ownershipLabel}</strong></div>
+                            </div>
+                            <div style="padding:13px;border-radius:12px;background:rgba(15,23,42,.72);border:1px solid rgba(255,255,255,.08);color:#cbd5e1;font-size:12px;line-height:1.6;">
+                                <div style="color:#f8fafc;font-weight:900;margin-bottom:5px;">B\u1ea1n c\u00f3 th\u1ec3</div>
+                                <div>\u2713 D\u00f9ng th\u1eed tr\u1ef1c ti\u1ebfp tr\u00ean canvas</div>
+                                <div>\u2713 Thay qu\u00e0, m\u00e0u s\u1eafc v\u00e0 n\u1ed9i dung</div>
+                                <div>\u2713 Ki\u1ec3m tra hi\u1ec7u \u1ee9ng tr\u01b0\u1edbc khi xu\u1ea5t</div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto;">
+                                <button type="button" data-preview-use="${this.escapeHtml(template.id)}" class="gmd-btn ${canPurchase ? '' : 'primary'}" style="width:100%;padding:12px;font-weight:900;">${primaryLabel}</button>
+                                ${canPurchase ? `<button type="button" data-preview-buy="${this.escapeHtml(template.productEffectId)}" class="gmd-btn primary" style="width:100%;padding:12px;font-weight:900;"><i class="fas fa-shopping-cart"></i> ${purchaseLabel}</button>` : ''}
+                            </div>
+                            <div style="font-size:10px;line-height:1.45;color:#64748b;text-align:center;">M\u1eabu ch\u1ec9 \u0111\u01b0\u1ee3c \u0111\u01b0a v\u00e0o canvas. OBS ch\u1ec9 thay \u0111\u1ed5i khi b\u1ea1n b\u1ea5m L\u01b0u &amp; Xu\u1ea5t.</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            Object.assign(modal.style, {
+                position: 'fixed', inset: '0', zIndex: '100000', display: 'grid', placeItems: 'center',
+                padding: '24px', background: 'rgba(2,6,23,.78)', backdropFilter: 'blur(10px)'
+            });
+            document.body.appendChild(modal);
+            modal.querySelector('.gmd-template-preview-dialog').style.cssText = 'width:min(980px,calc(100vw - 48px));max-height:calc(100vh - 48px);overflow:auto;box-sizing:border-box;padding:20px;border-radius:18px;background:linear-gradient(160deg,#0d1830,#080e1d);border:1px solid rgba(168,85,247,.45);box-shadow:0 28px 90px rgba(0,0,0,.7),0 0 40px rgba(139,92,246,.16);';
+            const sizePreviewStage = () => {
+                const host = modal.querySelector('.gmd-template-preview-stage-host');
+                const stage = modal.querySelector('.gmd-template-preview-stage');
+                if (!host || !stage) return;
+                const aspect = Number(stage.dataset.previewAspect) || (9 / 16);
+                const availableW = Math.max(1, host.clientWidth);
+                const availableH = Math.max(1, host.clientHeight);
+                const width = Math.min(availableW, availableH * aspect);
+                stage.style.width = `${width}px`;
+                stage.style.height = `${width / aspect}px`;
+            };
+            requestAnimationFrame(sizePreviewStage);
+            const previewResizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(sizePreviewStage) : null;
+            const previewHost = modal.querySelector('.gmd-template-preview-stage-host');
+            if (previewResizeObserver && previewHost) previewResizeObserver.observe(previewHost);
+            const close = () => {
+                previewResizeObserver?.disconnect();
+                modal.remove();
+            };
+            modal.querySelector('[data-preview-close]')?.addEventListener('click', close);
+            modal.addEventListener('click', (event) => { if (event.target === modal) close(); });
+            modal.querySelector('[data-preview-use]')?.addEventListener('click', () => {
+                close();
+                this.addTemplateToCanvas(template.id);
+            });
+            modal.querySelector('[data-preview-buy]')?.addEventListener('click', () => {
+                const productEffectId = String(template.productEffectId || '');
+                close();
+                if (window.app && typeof window.app.addToCart === 'function') {
+                    window.app.addToCart(productEffectId);
+                    if (typeof window.app.openCart === 'function') window.app.openCart();
+                    return;
+                }
+                window.app?.showNotification?.('error', 'Kh\u00f4ng th\u1ec3 m\u1edf gi\u1ecf h\u00e0ng l\u00fac n\u00e0y.');
+            });
         }
 
         renderAssetsList() {
@@ -4511,8 +5085,7 @@
             const allTemplates = [...(this.customTemplates || []), ...templates];
             const tmpl = allTemplates.find(t => t.id === templateId);
             if (!tmpl) return;
-            const isBasicTrial = this.actualPlanKey === 'free'
-                && !['tmpl_neon_purple', 'tmpl_circular_heart_goal'].includes(templateId);
+            const isBasicTrial = this.templateNeedsHigherPlan(tmpl);
             if (isBasicTrial && !this._trialTemplateNoticeShown.has(templateId)) {
                 this._trialTemplateNoticeShown.add(templateId);
                 if (window.app && typeof window.app.showNotification === 'function') {
@@ -4522,7 +5095,17 @@
                     );
                 }
             }
-            (tmpl.layers || []).forEach((layer) => {
+
+            // Normalize both storage shapes (an already-bundled [bundleItem], and a
+            // legacy/default flat array) into one flat "effectiveLayers" list, then
+            // decide whether the result should collapse into a single combo layer.
+            const unbundleableTypes = new Set(['challenge-wheel', 'talent-live', 'talent-leaderboard']);
+            const rawLayers = tmpl.layers || [];
+            const alreadyBundle = rawLayers.length === 1 && rawLayers[0].type === 'template-bundle';
+            const effectiveLayers = alreadyBundle ? (rawLayers[0].children || []) : rawLayers;
+            const shouldBundle = effectiveLayers.length > 1 && !effectiveLayers.some((layer) => unbundleableTypes.has(layer.type));
+
+            effectiveLayers.forEach((layer) => {
                 if (layer.type === 'talent-leaderboard' && layer.talentCompetition) {
                     layer.talentCompetition.showTop3 = false;
                     layer.fontSize = layer.fontSize || 32;
@@ -4531,7 +5114,7 @@
                     layer.titleEffect = layer.titleEffect || 'glow';
                 }
             });
-            const incomingGoals = this.countGoalTrackers(tmpl.layers);
+            const incomingGoals = this.countGoalTrackers(effectiveLayers);
             if (this.countGoalTrackers() + incomingGoals > this.goalTrackerLimit) {
                 this.showUpgrade('goalTrackers', `Gói hiện tại chỉ hỗ trợ ${this.goalTrackerLimit} bảng mục tiêu.`);
                 return;
@@ -4544,41 +5127,26 @@
             let minY = Infinity;
             let maxX = -Infinity;
             let maxY = -Infinity;
-            tmpl.layers.forEach(layer => {
-                if (layer.x < minX) minX = layer.x;
-                if (layer.y < minY) minY = layer.y;
-                if (layer.x + layer.w > maxX) maxX = layer.x + layer.w;
-                if (layer.y + layer.h > maxY) maxY = layer.y + layer.h;
+            effectiveLayers.forEach(layer => {
+                // Some fields may only have width/height set (not w/h) depending on
+                // where the layer came from — fall back consistently so a missing
+                // field never turns this into NaN (which would silently collapse the
+                // whole bounding box to a single point).
+                const lx = Number(layer.x) || 0;
+                const ly = Number(layer.y) || 0;
+                const lw = Number(layer.w ?? layer.width) || 0;
+                const lh = Number(layer.h ?? layer.height) || 0;
+                if (lx < minX) minX = lx;
+                if (ly < minY) minY = ly;
+                if (lx + lw > maxX) maxX = lx + lw;
+                if (ly + lh > maxY) maxY = ly + lh;
             });
-            const w = maxX - minX;
-            const h = maxY - minY;
+            const w = Math.max(1, maxX - minX);
+            const h = Math.max(1, maxY - minY);
 
-            const newLayers = tmpl.layers.map((layer, idx) => {
+            const buildFreshLayer = (layer, idx) => {
                 const uniqueId = `layer_${layer.type}_${Date.now()}_${Math.floor(Math.random() * 1000)}_${idx}`;
-                let newX = layer.x;
-                let newY = layer.y;
-                if (dropX !== null && dropY !== null) {
-                    newX = dropX - (w / 2) + (layer.x - minX);
-                    newY = dropY - (h / 2) + (layer.y - minY);
-                }
-
-                const freshLayer = {
-                    ...layer,
-                    id: uniqueId,
-                    groupId: ['talent-live', 'talent-leaderboard'].includes(layer.type) ? null : groupUniqueId,
-                    x: Math.round(newX),
-                    y: Math.round(newY),
-                    zIndex: baseZ + idx + 1
-                };
-
-                const stageCoords = this.logicalToStage(freshLayer);
-                freshLayer.x = stageCoords.x;
-                freshLayer.y = stageCoords.y;
-                freshLayer.width = stageCoords.width;
-                freshLayer.height = stageCoords.height;
-                freshLayer.w = stageCoords.w;
-                freshLayer.h = stageCoords.h;
-
+                const freshLayer = { ...layer, id: uniqueId, zIndex: idx + 1 };
                 if (freshLayer.currentCount !== undefined) freshLayer.currentCount = 0;
                 if (freshLayer.comboCount !== undefined) freshLayer.comboCount = 0;
                 if (Array.isArray(freshLayer.goals)) {
@@ -4589,28 +5157,109 @@
                 }
                 if (freshLayer.talentCompetition && typeof freshLayer.talentCompetition === 'object') {
                     freshLayer.talentCompetition = JSON.parse(JSON.stringify(freshLayer.talentCompetition));
-                    freshLayer.talentCompetition.id = `talent_${groupUniqueId}`;
+                    freshLayer.talentCompetition.id = `talent_${groupUniqueId}_${idx}`;
                     freshLayer.talentCompetition.status = 'idle';
                     freshLayer.talentCompetition.startedAt = null;
                     freshLayer.talentCompetition.remainingSeconds = Number(freshLayer.talentCompetition.durationSeconds) || 180;
                     freshLayer.talentCompetition.eventFeed = [];
                     freshLayer.talentCompetition.participants = (freshLayer.talentCompetition.participants || []).map((person, personIndex) => ({
                         ...person,
-                        id: `${groupUniqueId}_talent_${personIndex + 1}`,
+                        id: `${groupUniqueId}_talent_${idx}_${personIndex + 1}`,
                         score: 0,
                         roundScore: 0
                     }));
                     freshLayer.talentCompetition.activeTalentId = freshLayer.talentCompetition.participants[0]?.id || '';
                 }
-
                 return freshLayer;
-            });
+            };
 
-            this.items.push(...newLayers);
+            if (shouldBundle) {
+                // Multiple pieces collapse into exactly 1 layer, same as "Đóng gói" —
+                // each child keeps its offset relative to the bundle's own box.
+                const children = effectiveLayers.map((layer, idx) => {
+                    const freshLayer = buildFreshLayer(layer, idx);
+                    const relPos = this.logicalDeltaToStage(layer.x - minX, layer.y - minY);
+                    const relSize = this.logicalDeltaToStage(layer.w ?? layer.width, layer.h ?? layer.height);
+                    freshLayer.x = relPos.x;
+                    freshLayer.y = relPos.y;
+                    freshLayer.width = relSize.x;
+                    freshLayer.height = relSize.y;
+                    freshLayer.w = Math.round(Number(layer.w ?? layer.width) || 0);
+                    freshLayer.h = Math.round(Number(layer.h ?? layer.height) || 0);
+                    return freshLayer;
+                });
+                const bundleSize = this.logicalDeltaToStage(w, h);
+                let bundleX;
+                let bundleY;
+                if (dropX !== null && dropY !== null) {
+                    bundleX = Math.round(dropX - bundleSize.x / 2);
+                    bundleY = Math.round(dropY - bundleSize.y / 2);
+                } else {
+                    const anchored = this.logicalToStage({ x: minX, y: minY, w, h });
+                    bundleX = anchored.x;
+                    bundleY = anchored.y;
+                }
+                const bundleItem = {
+                    id: `bundle_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+                    type: 'template-bundle',
+                    name: tmpl.name || 'Combo',
+                    x: bundleX,
+                    y: bundleY,
+                    width: bundleSize.x,
+                    height: bundleSize.y,
+                    w: Math.round(w),
+                    h: Math.round(h),
+                    rotation: 0,
+                    zIndex: baseZ + 1,
+                    visible: true,
+                    locked: false,
+                    children,
+                    sourceTemplateId: tmpl.serverTemplateId || tmpl.id,
+                    sourceTemplateName: tmpl.name || '',
+                    sourceTemplateOwned: tmpl.owned !== false,
+                    sourceTemplatePrice: Math.max(0, Number(tmpl.price) || 0),
+                    sourceTemplateRequiredPlan: String(tmpl.requiredPlan || 'free').toLowerCase()
+                };
+                this.items.push(bundleItem);
+                this.setSelection([bundleItem.id], bundleItem.id);
+            } else {
+                // Single-item templates (or ones that must stay independent, like a
+                // live Talent board or Challenge Wheel) insert as plain top-level
+                // layers, exactly like before.
+                const newLayers = effectiveLayers.map((layer, idx) => {
+                    let newX = layer.x;
+                    let newY = layer.y;
+                    if (dropX !== null && dropY !== null) {
+                        newX = dropX - (w / 2) + (layer.x - minX);
+                        newY = dropY - (h / 2) + (layer.y - minY);
+                    }
+                    const freshLayer = buildFreshLayer(layer, idx);
+                    freshLayer.groupId = null;
+                    freshLayer.sourceTemplateId = tmpl.serverTemplateId || tmpl.id;
+                    freshLayer.sourceTemplateName = tmpl.name || '';
+                    freshLayer.sourceTemplateOwned = tmpl.owned !== false;
+                    freshLayer.sourceTemplatePrice = Math.max(0, Number(tmpl.price) || 0);
+                    freshLayer.sourceTemplateRequiredPlan = String(tmpl.requiredPlan || 'free').toLowerCase();
+                    freshLayer.x = Math.round(newX);
+                    freshLayer.y = Math.round(newY);
+                    freshLayer.zIndex = baseZ + idx + 1;
 
-            if (newLayers[0]) {
-                const independentTalentLayers = newLayers.filter((layer) => ['talent-live', 'talent-leaderboard'].includes(layer.type));
-                this.setSelection(independentTalentLayers.length ? [independentTalentLayers[0].id] : newLayers.map(l => l.id), newLayers[0].id);
+                    const stageCoords = this.logicalToStage(freshLayer);
+                    freshLayer.x = stageCoords.x;
+                    freshLayer.y = stageCoords.y;
+                    freshLayer.width = stageCoords.width;
+                    freshLayer.height = stageCoords.height;
+                    freshLayer.w = stageCoords.w;
+                    freshLayer.h = stageCoords.h;
+                    return freshLayer;
+                });
+
+                this.items.push(...newLayers);
+
+                if (newLayers[0]) {
+                    const independentTalentLayers = newLayers.filter((layer) => ['talent-live', 'talent-leaderboard'].includes(layer.type));
+                    this.setSelection(independentTalentLayers.length ? [independentTalentLayers[0].id] : newLayers.map(l => l.id), newLayers[0].id);
+                }
             }
 
             this.renderCanvas();
@@ -4758,6 +5407,192 @@
             if (window.app && typeof window.app.showNotification === 'function') {
                 window.app.showNotification('success', 'Mẫu đã được lưu trên máy này.');
             }
+        }
+
+        showPackageGoalTemplateModal() {
+            if (!this.isAdmin) return;
+            const unbundleableTypes = new Set(['challenge-wheel', 'talent-live', 'talent-leaderboard']);
+            const rawSelection = this.getSelectedItems().filter((item) => item && item.visible !== false);
+            const blocked = rawSelection.find((item) => unbundleableTypes.has(item.type));
+            if (blocked) {
+                window.app?.showNotification?.('warning', `"${blocked.name || blocked.type}" can trang thai rieng, khong the dong goi chung. Vui long bo chon layer nay.`);
+                return;
+            }
+            const selectedItems = rawSelection;
+            if (selectedItems.length < 2) {
+                window.app?.showNotification?.('warning', 'Hay chon it nhat 2 layer de dong goi thanh mot mau bang muc tieu.');
+                return;
+            }
+            document.getElementById('gmd-package-goal-modal')?.remove();
+            const bounds = this.getItemsBounds(selectedItems);
+            if (!bounds) return;
+            const packageId = `pack_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+            const packagedTemplateIds = [...new Set(selectedItems
+                .map(item => String(item.packagedTemplateId || ''))
+                .filter(Boolean))];
+            const existingTemplateId = packagedTemplateIds.length === 1 ? packagedTemplateIds[0] : '';
+            const logicalOrigin = this.stageToLogical({
+                x: bounds.x,
+                y: bounds.y,
+                width: Math.max(1, bounds.width),
+                height: Math.max(1, bounds.height),
+                w: Math.max(1, bounds.width),
+                h: Math.max(1, bounds.height)
+            });
+            const layers = selectedItems.map((item, index) => {
+                const logical = this.stageToLogical(item);
+                const relativeLogicalX = logical.x - logicalOrigin.x;
+                const relativeLogicalY = logical.y - logicalOrigin.y;
+                const clean = JSON.parse(JSON.stringify(item));
+                return {
+                    ...clean,
+                    id: `${packageId}_layer_${index + 1}`,
+                    x: relativeLogicalX,
+                    y: relativeLogicalY,
+                    w: logical.w,
+                    h: logical.h,
+                    width: logical.w,
+                    height: logical.h,
+                    zIndex: index + 1,
+                    templatePermissions: { editable: true, movable: true, removable: false, visibility: true }
+                };
+            });
+            const packageWidth = Math.max(1, ...layers.map(layer => Number(layer.x) + Number(layer.w || layer.width || 0)));
+            const packageHeight = Math.max(1, ...layers.map(layer => Number(layer.y) + Number(layer.h || layer.height || 0)));
+            const previewTemplate = { id: packageId, name: 'Mau bang muc tieu', layers };
+            const modal = document.createElement('div');
+            modal.id = 'gmd-package-goal-modal';
+            modal.className = 'gmd-modal-overlay';
+            modal.innerHTML = `
+                <div style="width:min(980px,calc(100vw - 48px));max-height:calc(100vh - 48px);overflow:auto;padding:20px;box-sizing:border-box;border-radius:18px;background:linear-gradient(155deg,#0d1830,#080e1d);border:1px solid rgba(34,211,238,.42);box-shadow:0 28px 90px rgba(0,0,0,.72);color:#fff;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px;">
+                        <div><h3 style="margin:0;font-size:20px;">Dong goi thanh mau bang muc tieu</h3><div style="color:#94a3b8;font-size:12px;margin-top:5px;">${selectedItems.length} layer da chon se duoc giu nguyen va gom thanh mot mau thong minh.</div></div>
+                        <button type="button" data-package-close class="gmd-btn icon">&times;</button>
+                    </div>
+                    <div class="gmd-template-preview-layout">
+                        <div class="gmd-template-live-preview" style="min-height:430px;"><div style="position:absolute;inset:22px;">${this.buildTemplatePreviewLayers(previewTemplate)}</div></div>
+                        <div style="display:flex;flex-direction:column;gap:10px;">
+                            <label style="font-size:11px;color:#94a3b8;font-weight:800;">TEN MAU *</label>
+                            <input id="gmd-package-name" class="gmd-input" value="Bang muc tieu moi" style="padding-left:12px;">
+                            <label style="font-size:11px;color:#94a3b8;font-weight:800;">MO TA</label>
+                            <textarea id="gmd-package-description" class="gmd-input" style="padding-left:12px;min-height:74px;resize:vertical;">Mau bang muc tieu tuy chinh tren LiveFlow</textarea>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                <div><label style="font-size:10px;color:#94a3b8;">Gia ban</label><input id="gmd-package-price" class="gmd-input" type="number" min="0" value="0" style="padding-left:10px;"></div>
+                                <div><label style="font-size:10px;color:#94a3b8;">Gia goc</label><input id="gmd-package-original-price" class="gmd-input" type="number" min="0" value="0" style="padding-left:10px;"></div>
+                            </div>
+                            <label style="font-size:11px;color:#94a3b8;font-weight:800;">GOI YEU CAU</label>
+                            <select id="gmd-package-plan" class="gmd-select"><option value="free">Free</option><option value="basic">Basic</option><option value="pro">Pro</option></select>
+                            <div style="font-size:11px;color:#cbd5e1;font-weight:900;margin-top:4px;">Quyen chinh sua layer</div>
+                            <div style="max-height:150px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:7px;display:flex;flex-direction:column;gap:5px;">
+                                ${layers.map((layer, index) => `<label style="display:flex;align-items:center;gap:8px;padding:6px;border-radius:7px;background:rgba(255,255,255,.025);font-size:11px;"><input type="checkbox" data-package-editable="${index}" checked><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(layer.name || layer.type || `Layer ${index + 1}`)}</span></label>`).join('')}
+                            </div>
+                            <button type="button" id="gmd-package-publish" class="gmd-btn primary" style="width:100%;padding:12px;margin-top:auto;font-weight:900;"><i class="fas fa-store"></i> Luu va dua len bang Muc tieu</button>
+                        </div>
+                    </div>
+                </div>`;
+            Object.assign(modal.style, { position:'fixed', inset:'0', zIndex:'100000', display:'grid', placeItems:'center', padding:'24px', background:'rgba(2,6,23,.8)', backdropFilter:'blur(10px)' });
+            document.body.appendChild(modal);
+            const close = () => modal.remove();
+            modal.querySelector('[data-package-close]')?.addEventListener('click', close);
+            modal.addEventListener('click', (event) => { if (event.target === modal) close(); });
+            modal.querySelector('#gmd-package-publish')?.addEventListener('click', async () => {
+                const name = String(modal.querySelector('#gmd-package-name')?.value || '').trim();
+                if (!name) return window.app?.showNotification?.('warning', 'Vui long nhap ten mau.');
+                modal.querySelectorAll('[data-package-editable]').forEach((checkbox) => {
+                    const layer = layers[Number(checkbox.dataset.packageEditable)];
+                    if (layer) layer.templatePermissions.editable = checkbox.checked;
+                });
+                const button = modal.querySelector('#gmd-package-publish');
+                button.disabled = true;
+                button.textContent = 'Dang dong goi...';
+                try {
+                    const price = Math.max(0, Number(modal.querySelector('#gmd-package-price')?.value) || 0);
+                    const originalPrice = Math.max(price, Number(modal.querySelector('#gmd-package-original-price')?.value) || 0);
+                    const requiredPlan = modal.querySelector('#gmd-package-plan')?.value || 'free';
+                    // The template stores ONE composite item ("template-bundle") holding
+                    // every piece as logical-relative children, so it always arrives and
+                    // gets used as exactly 1 layer, never N loose layers.
+                    const logicalBundleItem = {
+                        id: `${packageId}_bundle`,
+                        type: 'template-bundle',
+                        name,
+                        x: 0, y: 0,
+                        width: packageWidth, height: packageHeight,
+                        w: packageWidth, h: packageHeight,
+                        rotation: 0, zIndex: 1, visible: true, locked: false,
+                        children: layers
+                    };
+                    const headers = { 'Content-Type':'application/json', ...(this.token ? { Authorization:`Bearer ${this.token}` } : {}) };
+                    const response = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout/publish`, {
+                        method:'POST', headers,
+                        body:JSON.stringify({
+                            templateId:existingTemplateId || undefined,
+                            name, price, originalPrice, requiredPlan, category:'goal_board', icon:'\ud83c\udfaf',
+                            description:String(modal.querySelector('#gmd-package-description')?.value || '').trim(),
+                            editableSchema:layers.map((layer) => ({ layerId:layer.id, name:layer.name || layer.type, ...layer.templatePermissions })),
+                            layoutData:{ version:2, aspectRatio:this.aspectRatio, canvasSize:{ width:packageWidth, height:packageHeight }, safeArea:{ x:0, y:0, width:packageWidth, height:packageHeight }, items:[logicalBundleItem], exportedItems:[logicalBundleItem] }
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'Khong the dong goi mau.');
+
+                    // Collapse the admin's own canvas to the exact same 1-layer result a
+                    // buyer would get, using the original stage-space positions directly
+                    // (no logical round-trip needed since we already have them).
+                    const bundleId = `bundle_${data.template?._id || packageId}`;
+                    const bundleChildren = selectedItems.map((item, index) => {
+                        const clean = JSON.parse(JSON.stringify(item));
+                        delete clean.groupId;
+                        return {
+                            ...clean,
+                            id: `${bundleId}_layer_${index + 1}`,
+                            x: Math.round(Number(item.x) - bounds.x),
+                            y: Math.round(Number(item.y) - bounds.y),
+                            zIndex: index + 1,
+                            templatePermissions: layers[index]?.templatePermissions || { editable: true, movable: true, removable: false, visibility: true }
+                        };
+                    });
+                    const bundleZ = Math.max(this.items.length, ...selectedItems.map((item) => Number(item.zIndex) || 0)) + 1;
+                    const bundleItem = {
+                        id: bundleId,
+                        type: 'template-bundle',
+                        name,
+                        x: Math.round(bounds.x),
+                        y: Math.round(bounds.y),
+                        width: Math.round(bounds.width),
+                        height: Math.round(bounds.height),
+                        w: packageWidth,
+                        h: packageHeight,
+                        rotation: 0,
+                        zIndex: bundleZ,
+                        visible: true,
+                        locked: false,
+                        children: bundleChildren,
+                        packagedTemplateId: data.template?._id || '',
+                        packagedTemplateName: name,
+                        sourceTemplateId: data.template?._id || '',
+                        sourceTemplateName: name,
+                        sourceTemplateOwned: true,
+                        sourceTemplatePrice: 0,
+                        sourceTemplateRequiredPlan: 'free'
+                    };
+                    const selectedIdSet = new Set(selectedItems.map((item) => item.id));
+                    this.items = this.items.filter((item) => !selectedIdSet.has(item.id));
+                    this.items.push(bundleItem);
+                    this.setSelection([bundleItem.id], bundleItem.id);
+                    this.renderCanvas();
+                    this.renderInspector();
+                    this.pushHistory('package-goal-template');
+                    await this.loadGoalTemplates();
+                    if (this.leftPanelTab === 'widgets') this.renderWidgetsList();
+                    close();
+                    window.app?.showNotification?.('success', `Da dong goi "${name}" thanh 1 layer va dua len bang Muc tieu.`);
+                } catch (error) {
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fas fa-store"></i> Luu va dua len bang Muc tieu';
+                    window.app?.showNotification?.('error', error.message || 'Khong the dong goi mau.');
+                }
+            });
         }
 
         async clearGoalBoard() {
@@ -4994,6 +5829,33 @@
             }
         }
 
+        async deletePublishedGoalTemplate(templateId) {
+            if (!this.isAdmin || !templateId) return;
+            const template = (this.customTemplates || []).find(item => String(item.serverTemplateId) === String(templateId));
+            const purchaseCount = Number(template?.purchaseCount) || 0;
+            const buyerWarning = purchaseCount > 0
+                ? ` Mẫu này đã có ${purchaseCount} khách mua — xóa sẽ THU HỒI quyền dùng của toàn bộ ${purchaseCount} khách đó ngay lập tức.`
+                : ' Chưa có khách nào mua mẫu này.';
+            const confirmed = await this.showConfirmModal(
+                `Xóa mẫu “${template?.name || 'bảng mục tiêu'}” khỏi thư viện Mục tiêu và Cửa hàng?${buyerWarning} Thao tác này không thể hoàn tác.`
+            );
+            if (!confirmed) return;
+            try {
+                const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+                const response = await fetch(`${this.apiBase}/api/tiktok/goal-board/templates/${encodeURIComponent(templateId)}`, {
+                    method: 'DELETE',
+                    headers
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data.success) throw new Error(data.error || 'Không thể xóa mẫu.');
+                await this.loadGoalTemplates();
+                if (this.leftPanelTab === 'widgets') this.renderWidgetsList();
+                window.app?.showNotification?.('success', `Đã xóa mẫu “${template?.name || 'bảng mục tiêu'}”.`);
+            } catch (error) {
+                window.app?.showNotification?.('error', error.message || 'Không thể xóa mẫu.');
+            }
+        }
+
         addBackgroundOpacityControl(inspector, selected) {
             if (!inspector || !selected || selected.type === 'media-asset') return;
             const value = selected.backgroundOpacity !== undefined
@@ -5022,7 +5884,7 @@
             const inspector = this.mount.querySelector('#gmd-inspector');
             if (!inspector) return;
 
-            const selected = this.items.find((x) => x.id === this.selectedId);
+            const selected = this.findInteractiveItem(this.selectedId);
             const giftTabBtn = this.mount.querySelector('.gmd-inspector-tabs [data-tab="gift"]');
             const layersTabBtn = this.mount.querySelector('.gmd-inspector-tabs [data-tab="layers"]');
 
@@ -5041,6 +5903,26 @@
 
             if (!selected) {
                 inspector.innerHTML = '<div class="gmd-inspector-empty"><i class="fas fa-mouse-pointer"></i><p>Chọn một layer<br>trên canvas để tùy chỉnh</p></div>';
+                return;
+            }
+
+            if (selected.type === 'template-bundle' && this.items.includes(selected)) {
+                const childCount = Array.isArray(selected.children) ? selected.children.length : 0;
+                inspector.innerHTML = `
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-box"></i> COMBO ĐÃ ĐÓNG GÓI</h4>
+                        <div class="gmd-field">
+                            <label>Tên combo</label>
+                            <input class="gmd-input" data-key="name" value="${this.escapeHtml(selected.name || 'Combo')}">
+                        </div>
+                        <div style="margin:10px 0;padding:10px 12px;border-radius:9px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.25);color:#a5f3fc;font-size:11.5px;line-height:1.6;">
+                            <div>📦 Gồm <strong>${childCount}</strong> mảnh bên trong, xem như 1 layer duy nhất.</div>
+                            <div>🔒 Phóng to/thu nhỏ luôn giữ đúng bố cục đã thiết kế.</div>
+                            <div>✏️ Nhấp đúp vào combo trên canvas để mở ra sửa từng mảnh.</div>
+                        </div>
+                        <button type="button" class="gmd-btn" style="width:100%;justify-content:center;" onclick="window.giftMenuDesigner.enterBundleEditing('${selected.id}')"><i class="fas fa-box-open"></i> Mở để sửa bên trong</button>
+                    </div>
+                `;
                 return;
             }
 
@@ -6964,7 +7846,7 @@
         }
 
         updateGoalBoardSelectedItem(key, value, pushHist = true) {
-            const item = this.items.find((x) => x.id === this.selectedId);
+            const item = this.findInteractiveItem(this.selectedId);
             if (!item) return;
 
             if (this.planKey === 'pro' && ((key === 'panelEffect' && !['none', 'breathing'].includes(String(value))) || (key === 'borderEffect' && !['none', 'glow', 'pulse'].includes(String(value))))) {
@@ -7008,10 +7890,13 @@
                     const stageSx = cfg.width / exportSize.width;
                     const stageSy = cfg.height / exportSize.height;
 
+                    // A bundle child's x/y is relative to its bundle, not the canvas, so
+                    // the canvas safe-area offset must not be added for it.
+                    const isChildPosition = !this.items.includes(item);
                     if (key === 'x') {
-                        item.x = Math.round(safeOffset.x + numVal * stageSx);
+                        item.x = isChildPosition ? Math.round(numVal * stageSx) : Math.round(safeOffset.x + numVal * stageSx);
                     } else if (key === 'y') {
-                        item.y = Math.round(safeOffset.y + numVal * stageSy);
+                        item.y = isChildPosition ? Math.round(numVal * stageSy) : Math.round(safeOffset.y + numVal * stageSy);
                     } else if (key === 'w') {
                         scaleStackContents(numVal / previousW);
                         item.w = numVal;
@@ -8142,9 +9027,16 @@
                             return goal;
                         });
                     }
+                    if (Array.isArray(cleanItem._originalPkPlayers) && Array.isArray(cleanItem.pkPlayers)) {
+                        cleanItem.pkPlayers = cleanItem.pkPlayers.map((player, idx) => ({
+                            ...player,
+                            score: cleanItem._originalPkPlayers[idx] ? cleanItem._originalPkPlayers[idx].score : player.score
+                        }));
+                    }
                     delete cleanItem._originalCurrentCount;
                     delete cleanItem._originalContributors;
                     delete cleanItem._originalComboCount;
+                    delete cleanItem._originalPkPlayers;
                     return cleanItem;
                 };
                 const cleanItems = this.items.map(cleanRuntimeItem);
@@ -8175,6 +9067,28 @@
                         itemExport.borderRadius = Number(i.borderRadius !== undefined ? i.borderRadius : 8) * avgScale;
                         itemExport.padding = Number(i.padding !== undefined ? i.padding : 8) * avgScale;
                         itemExport.loopEnabled = Boolean(i.loopEnabled);
+                    }
+                    if (i.type === 'template-bundle') {
+                        // Children are stored relative to the bundle's own stage-space box.
+                        // The bundle's box just got rescaled to export size above, so every
+                        // child must be rescaled by the same factor to keep the composition.
+                        itemExport.children = Array.isArray(i.children) ? i.children.map((child) => {
+                            const childExport = {
+                                ...child,
+                                x: Math.round(Number(child.x || 0) * sx),
+                                y: Math.round(Number(child.y || 0) * sy),
+                                width: Math.round(Number(child.width || 0) * sx),
+                                height: Math.round(Number(child.height || 0) * sy)
+                            };
+                            if (child.type && child.type !== 'gift') {
+                                childExport.w = childExport.width;
+                                childExport.h = childExport.height;
+                            }
+                            if (child.type === 'text' && Number(child.fontSize) > 0) {
+                                childExport.fontSize = Math.round(Number(child.fontSize) * ((sx + sy) / 2));
+                            }
+                            return childExport;
+                        }) : [];
                     }
                     if (i.type === 'goal-list' && Array.isArray(cleanItem.goals)) {
                         const avgScale = (sx + sy) / 2;
