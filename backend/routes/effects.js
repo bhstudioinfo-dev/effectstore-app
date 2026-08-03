@@ -14,6 +14,7 @@ const { isValidResourceId } = require('../utils/accessControl');
 const { getUserAvailableEffects, resolveEffectForUser } = require('../services/effectLibraryService');
 const { issueEffectAccessToken, buildEffectStreamUrl, verifyEffectAccessToken } = require('../services/effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
+const { isAssetStoreConfigured, uploadEncryptedEffect, downloadEncryptedEffect } = require('../services/effectAssetStore');
 
 // Ensure directories
 const encryptedEffectsDir = dataPaths.encryptedEffectsDir;
@@ -189,6 +190,45 @@ router.delete('/user/custom-effects/:localId', authMiddleware, async (req, res) 
     }
 });
 
+// Fetches the still-encrypted bytes for an effect this machine doesn't have
+// yet, and saves them into encryptedEffectsDir so future requests find them
+// locally (Fallback 3 above). On the central server itself (which alone
+// holds the R2 credentials, per docs/COMMERCIAL_CLOUD_ROADMAP.md §14) this
+// reads R2 directly; on every other machine it asks the central server's
+// relay route instead, reusing the same short-lived effect-access token that
+// already authorized this request (both sides verify it with the same
+// JWT secret, so no separate credential is needed on customer machines).
+async function fetchEncryptedEffectIntoCache(effectId, req) {
+    const targetPath = path.join(encryptedEffectsDir, `${effectId}.enc`);
+    try {
+        if (isAssetStoreConfigured()) {
+            const remoteStream = await downloadEncryptedEffect(effectId);
+            if (!remoteStream) return null;
+            fs.mkdirSync(encryptedEffectsDir, { recursive: true });
+            await new Promise((resolve, reject) => {
+                const fileStream = fs.createWriteStream(targetPath);
+                remoteStream.on('error', reject);
+                fileStream.on('error', reject);
+                fileStream.on('finish', resolve);
+                remoteStream.pipe(fileStream);
+            });
+            return targetPath;
+        }
+        if (process.env.CLOUD_API_URL && req.query.token) {
+            const relayUrl = `${String(process.env.CLOUD_API_URL).replace(/\/+$/, '')}/api/effects/${effectId}/asset?token=${encodeURIComponent(req.query.token)}`;
+            const response = await fetch(relayUrl);
+            if (!response.ok) return null;
+            const arrayBuffer = await response.arrayBuffer();
+            fs.mkdirSync(encryptedEffectsDir, { recursive: true });
+            fs.writeFileSync(targetPath, Buffer.from(arrayBuffer));
+            return targetPath;
+        }
+    } catch (_error) {
+        return null;
+    }
+    return null;
+}
+
 // Stream video (matching old path /api/stream/effect/:effectId)
 async function streamEffectById(req, res) {
     try {
@@ -226,6 +266,15 @@ async function streamEffectById(req, res) {
                 const migratedEncryptedPath = path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath));
                 streamPath = fs.existsSync(migratedEncryptedPath) ? migratedEncryptedPath : effect.encryptedFilePath;
             }
+        }
+
+        // Fallback 4: not on this machine at all yet (e.g. an effect the admin
+        // uploaded from a different machine) — fetch the still-encrypted
+        // bytes from the shared store and cache them here, then continue as
+        // if it had been local all along. Never touches unencrypted data.
+        if (!streamPath || !fs.existsSync(streamPath)) {
+            const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
+            if (fetchedPath) streamPath = fetchedPath;
         }
 
         if (!streamPath || !fs.existsSync(streamPath)) {
@@ -272,6 +321,28 @@ async function authorizeEffectStream(req, res, next) {
 }
 
 router.get('/stream/effect/:effectId', authorizeEffectStream, streamEffectById);
+
+// Relay for the shared encrypted-file store — meaningful only on the central
+// server (the one machine holding R2 credentials, per
+// docs/COMMERCIAL_CLOUD_ROADMAP.md §14). Every other machine's local backend
+// calls this over CLOUD_API_URL to fetch bytes it doesn't have locally yet
+// (see fetchEncryptedEffectIntoCache above). Reuses authorizeEffectStream so
+// this is gated by the exact same per-effect access check as normal
+// playback, and always serves still-encrypted bytes — never a decrypted file.
+router.get('/effects/:effectId/asset', authorizeEffectStream, async (req, res) => {
+    try {
+        if (!isAssetStoreConfigured()) {
+            return res.status(404).json({ error: 'Shared asset store not configured on this server' });
+        }
+        const remoteStream = await downloadEncryptedEffect(req.params.effectId);
+        if (!remoteStream) return res.status(404).json({ error: 'Asset not found in shared store' });
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Cache-Control', 'private, no-store');
+        remoteStream.pipe(res);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // Multer config for uploads
 const storage = multer.diskStorage({
@@ -334,7 +405,20 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
             const duration = await getVideoDuration(previewPath);
             const encryptedPath = path.join(encryptedEffectsDir, `${effectId}.enc`);
             await encryptVideo(effectFile.path, encryptedPath);
-            
+
+            // Push the same encrypted bytes to the shared store so every
+            // other machine can fetch this effect too (see
+            // fetchEncryptedEffectIntoCache in the stream route below).
+            // Non-fatal: if the shared store isn't configured on this
+            // machine yet, the effect still saves and plays fine locally.
+            if (isAssetStoreConfigured()) {
+                try {
+                    await uploadEncryptedEffect(effectId, encryptedPath);
+                } catch (uploadError) {
+                    console.error(`⚠️  Could not upload effect ${effectId} to shared store:`, uploadError.message);
+                }
+            }
+
             effectData.previewFilePath = previewPath;
             effectData.encryptedFilePath = encryptedPath;
             effectData.duration = duration;

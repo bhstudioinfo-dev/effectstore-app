@@ -56,7 +56,7 @@ function createSecretCodec(codec = {}) {
     };
 }
 
-function ensureBackendConfig(userDataPath, codecOptions = {}) {
+function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {}) {
     const configPath = path.join(userDataPath, 'backend-config.json');
     let stored = {};
     if (fs.existsSync(configPath)) {
@@ -76,7 +76,17 @@ function ensureBackendConfig(userDataPath, codecOptions = {}) {
         API_HOST: '127.0.0.1',
         WS_HOST: '127.0.0.1'
     };
-    if (config.JWT_SECRET.length < 32) config.JWT_SECRET = crypto.randomBytes(48).toString('hex');
+    // JWT_SECRET can no longer be a random per-install value once login goes
+    // through the shared central server (see docs/COMMERCIAL_CLOUD_ROADMAP.md):
+    // this machine's local-only routes (WebSocket, OBS, TikTok, Settings) must
+    // accept the same tokens the central server issues, so they need the same
+    // secret. Fall back to the shared one if provided; only generate a random
+    // value as a last resort (e.g. cloud proxy not configured at all).
+    if (config.JWT_SECRET.length < 32) {
+        config.JWT_SECRET = (sharedDefaults.jwtSecret && sharedDefaults.jwtSecret.length >= 32)
+            ? sharedDefaults.jwtSecret
+            : crypto.randomBytes(48).toString('hex');
+    }
     if (config.ENCRYPTION_PASSWORD.length < 32) config.ENCRYPTION_PASSWORD = crypto.randomBytes(48).toString('hex');
     if (config.INITIAL_SETUP_TOKEN.length < 32) config.INITIAL_SETUP_TOKEN = crypto.randomBytes(48).toString('hex');
     if (!config.MONGODB_URI) config.MONGODB_URI = 'mongodb://127.0.0.1:27017/effectstore';
@@ -120,7 +130,7 @@ async function startManagedBackend(options) {
 
     const backendEntry = resolveBackendPath(options);
     if (!fs.existsSync(backendEntry)) throw new Error(`Không tìm thấy backend: ${backendEntry}`);
-    const config = ensureBackendConfig(options.userDataPath, options.secretCodec);
+    const config = ensureBackendConfig(options.userDataPath, options.secretCodec, { jwtSecret: options.sharedJwtSecret });
     const dataDirectory = path.join(options.userDataPath, 'backend-data');
     const logsDirectory = path.join(options.userDataPath, 'logs');
     fs.mkdirSync(dataDirectory, { recursive: true });
@@ -135,7 +145,8 @@ async function startManagedBackend(options) {
         NODE_ENV: options.isPackaged ? 'production' : (process.env.NODE_ENV || 'development'),
         EFFECTSTORE_STARTUP_TRACE: 'true',
         EFFECTSTORE_DATA_DIR: dataDirectory,
-        EFFECTSTORE_LEGACY_DATA_DIR: options.legacyDataDirectory || ''
+        EFFECTSTORE_LEGACY_DATA_DIR: options.legacyDataDirectory || '',
+        CLOUD_API_URL: process.env.CLOUD_API_URL || options.cloudApiUrl || ''
     };
     if (!options.launchProcess) childEnvironment.ELECTRON_RUN_AS_NODE = '1';
 

@@ -249,6 +249,46 @@ obsService.connect(
 );
 
 // ========================================
+// CLOUD PROXY (optional — see docs/COMMERCIAL_CLOUD_ROADMAP.md)
+// ========================================
+// When CLOUD_API_URL is configured, this LOCAL backend forwards account,
+// payment, and catalog-browsing requests to the shared central server
+// instead of handling them with the local database, so every installed copy
+// sees the same accounts/Store/purchases. Anything that needs local disk
+// (OBS, TikTok Live, layout files, file uploads) is deliberately excluded
+// and keeps working exactly as before. With CLOUD_API_URL unset, none of
+// this mounts and behavior is unchanged.
+const { isCloudProxyEnabled, proxyToCloud } = require('./middleware/cloudProxy');
+if (isCloudProxyEnabled()) {
+    console.log('☁️  Cloud proxy enabled — auth/payment/banner-read/effects-catalog-read route to the central server.');
+    app.use('/api/auth', proxyToCloud);
+    app.use('/api/payment', proxyToCloud);
+    app.get('/api/banner', proxyToCloud);
+    app.get('/api/effects', proxyToCloud);
+    app.get('/api/effects/trending', proxyToCloud);
+    app.get('/api/effects/item/:id', proxyToCloud);
+    app.get('/api/effects/:id/timeline', proxyToCloud);
+    // Effect create/update/delete are writes to the shared catalog too — they
+    // must land in the central database, not this machine's own local one,
+    // or other machines would never see a newly-uploaded effect. The video
+    // file itself streams through unchanged (see proxyToCloud's raw-body
+    // passthrough) so the central server runs the exact same encrypt +
+    // upload-to-R2 steps this local server would have run.
+    app.post('/api/effects', proxyToCloud);
+    app.post('/api/effects/:id/update', proxyToCloud);
+    app.delete('/api/effects/:id', proxyToCloud);
+    app.put('/api/effects/:id/timeline', proxyToCloud);
+    app.use('/api/admin', (req, res, next) => {
+        // File uploads (effect icons) and local-database backup/restore stay
+        // on this machine; everything else in /api/admin (users, stats,
+        // effect requests, gift-coin config, payment review...) is shared.
+        const localOnlyInAdmin = [/^\/gift-icons\/(upload|add)$/, /^\/database\//];
+        if (localOnlyInAdmin.some((re) => re.test(req.path))) return next();
+        return proxyToCloud(req, res);
+    });
+}
+
+// ========================================
 // API ROUTES
 // ========================================
 app.use('/api', require('./routes/effects'));
