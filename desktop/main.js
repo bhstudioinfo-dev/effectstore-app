@@ -47,6 +47,10 @@ function getManagedBackendOptions() {
         // issues at login are also accepted by this machine's local-only routes
         // (WebSocket, OBS, TikTok, Settings).
         sharedJwtSecret: process.env.LIVEFLOW_SHARED_JWT_SECRET || '675ad2a8642ae99b1f859f47dce6ba799fa07ecde2687a4315062c4b71caba7cebfb6d0fee091b54489d380c4497133b',
+        // Must match the central server's own ENCRYPTION_PASSWORD exactly —
+        // an effect file encrypted centrally (or on any other machine) can
+        // only be decrypted here if this machine derives the same AES key.
+        sharedEncryptionPassword: process.env.LIVEFLOW_SHARED_ENCRYPTION_PASSWORD || 'effectstore-super-secret-encryption-key-2024',
         launchProcess: app.isPackaged
             ? (entry, options) => utilityProcess.fork(entry, [], {
                 cwd: options.cwd,
