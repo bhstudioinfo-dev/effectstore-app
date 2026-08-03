@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Effect = require('../models/Effect');
 const User = require('../models/User');
 const GiftMapping = require('../models/GiftMapping');
@@ -399,7 +400,13 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
         const thumbFile = req.files ? req.files.find(f => f.fieldname === 'thumb') : null;
         
         if (effectFile) {
-            const effectId = Date.now().toString();
+            // This has to be the effect's real Mongo _id, not just a local
+            // filename convenience — the shared R2 store and every other
+            // machine's download-on-miss fallback (see streamEffectById
+            // below) key the file by the same id the URL/database uses.
+            // Generating it upfront and handing it to Effect.create() below
+            // keeps file name, R2 key, and _id all identical.
+            const effectId = new mongoose.Types.ObjectId().toString();
             const previewPath = path.join(previewsDir, `${effectId}.webm`);
             fs.copyFileSync(effectFile.path, previewPath);
             const duration = await getVideoDuration(previewPath);
@@ -419,6 +426,7 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
                 }
             }
 
+            effectData._id = effectId;
             effectData.previewFilePath = previewPath;
             effectData.encryptedFilePath = encryptedPath;
             effectData.duration = duration;

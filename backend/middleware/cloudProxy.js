@@ -9,6 +9,7 @@
 // this is mounted and every route keeps working exactly as it did before.
 
 const CLOUD_API_URL = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
+const { mirrorUserLocally } = require('../services/localUserMirror');
 
 function isCloudProxyEnabled() {
     return Boolean(CLOUD_API_URL);
@@ -58,6 +59,20 @@ function proxyToCloud(req, res) {
             const contentType = cloudRes.headers.get('content-type');
             if (contentType) res.set('content-type', contentType);
             res.send(text);
+
+            // Local-only routes (OBS trigger, TikTok Live) must keep working
+            // without a network round-trip, so they check this machine's own
+            // User model directly — mirror the account data every time the
+            // central server confirms it (login, /me, profile updates...) so
+            // a brand-new account or a fresh purchase made elsewhere is never
+            // invisible to those routes. Best-effort, never blocks the
+            // response already sent above.
+            if (cloudRes.ok && contentType && contentType.includes('application/json')) {
+                try {
+                    const parsed = JSON.parse(text);
+                    if (parsed?.user?.id || parsed?.user?._id) mirrorUserLocally(parsed.user);
+                } catch (_error) { /* not a mirrorable JSON body */ }
+            }
         })
         .catch((err) => {
             clearTimeout(timeout);

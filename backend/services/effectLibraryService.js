@@ -2,6 +2,44 @@ const Effect = require('../models/Effect');
 const User = require('../models/User');
 const { issueEffectAccessToken, buildEffectStreamUrl } = require('./effectAccessToken');
 
+// The OBS/TikTok Live trigger path checks effect ownership against THIS
+// machine's own local Effect model (it must stay local-only for stream
+// smoothness — no network call while live). But an effect created or
+// bought through the central server never lands in local Mongo on its own
+// (see docs/COMMERCIAL_CLOUD_ROADMAP.md). So on a local lookup miss, fetch
+// the bare catalog metadata once from the central server and cache it
+// locally — from then on this effect resolves fully offline, same pattern
+// already used for the encrypted video file itself.
+async function mirrorEffectFromCentral(effectId) {
+    const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
+    if (!cloudApiUrl) return null;
+    try {
+        const response = await fetch(`${cloudApiUrl}/api/effects/item/${effectId}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (!data?.success || !data.effect) return null;
+        const e = data.effect;
+        await Effect.findByIdAndUpdate(
+            effectId,
+            {
+                $setOnInsert: { _id: effectId },
+                $set: {
+                    name: e.name, category: e.category, price: e.price,
+                    originalPrice: e.originalPrice, description: e.description,
+                    icon: e.icon, isActive: e.isActive, isComposite: e.isComposite,
+                    duration: e.duration, uses: e.uses, isTrending: e.isTrending,
+                    isFlashSale: e.isFlashSale, flashSalePrice: e.flashSalePrice,
+                    flashSaleEndsAt: e.flashSaleEndsAt, thumbUrl: e.thumbUrl
+                }
+            },
+            { upsert: true, setDefaultsOnInsert: true, runValidators: false }
+        );
+        return await Effect.findById(effectId).lean().catch(() => null);
+    } catch (_error) {
+        return null;
+    }
+}
+
 const CUSTOM_EFFECT_BASE_URL = 'http://127.0.0.1:8080/custom-effects';
 
 function toEffectId(value) {
@@ -152,7 +190,8 @@ async function resolveEffectForUser(userId, effectId) {
     }
 
     if (isAdminUser(user)) {
-        const effect = await Effect.findById(id).lean().catch(() => null);
+        let effect = await Effect.findById(id).lean().catch(() => null);
+        if (!effect) effect = await mirrorEffectFromCentral(id);
         if (effect && effect.category === 'menu_template') return null;
         return normalizePurchasedEffect(effect, user._id, true);
     }
@@ -160,9 +199,14 @@ async function resolveEffectForUser(userId, effectId) {
     const purchased = (user.purchasedEffects || []).find((item) => {
         return toEffectId(item?.effectId?._id || item?.effectId) === id;
     });
+    if (!purchased) return null;
 
-    if (purchased?.effectId?.category === 'menu_template') return null;
-    return purchased ? normalizePurchasedEffect(purchased.effectId, user._id, true) : null;
+    let purchasedEffect = purchased.effectId;
+    if (!purchasedEffect || typeof purchasedEffect !== 'object' || !purchasedEffect.name) {
+        purchasedEffect = await mirrorEffectFromCentral(id);
+    }
+    if (purchasedEffect?.category === 'menu_template') return null;
+    return purchasedEffect ? normalizePurchasedEffect(purchasedEffect, user._id, true) : null;
 }
 
 async function resolveEffectDurationForUser(userId, effectId) {

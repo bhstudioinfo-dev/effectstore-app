@@ -268,6 +268,11 @@ if (isCloudProxyEnabled()) {
     app.get('/api/effects/trending', proxyToCloud);
     app.get('/api/effects/item/:id', proxyToCloud);
     app.get('/api/effects/:id/timeline', proxyToCloud);
+    // "My effects" (owned/purchased list) is a pure read with no local-disk
+    // dependency, same as the catalog reads above — proxy it too, so a
+    // purchase made on one machine shows as owned on every machine's Store
+    // right away. (/user/custom-effects/* stays local-only, unchanged.)
+    app.get('/api/user/effects', proxyToCloud);
     // Effect create/update/delete are writes to the shared catalog too — they
     // must land in the central database, not this machine's own local one,
     // or other machines would never see a newly-uploaded effect. The video
