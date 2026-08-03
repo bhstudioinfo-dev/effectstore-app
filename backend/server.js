@@ -1,3 +1,17 @@
+// A live stream must never go down because of one unrelated bug elsewhere in
+// the backend (e.g. a race condition in a file download) — without this,
+// Node's default behavior is to crash the entire process, killing OBS
+// control and effect playback along with whatever actually failed. Placed
+// before anything else so it's active regardless of whether this file is
+// launched via index.js (dev) or directly (packaged app, see
+// desktop/backend-manager.js resolveBackendPath).
+process.on('uncaughtException', (error) => {
+    console.error('❌ [uncaughtException] Backend continues running despite:', error);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('❌ [unhandledRejection] Backend continues running despite:', reason);
+});
+
 require('dotenv').config();
 const startupTrace = (label) => {
     if (process.env.EFFECTSTORE_STARTUP_TRACE === 'true') console.log(`[startup] ${label}`);

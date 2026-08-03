@@ -201,18 +201,27 @@ router.delete('/user/custom-effects/:localId', authMiddleware, async (req, res) 
 // JWT secret, so no separate credential is needed on customer machines).
 async function fetchEncryptedEffectIntoCache(effectId, req) {
     const targetPath = path.join(encryptedEffectsDir, `${effectId}.enc`);
+    // Two near-simultaneous requests for the same not-yet-cached effect (e.g.
+    // a preview click that fires twice) must never let a reader see a
+    // half-written file — download to a private temp path per attempt and
+    // rename into place atomically, so a concurrent writer can never
+    // truncate/corrupt the file another request is about to decrypt.
+    const tempPath = `${targetPath}.downloading-${process.pid}-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
     try {
+        if (fs.existsSync(targetPath)) return targetPath;
+        fs.mkdirSync(encryptedEffectsDir, { recursive: true });
+
         if (isAssetStoreConfigured()) {
             const remoteStream = await downloadEncryptedEffect(effectId);
             if (!remoteStream) return null;
-            fs.mkdirSync(encryptedEffectsDir, { recursive: true });
             await new Promise((resolve, reject) => {
-                const fileStream = fs.createWriteStream(targetPath);
+                const fileStream = fs.createWriteStream(tempPath);
                 remoteStream.on('error', reject);
                 fileStream.on('error', reject);
                 fileStream.on('finish', resolve);
                 remoteStream.pipe(fileStream);
             });
+            fs.renameSync(tempPath, targetPath);
             return targetPath;
         }
         if (process.env.CLOUD_API_URL && req.query.token) {
@@ -220,11 +229,12 @@ async function fetchEncryptedEffectIntoCache(effectId, req) {
             const response = await fetch(relayUrl);
             if (!response.ok) return null;
             const arrayBuffer = await response.arrayBuffer();
-            fs.mkdirSync(encryptedEffectsDir, { recursive: true });
-            fs.writeFileSync(targetPath, Buffer.from(arrayBuffer));
+            fs.writeFileSync(tempPath, Buffer.from(arrayBuffer));
+            fs.renameSync(tempPath, targetPath);
             return targetPath;
         }
     } catch (_error) {
+        try { fs.unlinkSync(tempPath); } catch (_e) { /* nothing to clean up */ }
         return null;
     }
     return null;
@@ -296,6 +306,12 @@ async function streamEffectById(req, res) {
             stream.pipe(res);
         }
     } catch (error) {
+        // A stream response can already be mid-flight (headers sent, bytes
+        // piping) when decryption hits a bad/partial file and throws —
+        // sending a second response here would crash the whole process
+        // (ERR_HTTP_HEADERS_SENT), taking down live playback for everyone.
+        console.error('streamEffectById error:', error.message);
+        if (res.headersSent) { res.destroy(); return; }
         res.status(500).json({ error: error.message });
     }
 }
