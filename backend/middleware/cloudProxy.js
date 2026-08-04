@@ -10,6 +10,7 @@
 
 const CLOUD_API_URL = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
 const { mirrorUserLocally } = require('../services/localUserMirror');
+const Effect = require('../models/Effect');
 
 function isCloudProxyEnabled() {
     return Boolean(CLOUD_API_URL);
@@ -72,6 +73,16 @@ function proxyToCloud(req, res) {
                     const parsed = JSON.parse(text);
                     if (parsed?.user?.id || parsed?.user?._id) mirrorUserLocally(parsed.user);
                 } catch (_error) { /* not a mirrorable JSON body */ }
+            }
+
+            // The reverse of mirrorEffectFromCentral (effectLibraryService.js):
+            // deleting an effect centrally must also clear this machine's own
+            // local copy, or the TikTok/OBS mapping screen — which reads the
+            // local Effect model directly for live-trigger speed — would keep
+            // showing a "ghost" effect forever after it was deleted elsewhere.
+            if (cloudRes.ok && req.method === 'DELETE') {
+                const match = req.path.match(/^\/api\/effects\/([a-f0-9]{24})$/);
+                if (match) Effect.findByIdAndDelete(match[1]).catch(() => {});
             }
         })
         .catch((err) => {
