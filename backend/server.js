@@ -127,6 +127,15 @@ app.get('/uploads/thumbs/:filename', async (req, res, next) => {
         return next();
     }
 });
+// Thumbnails keep the SAME filename/URL across an edit (keyed by effect id,
+// not a version) — unlike the rest of /uploads, they can't be marked
+// immutable/1-year-cached or the browser keeps showing the old image after
+// an admin updates it. No caching here so every load revalidates.
+app.use('/uploads/thumbs', express.static(dataPaths.thumbsDir, {
+    maxAge: 0,
+    etag: true,
+    lastModified: true
+}));
 app.use('/uploads', express.static(dataPaths.uploadsDir, {
     maxAge: '1y',
     immutable: true
