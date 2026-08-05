@@ -2075,11 +2075,8 @@ class EffectStoreApp {
         imgEl.style.display = 'none';
         const parent = imgEl.parentElement;
         if (parent) {
-            const fallback = parent.querySelector('.effect-fallback-container');
-            if (fallback) {
-                fallback.style.display = 'flex';
-                fallback.style.opacity = '1';
-            }
+            const video = parent.querySelector('.effect-video');
+            if (video) video.style.opacity = '1';
         }
     }
     handlePreviewError(videoEl) {
@@ -2089,13 +2086,7 @@ class EffectStoreApp {
         const parent = videoEl.parentElement;
         if (parent) {
             const img = parent.querySelector('.effect-thumb-img');
-            const fallback = parent.querySelector('.effect-fallback-container');
-            if (img && img.style.display !== 'none') {
-                img.style.opacity = '1';
-            } else if (fallback) {
-                fallback.style.display = 'flex';
-                fallback.style.opacity = '1';
-            }
+            if (img && img.style.display !== 'none') img.style.opacity = '1';
         }
     }
     renderEffects(filter = null, search = '') {
@@ -2264,17 +2255,26 @@ class EffectStoreApp {
                                     <div style="font-size:12px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></div>
                                 </div>
                             `;
-                } else {
+                } else if (thumbUrl) {
                     previewHTML = `
                                 <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')"
                                     onmouseenter="const v=this.querySelector('video'); if(v && v.getAttribute('data-error')!=='true') { v.play().catch(e=>{}); }" 
                                     onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
-                                    ${thumbUrl ? `<img src="${thumbUrl}" class="effect-thumb-img" onerror="app.handleThumbError(this)">` : ''}
-                                    <div class="effect-fallback-container" style="${thumbUrl ? 'display:none;' : 'display:flex;'}">
-                                        <span class="fallback-icon">${fallbackIcon}</span>
-                                    </div>
-                                    ${effectiveVideo ? `<video src="${effectiveVideo}" class="effect-video" muted loop playsinline onerror="app.handlePreviewError(this)"></video>` : ''}
+                                    <img src="${thumbUrl}" class="effect-thumb-img" onerror="app.handleThumbError(this)">
+                                    ${effectiveVideo ? `<video src="${effectiveVideo}" class="effect-video" muted loop playsinline preload="metadata" onerror="app.handlePreviewError(this)"></video>` : ''}
                                 </div>
+                            `;
+                } else if (effectiveVideo) {
+                    previewHTML = `
+                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')"
+                                    onmouseenter="const v=this.querySelector('video'); if(v && v.getAttribute('data-error')!=='true') { v.play().catch(e=>{}); }" 
+                                    onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
+                                    <video src="${effectiveVideo}" class="effect-video" style="opacity:1;" muted loop playsinline preload="metadata" onerror="app.handlePreviewError(this)"></video>
+                                </div>
+                            `;
+                } else {
+                    previewHTML = `
+                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="background:#0b1220;"></div>
                             `;
                 }
 
