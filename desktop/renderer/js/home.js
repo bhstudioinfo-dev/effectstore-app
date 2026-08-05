@@ -5165,33 +5165,49 @@ class EffectStoreApp {
             const data = await res.json();
             console.log('Gifts data:', data);
 
-            const grid = document.getElementById('gifts-grid');
-            console.log('Gifts grid element:', grid);
-
-            if (data.success && grid) {
-                if (data.gifts && data.gifts.length > 0) {
-                    grid.innerHTML = data.gifts.map(g => {
-                        const isImage = g.icon && (g.icon.includes('/') || g.icon.includes('.'));
-                        const iconHtml = isImage
-                            ? `<img src="${this.API_URL}${g.icon}" style="width:40px;height:40px;object-fit:contain;margin-bottom:5px;display:block;margin:0 auto;">`
-                            : `<div style="font-size:32px;margin-bottom:5px;">${g.icon || '🎁'}</div>`;
-                        return `
-                                    <div class="gift-item" onclick="app.selectGift('${g.id}','${g.name}','${g.icon}')">
-                                        ${iconHtml}
-                                        <div class="gift-name">${g.name}</div>
-                                        <div class="gift-coins">${g.coins} coins</div>
-                                    </div>
-                                `;
-                    }).join('');
-                    console.log('✅ Rendered', data.gifts.length, 'gifts');
-                } else {
-                    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:20px;">Không có gifts</div>';
-                }
+            if (data.success && data.gifts) {
+                this.allGiftsLibrary = data.gifts || [];
+                const searchInput = document.getElementById('gift-search-input');
+                this.filterGiftsForMapping(searchInput ? searchInput.value : '');
             } else {
-                console.error('❌ No gifts data or grid element not found');
+                console.error('❌ No gifts data or load error');
             }
         } catch (e) {
             console.error('❌ Load gifts error:', e);
+        }
+    }
+
+    filterGiftsForMapping(query = '') {
+        const grid = document.getElementById('gifts-grid');
+        if (!grid) return;
+
+        const gifts = Array.isArray(this.allGiftsLibrary) ? this.allGiftsLibrary : [];
+        const searchTerm = String(query || '').trim().toLowerCase();
+
+        const giftsToDisplay = searchTerm
+            ? gifts.filter(g => 
+                (g.name && String(g.name).toLowerCase().includes(searchTerm)) ||
+                (g.id && String(g.id).toLowerCase().includes(searchTerm))
+              )
+            : gifts;
+
+        if (giftsToDisplay && giftsToDisplay.length > 0) {
+            grid.innerHTML = giftsToDisplay.map(g => {
+                const isImage = g.icon && (g.icon.includes('/') || g.icon.includes('.'));
+                const iconHtml = isImage
+                    ? `<img src="${this.API_URL}${g.icon}" style="width:40px;height:40px;object-fit:contain;margin-bottom:5px;display:block;margin:0 auto;">`
+                    : `<div style="font-size:32px;margin-bottom:5px;">${g.icon || '🎁'}</div>`;
+                return `
+                    <div class="gift-item" onclick="app.selectGift('${g.id}','${g.name}','${g.icon}')">
+                        ${iconHtml}
+                        <div class="gift-name">${g.name}</div>
+                        <div class="gift-coins">${g.coins} xu</div>
+                    </div>
+                `;
+            }).join('');
+            console.log('✅ Filtered and rendered', giftsToDisplay.length, 'gifts');
+        } else {
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:30px;font-size:13px;">🔍 Không tìm thấy quà tặng phù hợp</div>';
         }
     }
     async loadEffectsForMapping() {
