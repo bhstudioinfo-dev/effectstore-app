@@ -192,6 +192,51 @@ directories.forEach(dir => {
 // ========================================
 // MONGODB CONNECTION
 // ========================================
+async function seedInitialGifts() {
+    try {
+        const GiftConfig = require('./models/GiftConfig');
+        const defaultGifts = [
+            { giftId: 'rose', giftName: 'Rose', iconUrl: '/assets/gift-icons/Rose.png', coins: 1 },
+            { giftId: 'tiktok', giftName: 'TikTok', iconUrl: '/assets/gift-icons/TikTok.png', coins: 1 },
+            { giftId: 'rosa', giftName: 'Rosa', iconUrl: '/assets/gift-icons/Rosa.png', coins: 1 },
+            { giftId: 'heart_me', giftName: 'Heart Me', iconUrl: '/assets/gift-icons/Heart_Me.png', coins: 1 },
+            { giftId: 'ice_cream', giftName: 'Ice Cream', iconUrl: '/assets/gift-icons/Ice_Cream_Cone.png', coins: 5 },
+            { giftId: 'heart', giftName: 'Finger Heart', iconUrl: '/assets/gift-icons/Finger_Heart.png', coins: 5 },
+            { giftId: 'perfume', giftName: 'Perfume', iconUrl: '/assets/gift-icons/Perfume.png', coins: 20 },
+            { giftId: 'doughnut', giftName: 'Doughnut', iconUrl: '/assets/gift-icons/Doughnut.png', coins: 30 },
+            { giftId: 'sunglasses', giftName: 'Sunglasses', iconUrl: '/assets/gift-icons/Sunglasses.png', coins: 199 },
+            { giftId: 'corgi', giftName: 'Corgi', iconUrl: '/assets/gift-icons/Corgi.png', coins: 299 },
+            { giftId: 'boxing_gloves', giftName: 'Boxing Gloves', iconUrl: '/assets/gift-icons/Boxing_Gloves.png', coins: 199 },
+            { giftId: 'friendship_necklace', giftName: 'Friendship Necklace', iconUrl: '/assets/gift-icons/Friendship_Necklace.png', coins: 299 },
+            { giftId: 'wooly_hat', giftName: 'Wooly Hat', iconUrl: '/assets/gift-icons/Wooly_Hat.png', coins: 99 },
+            { giftId: 'money_gun', giftName: 'Money Gun', iconUrl: '/assets/gift-icons/Money_Gun.png', coins: 500 },
+            { giftId: 'love_you', giftName: 'Love You', iconUrl: '/assets/gift-icons/Love_you_so_much.png', coins: 520 },
+            { giftId: 'youre_awesome', giftName: "You're Awesome", iconUrl: '/assets/gift-icons/You\'re_awesome.png', coins: 88 },
+            { giftId: 'pk_crown', giftName: 'PK Crown', iconUrl: '/assets/gift-icons/PK_crown_ring.png', coins: 1000 }
+        ];
+
+        for (const item of defaultGifts) {
+            await GiftConfig.updateOne(
+                { giftId: item.giftId },
+                {
+                    $setOnInsert: {
+                        giftId: item.giftId,
+                        giftName: item.giftName,
+                        coins: item.coins,
+                        iconUrl: item.iconUrl,
+                        isActive: true,
+                        updatedAt: new Date()
+                    }
+                },
+                { upsert: true }
+            );
+        }
+        console.log('✅ Seeded initial gift library into MongoDB');
+    } catch (err) {
+        console.error('⚠️  Failed to seed gift catalog:', err.message);
+    }
+}
+
 let databaseSchemaReady = false;
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/effectstore', {
     serverSelectionTimeoutMS: 10000,
@@ -200,6 +245,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/effectsto
 })
     .then(async () => {
         await runSchemaMigrations();
+        await seedInitialGifts();
         databaseSchemaReady = true;
         console.log(`✅ MongoDB Connected (schema v${CURRENT_SCHEMA_VERSION})`);
         initOBSConnection().catch(() => {});
