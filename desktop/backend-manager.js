@@ -73,8 +73,8 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
         ENCRYPTION_PASSWORD: readSecret('ENCRYPTION_PASSWORD'),
         INITIAL_SETUP_TOKEN: readSecret('INITIAL_SETUP_TOKEN'),
         MONGODB_URI: readSecret('MONGODB_URI'),
-        API_HOST: '127.0.0.1',
-        WS_HOST: '127.0.0.1'
+        API_HOST: '0.0.0.0',
+        WS_HOST: '0.0.0.0'
     };
     // JWT_SECRET can no longer be a random per-install value once login goes
     // through the shared central server (see docs/COMMERCIAL_CLOUD_ROADMAP.md):

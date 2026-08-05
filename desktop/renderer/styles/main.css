@@ -368,18 +368,150 @@ body[data-current-view="gift-mapping"] .contact-card { display:none; }
     box-shadow:0 16px 38px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.04);
 }
 .lcd-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:1px; }
-.lcd-slot { position:relative;min-height:86px;border:1px solid #28354d;border-radius:11px;background:#111a2a;color:#fff;padding:8px;cursor:pointer;overflow:hidden;text-align:left;transition:.16s ease; }
+.lcd-slot { position:relative;min-height:86px;border:1px solid #28354d;border-radius:18px;background:#111a2a;color:#fff;padding:8px;cursor:pointer;overflow:hidden;text-align:left;transition:.16s ease; }
 .lcd-slot:hover { transform:translateY(-1px);border-color:#8b5cf6;background:#162038; }
+
+/* 3D Glossy Effect Squircle Push Pads */
+.lcd-slot.effect-3d-slot {
+    position: relative;
+    min-height: 132px;
+    border-radius: 18px;
+    background: linear-gradient(145deg, rgba(30, 27, 75, 0.75) 0%, rgba(30, 41, 59, 0.65) 60%, rgba(15, 23, 42, 0.85) 100%);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    color: #fff;
+    padding: 10px 8px;
+    cursor: pointer;
+    overflow: hidden;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.12), inset 0 -4px 8px rgba(0, 0, 0, 0.6);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lcd-slot.effect-3d-slot::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 35%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
+    border-radius: 18px 18px 0 0;
+    pointer-events: none;
+}
+
+.lcd-slot.effect-3d-slot:hover {
+    transform: translateY(-2px);
+    border-color: #ec4899;
+    box-shadow: 0 12px 25px rgba(236, 72, 153, 0.25), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+}
+
+.lcd-slot.effect-3d-slot:active {
+    transform: translateY(2px) scale(0.96);
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.8);
+}
+
+.lcd-slot.effect-3d-slot.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #38bdf8;
+    border: 1.5px dashed rgba(56, 189, 248, 0.35);
+    background: rgba(10, 16, 29, 0.55);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.lcd-slot.effect-3d-slot.empty:hover {
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+}
 .lcd-slot.running { border-color:#22d3ee;box-shadow:0 0 14px rgba(34,211,238,.3); }
 .lcd-slot.queued { border-color:#f59e0b;box-shadow:0 0 10px rgba(245,158,11,.16); }
 .lcd-slot-status { position:absolute;right:5px;bottom:8px;color:#22d3ee;font-size:9px;font-weight:800;background:#08111e;border-radius:10px;padding:2px 5px; }
 .lcd-slot.queued .lcd-slot-status { color:#fbbf24; }
-.lcd-slot.empty { display:flex;align-items:center;justify-content:center;color:#526078;border-style:dashed;background:rgba(10,16,29,.6); }
-.lcd-slot-icon { width:30px;height:30px;border-radius:8px;object-fit:cover;background:#0a1020;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:5px; }
+.lcd-slot-icon { width:68px;height:68px;border-radius:14px;object-fit:cover;background:#0a1020;display:flex;align-items:center;justify-content:center;font-size:28px;margin:2px auto 6px auto;box-shadow:0 6px 14px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12); }
+.effect-3d-slot .lcd-slot-icon { width:68px;height:68px;border-radius:14px;object-fit:cover;background:#0a1020;display:flex;align-items:center;justify-content:center;font-size:28px;margin:2px auto 6px auto;box-shadow:0 6px 14px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12); }
 .lcd-slot-name { font-size:11px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:17px;display:block; }
 .lcd-slot-key { font-size:9px;color:#94a3b8;margin-top:3px;display:block; }
 .lcd-slot-volume { width:100%;height:3px;margin-top:7px;display:block;accent-color:#a855f7;cursor:pointer; }
 .lcd-slot-remove { position:absolute;right:5px;top:5px;width:18px;height:18px;border:0;border-radius:5px;background:rgba(239,68,68,.13);color:#f87171;cursor:pointer; }
+
+/* 3D Glossy Soundboard Push Buttons */
+.lcd-slot.sound-3d-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 10px 6px;
+    min-height: 120px;
+    background: rgba(17, 26, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+}
+.lcd-slot.sound-3d-slot.empty {
+    min-height: 120px;
+    background: rgba(10, 16, 29, 0.5);
+    border: 1.5px dashed rgba(56, 189, 248, 0.3);
+}
+
+.push-btn-3d {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    position: relative;
+    cursor: pointer;
+    background: radial-gradient(circle, #2d3748 0%, #1a202c 70%, #0f172a 100%);
+    padding: 5px;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.15), inset 0 -3px 6px rgba(0, 0, 0, 0.8);
+    transition: transform 0.1s ease;
+    margin-bottom: 4px;
+}
+
+.push-btn-3d-core {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    background: radial-gradient(circle at 50% 28%, #ff4d4d 0%, #dc2626 55%, #991b1b 100%);
+    box-shadow: inset 0 3px 6px rgba(255, 255, 255, 0.6), inset 0 -5px 10px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(239, 68, 68, 0.5);
+    transition: all 0.1s ease;
+}
+
+.push-btn-3d-core::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 68%;
+    height: 38%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 100%);
+    border-radius: 50% 50% 40% 40%;
+    pointer-events: none;
+}
+
+.lcd-slot.sound-3d-slot:active .push-btn-3d-core,
+.deck-card.sound-3d-card:active .push-btn-3d-core {
+    transform: translateY(3px) scale(0.94);
+    box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.8), inset 0 -2px 4px rgba(255, 255, 255, 0.2), 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.push-btn-3d.color-red .push-btn-3d-core { background: radial-gradient(circle at 50% 28%, #ff4d4d 0%, #dc2626 55%, #991b1b 100%); box-shadow: inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -5px 10px rgba(0,0,0,0.5), 0 4px 10px rgba(239,68,68,0.5); }
+.push-btn-3d.color-purple .push-btn-3d-core { background: radial-gradient(circle at 50% 28%, #c084fc 0%, #9333ea 55%, #581c87 100%); box-shadow: inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -5px 10px rgba(0,0,0,0.5), 0 4px 10px rgba(147,51,234,0.5); }
+.push-btn-3d.color-blue .push-btn-3d-core { background: radial-gradient(circle at 50% 28%, #60a5fa 0%, #2563eb 55%, #1e3a8a 100%); box-shadow: inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -5px 10px rgba(0,0,0,0.5), 0 4px 10px rgba(37,99,235,0.5); }
+.push-btn-3d.color-green .push-btn-3d-core { background: radial-gradient(circle at 50% 28%, #34d399 0%, #059669 55%, #064e3b 100%); box-shadow: inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -5px 10px rgba(0,0,0,0.5), 0 4px 10px rgba(5,150,105,0.5); }
+.push-btn-3d.color-gold .push-btn-3d-core { background: radial-gradient(circle at 50% 28%, #fbbf24 0%, #d97706 55%, #78350f 100%); box-shadow: inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -5px 10px rgba(0,0,0,0.5), 0 4px 10px rgba(217,119,6,0.5); }
+.push-btn-3d.color-pink .push-btn-3d-core { background: radial-gradient(circle at 50% 28%, #f472b6 0%, #db2777 55%, #831843 100%); box-shadow: inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -5px 10px rgba(0,0,0,0.5), 0 4px 10px rgba(219,39,119,0.5); }
+.push-btn-3d.color-empty .push-btn-3d-core { background: radial-gradient(circle at 50% 28%, #38bdf8 0%, #0284c7 55%, #075985 100%); box-shadow: inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -5px 10px rgba(0,0,0,0.5), 0 4px 10px rgba(2,132,199,0.4); }
 .lcd-footer { display:grid;grid-template-columns:1fr 36px;gap:7px;margin-top:9px; }
 .lcd-add-wide { width:100%;margin-top:9px; }
 .lcd-add,.lcd-stop { height:34px;border-radius:9px;border:1px solid #31405b;background:#172238;color:#dbeafe;font-weight:700;font-size:11px;cursor:pointer; }

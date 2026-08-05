@@ -10,14 +10,18 @@ const EFFECT_ACCESS_PURPOSES = new Set([
     'legacy-obs-effect'
 ]);
 
-function issueEffectAccessToken({ effectId, userId, purpose, expiresIn = '5m' }) {
+function issueEffectAccessToken({ effectId, userId, purpose, expiresIn }) {
     if (!EFFECT_ACCESS_PURPOSES.has(purpose)) throw new Error('Invalid effect access purpose.');
     if (!String(effectId || '').trim()) throw new Error('effectId is required.');
     if (!String(userId || '').trim()) throw new Error('userId is required.');
+
+    const defaultExpiry = (purpose === 'catalog-preview' || purpose === 'library-playback') ? '7d' : '10m';
+    const duration = expiresIn || defaultExpiry;
+
     return jwt.sign(
         { effectId: String(effectId), userId: String(userId), purpose },
         getJwtSecret(),
-        { expiresIn }
+        { expiresIn: duration }
     );
 }
 

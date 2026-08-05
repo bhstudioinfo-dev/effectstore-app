@@ -1,6 +1,9 @@
+const fs = require('fs');
+const path = require('path');
 const Effect = require('../models/Effect');
 const User = require('../models/User');
 const { issueEffectAccessToken, buildEffectStreamUrl } = require('./effectAccessToken');
+const { paths: dataPaths } = require('../config/dataPaths');
 
 // The OBS/TikTok Live trigger path checks effect ownership against THIS
 // machine's own local Effect model (it must stay local-only for stream
@@ -40,7 +43,10 @@ async function mirrorEffectFromCentral(effectId) {
     }
 }
 
-const CUSTOM_EFFECT_BASE_URL = 'http://127.0.0.1:8080/custom-effects';
+function getCustomEffectBaseUrl() {
+    const port = process.env.PORT || 9000;
+    return `http://127.0.0.1:${port}/custom-effects`;
+}
 
 function toEffectId(value) {
     return String(value || '').trim();
@@ -60,6 +66,16 @@ function normalizePurchasedEffect(effect, ownerId = null, isOwned = true) {
     const id = toEffectId(effect._id || effect.id);
     if (!id) return null;
 
+    let thumbUrl = effect.thumbUrl || '';
+    if (!thumbUrl && id && dataPaths?.uploadsDir) {
+        const thumbsDir = path.join(dataPaths.uploadsDir, 'thumbs');
+        if (fs.existsSync(path.join(thumbsDir, `${id}.png`))) {
+            thumbUrl = `/uploads/thumbs/${id}.png`;
+        } else if (fs.existsSync(path.join(thumbsDir, `${id}_new.png`))) {
+            thumbUrl = `/uploads/thumbs/${id}_new.png`;
+        }
+    }
+
     return {
         id,
         _id: id,
@@ -67,7 +83,7 @@ function normalizePurchasedEffect(effect, ownerId = null, isOwned = true) {
         name: effect.name || 'Effect',
         fileUrl: `/api/stream/effect/${id}`,
         previewUrl: `/api/stream/effect/${id}`,
-        thumbUrl: effect.thumbUrl || '',
+        thumbUrl,
         duration: toDuration(effect.duration),
         ownerId: ownerId ? toEffectId(ownerId) : null,
         isCustom: false,
@@ -83,14 +99,15 @@ function normalizeCustomEffect(customEffect, user) {
     const id = toEffectId(customEffect.localId || customEffect.id);
     if (!id) return null;
 
+    const baseUrl = getCustomEffectBaseUrl();
     return {
         id,
         _id: id,
         type: 'custom',
         name: customEffect.name || 'Hiệu ứng cá nhân',
-        fileUrl: `${CUSTOM_EFFECT_BASE_URL}/${id}/effect.webm`,
-        previewUrl: `${CUSTOM_EFFECT_BASE_URL}/${id}/effect.webm`,
-        thumbUrl: `${CUSTOM_EFFECT_BASE_URL}/${id}/thumbnail.png`,
+        fileUrl: `${baseUrl}/${id}/effect.webm`,
+        previewUrl: `${baseUrl}/${id}/effect.webm`,
+        thumbUrl: `${baseUrl}/${id}/thumbnail.png`,
         duration: toDuration(customEffect.duration),
         ownerId: toEffectId(user?._id || user?.id),
         isCustom: true,
@@ -123,6 +140,14 @@ function addProtectedMediaUrl(effect, userId) {
 
 async function isCustomEffectMediaAvailable(effect, options = {}) {
     if (!effect?.isCustom) return true;
+    const id = toEffectId(effect.id || effect._id || effect.localId);
+    if (id && dataPaths?.customEffectsDir) {
+        const localPath = path.join(dataPaths.customEffectsDir, id, 'effect.webm');
+        if (fs.existsSync(localPath)) {
+            return true;
+        }
+    }
+
     const url = String(effect.fileUrl || '').trim();
     if (!url) return false;
 
@@ -185,8 +210,11 @@ async function resolveEffectForUser(userId, effectId) {
     if (!user) return null;
 
     if (id.startsWith('custom-')) {
-        const customEffect = (user.customEffects || []).find((item) => toEffectId(item.localId) === id);
-        return customEffect ? normalizeCustomEffect(customEffect, user) : null;
+        let customEffect = (user.customEffects || []).find((item) => toEffectId(item.localId || item._id || item.id) === id);
+        if (!customEffect) {
+            customEffect = { localId: id, name: 'Hiệu ứng cá nhân' };
+        }
+        return normalizeCustomEffect(customEffect, user);
     }
 
     if (isAdminUser(user)) {
@@ -219,8 +247,20 @@ async function resolveEffectDurationForUser(userId, effectId) {
 
     if (id.startsWith('custom-')) {
         const user = await User.findById(userId).select('customEffects').lean().catch(() => null);
-        const customEffect = (user?.customEffects || []).find((item) => toEffectId(item.localId) === id);
-        return toDuration(customEffect?.duration);
+        const customEffect = (user?.customEffects || []).find((item) => toEffectId(item.localId || item._id || item.id) === id);
+        const duration = toDuration(customEffect?.duration);
+        if (duration) return duration;
+        if (dataPaths?.customEffectsDir) {
+            try {
+                const metaPath = path.join(dataPaths.customEffectsDir, id, 'metadata.json');
+                if (fs.existsSync(metaPath)) {
+                    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+                    const metaDuration = toDuration(meta?.duration);
+                    if (metaDuration) return metaDuration;
+                }
+            } catch (_e) {}
+        }
+        return 15;
     }
 
     const freshEffect = await Effect.findById(id).select('duration').lean().catch(() => null);

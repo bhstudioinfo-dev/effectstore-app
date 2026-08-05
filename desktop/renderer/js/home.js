@@ -13,10 +13,16 @@ function openBannerManager() {
 // ===== APP CLASS =====
 class EffectStoreApp {
     constructor() {
-        this.effects = [];
-        this.storeEffects = [];
+        let cachedStore = [];
+        let cachedOwned = [];
+        try {
+            cachedStore = JSON.parse(localStorage.getItem('es_cache_store_effects') || '[]');
+            cachedOwned = JSON.parse(localStorage.getItem('es_cache_owned_effects') || '[]');
+        } catch (_e) {}
+        this.effects = cachedStore;
+        this.storeEffects = cachedStore;
         this.mappingEffects = [];
-        this.ownedEffects = [];
+        this.ownedEffects = cachedOwned;
         this.personalEffects = [];
         this.pendingPersonalEffectFiles = null;
         this.cart = [];
@@ -83,10 +89,91 @@ class EffectStoreApp {
 
         this.init();
     }
+
+    showAppLoadingOverlay(statusText = 'Đang chuẩn bị hệ thống...', percent = 15) {
+        const overlay = document.getElementById('app-loading-overlay');
+        const status = document.getElementById('app-loading-status');
+        const progress = document.getElementById('app-loading-progress-fill');
+        const percentEl = document.getElementById('app-loading-percent');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+        }
+        if (status) status.textContent = statusText;
+        if (progress) progress.style.width = `${percent}%`;
+        if (percentEl) percentEl.textContent = `${percent}%`;
+    }
+
+    updateAppLoadingProgress(statusText, percent) {
+        const status = document.getElementById('app-loading-status');
+        const progress = document.getElementById('app-loading-progress-fill');
+        const percentEl = document.getElementById('app-loading-percent');
+        if (status) status.textContent = statusText;
+        if (progress) progress.style.width = `${percent}%`;
+        if (percentEl) percentEl.textContent = `${percent}%`;
+    }
+
+    hideAppLoadingOverlay() {
+        const overlay = document.getElementById('app-loading-overlay');
+        if (!overlay) return;
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 300);
+    }
+
+    handleThumbError(img) {
+        if (!img) return;
+        img.style.display = 'none';
+        const container = img.closest('.effect-thumb-container') || img.parentElement;
+        const video = container ? container.querySelector('video') : null;
+        if (video) {
+            video.style.opacity = '1';
+        }
+    }
+
+    handlePreviewError(video, fallbackIcon = '🎬') {
+        if (!video) return;
+        video.style.display = 'none';
+        const container = video.closest('.effect-thumb-container') || video.parentElement;
+        if (container && !container.querySelector('.effect-fallback-icon')) {
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'effect-fallback-icon';
+            iconDiv.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;font-size:64px;color:#94a3b8;';
+            iconDiv.textContent = fallbackIcon;
+            container.appendChild(iconDiv);
+        }
+    }
+
+    async preloadAllAppData() {
+        const tasks = [
+            this.loadBanner(),
+            this.loadOwnedEffects(),
+            this.loadEffects()
+        ];
+        if (typeof this.loadPersonalEffects === 'function') {
+            tasks.push(this.loadPersonalEffects());
+        }
+        if (typeof this.loadGifts === 'function') {
+            tasks.push(this.loadGifts());
+        }
+        if (typeof this.loadMappings === 'function') {
+            tasks.push(this.loadMappings());
+        }
+        if (typeof this.loadSoundLibrary === 'function') {
+            tasks.push(this.loadSoundLibrary());
+        }
+        if (this.currentUser?.isAdmin && typeof this.loadAdminDashboard === 'function') {
+            tasks.push(this.loadAdminDashboard());
+        }
+        await Promise.allSettled(tasks);
+        this.renderEffects();
+        this.renderControlDeck();
+        this.syncControlDeckToRemote();
+    }
     async init() {
         try {
-            // Dọn dẹp localStorage cũ từ phiên bản trước
-            // Cleanup logic removed to prevent data loss on refresh
+            this.showAppLoadingOverlay('🚀 Đang khởi động hệ thống...', 15);
 
             let savedMachineId = localStorage.getItem('es_machine_id');
             if (!savedMachineId) {
@@ -95,33 +182,71 @@ class EffectStoreApp {
             }
             this.machineId = savedMachineId;
 
-            const databaseReady = await this.checkDatabaseSetup();
-            if (!databaseReady) return;
-            const adminReady = await this.checkInitialAdminSetup();
-            if (!adminReady) return;
+            this.updateAppLoadingProgress('🔌 Đang kết nối dịch vụ backend...', 35);
+            await this.waitForBackendReady();
 
+            const databaseReady = await this.checkDatabaseSetup();
+            if (!databaseReady) {
+                this.hideAppLoadingOverlay();
+                return;
+            }
+            const adminReady = await this.checkInitialAdminSetup();
+            if (!adminReady) {
+                this.hideAppLoadingOverlay();
+                return;
+            }
+
+            this.updateAppLoadingProgress('🔐 Đang xác thực tài khoản...', 50);
             await this.checkAuth();
 
             if (this.currentUser) {
-                await this.loadBanner();
-                await this.loadOwnedEffects();
-                await this.loadEffects();
+                if (this.storeEffects.length > 0) {
+                    this.renderEffects();
+                }
                 this.loadCart();
                 this.updateUI();
+
+                this.updateAppLoadingProgress('📦 Đang đồng bộ Cửa hàng, Hiệu ứng cá nhân & Trang quản trị...', 75);
+
+                await this.preloadAllAppData();
+
+                this.updateAppLoadingProgress('⚙️ Đang hoàn tất kết nối...', 90);
+
                 this.renderControlDeck();
+                this.syncControlDeckToRemote();
                 this.syncControlDeckHotkeys();
                 window.electronAPI?.onControlDeckTrigger?.((slotId) => this.triggerControlDeckSlot(slotId));
 
-                this.pollSystemStatus();
-                setInterval(() => this.pollSystemStatus(), 5000);
+                this.startSystemStatusPoll();
+                this.checkRemoteConnectionStatus();
+                setInterval(() => this.checkRemoteConnectionStatus(), 4000);
                 this.startAdminPendingPaymentsPoll();
                 this.startFlashSaleTimer();
+
+                this.updateAppLoadingProgress('✨ Hệ thống đã sẵn sàng!', 100);
+                setTimeout(() => this.hideAppLoadingOverlay(), 250);
+
                 if (new URLSearchParams(window.location.search).get('pricing') === '1') {
-                    setTimeout(() => this.showPricing(), 150);
+                    setTimeout(() => this.showPricing(), 350);
                 }
+
+                // Register idle-resume visibility listener
+                if (!this._hasVisibilityListener) {
+                    this._hasVisibilityListener = true;
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState === 'visible' && this.authToken) {
+                            // Silently revalidate store previews and connection when returning from idle/sleep
+                            this.renderEffects();
+                            this.pollSystemStatus();
+                        }
+                    });
+                }
+            } else {
+                this.hideAppLoadingOverlay();
             }
         } catch (err) {
             console.error('Init error:', err);
+            this.hideAppLoadingOverlay();
         }
     }
 
@@ -218,6 +343,21 @@ class EffectStoreApp {
         }
     }
 
+    async waitForBackendReady(maxRetries = 10, intervalMs = 300) {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 1200);
+                const res = await fetch(this.API_URL + '/api/system/status', { signal: controller.signal });
+                clearTimeout(timeout);
+                if (res.ok) return true;
+            } catch (_e) {
+                await new Promise(r => setTimeout(r, intervalMs));
+            }
+        }
+        return false;
+    }
+
     async checkAuth() {
         const token = localStorage.getItem('token');
 
@@ -227,9 +367,13 @@ class EffectStoreApp {
         }
 
         try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4000);
             const res = await fetch(this.API_URL + '/api/auth/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token}` },
+                signal: controller.signal
             });
+            clearTimeout(timeout);
             const data = await res.json();
             if (data.success) {
                 this.currentUser = data.user;
@@ -237,12 +381,6 @@ class EffectStoreApp {
                 // DO NOT overwrite this.machineId here! It should be the device ID from localStorage.
                 document.getElementById('auth-modal')?.classList.remove('show');
                 this.updateUserUI();
-                await this.loadBanner();
-                await this.loadOwnedEffects();
-                await this.loadEffects();
-                this.loadCart();
-                this.updateUI();
-                this.pollSystemStatus();
             } else {
                 localStorage.removeItem('token');
                 document.getElementById('auth-modal')?.classList.add('show');
@@ -515,16 +653,19 @@ class EffectStoreApp {
                 this.currentUser = data.user;
                 this.authToken = data.token;
                 document.getElementById('auth-modal')?.classList.remove('show');
+                this.showAppLoadingOverlay('🔓 Đăng nhập thành công! Đang đồng bộ hệ thống...', 25);
                 this.updateUserUI();
-                this.showNotification('success', `✅ Chào mừng ${data.user.name || data.user.email}!`);
-                await this.loadBanner();
-                await this.loadOwnedEffects();
-                await this.loadEffects();
+
+                this.updateAppLoadingProgress('📦 Đang tải Cửa hàng, Hiệu ứng cá nhân & Trang quản trị...', 65);
+                await this.preloadAllAppData();
                 this.loadCart();
                 this.updateUI();
-                this.pollSystemStatus();
-                setInterval(() => this.pollSystemStatus(), 5000);
+                this.startSystemStatusPoll();
                 this.startAdminPendingPaymentsPoll();
+                
+                this.updateAppLoadingProgress('✨ Đã sẵn sàng!', 100);
+                setTimeout(() => this.hideAppLoadingOverlay(), 300);
+                this.showNotification('success', `✅ Chào mừng ${data.user.name || data.user.email}!`);
             } else {
                 this.showNotification('error', data.error || data.message || 'Đăng nhập thất bại');
             }
@@ -712,6 +853,12 @@ class EffectStoreApp {
         this.adminPollInterval = setInterval(check, 10000);
     }
 
+    startSystemStatusPoll() {
+        if (this.systemStatusInterval) clearInterval(this.systemStatusInterval);
+        this.pollSystemStatus();
+        this.systemStatusInterval = setInterval(() => this.pollSystemStatus(), 5000);
+    }
+
     async pollSystemStatus() {
         try {
             const res = await fetch(`${this.API_URL}/api/system/status`);
@@ -831,6 +978,9 @@ class EffectStoreApp {
             if (!response.ok || data.success === false) throw new Error(data.error || 'Không thể tải cửa hàng.');
             this.storeEffects = data.effects || [];
             this.effects = this.storeEffects;
+            try {
+                localStorage.setItem('es_cache_store_effects', JSON.stringify(this.storeEffects));
+            } catch (_e) {}
             this.menuTemplateUsage = new Map();
             this.menuTemplateLayoutIds = new Map();
             if (this.authToken) {
@@ -920,6 +1070,9 @@ class EffectStoreApp {
                     // Fallback cÅ©
                     this.ownedEffects = data.effects || [];
                 }
+                try {
+                    localStorage.setItem('es_cache_owned_effects', JSON.stringify(this.ownedEffects));
+                } catch (_e) {}
 
                 // TỰ ĐỘNG DỌN DẸP: Nếu đã sở hữu thì xóa khỏi danh sách chờ duyệt
                 const ownedIds = this.ownedEffects.map(e => (e.id || e._id));
@@ -1929,6 +2082,11 @@ class EffectStoreApp {
         videoEl.style.display = 'none';
         const parent = videoEl.parentElement;
         if (parent) {
+            const img = parent.querySelector('img');
+            if (img && img.style.display !== 'none' && img.complete && img.naturalWidth > 0) {
+                img.style.opacity = '1';
+                return;
+            }
             parent.style.display = 'flex';
             parent.style.alignItems = 'center';
             parent.style.justifyContent = 'center';
@@ -2097,25 +2255,34 @@ class EffectStoreApp {
                 const videoUrl = resolveMediaUrl(effect.previewUrl);
                 const fallbackIcon = effect.icon || '🎬';
 
+                const effectiveThumb = thumbUrl || (effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
+                const effectiveVideo = videoUrl || resolveMediaUrl(`/api/stream/effect/${effectId}`);
+
                 if (effect.category === 'menu_template') {
                     previewHTML = `
                                 <div id="store-template-preview-${effect.fileUrl}" class="store-template-preview-card" onclick="app.showEffectDetail('${effectId}')" style="position: absolute; inset: 0; background:#090d16; display:flex; align-items:center; justify-content:center; overflow: hidden; cursor: pointer; border-radius: 12px 12px 0 0;">
                                     <div style="font-size:12px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></div>
                                 </div>
                             `;
-                } else if (thumbUrl && videoUrl) {
+                } else if (effectiveThumb && effectiveVideo) {
                     previewHTML = `
                                 <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')"
                                     onmouseenter="const v=this.querySelector('video'); if(v) { v.play().catch(e=>{}); }" 
                                     onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
-                                    <img src="${thumbUrl}" class="effect-thumb-img" onerror="app.handleThumbError(this)">
-                                    <video src="${videoUrl}" class="effect-video" muted loop playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
+                                    <img src="${effectiveThumb}" class="effect-thumb-img" onerror="app.handleThumbError(this)">
+                                    <video src="${effectiveVideo}" class="effect-video" muted loop playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
                                 </div>
                             `;
-                } else if (videoUrl) {
+                } else if (effectiveThumb) {
                     previewHTML = `
                                 <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')">
-                                    <video src="${videoUrl}" class="effect-video" style="opacity:1;" muted loop autoplay playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
+                                    <img src="${effectiveThumb}" class="effect-thumb-img" style="opacity:1;" onerror="app.handlePreviewError(this, '${fallbackIcon}')">
+                                </div>
+                            `;
+                } else if (effectiveVideo) {
+                    previewHTML = `
+                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')">
+                                    <video src="${effectiveVideo}" class="effect-video" style="opacity:1;" muted loop autoplay playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
                                 </div>
                             `;
                 } else {
@@ -3055,6 +3222,7 @@ class EffectStoreApp {
                 this.renderEffects();
             } else if (view === 'library') {
                 document.getElementById('page-title').textContent = '📚 Thư Viện';
+                this.renderEffects();
                 this.loadOwnedEffects();
             } else if (view === 'gift-mapping') {
                 document.getElementById('page-title').textContent = '🎁 Gán quà với hiệu ứng';
@@ -3098,6 +3266,188 @@ class EffectStoreApp {
     saveControlDeckState() {
         localStorage.setItem('liveflow_control_deck', JSON.stringify(this.controlDeck));
         this.syncControlDeckHotkeys();
+        this.syncControlDeckToRemote();
+    }
+
+    async syncControlDeckToRemote() {
+        try {
+            const formatThumb = (url) => {
+                if (!url) return '';
+                let clean = url.replace(/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?/i, '');
+                if (!/^https?:/i.test(clean) && !clean.startsWith('/')) {
+                    clean = `/${clean}`;
+                }
+                return clean;
+            };
+
+            const availableEffects = [...(this.ownedEffects || []), ...(this.mappingEffects || []), ...(this.personalEffects || [])]
+                .filter((effect, index, items) => items.findIndex((candidate) => String(candidate._id || candidate.id) === String(effect._id || effect.id)) === index)
+                .map(effect => {
+                    const id = String(effect._id || effect.id);
+                    return {
+                        id,
+                        _id: id,
+                        name: effect.name || effect.effectName || 'Hiệu ứng',
+                        thumbUrl: formatThumb(effect.thumbUrl),
+                        icon: effect.icon || '🎬'
+                    };
+                });
+
+            const availableSounds = (this.controlDeckSoundLibrary || []).map(sound => ({
+                id: String(sound.id),
+                name: sound.name || 'Sound',
+                url: sound.url,
+                icon: '🎵'
+            }));
+
+            const cleanSlots = (type) => (this.controlDeck[type]?.slots || []).map(slot => ({
+                ...slot,
+                thumbUrl: formatThumb(slot.thumbUrl)
+            }));
+
+            const fullDeckState = {
+                effect: { ...this.controlDeck.effect, slots: cleanSlots('effect') },
+                sound: { ...this.controlDeck.sound, slots: cleanSlots('sound') },
+                availableEffects,
+                availableSounds
+            };
+
+            await fetch(`${this.API_URL}/api/remote/sync-deck`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deck: fullDeckState })
+            });
+        } catch (_e) {}
+    }
+
+    async showRemoteConnectModal() {
+        try {
+            this.syncControlDeckToRemote();
+            const localBase = 'http://127.0.0.1:9000';
+            const res = await fetch(`${localBase}/api/remote/lan-info`).catch(() => fetch(`${this.API_URL}/api/remote/lan-info`));
+            const data = await res.json().catch(() => ({ success: false, error: 'Tiến trình Backend vừa khởi động lại. Vui lòng thử lại sau 2 giây.' }));
+            if (!res.ok || !data.success) throw new Error(data.error || 'Không thể lấy địa chỉ IP LAN');
+
+            const remoteUrl = data.remoteUrl;
+            let qrDataUrl = '';
+            if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
+                qrDataUrl = await window.QRCode.toDataURL(remoteUrl, { margin: 2, width: 220 });
+            } else {
+                qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(remoteUrl)}`;
+            }
+
+            const modalHtml = `
+                <div class="modal-overlay show" id="remote-modal-overlay" onclick="if(event.target===this) app.closeRemoteModal()" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; z-index:999999; opacity:1 !important; visibility:visible !important; pointer-events:auto !important;">
+                    <div class="modal-content" style="max-width: 440px; width:90%; text-align: center; padding: 28px; border-radius: 20px; background: #0f172a; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 20px 50px rgba(0,0,0,0.8); transform: scale(1) !important; opacity: 1 !important;">
+                        <div style="font-size: 42px; margin-bottom: 8px;">📱</div>
+                        <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 6px;">Kết Nối Điện Thoại Từ Xa</h3>
+                        <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">Dùng camera điện thoại (cùng mạng Wi-Fi) quét mã QR để điều khiển nút Live Control & Soundboard từ xa!</p>
+                        
+                        <div style="background: #ffffff; padding: 14px; border-radius: 16px; display: inline-block; box-shadow: 0 8px 24px rgba(0,0,0,0.5); margin-bottom: 18px;">
+                            <img src="${qrDataUrl}" style="width: 200px; height: 200px; display: block;" alt="QR Code Remote">
+                        </div>
+
+                        <div style="background: rgba(30,41,59,0.8); padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #38bdf8; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 20px; border: 1px solid rgba(56,189,248,0.2);">
+                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px;">${remoteUrl}</span>
+                            <button onclick="navigator.clipboard.writeText('${remoteUrl}'); app.showNotification('success', 'Đã chép link remote!');" style="background: #38bdf8; color: #0f172a; border: none; padding: 6px 12px; border-radius: 8px; font-weight: 700; cursor: pointer; white-space: nowrap;">Chép link</button>
+                        </div>
+
+                        <button onclick="app.closeRemoteModal()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 12px; font-weight: 700; cursor: pointer;">Đóng cửa sổ</button>
+                    </div>
+                </div>
+            `;
+
+            let container = document.getElementById('remote-modal-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'remote-modal-container';
+                document.body.appendChild(container);
+            }
+            container.innerHTML = modalHtml;
+        } catch (e) {
+            this.showNotification('error', 'Lỗi mở kết nối điện thoại: ' + e.message);
+        }
+    }
+
+    closeRemoteModal() {
+        const el = document.getElementById('remote-modal-overlay');
+        if (el) el.remove();
+    }
+
+    handleRemoteButtonClick() {
+        if (this.isRemoteConnected) {
+            this.showRemoteStatusModal();
+        } else {
+            this.showRemoteConnectModal();
+        }
+    }
+
+    updateRemoteButtonState(connected, count = 1) {
+        this.isRemoteConnected = connected;
+        const btn = document.querySelector('.btn-remote-connect');
+        if (!btn) return;
+
+        if (connected) {
+            btn.classList.add('connected');
+            btn.style.background = 'linear-gradient(135deg, rgba(16,185,129,0.35), rgba(5,150,105,0.35))';
+            btn.style.border = '1px solid #10b981';
+            btn.style.color = '#34d399';
+            btn.style.boxShadow = '0 0 14px rgba(16, 185, 129, 0.6)';
+            btn.innerHTML = `<i class="fas fa-mobile-screen-button"></i> 🟢 Đã kết nối ĐT`;
+        } else {
+            btn.classList.remove('connected');
+            btn.style.background = 'linear-gradient(135deg, rgba(236,72,153,0.25), rgba(139,92,246,0.25))';
+            btn.style.border = '1px solid rgba(236,72,153,0.45)';
+            btn.style.color = '#f472b6';
+            btn.style.boxShadow = 'none';
+            btn.innerHTML = `<i class="fas fa-mobile-alt"></i> 📱 Remote`;
+        }
+    }
+
+    handleRemoteDeviceConnected(info = {}) {
+        this.closeRemoteModal();
+        this.showNotification('success', '📱 Đã kết nối điện thoại điều khiển từ xa!');
+        this.updateRemoteButtonState(true, info.count || 1);
+    }
+
+    showRemoteStatusModal() {
+        const modalHtml = `
+            <div class="modal-overlay show" id="remote-modal-overlay" onclick="if(event.target===this) app.closeRemoteModal()" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; z-index:999999;">
+                <div class="modal-content" style="max-width: 420px; width:90%; text-align: center; padding: 26px; border-radius: 20px; background: #0f172a; border: 1px solid rgba(16,185,129,0.4); box-shadow: 0 0 40px rgba(16,185,129,0.3);">
+                    <div style="font-size: 42px; margin-bottom: 8px;">🟢</div>
+                    <h3 style="font-size: 20px; font-weight: 800; color: #34d399; margin-bottom: 6px;">Đã Kết Nối Điện Thoại</h3>
+                    <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">Điện thoại của bạn đang kết nối sẵn sàng điều khiển từ xa Live Control & Soundboard.</p>
+                    
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <button onclick="app.showRemoteConnectModal();" style="width: 100%; padding: 12px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.4); color: #38bdf8; border-radius: 12px; font-weight: 700; cursor: pointer;">Hiện mã QR cho thiết bị khác</button>
+                        <button onclick="app.closeRemoteModal()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 12px; font-weight: 700; cursor: pointer;">Đóng cửa sổ</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        let container = document.getElementById('remote-modal-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'remote-modal-container';
+            document.body.appendChild(container);
+        }
+        container.innerHTML = modalHtml;
+    }
+
+    async checkRemoteConnectionStatus() {
+        try {
+            const res = await fetch(`${this.API_URL}/api/remote/deck-state`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.success) {
+                const count = Number(data.connectedClients || 0);
+                if (count > 0 && !this.isRemoteConnected) {
+                    this.updateRemoteButtonState(true, count);
+                } else if (count === 0 && this.isRemoteConnected) {
+                    this.updateRemoteButtonState(false);
+                }
+            }
+        } catch (_e) {}
     }
 
     switchControlDeckTab(type) {
@@ -3109,6 +3459,8 @@ class EffectStoreApp {
 
     renderControlDeck() {
         const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        const btnColors = ['red', 'purple', 'blue', 'green', 'gold', 'pink'];
+
         for (const type of ['effect', 'sound']) {
             const grid = document.getElementById(`lcd-${type}-grid`);
             if (!grid) continue;
@@ -3117,18 +3469,50 @@ class EffectStoreApp {
             const cards = [];
             for (let index = 0; index < state.visible; index += 1) {
                 const slot = slotsByIndex.get(index);
+                const colorClass = btnColors[index % btnColors.length];
+
+                if (type === 'sound') {
+                    if (!slot) {
+                        cards.push(`
+                            <div class="lcd-slot sound-3d-slot empty" onclick="app.addControlDeckSlot(${index},'sound')" title="Thêm âm thanh">
+                                <div class="push-btn-3d color-empty">
+                                    <div class="push-btn-3d-core">
+                                        <i class="fas fa-plus"></i>
+                                    </div>
+                                </div>
+                                <span class="lcd-slot-name" style="color:#38bdf8; margin-top:2px;">+ Thêm sound</span>
+                            </div>
+                        `);
+                        continue;
+                    }
+                    cards.push(`
+                        <div class="lcd-slot sound-3d-slot" role="button" tabindex="0" id="lcd-slot-${escapeHtml(slot.id)}" onclick="app.triggerControlDeckSlot('${escapeHtml(slot.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.triggerControlDeckSlot('${escapeHtml(slot.id)}')}">
+                            <button class="lcd-slot-remove" onclick="event.stopPropagation();app.removeControlDeckSlot('${escapeHtml(slot.id)}')" title="Xóa nút">×</button>
+                            <div class="push-btn-3d color-${colorClass}">
+                                <div class="push-btn-3d-core">
+                                    <i class="fas fa-volume-high"></i>
+                                </div>
+                            </div>
+                            <span class="lcd-slot-name">${escapeHtml(slot.name)}</span>
+                            <span class="lcd-slot-key" onclick="event.stopPropagation();app.beginControlDeckHotkey('${escapeHtml(slot.id)}')">⌨ ${escapeHtml(slot.hotkey || 'Gán phím')}</span>
+                            <input class="lcd-slot-volume" aria-label="Âm lượng" type="range" min="0" max="100" value="${Math.round((Number.isFinite(Number(slot.volume)) ? Number(slot.volume) : 1) * 100)}" onclick="event.stopPropagation()" oninput="event.stopPropagation();app.updateControlDeckVolume('${escapeHtml(slot.id)}',this.value)">
+                        </div>
+                    `);
+                    continue;
+                }
+
                 if (!slot) {
-                    cards.push(`<button class="lcd-slot empty" onclick="app.addControlDeckSlot(${index},'${type}')" title="Thêm ${type === 'effect' ? 'hiệu ứng' : 'âm thanh'}"><i class="fas fa-plus"></i></button>`);
+                    cards.push(`<div class="lcd-slot effect-3d-slot empty" onclick="app.addControlDeckSlot(${index},'effect')" title="Thêm hiệu ứng"><i class="fas fa-plus" style="font-size:18px;margin-bottom:4px;"></i><span style="font-size:11px;font-weight:700;">+ Thêm nút</span></div>`);
                     continue;
                 }
                 const image = slot.thumbUrl
                     ? `<img class="lcd-slot-icon" src="${escapeHtml(slot.thumbUrl)}" alt="">`
-                    : `<span class="lcd-slot-icon"><i class="fas ${type === 'effect' ? 'fa-wand-magic-sparkles' : 'fa-music'}"></i></span>`;
-                cards.push(`<div class="lcd-slot" role="button" tabindex="0" id="lcd-slot-${escapeHtml(slot.id)}" onclick="app.triggerControlDeckSlot('${escapeHtml(slot.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.triggerControlDeckSlot('${escapeHtml(slot.id)}')}">
+                    : `<span class="lcd-slot-icon"><i class="fas fa-wand-magic-sparkles"></i></span>`;
+                cards.push(`<div class="lcd-slot effect-3d-slot" role="button" tabindex="0" id="lcd-slot-${escapeHtml(slot.id)}" onclick="app.triggerControlDeckSlot('${escapeHtml(slot.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.triggerControlDeckSlot('${escapeHtml(slot.id)}')}">
                     <button class="lcd-slot-remove" onclick="event.stopPropagation();app.removeControlDeckSlot('${escapeHtml(slot.id)}')" title="Xóa nút">×</button>
                     ${image}<span class="lcd-slot-name">${escapeHtml(slot.name)}</span>
                     <span class="lcd-slot-key" onclick="event.stopPropagation();app.beginControlDeckHotkey('${escapeHtml(slot.id)}')">⌨ ${escapeHtml(slot.hotkey || 'Gán phím')}</span>
-                    ${type === 'effect' ? '<span class="lcd-slot-status"></span>' : ''}
+                    <span class="lcd-slot-status"></span>
                     <input class="lcd-slot-volume" aria-label="Âm lượng" type="range" min="0" max="100" value="${Math.round((Number.isFinite(Number(slot.volume)) ? Number(slot.volume) : 1) * 100)}" onclick="event.stopPropagation()" oninput="event.stopPropagation();app.updateControlDeckVolume('${escapeHtml(slot.id)}',this.value)">
                 </div>`);
             }
@@ -3281,9 +3665,15 @@ class EffectStoreApp {
         this.addControlDeckEffectToSlot(effect);
     }
 
-    findControlDeckSlot(slotId) {
-        for (const type of ['effect', 'sound']) {
-            const slot = this.controlDeck[type].slots.find((item) => item.id === slotId);
+    findControlDeckSlot(slotId, deckType = null) {
+        const types = deckType && ['effect', 'sound'].includes(deckType) ? [deckType] : ['effect', 'sound'];
+        for (const type of types) {
+            const slot = this.controlDeck[type].slots.find(item => 
+                String(item.id) === String(slotId) || 
+                String(item.effectId) === String(slotId) || 
+                String(item.soundId) === String(slotId) ||
+                String(item.index) === String(slotId)
+            );
             if (slot) return slot;
         }
         return null;
@@ -3295,7 +3685,15 @@ class EffectStoreApp {
         const element = document.getElementById(`lcd-slot-${slot.id}`);
         element?.classList.add('running');
         if (slot.type === 'effect') {
-            await this.previewEffectOnOBS(slot.effectId, { audioEnabled: Number(slot.volume) > 0, audioVolume: Number(slot.volume) || 0 });
+            try {
+                const ok = await this.previewEffectOnOBS(slot.effectId, { audioEnabled: Number(slot.volume) > 0, audioVolume: Number(slot.volume) || 0 });
+                if (!ok) {
+                    await this._legacyPreviewTriggerDoNotUse(slot.effectId);
+                }
+            } catch (e) {
+                console.error('Trigger effect error:', e);
+                await this._legacyPreviewTriggerDoNotUse(slot.effectId).catch(() => {});
+            }
             setTimeout(() => element?.classList.remove('running'), 900);
             return;
         }
@@ -3350,6 +3748,11 @@ class EffectStoreApp {
                 ? `${(Math.max(0, Number(status.remainingMs) || 0) / 1000).toFixed(1)}s`
                 : (isQueued ? 'Đang chờ' : '');
         }
+    }
+
+    saveControlDeckState() {
+        localStorage.setItem('liveflow_control_deck', JSON.stringify(this.controlDeck));
+        this.syncControlDeckToRemote();
     }
 
     removeControlDeckSlot(slotId) {
@@ -4634,6 +5037,28 @@ class EffectStoreApp {
             case 'follow': this.handleFollow(data.data); break;
             case 'share': this.handleShare(data.data); break;
             case 'chat': this.handleChat(data.data); break;
+            case 'remote_device_connected':
+                this.handleRemoteDeviceConnected(data.data);
+                break;
+            case 'control_deck_trigger':
+                if (data.data?.action === 'stop_all_sounds') {
+                    this.stopControlDeckSounds();
+                } else if (data.data?.slotId) {
+                    this.triggerControlDeckSlot(data.data.slotId);
+                }
+                break;
+            case 'control_deck_assign':
+                if (data.data?.deckType === 'effect') {
+                    const effect = data.data.item;
+                    if (effect) this.addControlDeckEffectToSlot(effect, Number(data.data.index));
+                } else if (data.data?.deckType === 'sound') {
+                    const sound = data.data.item;
+                    if (sound) {
+                        this.pendingControlDeckIndex = Number(data.data.index);
+                        this.addSoundLibraryItemToDeck(sound);
+                    }
+                }
+                break;
             case 'effect_warning':
                 this.showNotification('warning', data.data?.message || 'Hiệu ứng đã bị bỏ qua vì thiếu thời lượng.');
                 break;
@@ -4842,10 +5267,17 @@ class EffectStoreApp {
             }
 
             if (displayEffects && displayEffects.length > 0) {
+                const resolveMediaUrl = (url) => {
+                    if (!url) return '';
+                    if (/^(https?|atom|file|data|blob):/i.test(url)) return url;
+                    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+                    return `${this.API_URL}${cleanUrl}`;
+                };
+
                 grid.innerHTML = displayEffects.map(e => {
                     const effectId = e._id || e.id;
-                    const thumbUrl = e.thumbUrl ? (/^https?:\/\//i.test(e.thumbUrl) ? e.thumbUrl : `${this.API_URL}${e.thumbUrl}`) : '';
-                    const videoUrl = e.previewUrl ? (/^https?:\/\//i.test(e.previewUrl) ? e.previewUrl : `${this.API_URL}${e.previewUrl}`) : '';
+                    const thumbUrl = resolveMediaUrl(e.thumbUrl);
+                    const videoUrl = resolveMediaUrl(e.previewUrl || e.fileUrl);
                     let previewHTML = '';
 
                     if (e.isChallengeWheel) {
@@ -4893,15 +5325,22 @@ class EffectStoreApp {
                         }).join('');
                         previewHTML = `<div style="width:128px;height:128px;position:relative;display:grid;place-items:center;"><div style="position:absolute;inset:12px;border-radius:50%;background:${gradient};border:5px solid ${borderColor};box-shadow:${ringShadow};">${labels}<span style="position:absolute;inset:35%;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#60a5fa,#1d4ed8);border:4px solid #fbbf24;color:#fff;font-size:9px;font-weight:900;">QUAY</span></div><span style="position:absolute;top:0;left:50%;transform:translateX(-50%);color:#fef3c7;font-size:14px;text-shadow:0 0 6px #fbbf24;">▼</span></div>`;
                         }
-                    } else if (thumbUrl && videoUrl) {
-                        previewHTML = `
-                        <img src="${thumbUrl}" class="mapping-thumb-img">
-                        <video src="${videoUrl}" class="mapping-video" muted loop playsinline></video>
-                    `;
-                    } else if (videoUrl) {
-                        previewHTML = `<video src="${videoUrl}" class="mapping-video" style="opacity:1;" muted loop playsinline></video>`;
                     } else {
-                        previewHTML = `<span style="font-size:32px;">🎬</span>`;
+                        const effectiveThumb = thumbUrl || (effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
+                        const videoWithFrame = videoUrl ? (videoUrl.includes('#') ? videoUrl : `${videoUrl}#t=0.001`) : '';
+                        
+                        if (effectiveThumb && videoWithFrame) {
+                            previewHTML = `
+                                <img src="${effectiveThumb}" class="mapping-thumb-img" onerror="this.style.display='none'; const v=this.nextElementSibling; if(v && v.tagName==='VIDEO') { v.style.opacity='1'; v.play().catch(e=>{}); }">
+                                <video src="${videoWithFrame}" class="mapping-video" muted loop playsinline preload="metadata"></video>
+                            `;
+                        } else if (effectiveThumb) {
+                            previewHTML = `<img src="${effectiveThumb}" class="mapping-thumb-img" style="opacity:1;" onerror="this.style.display='none';">`;
+                        } else if (videoWithFrame) {
+                            previewHTML = `<video src="${videoWithFrame}" class="mapping-video" style="opacity:1;" muted loop playsinline preload="metadata"></video>`;
+                        } else {
+                            previewHTML = `<span style="font-size:32px;">🎬</span>`;
+                        }
                     }
 
                     return `
@@ -5415,6 +5854,20 @@ class EffectStoreApp {
             case 'share': this.handleShare(data.data); break;
             case 'chat': this.handleChat(data.data); break;
             case 'plan_limit_reached': this.handlePlanLimit(data.data, data.data?.feature); break;
+            case 'control_deck_trigger': this.handleControlDeckRemoteTrigger(data.data); break;
+        }
+    }
+
+    handleControlDeckRemoteTrigger(data) {
+        if (!data) return;
+        if (data.action === 'stop_all_sounds') {
+            this.stopControlDeckSounds();
+            this.showNotification('info', '📱 Đã dừng tất cả âm thanh từ điện thoại từ xa.');
+            return;
+        }
+        if (data.slotId) {
+            this.triggerControlDeckSlot(data.slotId);
+            this.showNotification('info', '📱 Đã kích hoạt nút từ điện thoại từ xa.');
         }
     }
 

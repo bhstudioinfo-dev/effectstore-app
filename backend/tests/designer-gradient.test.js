@@ -179,12 +179,13 @@ assert.ok(designerSource.includes('player.score = 0'));
 assert.ok(!designerSource.includes("score: idx === 0 ? 120 : (idx === 1 ? 80 : 50)"));
 assert.ok(designerSource.includes('const rawPct = total > 0 ? (Number(p.score || 0) / total) * 100 : 0'));
 assert.ok(designerSource.includes('const visualPct = total > 0 ? rawPct : (100 / players.length)'));
+const normalizedDesignerSource = designerSource.replace(/\r\n/g, '\n');
 assert.ok(
-    designerSource.includes('this.invalidateItemVisual(selected);\n                this.renderCanvas();'),
+    normalizedDesignerSource.includes('this.invalidateItemVisual(selected);\n                this.renderCanvas();'),
     'PK score changes that alter the leader must invalidate the cached widget visual'
 );
 assert.ok(
-    designerSource.includes('// Reset also removes the current leader state'),
+    normalizedDesignerSource.includes('// Reset also removes the current leader state'),
     'Resetting PK scores must force a complete visual refresh'
 );
 

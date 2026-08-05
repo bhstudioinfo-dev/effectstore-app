@@ -16,6 +16,7 @@ scratch/
 _refactor_backup/
 *.bak
 *.tmp
+*.zip
 logs/
 *.log
 

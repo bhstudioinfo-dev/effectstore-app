@@ -5,11 +5,11 @@ const { getJwtSecret } = require('./security');
 const OVERLAY_ROLES = Object.freeze(['gift-menu', 'goal-board', 'effect-player']);
 
 function getApiHost() {
-    return String(process.env.API_HOST || '127.0.0.1').trim();
+    return String(process.env.API_HOST || '0.0.0.0').trim();
 }
 
 function getWebSocketHost() {
-    return String(process.env.WS_HOST || getApiHost()).trim();
+    return String(process.env.WS_HOST || '0.0.0.0').trim();
 }
 
 function getAllowedOrigins() {
@@ -21,7 +21,7 @@ function getAllowedOrigins() {
 
 function isAllowedOrigin(origin) {
     if (!origin || origin === 'null') return true;
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
+    if (/^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/i.test(origin)) return true;
     if (origin.startsWith('file://') || origin.startsWith('vscode-file://')) return true;
     return getAllowedOrigins().has(origin);
 }

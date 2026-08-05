@@ -23,8 +23,8 @@ try {
     delete process.env.WS_HOST;
     delete process.env.CORS_ALLOWED_ORIGINS;
 
-    assert.strictEqual(getApiHost(), '127.0.0.1');
-    assert.strictEqual(getWebSocketHost(), '127.0.0.1');
+    assert.strictEqual(getApiHost(), '0.0.0.0');
+    assert.strictEqual(getWebSocketHost(), '0.0.0.0');
 
     process.env.API_HOST = '0.0.0.0';
     assert.strictEqual(getApiHost(), '0.0.0.0');

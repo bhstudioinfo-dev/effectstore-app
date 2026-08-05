@@ -16,7 +16,7 @@ const mappingBody = homeSource.slice(
 );
 
 assert.ok(homeSource.includes('this.storeEffects = []'));
-assert.ok(homeSource.includes('this._renderGrid(storeGrid, this.storeEffects'));
+assert.ok(homeSource.includes('this._renderGrid(storeGrid, visibleStoreEffects'));
 assert.ok(!loadOwnedBody.includes('this.effects = data.effects'));
 assert.ok(!mappingBody.includes('this.effects = purchasedEffects'));
 assert.ok(indexSource.includes("filterCategory('all')"));

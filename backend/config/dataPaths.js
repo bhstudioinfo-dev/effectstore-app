@@ -7,11 +7,25 @@ const uploadsDir = path.join(dataRoot, 'uploads');
 const effectsDir = path.join(dataRoot, 'effects');
 const runtimeAssetsDir = path.join(dataRoot, 'assets');
 
+function resolveCustomEffectsDir() {
+    if (process.env.CUSTOM_EFFECTS_DIR) {
+        return path.resolve(process.env.CUSTOM_EFFECTS_DIR);
+    }
+    const home = process.env.USERPROFILE || process.env.HOME || '';
+    const appData = process.env.APPDATA || (
+        process.platform === 'darwin'
+            ? path.join(home, 'Library', 'Application Support')
+            : path.join(home, '.config')
+    );
+    return path.join(appData, 'effectstore-desktop', 'custom-effects');
+}
+
 const paths = Object.freeze({
     backendRoot,
     dataRoot,
     uploadsDir,
     effectsDir,
+    customEffectsDir: resolveCustomEffectsDir(),
     encryptedEffectsDir: path.join(effectsDir, 'encrypted'),
     previewsDir: path.join(uploadsDir, 'previews'),
     tempDir: path.join(uploadsDir, 'temp'),
@@ -34,6 +48,7 @@ function ensureRuntimeDirectories() {
         paths.thumbsDir,
         paths.goalAssetsDir,
         paths.runtimeGiftIconsDir,
+        paths.customEffectsDir,
         paths.backupsDir
     ].forEach((directory) => fs.mkdirSync(directory, { recursive: true }));
     if (dataRoot !== backendRoot) {

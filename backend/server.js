@@ -107,6 +107,14 @@ app.get('/uploads/thumbs/:filename', async (req, res, next) => {
     try {
         const localPath = path.join(dataPaths.thumbsDir, req.params.filename);
         if (fs.existsSync(localPath)) return next();
+        const legacyPath = path.join(__dirname, 'uploads', 'thumbs', req.params.filename);
+        if (fs.existsSync(legacyPath)) {
+            try {
+                fs.mkdirSync(dataPaths.thumbsDir, { recursive: true });
+                fs.copyFileSync(legacyPath, localPath);
+            } catch (_e) {}
+            return next();
+        }
         const { isAssetStoreConfigured, downloadThumbnail } = require('./services/effectAssetStore');
         if (!isAssetStoreConfigured()) return next();
         const effectId = path.basename(req.params.filename, path.extname(req.params.filename));
@@ -139,6 +147,10 @@ app.use('/uploads/thumbs', express.static(dataPaths.thumbsDir, {
 app.use('/uploads', express.static(dataPaths.uploadsDir, {
     maxAge: '1y',
     immutable: true
+}));
+app.use('/custom-effects', express.static(dataPaths.customEffectsDir, {
+    maxAge: 0,
+    etag: true
 }));
 app.use('/assets/gift-icons', express.static(dataPaths.runtimeGiftIconsDir, {
     maxAge: '1y',
@@ -190,6 +202,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/effectsto
         await runSchemaMigrations();
         databaseSchemaReady = true;
         console.log(`✅ MongoDB Connected (schema v${CURRENT_SCHEMA_VERSION})`);
+        initOBSConnection().catch(() => {});
     })
     .catch(err => {
         databaseSchemaReady = false;
@@ -287,18 +300,34 @@ function broadcastToClients(event, data) {
 }
 
 app.locals.broadcastToClients = broadcastToClients;
+app.set('broadcastToClients', broadcastToClients);
 app.locals.isEffectPlayerReady = () => effectPlayerClients.size > 0;
 
 // Initialize services with broadcasting capability
 tiktokService.init(broadcastToClients, () => effectPlayerClients.size > 0);
 effectQueue.setBroadcastFn(broadcastToClients);
 
-// Connect to OBS on startup
-obsService.connect(
-    process.env.OBS_HOST || '127.0.0.1',
-    process.env.OBS_PORT || 4455,
-    process.env.OBS_PASSWORD || 'obs123'
-);
+// Connect to OBS on startup (using DB settings if available, or env/default fallbacks)
+const OBSSettings = require('./models/OBSSettings');
+async function initOBSConnection() {
+    try {
+        const settings = await OBSSettings.findOne();
+        if (settings) {
+            await obsService.connect(
+                settings.host || process.env.OBS_HOST || '127.0.0.1',
+                settings.port || process.env.OBS_PORT || 4455,
+                settings.password || process.env.OBS_PASSWORD || 'obs123'
+            );
+            return;
+        }
+    } catch (_e) {}
+    await obsService.connect(
+        process.env.OBS_HOST || '127.0.0.1',
+        process.env.OBS_PORT || 4455,
+        process.env.OBS_PASSWORD || 'obs123'
+    );
+}
+initOBSConnection();
 
 // ========================================
 // CLOUD PROXY (optional — see docs/COMMERCIAL_CLOUD_ROADMAP.md)
@@ -355,6 +384,7 @@ app.use('/api/obs', require('./routes/obs'));
 app.use('/api/tiktok', require('./routes/tiktok'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/remote', require('./routes/remote'));
 
 app.get('/api/queue/status', (_req, res) => {
     res.json(effectQueue.getStatus());

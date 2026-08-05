@@ -264,10 +264,16 @@ async function streamEffectById(req, res) {
 
         // Fallback 2: Search by effectId in previews directory
         if (!streamPath || !fs.existsSync(streamPath)) {
-            if (fs.existsSync(previewsDir)) {
-                const files = fs.readdirSync(previewsDir);
-                const effectFile = files.find(f => f.startsWith(effectId) && f.endsWith('.webm'));
-                if (effectFile) { streamPath = path.join(previewsDir, effectFile); }
+            const checkDirs = [previewsDir, path.join(__dirname, '..', 'uploads', 'previews')].filter(Boolean);
+            for (const dir of checkDirs) {
+                if (fs.existsSync(dir)) {
+                    const files = fs.readdirSync(dir);
+                    const effectFile = files.find(f => (f.startsWith(effectId) || f.includes(effectId)) && f.endsWith('.webm'));
+                    if (effectFile) {
+                        streamPath = path.join(dir, effectFile);
+                        break;
+                    }
+                }
             }
         }
 
@@ -320,16 +326,58 @@ async function authorizeEffectStream(req, res, next) {
     try {
         const effectId = req.params.effectId;
         if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
-        const payload = verifyEffectAccessToken(req.query.token, effectId);
+
+        let payload = null;
+        const queryToken = req.query.token || req.query.authToken;
+        const authHeader = req.headers.authorization?.split(' ')[1];
+
+        // 1. Try verifying dedicated effect access token
+        if (queryToken) {
+            try {
+                payload = verifyEffectAccessToken(queryToken, effectId);
+            } catch (_err) {
+                // Token might be expired or invalid, attempt fallbacks
+            }
+        }
+
+        // 2. Fallback: Try verifying user bearer auth token
+        if (!payload && (authHeader || queryToken)) {
+            const userToken = authHeader || queryToken;
+            try {
+                const jwt = require('jsonwebtoken');
+                const { getJwtSecret } = require('../config/security');
+                const decoded = jwt.verify(userToken, getJwtSecret());
+                if (decoded && decoded.userId) {
+                    payload = { userId: decoded.userId, purpose: 'catalog-preview', effectId };
+                }
+            } catch (_err) {
+                // Invalid user token
+            }
+        }
+
+        // 3. Fallback: Local app loopback requests (127.0.0.1) for catalog preview
+        if (!payload) {
+            const remoteIp = req.socket?.remoteAddress || '';
+            const isLocal = remoteIp === '127.0.0.1' || remoteIp === '::1' || remoteIp === '::ffff:127.0.0.1';
+            if (isLocal) {
+                payload = { userId: 'local-app', purpose: 'catalog-preview', effectId };
+            }
+        }
+
+        if (!payload) {
+            return res.status(401).json({ error: 'Invalid or expired effect token' });
+        }
+
         if (payload.purpose === 'catalog-preview') {
             const catalogEffect = await Effect.findOne({ _id: effectId, isActive: true }).select('_id category').lean();
             if (!catalogEffect || catalogEffect.category === 'menu_template') {
                 return res.status(403).json({ error: 'Effect preview access denied' });
             }
-        } else if (payload.purpose !== 'legacy-obs-effect') {
+        } else if (payload.purpose !== 'legacy-obs-effect' && payload.userId !== 'local-app') {
             const effect = await resolveEffectForUser(payload.userId, effectId);
             if (!effect) return res.status(403).json({ error: 'Effect access denied' });
         }
+
         req.effectAccess = payload;
         return next();
     } catch (_error) {
@@ -391,17 +439,17 @@ function getVideoDuration(filePath) {
         let output = '';
         ffprobe.stdout.on('data', (data) => { output += data.toString(); });
         ffprobe.on('close', (code) => {
-            if (code === 0 && output.trim()) resolve(parseFloat(output.trim()));
-            else resolve(15);
+            if (code === 0 && output.trim() && !isNaN(parseFloat(output.trim()))) resolve(parseFloat(output.trim()));
+            else resolve(5);
         });
-        ffprobe.on('error', () => resolve(15));
+        ffprobe.on('error', () => resolve(5));
     });
 }
 
 // Create Effect (Admin)
 router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (req, res) => {
     try {
-        const { name, category, price, originalPrice, description, icon, isComposite, timeline } = req.body;
+        const { name, category, price, originalPrice, duration: reqDuration, description, icon, isComposite, timeline } = req.body;
         // Generated upfront (instead of letting Mongo assign one on create)
         // so the file name, the R2 key, and the effect's real _id are all
         // identical — the shared store and every other machine's
@@ -412,6 +460,7 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
             name, category,
             price: parseFloat(price),
             originalPrice: parseFloat(originalPrice) || 0,
+            duration: parseFloat(reqDuration) || 5,
             description, icon: icon || '🎬',
             isActive: true,
             isComposite: isComposite === 'true' || isComposite === true,
@@ -424,7 +473,8 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
         if (effectFile) {
             const previewPath = path.join(previewsDir, `${effectId}.webm`);
             fs.copyFileSync(effectFile.path, previewPath);
-            const duration = await getVideoDuration(previewPath);
+            const detectedDuration = await getVideoDuration(previewPath);
+            const duration = parseFloat(reqDuration) || detectedDuration || 5;
             const encryptedPath = path.join(encryptedEffectsDir, `${effectId}.enc`);
             await encryptVideo(effectFile.path, encryptedPath);
 
@@ -478,7 +528,7 @@ router.post('/effects/:id/update', authMiddleware, adminMiddleware, upload.any()
         if (!isValidResourceId(req.params.id)) {
             return res.status(400).json({ success: false, error: 'Invalid effect ID' });
         }
-        const { name, category, price, originalPrice, fakeUses, isTrending, isFlashSale, flashSalePrice, flashSaleEndsAt, description, icon } = req.body;
+        const { name, category, price, originalPrice, duration, fakeUses, isTrending, isFlashSale, flashSalePrice, flashSaleEndsAt, description, icon } = req.body;
         const effect = await Effect.findById(req.params.id);
         if (!effect) return res.status(404).json({ success: false, error: 'Effect not found' });
 
@@ -486,6 +536,7 @@ router.post('/effects/:id/update', authMiddleware, adminMiddleware, upload.any()
         if (category) effect.category = category;
         if (price) effect.price = parseFloat(price);
         if (originalPrice) effect.originalPrice = parseFloat(originalPrice);
+        if (duration !== undefined && !isNaN(parseFloat(duration))) effect.duration = parseFloat(duration);
         if (fakeUses) effect.uses = parseInt(fakeUses) || 0;
         if (description) effect.description = description;
         if (icon) effect.icon = icon;

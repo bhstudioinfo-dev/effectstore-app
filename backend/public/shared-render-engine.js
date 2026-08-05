@@ -707,21 +707,21 @@
                                 }
                                 @keyframes gmdLightningWidthPulse {
                                     0%, 100% { 
-                                        stroke-width: ${roundPx(3.5, ctx.scale)}px; 
-                                        opacity: 0.75; 
+                                        stroke-width: ${Math.max(1.5, roundPx(2.2, ctx.scale))}px; 
+                                        opacity: 0.8; 
                                     }
                                     50% { 
-                                        stroke-width: ${roundPx(5.5, ctx.scale)}px; 
+                                        stroke-width: ${Math.max(2, roundPx(3.2, ctx.scale))}px; 
                                         opacity: 1; 
                                     }
                                 }
                                 @keyframes gmdLightningWidthPulseThinner {
                                     0%, 100% { 
-                                        stroke-width: ${roundPx(2.2, ctx.scale)}px; 
-                                        opacity: 0.7; 
+                                        stroke-width: ${Math.max(1, roundPx(1.4, ctx.scale))}px; 
+                                        opacity: 0.75; 
                                     }
                                     50% { 
-                                        stroke-width: ${roundPx(3.8, ctx.scale)}px; 
+                                        stroke-width: ${Math.max(1.5, roundPx(2.2, ctx.scale))}px; 
                                         opacity: 0.95; 
                                     }
                                 }
@@ -734,60 +734,60 @@
                                 </linearGradient>
                                 <filter id="${filterId}" x="-30%" y="-30%" width="160%" height="160%">
                                     <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" seed="1" />
-                                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="${12 * ctx.scale}" xChannelSelector="R" yChannelSelector="G" result="displaced" />
-                                    <feDropShadow in="displaced" dx="0" dy="0" stdDeviation="${4 * ctx.scale}" flood-color="${teamColor1}" flood-opacity="0.85" result="glow1" />
-                                    <feDropShadow in="glow1" dx="0" dy="0" stdDeviation="${8 * ctx.scale}" flood-color="${teamColor2}" flood-opacity="0.6" />
+                                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="${Math.max(2, 5 * ctx.scale)}" xChannelSelector="R" yChannelSelector="G" result="displaced" />
+                                    <feDropShadow in="displaced" dx="0" dy="0" stdDeviation="${Math.max(1, 2 * ctx.scale)}" flood-color="${teamColor1}" flood-opacity="0.9" result="glow1" />
+                                    <feDropShadow in="glow1" dx="0" dy="0" stdDeviation="${Math.max(1.5, 3.5 * ctx.scale)}" flood-color="${teamColor2}" flood-opacity="0.65" />
                                 </filter>
                                 <filter id="${filterId}_core" x="-30%" y="-30%" width="160%" height="160%">
                                     <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" seed="1" />
-                                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="${12 * ctx.scale}" xChannelSelector="R" yChannelSelector="G" />
+                                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="${Math.max(2, 5 * ctx.scale)}" xChannelSelector="R" yChannelSelector="G" />
                                 </filter>
                             </defs>
                             
-                            <!-- Arc 1 Glow Path (Thick, 5s speed, pathLength calibrated) -->
+                            <!-- Arc 1 Glow Path (Calibrated thin sharp electric glow) -->
                             <rect style="animation: gmdElectricCirculate-${item.id || 'pk'} 5s linear infinite, gmdLightningWidthPulse 0.22s ease-in-out infinite; stroke-dasharray: 250 750; filter: url(#${filterId});" 
                                   pathLength="1000"
                                   x="${roundPx(padding, ctx.scale)}" y="${roundPx(padding, ctx.scale)}" 
                                   width="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" height="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" 
                                   rx="${radius}" ry="${radius}" 
-                                  fill="none" stroke="url(#${filterId}_grad)" stroke-width="${roundPx(5.5, ctx.scale)}" />
+                                  fill="none" stroke="url(#${filterId}_grad)" stroke-width="${Math.max(1.8, roundPx(2.8, ctx.scale))}" />
                             <!-- Arc 1 White Core -->
                             <rect style="animation: gmdElectricCirculate-${item.id || 'pk'} 5s linear infinite; stroke-dasharray: 250 750; filter: url(#${filterId}_core);" 
                                   pathLength="1000"
                                   x="${roundPx(padding, ctx.scale)}" y="${roundPx(padding, ctx.scale)}" 
                                   width="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" height="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" 
                                   rx="${radius}" ry="${radius}" 
-                                  fill="none" stroke="#ffffff" stroke-width="${roundPx(2.2, ctx.scale)}" />
+                                  fill="none" stroke="#ffffff" stroke-width="${Math.max(1, roundPx(1.4, ctx.scale))}" />
 
-                            <!-- Arc 2 Glow Path (Thick, 5s speed, offset 50% delay, pathLength calibrated) -->
+                            <!-- Arc 2 Glow Path -->
                             <rect style="animation: gmdElectricCirculate-${item.id || 'pk'} 5s linear infinite, gmdLightningWidthPulse 0.22s ease-in-out infinite; animation-delay: -2.5s; stroke-dasharray: 250 750; filter: url(#${filterId});" 
                                   pathLength="1000"
                                   x="${roundPx(padding, ctx.scale)}" y="${roundPx(padding, ctx.scale)}" 
                                   width="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" height="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" 
                                   rx="${radius}" ry="${radius}" 
-                                  fill="none" stroke="url(#${filterId}_grad)" stroke-width="${roundPx(5.5, ctx.scale)}" />
+                                  fill="none" stroke="url(#${filterId}_grad)" stroke-width="${Math.max(1.8, roundPx(2.8, ctx.scale))}" />
                             <!-- Arc 2 White Core -->
                             <rect style="animation: gmdElectricCirculate-${item.id || 'pk'} 5s linear infinite; animation-delay: -2.5s; stroke-dasharray: 250 750; filter: url(#${filterId}_core);" 
                                   pathLength="1000"
                                   x="${roundPx(padding, ctx.scale)}" y="${roundPx(padding, ctx.scale)}" 
                                   width="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" height="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" 
                                   rx="${radius}" ry="${radius}" 
-                                  fill="none" stroke="#ffffff" stroke-width="${roundPx(2.2, ctx.scale)}" />
+                                  fill="none" stroke="#ffffff" stroke-width="${Math.max(1, roundPx(1.4, ctx.scale))}" />
 
-                            <!-- Arc 3 Glow Path (Layered/Overlapping on top, thinner, 3.5s speed, pathLength calibrated) -->
+                            <!-- Arc 3 Glow Path (Layered/Overlapping on top, thinner) -->
                             <rect style="animation: gmdElectricCirculate-${item.id || 'pk'} 3.5s linear infinite, gmdLightningWidthPulseThinner 0.18s ease-in-out infinite; stroke-dasharray: 150 850; filter: url(#${filterId}); opacity: 0.85;" 
                                   pathLength="1000"
                                   x="${roundPx(padding, ctx.scale)}" y="${roundPx(padding, ctx.scale)}" 
                                   width="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" height="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" 
                                   rx="${radius}" ry="${radius}" 
-                                  fill="none" stroke="url(#${filterId}_grad)" stroke-width="${roundPx(3.2, ctx.scale)}" />
+                                  fill="none" stroke="url(#${filterId}_grad)" stroke-width="${Math.max(1.4, roundPx(2.0, ctx.scale))}" />
                             <!-- Arc 3 White Core -->
                             <rect style="animation: gmdElectricCirculate-${item.id || 'pk'} 3.5s linear infinite; stroke-dasharray: 150 850; filter: url(#${filterId}_core); opacity: 0.9;" 
                                   pathLength="1000"
                                   x="${roundPx(padding, ctx.scale)}" y="${roundPx(padding, ctx.scale)}" 
                                   width="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" height="calc(100% - ${roundPx(padding * 2, ctx.scale)}px)" 
                                   rx="${radius}" ry="${radius}" 
-                                  fill="none" stroke="#ffffff" stroke-width="${roundPx(1.2, ctx.scale)}" />
+                                  fill="none" stroke="#ffffff" stroke-width="${Math.max(0.8, roundPx(1.0, ctx.scale))}" />
                         </svg>
                     `;
                 }
