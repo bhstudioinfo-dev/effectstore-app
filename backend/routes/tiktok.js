@@ -976,10 +976,6 @@ router.get('/gifts-library', async (req, res) => {
                 })
             : [];
 
-        const configs = await GiftConfig.find();
-        const coinsMap = {};
-        configs.forEach(c => coinsMap[c.giftId] = c.coins);
-
         const mergedById = new Map();
         defaultGifts.forEach((gift) => {
             mergedById.set(gift.id, gift);
@@ -993,6 +989,26 @@ router.get('/gifts-library', async (req, res) => {
             });
             if (!exists) {
                 mergedById.set(gift.id, gift);
+            }
+        });
+
+        const configs = await GiftConfig.find();
+        const coinsMap = {};
+        configs.forEach(c => {
+            coinsMap[c.giftId] = c.coins;
+            if (c.giftId && c.giftName) {
+                const existing = mergedById.get(c.giftId);
+                if (!existing) {
+                    mergedById.set(c.giftId, {
+                        id: c.giftId,
+                        name: c.giftName,
+                        icon: c.iconUrl || '/assets/gift-icons/Rose.png',
+                        coins: c.coins || 1
+                    });
+                } else {
+                    if (c.iconUrl) existing.icon = c.iconUrl;
+                    if (c.coins) existing.coins = c.coins;
+                }
             }
         });
 

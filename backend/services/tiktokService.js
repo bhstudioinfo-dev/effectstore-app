@@ -164,7 +164,7 @@ class TikTokService {
         return { gifts: FALLBACK_GIFTS, lastSyncedAt: null, source: 'fallback-preview' };
     }
 
-    handleGiftCatalogUpdate(giftData = {}) {
+    async handleGiftCatalogUpdate(giftData = {}) {
         const gift = this.normalizeGiftFromEvent(giftData);
         if (!gift) return;
         const gifts = [...this.giftCatalogState.gifts];
@@ -173,12 +173,29 @@ class TikTokService {
         else gifts.push(gift);
         this.giftCatalogState = { gifts, lastSyncedAt: new Date().toISOString(), source: 'tiktok-live' };
         this.broadcast('gift_catalog_update', { type: 'gift_catalog_update', gifts });
+
+        try {
+            const GiftConfig = require('../models/GiftConfig');
+            await GiftConfig.findOneAndUpdate(
+                { giftId: String(gift.giftId) },
+                {
+                    $set: {
+                        giftId: String(gift.giftId),
+                        giftName: gift.giftName,
+                        coins: gift.diamondCount || 1,
+                        iconUrl: gift.iconUrl || '',
+                        isActive: true,
+                        updatedAt: new Date()
+                    }
+                },
+                { upsert: true }
+            );
+        } catch (_err) {}
     }
 
     async connect(roomId, userId = null, preserveSession = false) {
         try {
             if (this.reconnectTimer) {
-                clearTimeout(this.reconnectTimer);
                 this.reconnectTimer = null;
             }
             if (this.tiktokClient) {
