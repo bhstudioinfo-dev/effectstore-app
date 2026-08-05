@@ -882,15 +882,24 @@ body[data-current-view="gift-mapping"] .contact-card { display:none; }
 .btn-add-cart.btn-in-cart { background: linear-gradient(135deg, #ec4899, #be185d); }
 .btn-add-cart.btn-pending { background: linear-gradient(135deg, #d4af37, #b8860b); opacity: 0.8; cursor: default; }
 
-.effect-thumb-container { position: relative; width: 100%; height: 100%; cursor: pointer; }
-.effect-thumb-img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px 16px 0 0; transition: opacity 0.2s; }
+.effect-thumb-container { position: relative; width: 100%; height: 100%; cursor: pointer; overflow: hidden; }
+.effect-thumb-img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px 16px 0 0; transition: opacity 0.25s ease; }
+.effect-fallback-container {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%);
+    border-radius: 16px 16px 0 0;
+    font-size: 56px;
+    transition: opacity 0.25s ease;
+}
 .effect-video {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     object-fit: cover; border-radius: 16px 16px 0 0;
-    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+    opacity: 0; transition: opacity 0.25s ease; pointer-events: none;
 }
 .effect-thumb-container:hover .effect-thumb-img { opacity: 0; }
-.effect-thumb-container:hover .effect-video { opacity: 1; }
+.effect-thumb-container:hover .effect-fallback-container { opacity: 0; }
+.effect-thumb-container:hover .effect-video:not([data-error="true"]) { opacity: 1; }
 
 /* ===== 8. STEPS SECTION ===== */
 .steps-section {

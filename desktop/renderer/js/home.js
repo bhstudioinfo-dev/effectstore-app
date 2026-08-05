@@ -2071,29 +2071,31 @@ class EffectStoreApp {
         }
     }
     handleThumbError(imgEl) {
+        if (!imgEl) return;
         imgEl.style.display = 'none';
-        const video = imgEl.nextElementSibling;
-        if (video) {
-            video.style.opacity = '1';
-            video.play().catch(e => {});
+        const parent = imgEl.parentElement;
+        if (parent) {
+            const fallback = parent.querySelector('.effect-fallback-container');
+            if (fallback) {
+                fallback.style.display = 'flex';
+                fallback.style.opacity = '1';
+            }
         }
     }
-    handlePreviewError(videoEl, fallbackIcon) {
+    handlePreviewError(videoEl) {
+        if (!videoEl) return;
         videoEl.style.display = 'none';
+        videoEl.setAttribute('data-error', 'true');
         const parent = videoEl.parentElement;
         if (parent) {
-            const img = parent.querySelector('img');
-            if (img && img.style.display !== 'none' && img.complete && img.naturalWidth > 0) {
+            const img = parent.querySelector('.effect-thumb-img');
+            const fallback = parent.querySelector('.effect-fallback-container');
+            if (img && img.style.display !== 'none') {
                 img.style.opacity = '1';
-                return;
+            } else if (fallback) {
+                fallback.style.display = 'flex';
+                fallback.style.opacity = '1';
             }
-            parent.style.display = 'flex';
-            parent.style.alignItems = 'center';
-            parent.style.justifyContent = 'center';
-            parent.style.height = '100%';
-            parent.style.fontSize = '64px';
-            parent.style.cursor = 'pointer';
-            parent.innerHTML = fallbackIcon;
         }
     }
     renderEffects(filter = null, search = '') {
@@ -2251,12 +2253,10 @@ class EffectStoreApp {
 
                 let previewHTML = '';
                 const resolveMediaUrl = value => !value ? '' : (/^https?:\/\//i.test(value) ? value : `${this.API_URL}${value}`);
-                const thumbUrl = resolveMediaUrl(effect.thumbUrl);
-                const videoUrl = resolveMediaUrl(effect.previewUrl);
+                const thumbUrl = effect.thumbUrl ? resolveMediaUrl(effect.thumbUrl) : '';
+                const videoUrl = resolveMediaUrl(effect.previewUrl || effect.fileUrl);
                 const fallbackIcon = effect.icon || '🎬';
-
-                const effectiveThumb = thumbUrl || (effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
-                const effectiveVideo = videoUrl || resolveMediaUrl(`/api/stream/effect/${effectId}`);
+                const effectiveVideo = videoUrl || (effectId ? resolveMediaUrl(`/api/stream/effect/${effectId}`) : '');
 
                 if (effect.category === 'menu_template') {
                     previewHTML = `
@@ -2264,29 +2264,18 @@ class EffectStoreApp {
                                     <div style="font-size:12px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></div>
                                 </div>
                             `;
-                } else if (effectiveThumb && effectiveVideo) {
+                } else {
                     previewHTML = `
                                 <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')"
-                                    onmouseenter="const v=this.querySelector('video'); if(v) { v.play().catch(e=>{}); }" 
+                                    onmouseenter="const v=this.querySelector('video'); if(v && v.getAttribute('data-error')!=='true') { v.play().catch(e=>{}); }" 
                                     onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
-                                    <img src="${effectiveThumb}" class="effect-thumb-img" onerror="app.handleThumbError(this)">
-                                    <video src="${effectiveVideo}" class="effect-video" muted loop playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
+                                    ${thumbUrl ? `<img src="${thumbUrl}" class="effect-thumb-img" onerror="app.handleThumbError(this)">` : ''}
+                                    <div class="effect-fallback-container" style="${thumbUrl ? 'display:none;' : 'display:flex;'}">
+                                        <span class="fallback-icon">${fallbackIcon}</span>
+                                    </div>
+                                    ${effectiveVideo ? `<video src="${effectiveVideo}" class="effect-video" muted loop playsinline onerror="app.handlePreviewError(this)"></video>` : ''}
                                 </div>
                             `;
-                } else if (effectiveThumb) {
-                    previewHTML = `
-                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')">
-                                    <img src="${effectiveThumb}" class="effect-thumb-img" style="opacity:1;" onerror="app.handlePreviewError(this, '${fallbackIcon}')">
-                                </div>
-                            `;
-                } else if (effectiveVideo) {
-                    previewHTML = `
-                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')">
-                                    <video src="${effectiveVideo}" class="effect-video" style="opacity:1;" muted loop autoplay playsinline onerror="app.handlePreviewError(this, '${fallbackIcon}')"></video>
-                                </div>
-                            `;
-                } else {
-                    previewHTML = `<div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')" style="display:flex;align-items:center;justify-content:center;height:100%;font-size:64px;cursor:pointer;">${fallbackIcon}</div>`;
                 }
 
                 let btnClass = 'btn-add-cart';
