@@ -5177,19 +5177,72 @@ class EffectStoreApp {
         }
     }
 
+    setGiftCoinFilter(range, btnEl) {
+        this.giftCoinFilterRange = range || 'all';
+        const pills = document.querySelectorAll('.coin-filter-pill');
+        pills.forEach(p => {
+            p.classList.remove('active');
+            p.style.background = 'rgba(255,255,255,0.04)';
+            p.style.borderColor = 'rgba(255,255,255,0.1)';
+            p.style.color = '#9ca3af';
+        });
+
+        if (btnEl) {
+            btnEl.classList.add('active');
+            btnEl.style.background = 'rgba(167,139,250,0.2)';
+            btnEl.style.borderColor = 'rgba(167,139,250,0.4)';
+            btnEl.style.color = '#c084fc';
+        }
+
+        this.filterGiftsForMapping();
+    }
+
+    toggleGiftSortOrder() {
+        this.giftSortAscending = this.giftSortAscending === undefined ? false : !this.giftSortAscending;
+        const btn = document.getElementById('btn-gift-sort');
+        if (btn) {
+            btn.innerHTML = this.giftSortAscending ? '🪙 ⬆️' : '🪙 ⬇️';
+            btn.title = this.giftSortAscending ? 'Sắp xếp xu tăng dần' : 'Sắp xếp xu giảm dần';
+        }
+        this.filterGiftsForMapping();
+    }
+
     filterGiftsForMapping(query = '') {
         const grid = document.getElementById('gifts-grid');
         if (!grid) return;
 
-        const gifts = Array.isArray(this.allGiftsLibrary) ? this.allGiftsLibrary : [];
-        const searchTerm = String(query || '').trim().toLowerCase();
+        const gifts = Array.isArray(this.allGiftsLibrary) ? [...this.allGiftsLibrary] : [];
+        const searchInput = document.getElementById('gift-search-input');
+        const searchTerm = query !== '' ? String(query).trim().toLowerCase() : (searchInput ? String(searchInput.value || '').trim().toLowerCase() : '');
 
-        const giftsToDisplay = searchTerm
-            ? gifts.filter(g => 
-                (g.name && String(g.name).toLowerCase().includes(searchTerm)) ||
-                (g.id && String(g.id).toLowerCase().includes(searchTerm))
-              )
-            : gifts;
+        const range = this.giftCoinFilterRange || 'all';
+
+        let giftsToDisplay = gifts.filter(g => {
+            const coins = Number(g.coins || 1);
+            let matchesRange = true;
+
+            if (range === '1-10') matchesRange = coins >= 1 && coins <= 10;
+            else if (range === '11-99') matchesRange = coins >= 11 && coins <= 99;
+            else if (range === '100-500') matchesRange = coins >= 100 && coins <= 500;
+            else if (range === '501-999') matchesRange = coins >= 501 && coins <= 999;
+            else if (range === '1000+') matchesRange = coins >= 1000;
+
+            let matchesSearch = true;
+            if (searchTerm) {
+                matchesSearch = (g.name && String(g.name).toLowerCase().includes(searchTerm)) ||
+                                (g.id && String(g.id).toLowerCase().includes(searchTerm));
+            }
+
+            return matchesRange && matchesSearch;
+        });
+
+        // Apply Coin Sorting
+        const isAscending = this.giftSortAscending !== false;
+        giftsToDisplay.sort((a, b) => {
+            const coinA = Number(a.coins || 1);
+            const coinB = Number(b.coins || 1);
+            return isAscending ? coinA - coinB : coinB - coinA;
+        });
 
         if (giftsToDisplay && giftsToDisplay.length > 0) {
             grid.innerHTML = giftsToDisplay.map(g => {
@@ -5207,7 +5260,7 @@ class EffectStoreApp {
             }).join('');
             console.log('✅ Filtered and rendered', giftsToDisplay.length, 'gifts');
         } else {
-            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:30px;font-size:13px;">🔍 Không tìm thấy quà tặng phù hợp</div>';
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:30px;font-size:13px;">🔍 Không tìm thấy quà tặng phù hợp trong phân khúc này</div>';
         }
     }
     async loadEffectsForMapping() {

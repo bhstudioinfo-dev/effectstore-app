@@ -1729,19 +1729,34 @@
                     <!-- Gift Library -->
                     <div
                         style="background:var(--bg-card);border:1px solid var(--card-border);border-radius:16px;padding:18px;">
-                        <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                        <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                             <div>
                                 <h3 style="font-size:15px;font-weight:700;margin:0;">🎁 Thư Viện Gifts</h3>
                                 <p style="color:var(--text-muted);font-size:12px;margin-top:3px;">Chọn gift để mapping với effect</p>
                             </div>
-                            <div style="position:relative;min-width:150px;flex:1;max-width:200px;">
-                                <input type="text" id="gift-search-input" placeholder="🔍 Tìm quà tặng..." 
-                                    oninput="app.filterGiftsForMapping(this.value)" 
+                            <div style="display:flex;align-items:center;gap:8px;flex:1;max-width:260px;">
+                                <input type="text" id="gift-search-input" placeholder="🔍 Tìm quà..." 
+                                    oninput="app.filterGiftsForMapping()" 
                                     style="width:100%;padding:6px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-size:12px;outline:none;">
+                                <button onclick="app.toggleGiftSortOrder()" id="btn-gift-sort" title="Sắp xếp xu tăng dần"
+                                    style="padding:6px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#9ca3af;cursor:pointer;font-size:12px;white-space:nowrap;">
+                                    🪙 ⬆️
+                                </button>
                             </div>
                         </div>
+
+                        <!-- Quick Coin Range Filters -->
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px;" id="gift-coin-pills">
+                            <button onclick="app.setGiftCoinFilter('all', this)" class="coin-filter-pill active" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.2);color:#c084fc;cursor:pointer;white-space:nowrap;">Tất cả</button>
+                            <button onclick="app.setGiftCoinFilter('1-10', this)" class="coin-filter-pill" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🥉 1-10 xu</button>
+                            <button onclick="app.setGiftCoinFilter('11-99', this)" class="coin-filter-pill" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🥈 11-99 xu</button>
+                            <button onclick="app.setGiftCoinFilter('100-500', this)" class="coin-filter-pill" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🥇 100-500 xu</button>
+                            <button onclick="app.setGiftCoinFilter('501-999', this)" class="coin-filter-pill" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🔥 501-999 xu</button>
+                            <button onclick="app.setGiftCoinFilter('1000+', this)" class="coin-filter-pill" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">💎 ≥ 1.000 xu</button>
+                        </div>
+
                         <div id="gifts-grid"
-                            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px;max-height:360px;overflow-y:auto;padding-right:2px;">
+                            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px;max-height:330px;overflow-y:auto;padding-right:2px;">
                         </div>
                     </div>
 
