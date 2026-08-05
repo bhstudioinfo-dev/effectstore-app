@@ -400,12 +400,21 @@
                                     <button class="gmd-left-tab-btn" data-tab-name="assets" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid transparent; color:#888; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-images"></i> Tài nguyên</button>
                                 </div>
                                 <div id="gmd-gifts-tab-content" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                                    <div class="gmd-library-controls">
-                                        <div class="gmd-search-wrap">
+                                    <div class="gmd-library-controls" style="flex-wrap:wrap; gap:6px;">
+                                        <div class="gmd-search-wrap" style="flex:1; min-width:110px;">
                                             <i class="fas fa-search"></i>
                                             <input id="gmd-search" class="gmd-input" placeholder="Tìm quà..." />
                                         </div>
-                                        <button class="gmd-add-btn"><i class="fas fa-plus"></i></button>
+                                        <button class="gmd-btn" id="gmd-sort-btn" title="Sắp xếp xu" style="padding:4px 8px; font-size:11px; color:#9ca3af; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:6px; cursor:pointer;">🪙 ⬆️</button>
+                                        <button class="gmd-add-btn" title="Thêm quà custom"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                    <div class="gmd-coin-pills" style="display:flex; gap:4px; margin-top:6px; margin-bottom:6px; overflow-x:auto; padding-bottom:2px; flex-shrink:0;">
+                                        <button data-range="all" class="gmd-coin-pill active" style="padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid rgba(167,139,250,0.4); background:rgba(167,139,250,0.2); color:#c084fc; cursor:pointer; white-space:nowrap;">Tất cả</button>
+                                        <button data-range="1-10" class="gmd-coin-pill" style="padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#9ca3af; cursor:pointer; white-space:nowrap;">🥉 1-10</button>
+                                        <button data-range="11-99" class="gmd-coin-pill" style="padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#9ca3af; cursor:pointer; white-space:nowrap;">🥈 11-99</button>
+                                        <button data-range="100-500" class="gmd-coin-pill" style="padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#9ca3af; cursor:pointer; white-space:nowrap;">🥇 100-500</button>
+                                        <button data-range="501-999" class="gmd-coin-pill" style="padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#9ca3af; cursor:pointer; white-space:nowrap;">🔥 501-999</button>
+                                        <button data-range="1000+" class="gmd-coin-pill" style="padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#9ca3af; cursor:pointer; white-space:nowrap;">💎 ≥1k</button>
                                     </div>
                                     <div id="gmd-gift-list" class="gmd-gift-list" style="flex: 1; min-height: 0;"></div>
                                 </div>
@@ -628,15 +637,13 @@
                 if (!Array.isArray(customGifts)) customGifts = [];
                 customGifts = customGifts.map((gift) => ({ ...gift, isCustom: true }));
                 this.gifts = [...customGifts, ...remoteGifts];
-                this.filteredGifts = [...this.gifts];
-                this.renderGiftLibrary();
+                this.filterGiftLibrary();
             } catch (_e) {
                 let customGifts = [];
                 try { customGifts = JSON.parse(localStorage.getItem('es_custom_gifts') || '[]'); } catch (_parseError) { }
                 if (!Array.isArray(customGifts)) customGifts = [];
                 this.gifts = customGifts.map((gift) => ({ ...gift, isCustom: true }));
-                this.filteredGifts = [...this.gifts];
-                this.renderGiftLibrary();
+                this.filterGiftLibrary();
             }
         }
 
@@ -850,11 +857,84 @@
             return result;
         }
 
+        filterGiftLibrary() {
+            const searchInput = this.mount.querySelector('#gmd-search');
+            const query = String(searchInput?.value || '').trim().toLowerCase();
+            const range = this.designerCoinFilterRange || 'all';
+
+            let list = Array.isArray(this.gifts) ? [...this.gifts] : [];
+
+            list = list.filter((gift) => {
+                const coins = Number(gift.coins || 1);
+                let matchesRange = true;
+                if (range === '1-10') matchesRange = coins >= 1 && coins <= 10;
+                else if (range === '11-99') matchesRange = coins >= 11 && coins <= 99;
+                else if (range === '100-500') matchesRange = coins >= 100 && coins <= 500;
+                else if (range === '501-999') matchesRange = coins >= 501 && coins <= 999;
+                else if (range === '1000+') matchesRange = coins >= 1000;
+
+                let matchesSearch = true;
+                if (query) {
+                    matchesSearch = String(gift.name || '').toLowerCase().includes(query) ||
+                                    String(gift.id || '').toLowerCase().includes(query);
+                }
+
+                return matchesRange && matchesSearch;
+            });
+
+            const isAscending = this.designerSortAscending !== false;
+            list.sort((a, b) => {
+                const coinA = Number(a.coins || 1);
+                const coinB = Number(b.coins || 1);
+                return isAscending ? coinA - coinB : coinB - coinA;
+            });
+
+            this.filteredGifts = list;
+            this.renderGiftLibrary();
+        }
+
+        bindGiftLibraryControls() {
+            const pills = this.mount.querySelectorAll('.gmd-coin-pill');
+            pills.forEach((btn) => {
+                btn.onclick = (e) => {
+                    pills.forEach(p => {
+                        p.classList.remove('active');
+                        p.style.background = 'rgba(255,255,255,0.04)';
+                        p.style.borderColor = 'rgba(255,255,255,0.1)';
+                        p.style.color = '#9ca3af';
+                    });
+                    e.currentTarget.classList.add('active');
+                    e.currentTarget.style.background = 'rgba(167,139,250,0.2)';
+                    e.currentTarget.style.borderColor = 'rgba(167,139,250,0.4)';
+                    e.currentTarget.style.color = '#c084fc';
+                    this.designerCoinFilterRange = e.currentTarget.dataset.range || 'all';
+                    this.filterGiftLibrary();
+                };
+            });
+
+            const sortBtn = this.mount.querySelector('#gmd-sort-btn');
+            if (sortBtn) {
+                sortBtn.onclick = () => {
+                    this.designerSortAscending = this.designerSortAscending === undefined ? false : !this.designerSortAscending;
+                    sortBtn.innerHTML = this.designerSortAscending ? '🪙 ⬆️' : '🪙 ⬇️';
+                    sortBtn.title = this.designerSortAscending ? 'Sắp xếp xu tăng dần' : 'Sắp xếp xu giảm dần';
+                    this.filterGiftLibrary();
+                };
+            }
+
+            const searchInput = this.mount.querySelector('#gmd-search');
+            if (searchInput && !searchInput._gmdBound) {
+                searchInput._gmdBound = true;
+                searchInput.oninput = () => this.filterGiftLibrary();
+            }
+        }
+
         renderGiftLibrary() {
             const list = this.mount.querySelector('#gmd-gift-list');
             if (!list) return;
+            this.bindGiftLibraryControls();
             if (!this.filteredGifts.length) {
-                list.innerHTML = '<div class="gmd-inspector-empty">Không có dữ liệu gift.</div>';
+                list.innerHTML = '<div class="gmd-inspector-empty">Không có dữ liệu gift phù hợp.</div>';
                 return;
             }
             list.innerHTML = this.filteredGifts.map((gift) => {
