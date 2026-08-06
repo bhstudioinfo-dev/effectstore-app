@@ -3827,7 +3827,18 @@ class EffectStoreApp {
         const modal = document.getElementById('lcd-effect-picker');
         const list = document.getElementById('lcd-effect-list');
         if (!modal || !list) return;
+        const isVideoEffect = (effect) => {
+            if (!effect) return false;
+            if (effect.isWheel || effect.isWidget || effect.isTemplate) return false;
+            if (['wheel', 'widget', 'template'].includes(effect.type) || ['wheel', 'widget', 'template'].includes(effect.category)) return false;
+            const id = String(effect._id || effect.id || '').toLowerCase();
+            if (id.startsWith('wheel-') || id.startsWith('challenge-') || id.includes('wheel')) return false;
+            const name = String(effect.name || effect.effectName || '').toLowerCase();
+            if (name.includes('vòng quay') || name.includes('wheel') || name.includes('thử thách')) return false;
+            return true;
+        };
         const effects = [...(this.ownedEffects || []), ...(this.mappingEffects || []), ...(this.personalEffects || [])]
+            .filter(isVideoEffect)
             .filter((effect, index, items) => items.findIndex((candidate) => String(candidate._id || candidate.id) === String(effect._id || effect.id)) === index);
         const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
         list.innerHTML = effects.length ? effects.map((effect) => {
