@@ -72,7 +72,7 @@ function assignDeckItem(indexValue, deckType, requestedItem) {
             index,
             type,
             name: item.name || 'Hiệu ứng',
-            thumbUrl: item.thumbUrl || '',
+            thumbUrl: (item.thumbUrl || (String(item.id || item._id).startsWith('custom-') ? `/custom-effects/${item.id || item._id}/thumbnail.png` : `/uploads/thumbs/${item.id || item._id}.png`)).replace(/^http:\/\/(127\.0\.0\.1|localhost):8080/i, ''),
             hotkey: '',
             volume: 1
         }

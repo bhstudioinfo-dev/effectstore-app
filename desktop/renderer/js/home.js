@@ -3602,6 +3602,23 @@ class EffectStoreApp {
         container.innerHTML = modalHtml;
     }
 
+    getControlDeckSlotThumbUrl(slot) {
+        if (!slot) return '';
+        let url = slot.thumbUrl || '';
+        if (url) {
+            url = url.replace(/^http:\/\/(127\.0\.0\.1|localhost):8080/i, this.API_URL);
+            if (/^https?:\/\//i.test(url)) return url;
+            const clean = url.startsWith('/') ? url : `/${url}`;
+            return `${this.API_URL}${clean}`;
+        }
+        const effectId = slot.effectId || slot.id;
+        if (!effectId) return '';
+        if (String(effectId).startsWith('custom-')) {
+            return `${this.API_URL}/custom-effects/${effectId}/thumbnail.png`;
+        }
+        return `${this.API_URL}/uploads/thumbs/${effectId}.png`;
+    }
+
     async checkRemoteConnectionStatus() {
         try {
             const res = await fetch(`${this.API_URL}/api/remote/connection-status`);
@@ -3660,7 +3677,6 @@ class EffectStoreApp {
             const cards = [];
             for (let index = 0; index < state.visible; index += 1) {
                 const slot = slotsByIndex.get(index);
-                const colorClass = btnColors[index % btnColors.length];
 
                 if (type === 'sound') {
                     if (!slot) {
@@ -3696,8 +3712,9 @@ class EffectStoreApp {
                     cards.push(`<div class="lcd-slot effect-3d-slot empty" onclick="app.addControlDeckSlot(${index},'effect')" title="Thêm hiệu ứng"><i class="fas fa-plus" style="font-size:18px;margin-bottom:4px;"></i><span style="font-size:11px;font-weight:700;">+ Thêm nút</span></div>`);
                     continue;
                 }
-                const image = slot.thumbUrl
-                    ? `<img class="lcd-slot-icon" src="${escapeHtml(slot.thumbUrl)}" alt="">`
+                const thumbUrl = this.getControlDeckSlotThumbUrl(slot);
+                const image = thumbUrl
+                    ? `<img class="lcd-slot-icon" src="${escapeHtml(thumbUrl)}" alt="" onerror="this.style.display='none'">`
                     : `<span class="lcd-slot-icon"><i class="fas fa-wand-magic-sparkles"></i></span>`;
                 cards.push(`<div class="lcd-slot effect-3d-slot" role="button" tabindex="0" id="lcd-slot-${escapeHtml(slot.id)}" onclick="app.triggerControlDeckSlot('${escapeHtml(slot.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.triggerControlDeckSlot('${escapeHtml(slot.id)}')}">
                     <button class="lcd-slot-remove" onclick="event.stopPropagation();app.removeControlDeckSlot('${escapeHtml(slot.id)}')" title="Xóa nút">×</button>
