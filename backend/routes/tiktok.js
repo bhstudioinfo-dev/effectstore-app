@@ -966,15 +966,31 @@ router.get('/gifts-library', async (req, res) => {
         ];
 
         const giftIconDir = dataPaths.runtimeGiftIconsDir;
-        const fileGifts = fs.existsSync(giftIconDir)
-            ? fs.readdirSync(giftIconDir)
-                .filter((file) => /\.(png|jpg|jpeg|webp|gif)$/i.test(file))
-                .map((file) => {
-                    const name = path.basename(file, path.extname(file)).replace(/\s*\(\d+\)$/g, '').replace(/_/g, ' ');
-                    const id = path.basename(file, path.extname(file)).toLowerCase().replace(/\s*\(\d+\)$/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-                    return { id, name, icon: `/assets/gift-icons/${file}`, coins: 1 };
-                })
-            : [];
+        const fileGiftsMap = new Map();
+        if (fs.existsSync(giftIconDir)) {
+            const files = fs.readdirSync(giftIconDir);
+            for (const file of files) {
+                if (!/\.(png|jpg|jpeg|webp|gif)$/i.test(file)) continue;
+                const baseWithoutExt = path.basename(file, path.extname(file));
+                const cleanName = baseWithoutExt
+                    .replace(/_\d+$/g, '')
+                    .replace(/\s*\(\d+\)$/g, '')
+                    .replace(/_/g, ' ')
+                    .trim();
+                const key = cleanName.toLowerCase();
+                const id = key.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+                if (!fileGiftsMap.has(key) || file.endsWith('.png')) {
+                    fileGiftsMap.set(key, {
+                        id,
+                        name: cleanName,
+                        icon: `/assets/gift-icons/${file}`,
+                        coins: 1
+                    });
+                }
+            }
+        }
+        const fileGifts = Array.from(fileGiftsMap.values());
 
         const mergedById = new Map();
         defaultGifts.forEach((gift) => {
@@ -982,12 +998,7 @@ router.get('/gifts-library', async (req, res) => {
         });
 
         fileGifts.forEach((gift) => {
-            const fileIconBase = path.basename(gift.icon).toLowerCase().replace(/\s*\(\d+\)/g, '');
-            const exists = Array.from(mergedById.values()).some(existing => {
-                const existingBase = path.basename(existing.icon).toLowerCase().replace(/\s*\(\d+\)/g, '');
-                return existingBase === fileIconBase;
-            });
-            if (!exists) {
+            if (!mergedById.has(gift.id)) {
                 mergedById.set(gift.id, gift);
             }
         });
