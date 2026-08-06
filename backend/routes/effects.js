@@ -443,6 +443,9 @@ const upload = multer({
     }
 });
 
+let ffmpegExecPath = process.env.FFMPEG_PATH || 'ffmpeg';
+try { ffmpegExecPath = require('ffmpeg-static') || ffmpegExecPath; } catch (_e) { }
+
 // Helper for video duration
 function getVideoDuration(filePath) {
     return new Promise((resolve) => {
@@ -458,6 +461,62 @@ function getVideoDuration(filePath) {
             else resolve(5);
         });
         ffprobe.on('error', () => resolve(5));
+    });
+}
+
+function convertVideoToWebmVp9(inputPath, outputPath) {
+    return new Promise((resolve) => {
+        const { spawn } = require('child_process');
+        const videoFilter = [
+            'scale=1080:1920:force_original_aspect_ratio=decrease:flags=lanczos',
+            'pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black@0',
+            'fps=30',
+            'format=yuva420p'
+        ].join(',');
+
+        const child = spawn(ffmpegExecPath, [
+            '-hide_banner', '-loglevel', 'error', '-y',
+            '-i', inputPath,
+            '-vf', videoFilter,
+            '-an',
+            '-c:v', 'libvpx-vp9',
+            '-pix_fmt', 'yuva420p',
+            '-crf', '30',
+            '-b:v', '0',
+            '-deadline', 'good',
+            '-cpu-used', '4',
+            '-row-mt', '1',
+            outputPath
+        ], { windowsHide: true });
+
+        child.on('close', (code) => {
+            if (code === 0 && fs.existsSync(outputPath) && fs.statSync(outputPath).size > 0) {
+                resolve(true);
+            } else {
+                try { fs.copyFileSync(inputPath, outputPath); } catch (_e) {}
+                resolve(false);
+            }
+        });
+        child.on('error', () => {
+            try { fs.copyFileSync(inputPath, outputPath); } catch (_e) {}
+            resolve(false);
+        });
+    });
+}
+
+function generateThumbnailPng(inputPath, outputPath) {
+    return new Promise((resolve) => {
+        const { spawn } = require('child_process');
+        const child = spawn(ffmpegExecPath, [
+            '-hide_banner', '-loglevel', 'error', '-y',
+            '-ss', '0',
+            '-i', inputPath,
+            '-frames:v', '1',
+            '-vf', 'scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black@0',
+            outputPath
+        ], { windowsHide: true });
+        child.on('close', () => resolve(fs.existsSync(outputPath)));
+        child.on('error', () => resolve(false));
     });
 }
 
@@ -487,11 +546,11 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
 
         if (effectFile) {
             const previewPath = path.join(previewsDir, `${effectId}.webm`);
-            fs.copyFileSync(effectFile.path, previewPath);
+            await convertVideoToWebmVp9(effectFile.path, previewPath);
             const detectedDuration = await getVideoDuration(previewPath);
             const duration = parseFloat(reqDuration) || detectedDuration || 5;
             const encryptedPath = path.join(encryptedEffectsDir, `${effectId}.enc`);
-            await encryptVideo(effectFile.path, encryptedPath);
+            await encryptVideo(previewPath, encryptedPath);
 
             // Push the same encrypted bytes to the shared store so every
             // other machine can fetch this effect too (see
@@ -512,6 +571,23 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
             effectData.fileUrl = `/api/stream/effect/${effectId}`;
             effectData.previewUrl = `/uploads/previews/${effectId}.webm`;
             effectData.fileSize = fs.statSync(previewPath).size;
+
+            if (!thumbFile) {
+                const autoThumbPath = path.join(thumbsDir, `${effectId}.png`);
+                const thumbCreated = await generateThumbnailPng(previewPath, autoThumbPath);
+                if (thumbCreated) {
+                    effectData.thumbFilePath = autoThumbPath;
+                    effectData.thumbUrl = `/uploads/thumbs/${effectId}.png`;
+                    if (isAssetStoreConfigured()) {
+                        try {
+                            await uploadThumbnail(effectId, autoThumbPath);
+                        } catch (uploadError) {
+                            console.error(`⚠️  Could not upload auto-thumbnail for ${effectId} to shared store:`, uploadError.message);
+                        }
+                    }
+                }
+            }
+
             try { fs.unlinkSync(effectFile.path); } catch (e) {}
         }
 
