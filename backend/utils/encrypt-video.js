@@ -2,12 +2,13 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-// Encryption key từ environment variable
-const ENCRYPTION_KEY = crypto.scryptSync(
-    process.env.ENCRYPTION_PASSWORD || 'effectstore-secret-encryption-key-2024',
-    'salt-aes-256',
-    32
-);
+function getEncryptionKey() {
+    const password = String(process.env.ENCRYPTION_PASSWORD || '');
+    if (password.length < 32) {
+        throw new Error('ENCRYPTION_PASSWORD must be configured with at least 32 characters.');
+    }
+    return crypto.scryptSync(password, 'salt-aes-256', 32);
+}
 
 // IV length for AES
 const IV_LENGTH = 16;
@@ -23,7 +24,7 @@ async function encryptVideo(inputPath, outputPath) {
         const output = fs.createWriteStream(outputPath);
         
         const iv = crypto.randomBytes(IV_LENGTH);
-        const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+        const cipher = crypto.createCipheriv('aes-256-cbc', getEncryptionKey(), iv);
         
         // Write IV first (needed for decryption)
         output.write(iv);
@@ -65,7 +66,7 @@ function decryptVideoStream(encryptedPath) {
     } finally {
         fs.closeSync(fd);
     }
-    const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', getEncryptionKey(), iv);
     const input = fs.createReadStream(encryptedPath, { start: IV_LENGTH });
 
     return input.pipe(decipher);
@@ -91,5 +92,6 @@ function streamDecryptedVideo(encryptedPath, _req, res) {
 module.exports = {
     encryptVideo,
     decryptVideoStream,
+    getEncryptionKey,
     streamDecryptedVideo
 };

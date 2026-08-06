@@ -78,6 +78,38 @@ function keyForThumbnail(effectId) {
     return `thumbs/${effectId}.png`;
 }
 
+function keyForRelease(channel, filename) {
+    const safeChannel = String(channel || '').trim();
+    const safeFilename = String(filename || '').trim();
+    if (!/^[a-z0-9-]+$/i.test(safeChannel) || !/^[a-zA-Z0-9._-]+$/.test(safeFilename)) {
+        throw new Error('Invalid release object path.');
+    }
+    return `updates/${safeChannel}/${safeFilename}`;
+}
+
+async function uploadReleaseArtifact(channel, filename, localFilePath, contentType = 'application/octet-stream') {
+    const fs = require('fs');
+    await getClient().send(new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: keyForRelease(channel, filename),
+        Body: fs.createReadStream(localFilePath),
+        ContentType: contentType,
+        CacheControl: filename.endsWith('.yml') ? 'no-cache, no-store' : 'public, max-age=31536000, immutable'
+    }));
+}
+
+async function downloadReleaseArtifact(channel, filename, range) {
+    try {
+        return await getClient().send(new GetObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: keyForRelease(channel, filename),
+            Range: range || undefined
+        }));
+    } catch (_error) {
+        return null;
+    }
+}
+
 async function uploadThumbnail(effectId, localFilePath) {
     const fs = require('fs');
     await getClient().send(new PutObjectCommand({
@@ -106,5 +138,8 @@ module.exports = {
     effectExistsRemotely,
     downloadEncryptedEffect,
     uploadThumbnail,
-    downloadThumbnail
+    downloadThumbnail,
+    uploadReleaseArtifact,
+    downloadReleaseArtifact,
+    keyForRelease
 };

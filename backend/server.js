@@ -98,6 +98,36 @@ app.use('/uploads/effects', (_req, res) => {
 app.use('/uploads/temp', (_req, res) => {
     res.status(404).json({ success: false, error: 'Private uploads are not publicly available.' });
 });
+app.get('/updates/:channel/:filename', async (req, res) => {
+    try {
+        const { isAssetStoreConfigured, downloadReleaseArtifact } = require('./services/effectAssetStore');
+        if (!isAssetStoreConfigured()) return res.status(503).json({ success: false, error: 'Update storage is not configured.' });
+        if (!/^[a-z0-9-]+$/i.test(req.params.channel) || !/^[a-zA-Z0-9._-]+$/.test(req.params.filename)) {
+            return res.status(400).json({ success: false, error: 'Invalid update path.' });
+        }
+        const range = /^bytes=\d*-\d*$/i.test(String(req.headers.range || '')) ? req.headers.range : undefined;
+        const object = await downloadReleaseArtifact(req.params.channel, req.params.filename, range);
+        if (!object?.Body) return res.status(404).json({ success: false, error: 'Update artifact not found.' });
+        const status = object.ContentRange ? 206 : 200;
+        res.status(status);
+        res.setHeader('Content-Type', object.ContentType || 'application/octet-stream');
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', req.params.filename.endsWith('.yml')
+            ? 'no-cache, no-store'
+            : 'public, max-age=31536000, immutable');
+        if (object.ContentLength !== undefined) res.setHeader('Content-Length', String(object.ContentLength));
+        if (object.ContentRange) res.setHeader('Content-Range', object.ContentRange);
+        if (object.ETag) res.setHeader('ETag', object.ETag);
+        object.Body.on('error', (error) => {
+            console.error('Update artifact stream error:', error.message);
+            if (!res.headersSent) res.status(502).end();
+            else res.destroy(error);
+        });
+        object.Body.pipe(res);
+    } catch (_error) {
+        if (!res.headersSent) res.status(500).json({ success: false, error: 'Unable to serve update artifact.' });
+    }
+});
 // A thumbnail created on one machine (e.g. the central server, since effect
 // creation is proxied there) never automatically appears on any other
 // machine's disk — unlike the effect video itself, thumbnails aren't
@@ -400,6 +430,7 @@ if (isCloudProxyEnabled()) {
     // purchase made on one machine shows as owned on every machine's Store
     // right away. (/user/custom-effects/* stays local-only, unchanged.)
     app.get('/api/user/effects', proxyToCloud);
+    app.use('/api/s_', proxyToCloud);
     // Effect create/update/delete are writes to the shared catalog too — they
     // must land in the central database, not this machine's own local one,
     // or other machines would never see a newly-uploaded effect. The video

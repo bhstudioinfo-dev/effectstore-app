@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { getJwtSecret } = require('../config/security');
+const { getCloudPrivateKey, getCloudPublicKey } = require('./userToken');
 
 const EFFECT_ACCESS_PURPOSES = new Set([
     'library-playback',
@@ -18,15 +19,26 @@ function issueEffectAccessToken({ effectId, userId, purpose, expiresIn }) {
     const defaultExpiry = (purpose === 'catalog-preview' || purpose === 'library-playback') ? '7d' : '10m';
     const duration = expiresIn || defaultExpiry;
 
-    return jwt.sign(
-        { effectId: String(effectId), userId: String(userId), purpose },
-        getJwtSecret(),
-        { expiresIn: duration }
-    );
+    const payload = { effectId: String(effectId), userId: String(userId), purpose };
+    const privateKey = getCloudPrivateKey();
+    return privateKey
+        ? jwt.sign(payload, privateKey, { expiresIn: duration, algorithm: 'RS256' })
+        : jwt.sign(payload, getJwtSecret(), { expiresIn: duration, algorithm: 'HS256' });
 }
 
 function verifyEffectAccessToken(token, effectId, allowedPurposes = EFFECT_ACCESS_PURPOSES) {
-    const payload = jwt.verify(String(token || ''), getJwtSecret());
+    const encoded = String(token || '');
+    const algorithm = jwt.decode(encoded, { complete: true })?.header?.alg;
+    let payload;
+    if (algorithm === 'RS256') {
+        const publicKey = getCloudPublicKey();
+        if (!publicKey) throw new Error('CLOUD_JWT_PUBLIC_KEY is required for cloud effect tokens.');
+        payload = jwt.verify(encoded, publicKey, { algorithms: ['RS256'] });
+    } else if (algorithm === 'HS256') {
+        payload = jwt.verify(encoded, getJwtSecret(), { algorithms: ['HS256'] });
+    } else {
+        throw new Error('Unsupported effect token algorithm.');
+    }
     if (!allowedPurposes.has(payload.purpose)) throw new Error('Invalid effect access purpose.');
     if (String(payload.effectId) !== String(effectId)) throw new Error('Effect token does not match resource.');
     if (!String(payload.userId || '').trim()) throw new Error('Effect token is missing user identity.');

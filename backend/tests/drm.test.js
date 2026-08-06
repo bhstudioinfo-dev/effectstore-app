@@ -21,6 +21,12 @@ try {
     assert.strictEqual(payload.purpose, 'library-playback');
     assert.throws(() => verifyEffectAccessToken(token, '507f1f77bcf86cd799439012'), /does not match/);
     assert.throws(() => issueEffectAccessToken({ effectId, userId: 'user', purpose: 'unknown' }), /purpose/);
+    const unsupportedToken = require('jsonwebtoken').sign(
+        { effectId, userId: 'user-1', purpose: 'library-playback' },
+        process.env.JWT_SECRET,
+        { algorithm: 'HS384' }
+    );
+    assert.throws(() => verifyEffectAccessToken(unsupportedToken, effectId), /Unsupported/);
 
     const streamUrl = buildEffectStreamUrl(effectId, token);
     assert.ok(streamUrl.startsWith(`/api/stream/effect/${effectId}?token=`));
@@ -44,7 +50,9 @@ try {
     assert.strictEqual(catalogEffect.encryptedFilePath, undefined);
     assert.strictEqual(catalogEffect.thumbFilePath, undefined);
     assert.strictEqual(catalogEffect.timeline, undefined);
+    assert.strictEqual(catalogEffect.previewUrl, null);
 
+    // The caller must pass a user id only after confirming ownership/admin.
     const protectedCatalogEffect = effectRoutes.sanitizeEffectForCatalog({
         _id: effectId,
         name: 'Paid effect',
@@ -85,6 +93,15 @@ try {
     assert.strictEqual(unauthorizedResponse.statusCode, 401);
     assert.strictEqual(unauthorizedResponse.payload.error, 'Invalid or expired effect token');
     assert.strictEqual(nextCalled, false);
+
+    const { getEncryptionKey } = require('../utils/encrypt-video');
+    const originalEncryptionPassword = process.env.ENCRYPTION_PASSWORD;
+    delete process.env.ENCRYPTION_PASSWORD;
+    assert.throws(() => getEncryptionKey(), /ENCRYPTION_PASSWORD/);
+    process.env.ENCRYPTION_PASSWORD = 'test-only-effect-encryption-password-123456789';
+    assert.strictEqual(getEncryptionKey().length, 32);
+    if (originalEncryptionPassword === undefined) delete process.env.ENCRYPTION_PASSWORD;
+    else process.env.ENCRYPTION_PASSWORD = originalEncryptionPassword;
 
     console.log('drm tests passed');
 } finally {

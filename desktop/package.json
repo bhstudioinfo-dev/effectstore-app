@@ -27,7 +27,7 @@
   "build": {
     "appId": "com.effectstore.app",
     "productName": "LiveFlow",
-    "icon": "assets/icon.ico",
+    "icon": "assets/liveflow.ico",
     "asarUnpack": [
       "node_modules/ffmpeg-static/**/*"
     ],
@@ -63,8 +63,12 @@
     ],
     "win": {
       "target": "nsis",
-      "artifactName": "LiveFlow-Setup-${version}.${ext}",
-      "signAndEditExecutable": false
+      "artifactName": "LiveFlow-Setup-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "https://liveflow-backend-iafw.onrender.com/updates/stable",
+      "channel": "latest"
     },
     "nsis": {
       "oneClick": false,

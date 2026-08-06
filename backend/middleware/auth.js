@@ -1,12 +1,12 @@
-const jwt = require('jsonwebtoken');
-const { getJwtSecret } = require('../config/security');
+const { verifyUserToken } = require('../services/userToken');
 const User = require('../models/User');
+const { rememberCloudSessionToken } = require('../services/cloudSessionTokenStore');
 
 const authMiddleware = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'No token provided' });
-        const decoded = jwt.verify(token, getJwtSecret());
+        const decoded = verifyUserToken(token);
         const user = await User.findById(decoded.userId).select('_id isAdmin isActive');
         if (!user || user.isActive === false) {
             return res.status(401).json({ error: 'Account is unavailable' });
@@ -14,6 +14,12 @@ const authMiddleware = async (req, res, next) => {
         req.userId = decoded.userId;
         req.isAdmin = user.isAdmin === true;
         req.machineId = decoded.machineId || null;
+        // The central RS256 bearer already lives in the signed-in renderer.
+        // Rehydrate the local backend's RAM-only cloud session on every
+        // authenticated request so a backend restart does not make purchased
+        // effects unplayable until the user signs out and back in.
+        const algorithm = require('jsonwebtoken').decode(token, { complete: true })?.header?.alg;
+        if (algorithm === 'RS256') rememberCloudSessionToken(decoded.userId, token);
         next();
     } catch (error) { res.status(401).json({ error: 'Invalid or expired token' }); }
 };

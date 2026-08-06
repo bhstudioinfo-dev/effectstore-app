@@ -33,6 +33,13 @@ function getSecretCodec() {
     };
 }
 
+function getCloudJwtPublicKey() {
+    const fromEnvironment = String(process.env.LIVEFLOW_CLOUD_JWT_PUBLIC_KEY || '').trim();
+    if (fromEnvironment) return fromEnvironment;
+    const publicKeyPath = path.join(__dirname, 'assets', 'cloud-jwt-public.pem');
+    return fs.existsSync(publicKeyPath) ? fs.readFileSync(publicKeyPath, 'utf8').trim() : '';
+}
+
 function getManagedBackendOptions() {
     return {
         isPackaged: app.isPackaged,
@@ -45,14 +52,9 @@ function getManagedBackendOptions() {
         // Central server that accounts/Store/purchases sync through — same
         // URL for every install, not a per-user secret (docs/COMMERCIAL_CLOUD_ROADMAP.md).
         cloudApiUrl: process.env.LIVEFLOW_CLOUD_API_URL || 'https://liveflow-backend-iafw.onrender.com',
-        // Must match the central server's own JWT_SECRET exactly, so tokens it
-        // issues at login are also accepted by this machine's local-only routes
-        // (WebSocket, OBS, TikTok, Settings).
-        sharedJwtSecret: process.env.LIVEFLOW_SHARED_JWT_SECRET || '',
-        // Must match the central server's own ENCRYPTION_PASSWORD exactly —
-        // an effect file encrypted centrally (or on any other machine) can
-        // only be decrypted here if this machine derives the same AES key.
-        sharedEncryptionPassword: process.env.LIVEFLOW_SHARED_ENCRYPTION_PASSWORD || '',
+        // Public verification key is safe to distribute. The matching private
+        // signing key remains only on the central server.
+        cloudJwtPublicKey: getCloudJwtPublicKey(),
         launchProcess: app.isPackaged
             ? (entry, options) => utilityProcess.fork(entry, [], {
                 cwd: options.cwd,
@@ -233,16 +235,10 @@ function setupAutoUpdater() {
         return;
     }
 
-    const updateServerUrl = process.env.LIVEFLOW_UPDATE_URL;
-    autoUpdater.autoDownload = true;
     autoUpdater.fullChangelog = false;
     autoUpdater.logger = log;
     log.transports.file.resolvePath = () => path.join(app.getPath('userData'), 'logs', 'auto-updater.log');
     autoUpdater.logger.transports.file.level = 'info';
-
-    if (updateServerUrl) {
-        autoUpdater.setFeedURL({ provider: 'generic', url: updateServerUrl });
-    }
 
     autoUpdater.autoDownload = false;
 
@@ -296,7 +292,7 @@ function createWindow() {
             allowRunningInsecureContent: false
         },
         backgroundColor: '#0a0a0a',
-        icon: path.join(__dirname, 'assets', 'icon.ico'),
+        icon: path.join(__dirname, 'assets', 'liveflow.ico'),
         frame: true,
         titleBarStyle: 'default',
         show: true
@@ -336,7 +332,7 @@ function createWindow() {
 
 function createTray() {
     try {
-        const iconPath = path.join(__dirname, 'assets', 'icon.ico');
+        const iconPath = path.join(__dirname, 'assets', 'liveflow.ico');
         const trayIcon = fs.existsSync(iconPath) 
             ? nativeImage.createFromPath(iconPath) 
             : nativeImage.createEmpty();

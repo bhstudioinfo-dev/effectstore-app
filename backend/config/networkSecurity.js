@@ -1,6 +1,6 @@
 const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
 const { getJwtSecret } = require('./security');
+const { verifyUserToken } = require('../services/userToken');
 
 const OVERLAY_ROLES = Object.freeze(['gift-menu', 'goal-board', 'effect-player']);
 
@@ -43,7 +43,7 @@ function verifyOverlayAccessToken(token) {
 }
 
 function verifyUserSocketToken(token) {
-    return jwt.verify(String(token || ''), getJwtSecret());
+    return verifyUserToken(token);
 }
 
 function securityHeaders(_req, res, next) {

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "node tests/security.test.js && node tests/access-control.test.js && node tests/drm.test.js && node tests/payment.test.js && node tests/network-security.test.js && node tests/operations.test.js && node tests/reliability.test.js && node tests/custom-effect-availability.test.js && node tests/runtime-paths.test.js && node tests/backend-manager.test.js && node tests/phase11.test.js && node tests/plan-entitlements.test.js && node tests/store-regression.test.js && node tests/challenge-wheel-sync.test.js && node tests/designer-gradient.test.js && node tests/talent-competition.test.js",
+    "test": "node tests/security.test.js && node tests/access-control.test.js && node tests/drm.test.js && node tests/cloud-session-token.test.js && node tests/payment.test.js && node tests/network-security.test.js && node tests/operations.test.js && node tests/remote-control.test.js && node tests/reliability.test.js && node tests/custom-effect-availability.test.js && node tests/runtime-paths.test.js && node tests/backend-manager.test.js && node tests/phase11.test.js && node tests/plan-entitlements.test.js && node tests/store-regression.test.js && node tests/challenge-wheel-sync.test.js && node tests/designer-gradient.test.js && node tests/talent-competition.test.js",
     "admin:provision": "node scripts/provision-admin.js"
   },
   "keywords": [

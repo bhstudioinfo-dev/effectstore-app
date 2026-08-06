@@ -10,6 +10,8 @@
 
 const CLOUD_API_URL = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
 const { mirrorUserLocally } = require('../services/localUserMirror');
+const { forgetCloudSessionToken, rememberCloudSessionToken, getCloudSessionToken, getAnyCloudSessionToken } = require('../services/cloudSessionTokenStore');
+const { verifyUserToken } = require('../services/userToken');
 const Effect = require('../models/Effect');
 
 function isCloudProxyEnabled() {
@@ -27,6 +29,13 @@ function proxyToCloud(req, res) {
     const headers = {};
     for (const [key, value] of Object.entries(req.headers)) {
         if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase()) && value !== undefined) headers[key] = value;
+    }
+
+    if (!headers['authorization']) {
+        const activeToken = (req.userId ? getCloudSessionToken(req.userId) : '') || getAnyCloudSessionToken();
+        if (activeToken) {
+            headers['authorization'] = `Bearer ${activeToken}`;
+        }
     }
 
     const isBodylessMethod = ['GET', 'HEAD'].includes(req.method);
@@ -71,8 +80,21 @@ function proxyToCloud(req, res) {
             if (cloudRes.ok && contentType && contentType.includes('application/json')) {
                 try {
                     const parsed = JSON.parse(text);
-                    if (parsed?.user?.id || parsed?.user?._id) mirrorUserLocally(parsed.user);
+                    const userId = parsed?.user?.id || parsed?.user?._id;
+                    if (userId) {
+                        mirrorUserLocally(parsed.user);
+                        const responseToken = parsed.token;
+                        const requestToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+                        rememberCloudSessionToken(userId, responseToken || requestToken);
+                    }
                 } catch (_error) { /* not a mirrorable JSON body */ }
+            }
+            if (cloudRes.ok && req.path === '/logout') {
+                try {
+                    const requestToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+                    const decoded = verifyUserToken(requestToken);
+                    if (decoded?.userId) forgetCloudSessionToken(decoded.userId);
+                } catch (_error) { /* invalid/expired token has no reusable session */ }
             }
 
             // The reverse of mirrorEffectFromCentral (effectLibraryService.js):

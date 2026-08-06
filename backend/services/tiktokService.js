@@ -229,7 +229,15 @@ class TikTokService {
             });
 
             this.tiktokClient.on('gift', async (data) => {
-                this.liveStats.gifts++;
+                const normalizedGift = this.normalizeGiftFromEvent(data);
+                if (!normalizedGift) return;
+                data = {
+                    ...data,
+                    ...normalizedGift,
+                    giftId: normalizedGift.giftId,
+                    repeatCount: Math.max(1, Number(normalizedGift.repeatCount) || 1),
+                    eventId: String(data.msgId || data.eventId || data.groupId || '').trim() || undefined
+                };
                 this.handleGiftCatalogUpdate(data);
 
                 // Update Real-time Goal Board progress (Phase 2)
@@ -245,9 +253,14 @@ class TikTokService {
                 // Media playback must also wait for the final repeatEnd event.
                 if (this.shouldSkipIntermediateStreak(data)) return;
 
+                this.liveStats.gifts += data.repeatCount;
                 let mappings = [];
                 if (this.currentLiveUserId) {
-                    mappings = await GiftMapping.find({ userId: this.currentLiveUserId, giftId: data.giftId, isActive: true }).lean();
+                    mappings = await GiftMapping.find({
+                        userId: this.currentLiveUserId,
+                        giftId: String(data.giftId),
+                        isActive: true
+                    }).lean();
                 }
 
                 const quantity = Number(data.repeatCount || 1);
@@ -343,7 +356,8 @@ class TikTokService {
                                 triggeredAt: new Date(),
                                 sessionId: this.currentLiveUserId,
                                 userId: this.currentLiveUserId,
-                                userName: data.nickname || data.uniqueId || 'TikTok user'
+                                userName: data.nickname || data.uniqueId || 'TikTok user',
+                                repeatCount: data.repeatCount
                             }).catch(() => null);
                         }
                     }

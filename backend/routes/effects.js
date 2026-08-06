@@ -9,6 +9,7 @@ const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { Readable } = require('stream');
 const { encryptVideo, streamDecryptedVideo } = require('../utils/encrypt-video');
 const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
 const { isValidResourceId } = require('../utils/accessControl');
@@ -16,6 +17,7 @@ const { getUserAvailableEffects, resolveEffectForUser } = require('../services/e
 const { issueEffectAccessToken, buildEffectStreamUrl, verifyEffectAccessToken } = require('../services/effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
 const { isAssetStoreConfigured, uploadEncryptedEffect, downloadEncryptedEffect, uploadThumbnail } = require('../services/effectAssetStore');
+const { getCloudSessionToken } = require('../services/cloudSessionTokenStore');
 
 // Ensure directories
 const encryptedEffectsDir = dataPaths.encryptedEffectsDir;
@@ -69,13 +71,17 @@ router.get('/effects', authMiddleware, async (req, res) => {
             widgetTemplateIds = new Set(widgetLayouts.map((layout) => String(layout._id)));
         }
 
+        const isAdmin = user?.isAdmin === true;
         res.json({
             success: true,
-            effects: effects.map((effect) => ({
-                ...sanitizeEffectForCatalog(effect, req.userId),
-                isOwned: user?.isAdmin === true || ownedIds.has(String(effect._id)),
-                isWidgetTemplate: effect.category === 'menu_template' && widgetTemplateIds.has(String(effect.fileUrl))
-            }))
+            effects: effects.map((effect) => {
+                const isOwned = isAdmin || ownedIds.has(String(effect._id));
+                return {
+                    ...sanitizeEffectForCatalog(effect, isOwned ? req.userId : null),
+                    isOwned,
+                    isWidgetTemplate: effect.category === 'menu_template' && widgetTemplateIds.has(String(effect.fileUrl))
+                };
+            })
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -240,6 +246,45 @@ async function fetchEncryptedEffectIntoCache(effectId, req) {
     return null;
 }
 
+async function relayEffectFromCloud(effectId, req, res) {
+    const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
+    if (!cloudApiUrl) return false;
+
+    const queryToken = String(req.query.token || req.query.authToken || '');
+    const queryAlgorithm = queryToken
+        ? require('jsonwebtoken').decode(queryToken, { complete: true })?.header?.alg
+        : null;
+    const cloudEffectToken = queryAlgorithm === 'RS256' ? queryToken : '';
+    const cloudUserToken = getCloudSessionToken(req.effectAccess?.userId);
+    if (!cloudEffectToken && !cloudUserToken) {
+        res.status(401).json({
+            error: 'Cloud session is unavailable. Please sign in again before playing purchased effects.'
+        });
+        return true;
+    }
+
+    const tokenQuery = cloudEffectToken ? `?token=${encodeURIComponent(cloudEffectToken)}` : '';
+    const response = await fetch(`${cloudApiUrl}/api/stream/effect/${encodeURIComponent(effectId)}${tokenQuery}`, {
+        headers: cloudUserToken ? { authorization: `Bearer ${cloudUserToken}` } : {},
+        redirect: 'error'
+    });
+    if (!response.ok || !response.body) {
+        const message = response.status === 401 || response.status === 403
+            ? 'Cloud effect access denied. Please sign in again or verify ownership.'
+            : 'Cloud effect stream is temporarily unavailable.';
+        res.status(response.status >= 400 && response.status < 600 ? response.status : 502).json({ error: message });
+        return true;
+    }
+
+    res.status(response.status);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'video/webm');
+    const contentLength = response.headers.get('content-length');
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+    Readable.fromWeb(response.body).pipe(res);
+    return true;
+}
+
 // Stream video (matching old path /api/stream/effect/:effectId)
 async function streamEffectById(req, res) {
     try {
@@ -249,35 +294,6 @@ async function streamEffectById(req, res) {
         if (!effect) return res.status(404).json({ error: 'Not found' });
 
         let streamPath = effect.previewFilePath;
-        
-        // Fallback 1: Try to extract filename from previewUrl or fileUrl
-        if (!streamPath || !fs.existsSync(streamPath)) {
-            const urlToCheck = effect.previewUrl || effect.fileUrl;
-            if (urlToCheck) {
-                const fileName = path.basename(urlToCheck.split('?')[0]);
-                const potentialPath = path.join(previewsDir, fileName);
-                if (fs.existsSync(potentialPath)) {
-                    streamPath = potentialPath;
-                }
-            }
-        }
-
-        // Fallback 2: Search by effectId in previews directory
-        if (!streamPath || !fs.existsSync(streamPath)) {
-            const checkDirs = [previewsDir, path.join(__dirname, '..', 'uploads', 'previews')].filter(Boolean);
-            for (const dir of checkDirs) {
-                if (fs.existsSync(dir)) {
-                    const files = fs.readdirSync(dir);
-                    const effectFile = files.find(f => (f.startsWith(effectId) || f.includes(effectId)) && f.endsWith('.webm'));
-                    if (effectFile) {
-                        streamPath = path.join(dir, effectFile);
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Fallback 3: Try encrypted path
         if (!streamPath || !fs.existsSync(streamPath)) {
             if (effect.encryptedFilePath) {
                 const migratedEncryptedPath = path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath));
@@ -344,11 +360,10 @@ async function authorizeEffectStream(req, res, next) {
         if (!payload && (authHeader || queryToken)) {
             const userToken = authHeader || queryToken;
             try {
-                const jwt = require('jsonwebtoken');
-                const { getJwtSecret } = require('../config/security');
-                const decoded = jwt.verify(userToken, getJwtSecret());
+                const { verifyUserToken } = require('../services/userToken');
+                const decoded = verifyUserToken(userToken);
                 if (decoded && decoded.userId) {
-                    payload = { userId: decoded.userId, purpose: 'catalog-preview', effectId };
+                    payload = { userId: decoded.userId, purpose: 'library-playback', effectId };
                 }
             } catch (_err) {
                 // Invalid user token

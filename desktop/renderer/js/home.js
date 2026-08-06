@@ -3431,17 +3431,25 @@ class EffectStoreApp {
                 availableSounds
             };
 
-            await fetch(`${this.API_URL}/api/remote/sync-deck`, {
+            const response = await fetch(`${this.API_URL}/api/remote/sync-deck`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ deck: fullDeckState })
             });
+            const result = await response.json().catch(() => ({}));
+            if (response.ok && Number.isFinite(Number(result.revision))) {
+                this.lastRemoteDeckRevision = Number(result.revision);
+            }
         } catch (_e) {}
     }
 
     async showRemoteConnectModal() {
         try {
-            this.syncControlDeckToRemote();
+            // The backend may have restarted since the renderer loaded. Wait
+            // until the full deck/library is restored before exposing the QR,
+            // otherwise the phone can see stale or empty slots and report a
+            // successful assignment that the PC cannot resolve.
+            await this.syncControlDeckToRemote();
             const localBase = 'http://127.0.0.1:9000';
             const res = await fetch(`${localBase}/api/remote/lan-info`).catch(() => fetch(`${this.API_URL}/api/remote/lan-info`));
             const data = await res.json().catch(() => ({ success: false, error: 'Tiến trình Backend vừa khởi động lại. Vui lòng thử lại sau 2 giây.' }));
@@ -3483,12 +3491,39 @@ class EffectStoreApp {
                 document.body.appendChild(container);
             }
             container.innerHTML = modalHtml;
+            this.startRemoteModalConnectionPolling();
         } catch (e) {
             this.showNotification('error', 'Lỗi mở kết nối điện thoại: ' + e.message);
         }
     }
 
+    startRemoteModalConnectionPolling() {
+        if (this.remoteModalStatusTimer) clearInterval(this.remoteModalStatusTimer);
+        let checking = false;
+        const check = async () => {
+            if (checking || !document.getElementById('remote-modal-overlay')) return;
+            checking = true;
+            try {
+                const response = await fetch(`${this.API_URL}/api/remote/connection-status`, { cache: 'no-store' });
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && Number(data.connectedClients || 0) > 0) {
+                    this.handleRemoteDeviceConnected({ count: Number(data.connectedClients) });
+                }
+            } catch (_error) {
+                // The WebSocket event remains the fallback while the backend restarts.
+            } finally {
+                checking = false;
+            }
+        };
+        this.remoteModalStatusTimer = setInterval(check, 500);
+        check();
+    }
+
     closeRemoteModal() {
+        if (this.remoteModalStatusTimer) {
+            clearInterval(this.remoteModalStatusTimer);
+            this.remoteModalStatusTimer = null;
+        }
         const el = document.getElementById('remote-modal-overlay');
         if (el) el.remove();
     }
@@ -3524,9 +3559,23 @@ class EffectStoreApp {
     }
 
     handleRemoteDeviceConnected(info = {}) {
-        this.closeRemoteModal();
-        this.showNotification('success', '📱 Đã kết nối điện thoại điều khiển từ xa!');
         this.updateRemoteButtonState(true, info.count || 1);
+        if (this.remoteModalStatusTimer) {
+            clearInterval(this.remoteModalStatusTimer);
+            this.remoteModalStatusTimer = null;
+        }
+        const overlay = document.getElementById('remote-modal-overlay');
+        const content = overlay?.querySelector('.modal-content');
+        if (content) {
+            content.innerHTML = `
+                <div style="font-size:52px;margin-bottom:10px;">✅</div>
+                <h3 style="font-size:21px;font-weight:900;color:#34d399;margin-bottom:7px;">Kết nối thành công!</h3>
+                <p style="font-size:13px;color:#94a3b8;margin:0;">Điện thoại đã sẵn sàng điều khiển Live Control và Soundboard.</p>
+            `;
+            setTimeout(() => this.closeRemoteModal(), 1100);
+        } else {
+            this.showNotification('success', '📱 Đã kết nối điện thoại điều khiển từ xa!');
+        }
     }
 
     showRemoteStatusModal() {
@@ -3555,7 +3604,7 @@ class EffectStoreApp {
 
     async checkRemoteConnectionStatus() {
         try {
-            const res = await fetch(`${this.API_URL}/api/remote/deck-state`);
+            const res = await fetch(`${this.API_URL}/api/remote/connection-status`);
             if (!res.ok) return;
             const data = await res.json();
             if (data.success) {
@@ -3565,8 +3614,31 @@ class EffectStoreApp {
                 } else if (count === 0 && this.isRemoteConnected) {
                     this.updateRemoteButtonState(false);
                 }
+                const revision = Number(data.revision);
+                if (Number.isFinite(this.lastRemoteDeckRevision) &&
+                    Number.isFinite(revision) &&
+                    revision > this.lastRemoteDeckRevision &&
+                    data.deck) {
+                    this.applyRemoteDeckState(data.deck, revision);
+                }
             }
         } catch (_e) {}
+    }
+
+    applyRemoteDeckState(remoteDeck, revision) {
+        for (const type of ['effect', 'sound']) {
+            const incoming = remoteDeck?.[type];
+            if (!incoming || !Array.isArray(incoming.slots)) continue;
+            this.controlDeck[type] = {
+                ...this.controlDeck[type],
+                visible: Math.max(10, Math.min(20, Number(incoming.visible) || 10)),
+                slots: incoming.slots.filter(Boolean).slice(0, 20)
+            };
+        }
+        this.lastRemoteDeckRevision = revision;
+        localStorage.setItem('liveflow_control_deck', JSON.stringify(this.controlDeck));
+        this.syncControlDeckHotkeys();
+        this.renderControlDeck();
     }
 
     switchControlDeckTab(type) {
@@ -5178,10 +5250,36 @@ class EffectStoreApp {
                     }
                 }
                 break;
+            case 'control_deck_media_uploaded':
+                this.handleRemoteMediaUploaded(data.data);
+                break;
             case 'effect_warning':
                 this.showNotification('warning', data.data?.message || 'Hiệu ứng đã bị bỏ qua vì thiếu thời lượng.');
                 break;
             case 'plan_limit_reached': this.handlePlanLimit(data.data, data.data?.feature); break;
+        }
+    }
+
+    async handleRemoteMediaUploaded(payload = {}) {
+        const index = Number(payload.index);
+        if (!Number.isInteger(index)) return;
+        if (payload.deckType === 'sound' && payload.item) {
+            this.controlDeckSoundLibrary = [
+                ...(this.controlDeckSoundLibrary || []).filter((item) => String(item.id) !== String(payload.item.id)),
+                payload.item
+            ];
+            this.pendingControlDeckIndex = index;
+            this.addSoundLibraryItemToDeck(payload.item);
+            this.showNotification('success', 'Điện thoại đã upload và thêm sound vào Soundboard.');
+            return;
+        }
+        if (payload.deckType === 'effect' && payload.item) {
+            await this.loadPersonalEffects();
+            await this.loadOwnedEffects();
+            const effectId = String(payload.item.id || payload.item._id || '');
+            const effect = (this.personalEffects || []).find((item) => String(item.id || item._id) === effectId) || payload.item;
+            this.addControlDeckEffectToSlot(effect, index);
+            this.showNotification('success', 'Điện thoại đã upload và thêm effect vào Live Control.');
         }
     }
 

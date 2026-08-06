@@ -101,28 +101,11 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
         API_HOST: '127.0.0.1',
         WS_HOST: '127.0.0.1'
     };
-    // JWT_SECRET can no longer be a random per-install value once login goes
-    // through the shared central server (see docs/COMMERCIAL_CLOUD_ROADMAP.md):
-    // this machine's local-only routes (WebSocket, OBS, TikTok, Settings) must
-    // accept the same tokens the central server issues, so they need the same
-    // secret. Fall back to the shared one if provided; only generate a random
-    // value as a last resort (e.g. cloud proxy not configured at all).
     if (config.JWT_SECRET.length < 32) {
-        config.JWT_SECRET = (sharedDefaults.jwtSecret && sharedDefaults.jwtSecret.length >= 32)
-            ? sharedDefaults.jwtSecret
-            : crypto.randomBytes(48).toString('hex');
+        config.JWT_SECRET = crypto.randomBytes(48).toString('hex');
     }
-    // Same reasoning as JWT_SECRET: once the central server (and every other
-    // machine) can encrypt/decrypt an effect file that isn't its own, every
-    // machine's ENCRYPTION_PASSWORD must derive the same AES key too, or a
-    // file encrypted centrally/on another machine can never be decrypted
-    // here. A random per-install value (the old behavior) would make every
-    // fresh customer install unable to play any effect synced in from the
-    // shared store.
     if (config.ENCRYPTION_PASSWORD.length < 32) {
-        config.ENCRYPTION_PASSWORD = (sharedDefaults.encryptionPassword && sharedDefaults.encryptionPassword.length >= 32)
-            ? sharedDefaults.encryptionPassword
-            : crypto.randomBytes(48).toString('hex');
+        config.ENCRYPTION_PASSWORD = crypto.randomBytes(48).toString('hex');
     }
     if (config.INITIAL_SETUP_TOKEN.length < 32) config.INITIAL_SETUP_TOKEN = crypto.randomBytes(48).toString('hex');
     if (!config.MONGODB_URI) config.MONGODB_URI = 'mongodb://127.0.0.1:27017/effectstore';
@@ -166,10 +149,7 @@ async function startManagedBackend(options) {
 
     const backendEntry = resolveBackendPath(options);
     if (!fs.existsSync(backendEntry)) throw new Error(`Không tìm thấy backend: ${backendEntry}`);
-    const config = ensureBackendConfig(options.userDataPath, options.secretCodec, {
-        jwtSecret: options.sharedJwtSecret,
-        encryptionPassword: options.sharedEncryptionPassword
-    });
+    const config = ensureBackendConfig(options.userDataPath, options.secretCodec);
     const dataDirectory = path.join(options.userDataPath, 'backend-data');
     const logsDirectory = path.join(options.userDataPath, 'logs');
     fs.mkdirSync(dataDirectory, { recursive: true });
@@ -185,7 +165,8 @@ async function startManagedBackend(options) {
         EFFECTSTORE_STARTUP_TRACE: 'true',
         EFFECTSTORE_DATA_DIR: dataDirectory,
         EFFECTSTORE_LEGACY_DATA_DIR: options.legacyDataDirectory || '',
-        CLOUD_API_URL: process.env.CLOUD_API_URL || options.cloudApiUrl || ''
+        CLOUD_API_URL: process.env.CLOUD_API_URL || options.cloudApiUrl || '',
+        CLOUD_JWT_PUBLIC_KEY: process.env.CLOUD_JWT_PUBLIC_KEY || options.cloudJwtPublicKey || ''
     };
     if (!options.launchProcess) childEnvironment.ELECTRON_RUN_AS_NODE = '1';
 

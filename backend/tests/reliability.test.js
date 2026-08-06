@@ -55,6 +55,26 @@ async function run() {
     assert.strictEqual(tiktokService.shouldSkipIntermediateStreak({ giftType: 1, repeatEnd: false }), true);
     assert.strictEqual(tiktokService.shouldSkipIntermediateStreak({ giftType: 1, repeatEnd: true }), false);
     assert.strictEqual(tiktokService.shouldSkipIntermediateStreak({ giftType: 0, repeatEnd: false }), false);
+    assert.deepStrictEqual(
+        tiktokService.normalizeGiftFromEvent({
+            giftId: 5655,
+            giftName: 'Rose',
+            repeatCount: '3',
+            userDetails: { uniqueId: 'viewer-1', nickname: 'Viewer' }
+        }),
+        {
+            giftId: '5655',
+            giftName: 'Rose',
+            diamondCount: 0,
+            iconUrl: '',
+            repeatCount: 3,
+            userId: '',
+            uniqueId: 'viewer-1',
+            nickname: 'Viewer',
+            avatarUrl: '',
+            source: 'tiktok-live'
+        }
+    );
 
     const originalClient = tiktokService.tiktokClient;
     const originalRoom = tiktokService.lastRoomId;

@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
 const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
-const { getJwtSecret, isAdminUser } = require('../config/security');
+const { isAdminUser } = require('../config/security');
+const { issueUserToken } = require('../services/userToken');
 const { createRateLimiter } = require('../middleware/rateLimit');
 const crypto = require('crypto');
 const SystemState = require('../models/SystemState');
@@ -170,11 +170,7 @@ router.post('/register', registerRateLimiter, async (req, res) => {
             isAdmin: false
         });
 
-        const token = jwt.sign(
-            { userId: user._id, isAdmin: false },
-            getJwtSecret(),
-            { expiresIn: '7d' }
-        );
+        const token = issueUserToken({ userId: user._id, isAdmin: false });
 
         return res.json({
             success: true,
@@ -233,11 +229,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
             }
         }
 
-        const token = jwt.sign(
-            { userId: user._id, isAdmin, machineId },
-            getJwtSecret(),
-            { expiresIn: '7d' }
-        );
+        const token = issueUserToken({ userId: user._id, isAdmin, machineId });
 
         return res.json({
             success: true,

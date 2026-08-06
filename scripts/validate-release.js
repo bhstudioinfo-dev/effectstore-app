@@ -13,6 +13,7 @@ const rootPackage = readJson('package.json');
 const desktopPackage = readJson('desktop/package.json');
 const desktopFiles = new Set(desktopPackage.build?.files || []);
 const extraResources = desktopPackage.build?.extraResources || [];
+const publishConfig = desktopPackage.build?.publish;
 const desktopMain = fs.existsSync(path.join(root, 'desktop', 'main.js'))
     ? fs.readFileSync(path.join(root, 'desktop', 'main.js'), 'utf8')
     : '';
@@ -37,11 +38,29 @@ if (!desktopFiles.has('diagnostics.js')) failures.push('Desktop diagnostics sani
 if (backendManager.includes("API_HOST: '0.0.0.0'") || backendManager.includes("WS_HOST: '0.0.0.0'")) {
     failures.push('Desktop backend default hosts must use 127.0.0.1 instead of 0.0.0.0 for release builds.');
 }
-if (desktopMain.includes('LIVEFLOW_SHARED_JWT_SECRET') || desktopMain.includes('LIVEFLOW_SHARED_ENCRYPTION_PASSWORD')) {
-    failures.push('Desktop main should not contain hardcoded shared secret fallbacks.');
+if (desktopMain.includes('LIVEFLOW_SHARED_JWT_SECRET')) {
+    failures.push('Desktop must verify cloud JWTs with a public key, not a shared JWT secret.');
+}
+if (desktopMain.includes('LIVEFLOW_SHARED_ENCRYPTION_PASSWORD')) {
+    failures.push('Desktop must stream cloud effects without receiving the central encryption password.');
+}
+if (!fs.existsSync(path.join(root, 'desktop', 'assets', 'cloud-jwt-public.pem'))) {
+    warnings.push('Cloud JWT public key is not embedded; customer builds must provide desktop/assets/cloud-jwt-public.pem.');
 }
 if (desktopPackage.build?.nsis?.deleteAppDataOnUninstall !== false) {
     failures.push('NSIS uninstall must preserve application data by default.');
+}
+if (desktopPackage.build?.win?.signAndEditExecutable === false) {
+    failures.push('Production Windows build must not disable executable signing/editing.');
+}
+if (publishConfig?.provider !== 'generic' || !/^https:\/\//i.test(String(publishConfig?.url || ''))) {
+    failures.push('Desktop auto-update must use a configured HTTPS publish provider.');
+}
+if (!rootPackage.scripts?.['release:windows'] || !rootPackage.scripts?.['release:upload']) {
+    failures.push('Windows release build/upload scripts are missing.');
+}
+if (rootPackage.version !== desktopPackage.version) {
+    failures.push('Root and desktop package versions must match.');
 }
 const packagedBackend = extraResources.find((entry) => entry?.to === 'backend');
 if (!packagedBackend) failures.push('Backend is missing from desktop extraResources.');
@@ -51,8 +70,9 @@ if (packagedBackend && !(packagedBackend.filter || []).includes('!.env')) {
 if (packagedBackend && !(packagedBackend.filter || []).includes('!uploads/**/*')) {
     failures.push('Packaged backend does not exclude runtime uploads.');
 }
-if (!fs.existsSync(path.join(root, 'desktop', 'assets', 'icon.ico'))) {
-    warnings.push('desktop/assets/icon.ico is missing; Electron default icon will be used.');
+const configuredIcon = String(desktopPackage.build?.icon || '');
+if (!configuredIcon || !fs.existsSync(path.join(root, 'desktop', configuredIcon))) {
+    failures.push('Configured desktop build icon is missing.');
 }
 
 const trackedSecrets = trackedFiles.filter((file) => /(^|\/)\.env($|\.)/i.test(file) && !file.endsWith('.env.example'));

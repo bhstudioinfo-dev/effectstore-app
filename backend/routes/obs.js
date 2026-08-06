@@ -17,6 +17,7 @@ const {
 } = require('../services/effectLibraryService');
 const effectRoutes = require('./effects');
 const { getOverlayAccessToken } = require('../config/networkSecurity');
+const { rememberCloudSessionToken } = require('../services/cloudSessionTokenStore');
 const { paths: dataPaths } = require('../config/dataPaths');
 const { isValidResourceId, ownedResourceFilter } = require('../utils/accessControl');
 const { getEntitlements, validateDesignerItems } = require('../config/planEntitlements');
@@ -78,6 +79,7 @@ router.get('/effect-player-media/:effectId', async (req, res) => {
         }
         const effect = await resolveEffectForUser(payload.userId, req.params.effectId);
         if (!effect) return res.status(403).json({ success: false, message: 'Effect access denied.' });
+        req.effectAccess = payload;
         return effectRoutes.streamEffectById(req, res);
     } catch (_error) {
         return res.status(401).json({ success: false, message: 'Liên kết xem thử đã hết hạn hoặc không hợp lệ.' });
@@ -409,7 +411,6 @@ router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
     }
 });
 
-
 // Trigger
 router.post('/trigger', authMiddleware, async (req, res) => {
     try {
@@ -455,6 +456,10 @@ router.get('/sources', authMiddleware, async (req, res) => {
 // Repair OBS Sources
 router.post('/repair-sources', authMiddleware, async (req, res) => {
     try {
+        const rawToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+        if (req.userId && rawToken) {
+            rememberCloudSessionToken(req.userId, rawToken);
+        }
         if (!obsService.isConnected()) {
             const config = await getObsConnectionConfig();
             await obsService.connect(config.host, config.port, config.password);
