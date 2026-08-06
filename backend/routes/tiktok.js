@@ -973,9 +973,9 @@ router.get('/gifts-library', async (req, res) => {
                 if (!/\.(png|jpg|jpeg|webp|gif)$/i.test(file)) continue;
                 const baseWithoutExt = path.basename(file, path.extname(file));
                 const cleanName = baseWithoutExt
-                    .replace(/_\d+$/g, '')
-                    .replace(/\s*\(\d+\)$/g, '')
-                    .replace(/_/g, ' ')
+                    .replace(/[\s_]+\d+$/g, '')
+                    .replace(/[\s_]+\(\d+\)$/g, '')
+                    .replace(/[\s_]+/g, ' ')
                     .trim();
                 const key = cleanName.toLowerCase();
                 const id = key.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
@@ -992,46 +992,42 @@ router.get('/gifts-library', async (req, res) => {
         }
         const fileGifts = Array.from(fileGiftsMap.values());
 
-        const mergedById = new Map();
+        const mergedByName = new Map();
         defaultGifts.forEach((gift) => {
-            mergedById.set(gift.id, gift);
+            mergedByName.set(gift.name.toLowerCase().trim(), gift);
         });
 
         fileGifts.forEach((gift) => {
-            if (!mergedById.has(gift.id)) {
-                mergedById.set(gift.id, gift);
+            const key = gift.name.toLowerCase().trim();
+            if (!mergedByName.has(key)) {
+                mergedByName.set(key, gift);
             }
         });
 
         const configs = await GiftConfig.find();
-        const coinsMap = {};
         configs.forEach(c => {
-            coinsMap[c.giftId] = c.coins;
-            if (c.giftId && c.giftName) {
-                const existing = mergedById.get(c.giftId);
-                if (!existing) {
-                    mergedById.set(c.giftId, {
-                        id: c.giftId,
+            if (c.giftName) {
+                const key = c.giftName.toLowerCase().trim();
+                const existing = mergedByName.get(key) || (c.giftId ? mergedByName.get(c.giftId) : null);
+                if (existing) {
+                    if (c.coins) existing.coins = c.coins;
+                    if (c.iconUrl) existing.icon = c.iconUrl;
+                } else {
+                    mergedByName.set(key, {
+                        id: c.giftId || key.replace(/[^a-z0-9]+/g, '_'),
                         name: c.giftName,
                         icon: c.iconUrl || '/assets/gift-icons/Rose.png',
                         coins: c.coins || 1
                     });
-                } else {
-                    if (c.iconUrl) existing.icon = c.iconUrl;
-                    if (c.coins) existing.coins = c.coins;
                 }
             }
         });
 
-        const gifts = [...mergedById.values()].map(g => ({
-            ...g,
-            coins: coinsMap[g.id] || g.coins
-        }));
+        const gifts = Array.from(mergedByName.values());
 
         res.json({ success: true, gifts });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
-
 // Gift Menu Designer layout (MongoDB and local sync for OBS)
 router.get('/gift-menu-layouts', authMiddleware, async (req, res) => {
     try {
