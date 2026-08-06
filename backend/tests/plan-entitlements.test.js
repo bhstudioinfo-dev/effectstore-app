@@ -20,7 +20,7 @@ assert.strictEqual(basic.mappings, 30);
 assert.strictEqual(basic.layouts, 10);
 assert.strictEqual(basic.menuAssets, 20);
 assert.strictEqual(basic.goalTrackers, 10);
-assert.strictEqual(pro.devices, 3);
+assert.strictEqual(pro.devices, 1);
 assert.strictEqual(pro.mappings, Infinity);
 assert.strictEqual(expired.key, 'free');
 assert.strictEqual(upgradePayload('mappings', 'x', free).recommendedPlan, 'pro');

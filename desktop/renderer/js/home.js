@@ -241,6 +241,8 @@ class EffectStoreApp {
                         }
                     });
                 }
+
+                this.setupUpdateListeners();
             } else {
                 this.hideAppLoadingOverlay();
             }
@@ -419,6 +421,133 @@ class EffectStoreApp {
             modal.classList.remove('show');
             modal.classList.add('hidden');
         }
+    }
+
+    setupUpdateListeners() {
+        if (!window.electronAPI?.on) return;
+
+        this._manualUpdateCheck = false;
+
+        const updateVersionModal = (messageHtml, buttonsHtml) => {
+            if (!this._manualUpdateCheck) return;
+            this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;">${messageHtml}</div>`);
+            const actions = document.getElementById('modal-actions');
+            if (actions) {
+                actions.innerHTML = buttonsHtml || '<button class="btn-cancel" onclick="app.closeModal()">Đóng</button>';
+            }
+        };
+
+        const notifyUpdate = (message, type = 'success') => {
+            this.showNotification(type, message);
+        };
+
+        window.electronAPI.on('app-update:available', (info) => {
+            if (this._manualUpdateCheck) {
+                updateVersionModal(
+                    `<p>Đã có phiên bản mới: <strong>${info.version}</strong>.</p><p>Nhấn <strong>Cập nhật</strong> để tải phiên bản mới về và cài đặt.</p>`,
+                    '<button class="btn-cancel" onclick="app.closeModal()">Đóng</button><button class="pro-btn" style="min-width:140px;" onclick="app.downloadAppUpdate()">Cập nhật</button>'
+                );
+            } else {
+                notifyUpdate(`Đã có bản cập nhật mới: ${info.version}.`);
+            }
+        });
+
+        window.electronAPI.on('app-update:download-progress', (progress) => {
+            const percent = Math.round(progress?.percent || 0);
+            if (this._manualUpdateCheck) {
+                updateVersionModal(
+                    `<p>Đang tải cập nhật... <strong>${percent}%</strong></p>`,
+                    '<button class="btn-cancel" onclick="app.closeModal()">Đóng</button>'
+                );
+            } else {
+                notifyUpdate(`Đang tải cập nhật... ${percent}%`);
+            }
+        });
+
+        window.electronAPI.on('app-update:downloaded', () => {
+            if (this._manualUpdateCheck) {
+                updateVersionModal(
+                    '<p>Cập nhật đã tải xong. Nhấn khởi động lại để áp dụng phiên bản mới.</p>',
+                    '<button class="btn-cancel" onclick="app.closeModal()">Đóng</button><button class="pro-btn" style="min-width:140px;" onclick="app._confirmUpdateRestart()">Khởi động lại</button>'
+                );
+            } else {
+                notifyUpdate('Cập nhật đã tải xong. Khởi động lại app để áp dụng.', 'success');
+            }
+        });
+
+        window.electronAPI.on('app-update:error', (message) => {
+            if (this._manualUpdateCheck) {
+                updateVersionModal(
+                    `<p>Lỗi khi kiểm tra/cập nhật: ${message}</p>`,
+                    '<button class="btn-cancel" onclick="app.closeModal()">Đóng</button>'
+                );
+            } else {
+                notifyUpdate(`Lỗi cập nhật: ${message}`, 'warning');
+            }
+        });
+
+        window.electronAPI.on('app-update:checking', () => {
+            if (this._manualUpdateCheck) {
+                updateVersionModal('<p>Đang kiểm tra phiên bản mới...</p>', '<button class="btn-cancel" onclick="app.closeModal()">Đóng</button>');
+            } else {
+                notifyUpdate('Đang kiểm tra phiên bản mới...');
+            }
+        });
+
+        window.electronAPI.on('app-update:not-available', () => {
+            if (this._manualUpdateCheck) {
+                updateVersionModal('<p>Bạn đang dùng phiên bản mới nhất.</p>', '<button class="btn-cancel" onclick="app.closeModal()">Đóng</button>');
+                this._manualUpdateCheck = false;
+            } else {
+                notifyUpdate('Bạn đang dùng phiên bản mới nhất.', 'success');
+            }
+        });
+    }
+
+    async checkAppVersion() {
+        if (!window.electronAPI?.invoke) return;
+        this._manualUpdateCheck = true;
+        this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Đang kiểm tra phiên bản mới. Vui lòng chờ...</p></div>`);
+        const actions = document.getElementById('modal-actions');
+        if (actions) {
+            actions.innerHTML = '<button class="btn-cancel" onclick="app.closeModal()">Đóng</button>';
+        }
+        try {
+            const result = await window.electronAPI.invoke('app-update:check');
+            if (result?.dev) {
+                this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Phiên bản hiện tại: <strong>${result.version || 'n/a'}</strong></p><p>Ứng dụng đang chạy trong môi trường phát triển. Auto-update chỉ có hiệu lực khi chạy bản đóng gói.</p></div>`);
+                this._manualUpdateCheck = false;
+                return;
+            }
+            if (!result?.success) {
+                this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Lỗi khi kiểm tra phiên bản:</p><p>${result.message || 'Không thể kiểm tra cập nhật.'}</p></div>`);
+                this._manualUpdateCheck = false;
+                return;
+            }
+            if (result.version) {
+                this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Đang kiểm tra phiên bản mới cho phiên bản hiện tại: <strong>${result.version}</strong>.</p><p>Nếu không có bản mới, bạn sẽ nhận thông báo ngay sau.</p></div>`);
+            }
+        } catch (err) {
+            this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Lỗi khi kiểm tra phiên bản:</p><p>${err?.message || err}</p></div>`);
+            this._manualUpdateCheck = false;
+        }
+    }
+
+    async downloadAppUpdate() {
+        const actions = document.getElementById('modal-actions');
+        if (actions) {
+            actions.innerHTML = '<button class="btn-cancel" onclick="app.closeModal()">Đóng</button>';
+        }
+
+        const result = await window.electronAPI?.invoke('app-update:download-update');
+        if (!result?.success) {
+            this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Không thể tải bản cập nhật:</p><p>${result?.message || 'Đã xảy ra lỗi khi tải cập nhật.'}</p></div>`);
+            this._manualUpdateCheck = false;
+        }
+    }
+
+    _confirmUpdateRestart() {
+        window.electronAPI?.invoke('app-update:restart-to-update');
     }
 
     async submitCustomEffectReq() {
@@ -2527,6 +2656,7 @@ class EffectStoreApp {
     closeModal() {
         document.getElementById('modal-overlay').classList.remove('show');
         if (this.paymentInterval) { clearInterval(this.paymentInterval); this.paymentInterval = null; }
+        this._manualUpdateCheck = false;
     }
 
     showEffectDetail(effectId) {

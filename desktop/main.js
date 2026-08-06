@@ -6,6 +6,8 @@ const { spawn } = require('child_process');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const AutoLaunch = require('auto-launch');
+const log = require('electron-log');
+const { autoUpdater } = require('electron-updater');
 const { startManagedBackend, stopManagedBackend, updateMongoUri, backendStatus, ensureBackendConfig } = require('./backend-manager');
 const { sanitizeDiagnosticText } = require('./diagnostics');
 
@@ -46,11 +48,11 @@ function getManagedBackendOptions() {
         // Must match the central server's own JWT_SECRET exactly, so tokens it
         // issues at login are also accepted by this machine's local-only routes
         // (WebSocket, OBS, TikTok, Settings).
-        sharedJwtSecret: process.env.LIVEFLOW_SHARED_JWT_SECRET || '675ad2a8642ae99b1f859f47dce6ba799fa07ecde2687a4315062c4b71caba7cebfb6d0fee091b54489d380c4497133b',
+        sharedJwtSecret: process.env.LIVEFLOW_SHARED_JWT_SECRET || '',
         // Must match the central server's own ENCRYPTION_PASSWORD exactly —
         // an effect file encrypted centrally (or on any other machine) can
         // only be decrypted here if this machine derives the same AES key.
-        sharedEncryptionPassword: process.env.LIVEFLOW_SHARED_ENCRYPTION_PASSWORD || 'effectstore-super-secret-encryption-key-2024',
+        sharedEncryptionPassword: process.env.LIVEFLOW_SHARED_ENCRYPTION_PASSWORD || '',
         launchProcess: app.isPackaged
             ? (entry, options) => utilityProcess.fork(entry, [], {
                 cwd: options.cwd,
@@ -215,6 +217,69 @@ function getMachineId() {
 }
 
 const MACHINE_ID = getMachineId();
+
+function sendUpdateEvent(channel, payload = {}) {
+    if (!mainWindow || !mainWindow.webContents) return;
+    try {
+        mainWindow.webContents.send(channel, payload);
+    } catch (error) {
+        log.warn('Unable to send update event to renderer:', error);
+    }
+}
+
+function setupAutoUpdater() {
+    if (!app.isPackaged) {
+        log.info('Auto-update disabled in development mode.');
+        return;
+    }
+
+    const updateServerUrl = process.env.LIVEFLOW_UPDATE_URL;
+    autoUpdater.autoDownload = true;
+    autoUpdater.fullChangelog = false;
+    autoUpdater.logger = log;
+    log.transports.file.resolvePath = () => path.join(app.getPath('userData'), 'logs', 'auto-updater.log');
+    autoUpdater.logger.transports.file.level = 'info';
+
+    if (updateServerUrl) {
+        autoUpdater.setFeedURL({ provider: 'generic', url: updateServerUrl });
+    }
+
+    autoUpdater.autoDownload = false;
+
+    autoUpdater.on('checking-for-update', () => {
+        log.info('Checking for updates...');
+        sendUpdateEvent('app-update:checking');
+    });
+
+    autoUpdater.on('update-available', (info) => {
+        log.info('Update available:', info.version);
+        sendUpdateEvent('app-update:available', info);
+    });
+
+    autoUpdater.on('update-not-available', () => {
+        log.info('No update available.');
+        sendUpdateEvent('app-update:not-available');
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+        sendUpdateEvent('app-update:download-progress', {
+            percent: Math.round(progress.percent),
+            bytesPerSecond: progress.bytesPerSecond,
+            transferred: progress.transferred,
+            total: progress.total
+        });
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+        log.info('Update downloaded:', info.version);
+        sendUpdateEvent('app-update:downloaded', info);
+    });
+
+    autoUpdater.on('error', (error) => {
+        log.error('Auto-updater error:', error);
+        sendUpdateEvent('app-update:error', String(error?.message || error));
+    });
+}
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -435,13 +500,26 @@ if (!hasSingleInstanceLock) {
 
 app.whenReady().then(async () => {
     try {
+        console.log('🚀 Starting managed backend...');
         const backend = await startManagedBackend(getManagedBackendOptions());
         backendProcess = backend.process;
-        await waitForDatabaseConnection(5000);
+        console.log('🚀 Managed backend started, waiting for DB connection...');
+        const status = await waitForDatabaseConnection(10000);
+        console.log('🚀 Backend database connection status:', status);
+        if (!status.database?.connected) {
+            throw new Error('Không thể kết nối cơ sở dữ liệu backend. Vui lòng kiểm tra MongoDB và cấu hình URI.');
+        }
     } catch (error) {
-        dialog.showErrorBox('Không thể khởi động LiveFlow Backend', error.message);
+        console.error('Backend startup error:', error);
+        dialog.showErrorBox('Không thể khởi động LiveFlow Backend', String(error?.message || error));
     }
     createWindow();
+    setupAutoUpdater();
+    if (app.isPackaged) {
+        autoUpdater.checkForUpdates().catch((error) => {
+            log.warn('Auto-update check failed:', error);
+        });
+    }
 });
 
 app.on('window-all-closed', () => {
@@ -461,6 +539,45 @@ app.on('before-quit', (event) => {
         managedBackendStopped = true;
         app.quit();
     });
+});
+
+ipcMain.handle('app-update:check', async () => {
+    const currentVersion = app.getVersion();
+    if (!app.isPackaged) {
+        return {
+            success: true,
+            dev: true,
+            version: currentVersion,
+            message: 'Chạy trong môi trường phát triển. Auto-update chỉ hoạt động trên bản đóng gói.'
+        };
+    }
+    try {
+        await autoUpdater.checkForUpdates();
+        return { success: true, version: currentVersion };
+    } catch (error) {
+        return { success: false, message: String(error?.message || error), version: currentVersion };
+    }
+});
+
+ipcMain.handle('app-update:download-update', async () => {
+    if (!app.isPackaged) {
+        return { success: false, message: 'Chỉ có thể tải cập nhật trong bản phát hành đóng gói.' };
+    }
+
+    try {
+        await autoUpdater.downloadUpdate();
+        return { success: true };
+    } catch (error) {
+        return { success: false, message: String(error?.message || error) };
+    }
+});
+
+ipcMain.handle('app-update:restart-to-update', () => {
+    if (app.isPackaged) {
+        autoUpdater.quitAndInstall(false, true);
+        return { success: true };
+    }
+    return { success: false, message: 'Chỉ có thể cài đặt cập nhật trong bản phát hành đóng gói.' };
 });
 
 app.on('activate', () => {

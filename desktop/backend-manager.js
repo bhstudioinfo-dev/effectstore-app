@@ -19,30 +19,55 @@ function rotateLogFile(logPath, maxBytes = 5 * 1024 * 1024, keep = 5) {
     return true;
 }
 
-function backendHealthCheck(timeoutMs = 1000) {
-    return new Promise((resolve) => {
-        const request = http.get('http://127.0.0.1:9000/api/system/status', { timeout: timeoutMs }, (response) => {
-            response.resume();
-            resolve(response.statusCode === 200 || response.statusCode === 503);
-        });
-        request.on('timeout', () => { request.destroy(); resolve(false); });
-        request.on('error', () => resolve(false));
-    });
+const BACKEND_HOSTS = ['127.0.0.1', 'localhost'];
+const BACKEND_STATUS_PATH = '/api/system/status';
+const BACKEND_PORT = 9000;
+
+function makeBackendUrl(host) {
+    return `http://${host}:${BACKEND_PORT}${BACKEND_STATUS_PATH}`;
 }
 
-function backendStatus(timeoutMs = 1500) {
+function tryBackendRequest(url, timeoutMs) {
     return new Promise((resolve) => {
-        const request = http.get('http://127.0.0.1:9000/api/system/status', { timeout: timeoutMs }, (response) => {
+        const request = http.get(url, { timeout: timeoutMs }, (response) => {
             let body = '';
             response.setEncoding('utf8');
             response.on('data', (chunk) => { body += chunk; });
             response.on('end', () => {
-                try { resolve({ reachable: true, statusCode: response.statusCode, ...JSON.parse(body) }); }
-                catch (_error) { resolve({ reachable: true, statusCode: response.statusCode, success: false }); }
+                const reachable = response.statusCode === 200 || response.statusCode === 503;
+                resolve({ reachable, response, body });
             });
         });
         request.on('timeout', () => { request.destroy(); resolve({ reachable: false }); });
         request.on('error', () => resolve({ reachable: false }));
+        request.on('close', () => {});
+    });
+}
+
+function backendHealthCheck(timeoutMs = 1000) {
+    return new Promise(async (resolve) => {
+        for (const host of BACKEND_HOSTS) {
+            const result = await tryBackendRequest(makeBackendUrl(host), timeoutMs);
+            if (result.reachable) return resolve(true);
+        }
+        resolve(false);
+    });
+}
+
+function backendStatus(timeoutMs = 1500) {
+    return new Promise(async (resolve) => {
+        for (const host of BACKEND_HOSTS) {
+            const result = await tryBackendRequest(makeBackendUrl(host), timeoutMs);
+            if (!result.reachable) continue;
+            try {
+                resolve({ reachable: true, statusCode: result.response.statusCode, ...JSON.parse(result.body) });
+                return;
+            } catch (_error) {
+                resolve({ reachable: true, statusCode: result.response.statusCode, success: false });
+                return;
+            }
+        }
+        resolve({ reachable: false });
     });
 }
 
@@ -73,8 +98,8 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
         ENCRYPTION_PASSWORD: readSecret('ENCRYPTION_PASSWORD'),
         INITIAL_SETUP_TOKEN: readSecret('INITIAL_SETUP_TOKEN'),
         MONGODB_URI: readSecret('MONGODB_URI'),
-        API_HOST: '0.0.0.0',
-        WS_HOST: '0.0.0.0'
+        API_HOST: '127.0.0.1',
+        WS_HOST: '127.0.0.1'
     };
     // JWT_SECRET can no longer be a random per-install value once login goes
     // through the shared central server (see docs/COMMERCIAL_CLOUD_ROADMAP.md):
@@ -182,14 +207,15 @@ async function startManagedBackend(options) {
         logStream.end();
     });
 
-    const deadline = Date.now() + 15000;
+    const deadline = Date.now() + 30000;
     while (Date.now() < deadline) {
         if (child.__effectstoreExited) throw new Error(`Backend đã dừng với mã ${child.__effectstoreExitCode}. Xem logs/backend.log.`);
-        if (await backendHealthCheck(750)) return { process: child, managed: true, reason: 'started' };
-        await new Promise((resolve) => setTimeout(resolve, 250));
+        if (await backendHealthCheck(1000)) return { process: child, managed: true, reason: 'started' };
+        await new Promise((resolve) => setTimeout(resolve, 300));
     }
-    child.kill('SIGTERM');
-    throw new Error('Backend không sẵn sàng sau 15 giây. Kiểm tra MongoDB và logs/backend.log.');
+    const errorMsg = 'Backend không sẵn sàng sau 30 giây. Kiểm tra MongoDB và logs/backend.log.';
+    try { child.kill('SIGTERM'); } catch (_err) {}
+    throw new Error(errorMsg);
 }
 
 function stopManagedBackend(child, timeoutMs = 5000) {

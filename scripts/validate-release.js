@@ -13,6 +13,12 @@ const rootPackage = readJson('package.json');
 const desktopPackage = readJson('desktop/package.json');
 const desktopFiles = new Set(desktopPackage.build?.files || []);
 const extraResources = desktopPackage.build?.extraResources || [];
+const desktopMain = fs.existsSync(path.join(root, 'desktop', 'main.js'))
+    ? fs.readFileSync(path.join(root, 'desktop', 'main.js'), 'utf8')
+    : '';
+const backendManager = fs.existsSync(path.join(root, 'desktop', 'backend-manager.js'))
+    ? fs.readFileSync(path.join(root, 'desktop', 'backend-manager.js'), 'utf8')
+    : '';
 const trackedFiles = require('child_process')
     .execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' })
     .split(/\r?\n/)
@@ -28,6 +34,12 @@ if (!desktopFiles.has('assets/**/*')) failures.push('Desktop assets are missing 
 if (!desktopFiles.has('renderer/**/*')) failures.push('Desktop renderer is missing from build.files.');
 if (!desktopFiles.has('backend-manager.js')) failures.push('Desktop backend manager is missing from build.files.');
 if (!desktopFiles.has('diagnostics.js')) failures.push('Desktop diagnostics sanitizer is missing from build.files.');
+if (backendManager.includes("API_HOST: '0.0.0.0'") || backendManager.includes("WS_HOST: '0.0.0.0'")) {
+    failures.push('Desktop backend default hosts must use 127.0.0.1 instead of 0.0.0.0 for release builds.');
+}
+if (desktopMain.includes('LIVEFLOW_SHARED_JWT_SECRET') || desktopMain.includes('LIVEFLOW_SHARED_ENCRYPTION_PASSWORD')) {
+    failures.push('Desktop main should not contain hardcoded shared secret fallbacks.');
+}
 if (desktopPackage.build?.nsis?.deleteAppDataOnUninstall !== false) {
     failures.push('NSIS uninstall must preserve application data by default.');
 }

@@ -1,0 +1,92 @@
+--- port 9000 status ---
+
+ComputerName           : 127.0.0.1
+RemoteAddress          : 127.0.0.1
+RemotePort             : 9000
+InterfaceAlias         : Loopback Pseudo-Interface 1
+SourceAddress          : 127.0.0.1
+PingSucceeded          : True
+PingReplyDetails (RTT) : 0 ms
+TcpTestSucceeded       : False
+
+--- last backend.log lines ---
+[PLAYBACK] effect_player completed: duration_timeout
+Adding to queue: 6a734dd96a377261063c3f69 (8003ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+Adding to queue: 6a70c1f7d0ea5b287690aae8 (5000ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+Adding to queue: 69e7559bf5b6f2f61a81d89c (3282ms, preview_effect)
+[PLAYBACK] effect_player completed: duration_timeout
+[PLAYBACK] playbackType=preview_effect → effect_player
+Adding to queue: 6a70c1f7d0ea5b287690aae8 (5000ms, preview_effect)
+[PLAYBACK] effect_player completed: duration_timeout
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+Adding to queue: 6a734dd96a377261063c3f69 (8003ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+[dotenv@17.3.1] injecting env (11) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[startup] environment loaded
+[startup] security validated
+[startup] core dependencies loaded
+[startup] models and configuration loaded
+[startup] OBS service loaded
+[startup] TikTok service loaded
+[startup] services loaded
+[startup] routes loaded
+[startup] runtime directories ready
+Migrated legacy runtime data from D:\effectstore-app-backup\backend to C:\Users\KATANA\AppData\Roaming\effectstore-desktop\backend-data
+☁️  Cloud proxy enabled — auth/payment/banner-read/effects-catalog-read route to the central server.
+🚀 Backend started - EffectStore Server v1.0
+🚀 Server chạy tại: http://localhost:9000
+📡 WebSocket init at: ws://localhost:9001
+🔐 DRM Protection: Enabled (Encrypted Streaming)
+✅ OBS WebSocket Connected & Identified
+Refreshed OBS browser source URL: gift_menu_overlay -> gift-menu-overlay.html
+✅ Seeded initial gift library into MongoDB
+✅ MongoDB Connected (schema v2)
+❌ OBS WebSocket Connection Closed. Retrying in 5s...
+✅ OBS WebSocket Connected & Identified
+Refreshed OBS browser source URL: gift_menu_overlay -> gift-menu-overlay.html
+(node:30540) Warning: NodeVersionSupportWarning: The AWS SDK for JavaScript (v3)
+versions published after the first week of January 2027
+will require node >=22. You are running node v18.18.2.
+
+To continue receiving updates to AWS services, bug fixes,
+and security updates please upgrade to node >=22.
+
+More information can be found at: https://a.co/c895JFp
+(Use `electron --trace-warnings ...` to show where the warning was created)
+Adding to queue: 6a70c1f7d0ea5b287690aae8 (5000ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+Adding to queue: 69e7559bf5b6f2f61a81d89c (3282ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+Adding to queue: 6a70c1f7d0ea5b287690aae8 (5000ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+Adding to queue: 6a716677327ae1a91e2c2b0f (4000ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+Adding to queue: 6a716677327ae1a91e2c2b0f (4000ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+(node:30540) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:30540) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+Adding to queue: 6a716677327ae1a91e2c2b0f (4000ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+Adding to queue: 6a70c1f7d0ea5b287690aae8 (5000ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+Adding to queue: 6a70c1f7d0ea5b287690aae8 (5000ms, preview_effect)
+[PLAYBACK] effect_player completed: duration_timeout
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+Adding to queue: 69e7559bf5b6f2f61a81d89c (3282ms, preview_effect)
+[PLAYBACK] playbackType=preview_effect → effect_player
+[PLAYBACK] effect_player completed: duration_timeout
+[dotenv@17.3.1] injecting env (11) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[startup] environment loaded
+[startup] security validated

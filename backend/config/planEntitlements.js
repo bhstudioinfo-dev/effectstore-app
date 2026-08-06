@@ -10,7 +10,7 @@ const PLAN_ENTITLEMENTS = Object.freeze({
         ttsPerSession: Infinity, designerLevel: 'basic', mappingAutomation: 'standard'
     }),
     business: Object.freeze({
-        key: 'business', label: 'Pro', devices: 3, mappings: Infinity, customEffects: Infinity,
+        key: 'business', label: 'Pro', devices: 1, mappings: Infinity, customEffects: Infinity,
         layouts: Infinity, menuAssets: Infinity, goalTrackers: Infinity,
         commentsPerSession: Infinity, ttsPerSession: Infinity, designerLevel: 'advanced',
         mappingAutomation: 'advanced'

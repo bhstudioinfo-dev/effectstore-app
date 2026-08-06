@@ -32,7 +32,7 @@ The UI labels are final, but persisted/internal keys are legacy:
 | Basic 20 menu assets | upload UI | upload count uses 20 | both |
 | Basic 10 goals | designer | backend item count | both |
 | Pro unlimited core limits | UI | Infinity | both |
-| Pro 3 devices | UI label | backend 3 | both |
+| Pro 1 device | UI label | backend 1 | both |
 | Studio unlimited devices/team/agency | pricing text | Infinity devices only | **missing** team/agency/workflows |
 
 ## Confirmed inconsistencies
