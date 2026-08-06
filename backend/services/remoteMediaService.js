@@ -80,7 +80,7 @@ async function saveRemoteSound(uploadedFile, requestedName) {
         id,
         name: String(requestedName || path.basename(uploadedFile.originalname, ext) || 'Sound').trim().slice(0, 60),
         fileName,
-        url: `http://127.0.0.1:8080/soundboard/${fileName}`,
+        url: `http://127.0.0.1:${process.env.PORT || 9000}/soundboard/${fileName}`,
         bytes: uploadedFile.size,
         createdAt: new Date().toISOString()
     };
@@ -113,6 +113,7 @@ async function saveRemoteEffect(uploadedFile, requestedName) {
         ], 120000);
         const duration = await getDurationSeconds(outputPath);
         if (!duration) throw new Error('Không đọc được thời lượng video sau khi tối ưu.');
+        const PORT = process.env.PORT || 9000;
         const effect = {
             id,
             _id: id,
@@ -130,8 +131,8 @@ async function saveRemoteEffect(uploadedFile, requestedName) {
             width: 720,
             height: 1280,
             fps: 30,
-            previewUrl: `http://127.0.0.1:8080/custom-effects/${id}/effect.webm`,
-            thumbUrl: `http://127.0.0.1:8080/custom-effects/${id}/thumbnail.png`
+            previewUrl: `http://127.0.0.1:${PORT}/custom-effects/${id}/effect.webm`,
+            thumbUrl: `http://127.0.0.1:${PORT}/custom-effects/${id}/thumbnail.png`
         };
         fs.writeFileSync(path.join(targetDir, 'metadata.json'), JSON.stringify(effect, null, 2), 'utf8');
         return effect;

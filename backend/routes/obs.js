@@ -172,19 +172,34 @@ router.get('/effect/:id', async (req, res) => {
         }
         const durationMs = requestedDuration < 100
             ? Math.round(requestedDuration * 1000)
+    } catch (error) {
+        console.error('Effect player preview error:', error);
+        return res.status(500).json({ success: false, message: 'Không thể xem thử hiệu ứng trên OBS.' });
+    }
+});
+
+// Render effect HTML for OBS Browser Source
+router.get('/effect/:id', async (req, res) => {
+    try {
+        const effectId = req.params.id;
+        const PORT = process.env.PORT || 9000;
+        const blankHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:1080px!important;height:1920px!important;overflow:hidden;background:transparent!important}</style></head><body></body></html>`;
+        if (req.query.idle === '1') return res.send(blankHtml);
+
+        const requestedDuration = Number(req.query.duration || req.query.d || 0);
+        if (!Number.isFinite(requestedDuration) || requestedDuration <= 0) {
+            console.warn(`Skipping OBS effect ${effectId}: missing duration query metadata`);
+            res.setHeader('X-Effect-Warning', 'missing-duration');
+            return res.status(422).send(blankHtml);
+        }
+        const durationMs = requestedDuration < 100
+            ? Math.round(requestedDuration * 1000)
             : Math.round(requestedDuration);
         const trigger = obsService.consumeTriggerToken(req.query.trigger, effectId);
         if (!trigger) return res.send(blankHtml);
 
         const isCustomEffect = /^custom-[a-zA-Z0-9-]+$/.test(effectId);
         const streamToken = issueEffectAccessToken({ effectId, userId: 'obs', purpose: 'legacy-obs-effect' });
-        const videoUrl = isCustomEffect
-            ? `http://127.0.0.1:8080/custom-effects/${effectId}/effect.webm`
-            : `http://localhost:${PORT}/api/stream/effect/${effectId}?token=${streamToken}`;
-
-        res.send(`
-<!DOCTYPE html>
-<html>
 <head>
     <meta charset="UTF-8">
     <style>
