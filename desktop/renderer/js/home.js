@@ -3677,6 +3677,7 @@ class EffectStoreApp {
             const cards = [];
             for (let index = 0; index < state.visible; index += 1) {
                 const slot = slotsByIndex.get(index);
+                const colorClass = btnColors[index % btnColors.length];
 
                 if (type === 'sound') {
                     if (!slot) {
