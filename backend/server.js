@@ -12,7 +12,7 @@ process.on('unhandledRejection', (reason) => {
     console.error('❌ [unhandledRejection] Backend continues running despite:', reason);
 });
 
-require('dotenv').config();
+try { require('dotenv').config(); } catch (_e) {}
 const startupTrace = (label) => {
     if (process.env.EFFECTSTORE_STARTUP_TRACE === 'true') console.log(`[startup] ${label}`);
 };
