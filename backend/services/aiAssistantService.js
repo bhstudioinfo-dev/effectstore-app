@@ -54,10 +54,10 @@ function setBroadcastCallback(cb) {
 }
 
 const PERSONA_PROMPTS = {
-    sassy: 'Bạn là trợ lý AI xéo sắc, hài hước, hay cà khịa một cách thông minh và dí dỏm trên phòng livestream. Không xúc phạm thô tục. Trả lời bằng tiếng Việt cực ngắn gọn 1 câu duy nhất (tối đa 20 từ).',
-    funny: 'Bạn là trợ lý AI vui vẻ, hài hước, hay pha trò nhí nhảnh trên phòng livestream. Trả lời bằng tiếng Việt cực ngắn gọn 1 câu duy nhất (tối đa 20 từ).',
-    sweet: 'Bạn là trợ lý AI ngọt ngào, dịu dàng, đáng yêu trên phòng livestream. Trả lời bằng tiếng Việt cực ngắn gọn 1 câu duy nhất (tối đa 20 từ).',
-    smart: 'Bạn là trợ lý AI tinh tế, thông thái, lịch sự trên phòng livestream. Trả lời bằng tiếng Việt cực ngắn gọn 1 câu duy nhất (tối đa 20 từ).'
+    sassy: 'Bạn là trợ lý AI cà khịa, xéo sắc, thông minh và cực kỳ dí dỏm trên phòng livestream. Nhiệm vụ của bạn là đáp trả lại comment của khán giả một cách hài hước, xéo sắc nhẹ nhàng, khiến người xem bật cười. Không xúc phạm thô tục. Trả lời bằng tiếng Việt cực ngắn gọn 1 câu duy nhất (dưới 20 từ).',
+    funny: 'Bạn là trợ lý AI nhí nhảnh, vui vẻ, siêu hài hước trên phòng livestream. Hãy đáp trả khán giả bằng phong cách hài hước, dí dỏm, thả thính ngộ nghĩnh. Trả lời bằng tiếng Việt cực ngắn gọn 1 câu duy nhất (dưới 20 từ).',
+    sweet: 'Bạn là trợ lý AI dịu dàng, ngọt ngào, siêu đáng yêu trên phòng livestream. Hãy gửi lời cảm ơn và khen ngợi khán giả một cách đằm thắm. Trả lời bằng tiếng Việt cực ngắn gọn 1 câu duy nhất (dưới 20 từ).',
+    smart: 'Bạn là trợ lý AI tinh tế, thông thái, lịch sự trên phòng livestream. Hãy đưa ra góc nhìn thông minh, khéo léo. Trả lời bằng tiếng Việt cực ngắn gọn 1 câu duy nhất (dưới 20 từ).'
 };
 
 const FALLBACK_RESPONSES = {
@@ -96,13 +96,16 @@ function getRandomFallback(persona) {
     return list[Math.floor(Math.random() * list.length)];
 }
 
-async function callGeminiApi(apiKey, systemPrompt, userMessage) {
+async function callGeminiApi(apiKey, systemPrompt, username, userMessage) {
     return new Promise((resolve, reject) => {
         const payload = JSON.stringify({
+            systemInstruction: {
+                parts: [{ text: systemPrompt }]
+            },
             contents: [
-                { role: 'user', parts: [{ text: `${systemPrompt}\n\nComment của khán giả: "${userMessage}"` }] }
+                { role: 'user', parts: [{ text: `Khán giả "${username}" vừa bình luận: "${userMessage}"` }] }
             ],
-            generationConfig: { maxOutputTokens: 60, temperature: 0.8 }
+            generationConfig: { maxOutputTokens: 60, temperature: 0.9 }
         });
 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -134,7 +137,7 @@ async function generateReply(username, comment) {
 
     if (config.geminiApiKey) {
         try {
-            const aiText = await callGeminiApi(config.geminiApiKey, systemPrompt, `${username}: ${cleanComment}`);
+            const aiText = await callGeminiApi(config.geminiApiKey, systemPrompt, username, cleanComment);
             if (aiText) return aiText.replace(/^["']|["']$/g, '');
         } catch (e) {
             console.warn('Gemini API call failed, using fallback:', e.message);
