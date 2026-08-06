@@ -380,6 +380,8 @@ app.set('broadcastToClients', broadcastToClients);
 app.locals.isEffectPlayerReady = () => effectPlayerClients.size > 0;
 
 // Initialize services with broadcasting capability
+const aiAssistantService = require('./services/aiAssistantService');
+aiAssistantService.setBroadcastCallback(broadcastToClients);
 tiktokService.init(broadcastToClients, () => effectPlayerClients.size > 0);
 effectQueue.setBroadcastFn(broadcastToClients);
 

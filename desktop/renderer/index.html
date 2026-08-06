@@ -1566,7 +1566,61 @@
                             Phát âm thanh thông báo ngắn ("Ping") khi nhận được quà tặng bất kỳ để thu hút sự chú ý.
                         </div>
 
-                        <button onclick="app.savePreferences()" style="background:linear-gradient(135deg,#3b82f6,#2563eb); border:none; color:#fff; padding:8px; border-radius:8px; font-size:11px; cursor:pointer; font-weight:700; outline:none; margin-top:auto; width:100%; display:flex; align-items:center; justify-content:center; gap:4px;">💾 Lưu nhanh</button>
+                    </div>
+                </div>
+
+                <!-- AI Streamer Assistant Panel -->
+                <div style="background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.2); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative; margin-bottom:18px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="ai-assistant-enabled" style="width:16px; height:16px; cursor:pointer;" onchange="app.saveAiAssistantConfig()">
+                            <label for="ai-assistant-enabled" style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">🤖 Trợ lý AI Cà Khịa Live Chat</label>
+                        </div>
+                        <span style="font-size:10px; background:rgba(139,92,246,0.2); color:#a78bfa; padding:2px 8px; border-radius:10px; font-weight:700;">PRO AI</span>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Tính cách AI</label>
+                            <select id="ai-assistant-persona" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig()">
+                                <option value="sassy" selected>🔥 Xéo sắc, Cà khịa</option>
+                                <option value="funny">😂 Hài hước, Nhí nhảnh</option>
+                                <option value="sweet">🌸 Ngọt ngào, Dịu dàng</option>
+                                <option value="smart">🎓 Tinh tế, Thông thái</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Thời gian chờ (Cooldown)</label>
+                            <select id="ai-assistant-cooldown" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig()">
+                                <option value="15">15 giây</option>
+                                <option value="20" selected>20 giây</option>
+                                <option value="30">30 giây</option>
+                                <option value="60">60 giây</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Chế độ phản hồi</label>
+                            <select id="ai-assistant-donator-only" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig()">
+                                <option value="false" selected>🌐 Tất cả Viewer</option>
+                                <option value="true">👑 Chỉ Viewer đã Tặng quà (VIP)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Google Gemini API Key (Tuỳ chọn - Miễn phí 100%)</label>
+                            <input type="password" id="ai-assistant-gemini-key" placeholder="AIzaSy..." style="width:100%; font-size:10px; padding:4px 8px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none;" onchange="app.saveAiAssistantConfig()">
+                        </div>
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">ElevenLabs API Key (Tuỳ chọn - Giọng AI siêu thật)</label>
+                            <input type="password" id="ai-assistant-eleven-key" placeholder="xi-api-key..." style="width:100%; font-size:10px; padding:4px 8px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none;" onchange="app.saveAiAssistantConfig()">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
+                        <span style="font-size:10px; color:var(--text-muted);">💡 Trợ lý AI sẽ tự chọn comment khán giả và phát biểu xéo sắc/hài hước trực tiếp lên OBS.</span>
+                        <button onclick="app.testAiAssistantSpeech()" style="background:rgba(139,92,246,0.25); border:1px solid rgba(139,92,246,0.4); color:#c4b5fd; padding:4px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe thử AI Cà Khịa</button>
                     </div>
                 </div>
 

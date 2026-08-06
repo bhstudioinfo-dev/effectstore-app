@@ -6412,6 +6412,7 @@ class EffectStoreApp {
 
         // Load danh sách giọng đọc
         this.loadVoices();
+        this.loadAiAssistantConfig();
 
         // Populate the connection username input automatically if default exists
         const defaultUser = localStorage.getItem('tiktok_username');
@@ -6722,6 +6723,71 @@ class EffectStoreApp {
         this.ttsFollowTemplate = ttsFollowTemplate;
 
         this.showNotification('success', '✅ Lưu tùy chọn thành công!');
+    }
+
+    async loadAiAssistantConfig() {
+        try {
+            const res = await fetch(`${this.API_URL}/api/tiktok/ai-config`, {
+                headers: { 'Authorization': `Bearer ${this.authToken}` }
+            });
+            const data = await res.json();
+            if (data.success && data.config) {
+                const c = data.config;
+                if (document.getElementById('ai-assistant-enabled')) document.getElementById('ai-assistant-enabled').checked = Boolean(c.enabled);
+                if (document.getElementById('ai-assistant-persona')) document.getElementById('ai-assistant-persona').value = c.persona || 'sassy';
+                if (document.getElementById('ai-assistant-cooldown')) document.getElementById('ai-assistant-cooldown').value = String(c.cooldownSeconds || 20);
+                if (document.getElementById('ai-assistant-donator-only')) document.getElementById('ai-assistant-donator-only').value = String(c.donatorOnly || false);
+                if (document.getElementById('ai-assistant-gemini-key')) document.getElementById('ai-assistant-gemini-key').value = c.geminiApiKey || '';
+                if (document.getElementById('ai-assistant-eleven-key')) document.getElementById('ai-assistant-eleven-key').value = c.elevenLabsApiKey || '';
+            }
+        } catch (_e) {}
+    }
+
+    async saveAiAssistantConfig() {
+        try {
+            const payload = {
+                enabled: document.getElementById('ai-assistant-enabled')?.checked || false,
+                persona: document.getElementById('ai-assistant-persona')?.value || 'sassy',
+                cooldownSeconds: parseInt(document.getElementById('ai-assistant-cooldown')?.value || '20', 10),
+                donatorOnly: document.getElementById('ai-assistant-donator-only')?.value === 'true',
+                geminiApiKey: document.getElementById('ai-assistant-gemini-key')?.value || '',
+                elevenLabsApiKey: document.getElementById('ai-assistant-eleven-key')?.value || ''
+            };
+            await fetch(`${this.API_URL}/api/tiktok/ai-config`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+        } catch (_e) {}
+    }
+
+    async testAiAssistantSpeech() {
+        try {
+            await this.saveAiAssistantConfig();
+            this.showNotification('info', '🤖 Đang phát sinh lời thoại AI Cà khịa...');
+            const res = await fetch(`${this.API_URL}/api/tiktok/ai-test-speech`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: 'Khán giả Thử nghiệm',
+                    comment: 'Hôm nay Idol live game hay quá ta!'
+                })
+            });
+            const data = await res.json();
+            if (data.success && data.event?.replyText) {
+                this.showNotification('success', `🤖 AI Cà khịa: "${data.event.replyText}"`);
+            } else {
+                this.showNotification('warning', '⚠️ Hãy bật công tắc Bật AI Trợ lý Cà khịa!');
+            }
+        } catch (e) {
+            this.showNotification('error', '❌ Lỗi: ' + e.message);
+        }
     }
 
     clearAppData() {

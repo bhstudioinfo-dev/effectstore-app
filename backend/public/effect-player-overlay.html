@@ -138,6 +138,20 @@
                 }
             }
 
+            function speakAiReply(data) {
+                if (!data || !data.replyText) return;
+                try {
+                    if ('speechSynthesis' in window) {
+                        window.speechSynthesis.cancel();
+                        const utterance = new SpeechSynthesisUtterance(data.replyText);
+                        utterance.lang = 'vi-VN';
+                        utterance.rate = Number(data.readSpeed) || 1.0;
+                        utterance.volume = Number(data.volume) || 1.0;
+                        window.speechSynthesis.speak(utterance);
+                    }
+                } catch (_e) {}
+            }
+
             function connect() {
                 const wsToken = new URLSearchParams(window.location.search).get('wsToken') || '';
                 socket = new WebSocket(`${protocol}//${window.location.hostname || 'localhost'}:9001?token=${encodeURIComponent(wsToken)}`);
@@ -150,6 +164,8 @@
                         if (packet.event === 'effect_player_play_request') {
                             console.log('Future playback request received');
                             playPreview(packet.data || {});
+                        } else if (packet.event === 'ai_assistant_speech') {
+                            speakAiReply(packet.data || {});
                         }
                     } catch (error) {
                         console.warn('Ignored invalid effect player message:', error.message);

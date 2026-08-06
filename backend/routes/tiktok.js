@@ -927,6 +927,42 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
         res.json({ success: true, triggered: true });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
+
+const aiAssistantService = require('../services/aiAssistantService');
+
+// AI Assistant Config API
+router.get('/ai-config', authMiddleware, (req, res) => {
+    try {
+        const config = aiAssistantService.getConfig();
+        res.json({ success: true, config });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/ai-config', authMiddleware, (req, res) => {
+    try {
+        const updated = aiAssistantService.saveConfig(req.body || {});
+        res.json({ success: true, config: updated });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/ai-test-speech', authMiddleware, async (req, res) => {
+    try {
+        const { username, comment } = req.body || {};
+        const testEvent = await aiAssistantService.processChatMessage({
+            username: username || 'Viewer Thử nghiệm',
+            comment: comment || 'Idol live hay quá!',
+            isDonator: true
+        });
+        res.json({ success: true, event: testEvent });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Gifts library
 router.get('/gifts-library', async (req, res) => {
     try {
