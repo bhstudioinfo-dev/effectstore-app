@@ -192,6 +192,16 @@ async function callGeminiApi(apiKey, systemPrompt, username, userMessage) {
     throw new Error('All Gemini models failed');
 }
 
+let systemStatus = {
+    status: 'healthy',
+    message: '🟢 Tất cả Gemini API Key hoạt động bình thường (Dung lượng dồi dào)',
+    lastUpdated: Date.now()
+};
+
+function getSystemStatus() {
+    return systemStatus;
+}
+
 async function generateReply(username, comment) {
     const config = currentConfig;
     const persona = config.persona || 'sassy';
@@ -205,9 +215,23 @@ async function generateReply(username, comment) {
         const activeApiKey = keyList[Math.floor(Math.random() * keyList.length)];
         try {
             const aiText = await callGeminiApi(activeApiKey, systemPrompt, username, cleanComment);
-            if (aiText) return aiText.replace(/^["']|["']$/g, '');
+            if (aiText) {
+                systemStatus = {
+                    status: 'healthy',
+                    message: `🟢 Gemini API (${keyList.length} Key active) hoạt động mượt mà`,
+                    lastUpdated: Date.now()
+                };
+                return aiText.replace(/^["']|["']$/g, '');
+            }
         } catch (e) {
             console.warn('Gemini API call failed, attempting fallback or alternate key:', e.message);
+            if (e.message.includes('429') || e.message.includes('Quota') || e.message.includes('RESOURCE_EXHAUSTED')) {
+                systemStatus = {
+                    status: 'warning',
+                    message: `⚠️ Cảnh báo: Gemini API Key (${activeApiKey.slice(0, 8)}...) vừa chạm trần Quota Google! Vui lòng dán thêm Key mới vào Trang Quản Trị.`,
+                    lastUpdated: Date.now()
+                };
+            }
             // Retry with secondary key if available
             if (keyList.length > 1) {
                 const altKey = keyList.find(k => k !== activeApiKey) || keyList[0];
@@ -217,6 +241,12 @@ async function generateReply(username, comment) {
                 } catch (_altErr) {}
             }
         }
+    } else {
+        systemStatus = {
+            status: 'warning',
+            message: '⚠️ Chưa cấu hình Gemini API Key Hệ Thống. Đang dùng lời thoại dự phòng.',
+            lastUpdated: Date.now()
+        };
     }
 
     return getRandomFallback(persona);
@@ -267,6 +297,7 @@ async function processChatMessage({ username, comment, isDonator = false, userPl
 module.exports = {
     getConfig: loadConfig,
     saveConfig,
+    getSystemStatus,
     setBroadcastCallback,
     processChatMessage,
     generateReply,

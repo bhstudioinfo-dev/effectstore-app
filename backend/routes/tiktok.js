@@ -936,7 +936,8 @@ router.get('/ai-config', authMiddleware, (req, res) => {
         const config = aiAssistantService.getConfig();
         const userPlan = req.user?.plan || 'free';
         const usage = aiAssistantService.getCharacterUsage(userPlan);
-        res.json({ success: true, config, usage });
+        const systemStatus = aiAssistantService.getSystemStatus();
+        res.json({ success: true, config, usage, systemStatus });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
