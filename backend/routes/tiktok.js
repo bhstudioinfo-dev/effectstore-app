@@ -202,6 +202,9 @@ router.post('/disconnect', authMiddleware, async (req, res) => {
 
 router.post('/usage/tts', authMiddleware, (req, res) => {
     const { isTest } = req.body;
+    if (isTest) {
+        return res.json({ success: true, isTest: true, message: 'Test speech allowed' });
+    }
     const result = tiktokService.consumeTts(req.userId, isTest);
     res.status(result.status).json(result.payload);
 });
