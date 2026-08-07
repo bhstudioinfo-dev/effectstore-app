@@ -1540,15 +1540,20 @@ class EffectStoreApp {
     async speakText(text, isTest = false) {
         if (!text) return;
 
-        let voiceId = document.getElementById('admin-eleven-voice-id')?.value || '21m00Tcm4TlvDq8ikWAM';
-        if (voiceId === 'custom') {
-            voiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || '21m00Tcm4TlvDq8ikWAM';
+        let voiceId = 'pNInz6obpgDQGcFmaJgB';
+        const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input') || document.getElementById('admin-eleven-voice-id');
+        if (voiceSelect && voiceSelect.value) {
+            voiceId = voiceSelect.value;
         }
-        this.testAudioCache = this.testAudioCache || {};
-        const cacheKey = voiceId + '_' + text;
+        if (voiceId === 'custom') {
+            voiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || document.querySelector('.ai-assistant-custom-voice-input')?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
+        }
 
-        // If audio is cached for testing, bypass usage limit checks completely (0 Credit deduction!)
-        if (isTest && this.testAudioCache[cacheKey]) {
+        const cacheKey = voiceId + '_' + text;
+        const persistentAudio = localStorage.getItem('es_voice_cache_' + cacheKey);
+
+        // If audio is cached in localStorage, bypass usage limit checks completely (0 Credit deduction!)
+        if (isTest && persistentAudio) {
             this.ttsQueue.push(text);
             if (!this.isProcessingTTS) {
                 this.processTTSQueue();
@@ -1760,18 +1765,22 @@ class EffectStoreApp {
         this.isProcessingTTS = true;
         const text = this.ttsQueue.shift();
 
-        let voiceId = document.getElementById('admin-eleven-voice-id')?.value || '21m00Tcm4TlvDq8ikWAM';
+        let voiceId = 'pNInz6obpgDQGcFmaJgB';
+        const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input') || document.getElementById('admin-eleven-voice-id');
+        if (voiceSelect && voiceSelect.value) {
+            voiceId = voiceSelect.value;
+        }
         if (voiceId === 'custom') {
-            voiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || '21m00Tcm4TlvDq8ikWAM';
+            voiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || document.querySelector('.ai-assistant-custom-voice-input')?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
         }
 
-        this.testAudioCache = this.testAudioCache || {};
         const cacheKey = voiceId + '_' + text;
+        const persistentAudio = localStorage.getItem('es_voice_cache_' + cacheKey);
 
-        if (this.testAudioCache[cacheKey]) {
-            console.log('⚡ Phát ngay từ Audio Cache thử nghiệm (0đ Credit, 0đ Token):', text);
+        if (persistentAudio) {
+            console.log('⚡ Phát ngay từ Persistent Audio Cache Local (0đ Credit, 0đ Token):', text);
             try {
-                this.currentAudio = new Audio(this.testAudioCache[cacheKey]);
+                this.currentAudio = new Audio(persistentAudio);
                 this.currentAudio.volume = this.ttsVolume;
                 this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
                 this.currentAudio.onended = () => { this.processTTSQueue(); };
@@ -1835,7 +1844,9 @@ class EffectStoreApp {
                     const reader = new FileReader();
                     reader.readAsDataURL(blob);
                     reader.onloadend = () => {
-                        this.testAudioCache[cacheKey] = reader.result;
+                        try {
+                            localStorage.setItem('es_voice_cache_' + cacheKey, reader.result);
+                        } catch (_e) {}
                     };
                     const audioUrl = URL.createObjectURL(blob);
                     this.currentAudio = new Audio(audioUrl);
@@ -7008,7 +7019,6 @@ class EffectStoreApp {
     async testAiAssistantSpeech() {
         try {
             await this.saveAiAssistantConfig();
-            this.testAudioCache = {};
 
             let voiceId = 'pNInz6obpgDQGcFmaJgB';
             const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input') || document.getElementById('admin-eleven-voice-id');
