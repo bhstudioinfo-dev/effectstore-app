@@ -1868,24 +1868,39 @@ class EffectStoreApp {
         }
 
         try {
-            const googleTTSUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=vi&client=tw-ob`;
+            const googleTTSUrl = `${this.API_URL}/api/tiktok/google-tts?text=${encodeURIComponent(text)}&lang=vi`;
 
-            this.currentAudio = new Audio(googleTTSUrl);
-            this.currentAudio.volume = this.ttsVolume;
-            this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
+            const res = await fetch(googleTTSUrl);
+            if (res.ok) {
+                const blob = await res.blob();
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = () => {
+                    const dataUrl = reader.result;
+                    try {
+                        localStorage.setItem('es_voice_cache_' + cacheKey, dataUrl);
+                    } catch (_e) {}
 
-            this.currentAudio.onended = () => {
-                this.processTTSQueue();
-            };
+                    fetch(`${this.API_URL}/api/tiktok/save-voice-sample`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ voiceId, audioBase64: dataUrl })
+                    }).catch(() => {});
+                };
 
-            this.currentAudio.onerror = () => {
-                this.speakWebSpeech(text);
-            };
-
-            await this.currentAudio.play().catch(_e => {
-                this.speakWebSpeech(text);
-            });
-            console.log('🗣️ Đang phát Google TTS:', text);
+                const audioUrl = URL.createObjectURL(blob);
+                this.currentAudio = new Audio(audioUrl);
+                this.currentAudio.volume = this.ttsVolume;
+                this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
+                this.currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); this.processTTSQueue(); };
+                this.currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); this.speakWebSpeech(text); };
+                await this.currentAudio.play();
+                console.log('🗣️ Đang phát Google TTS Chị Google (Proxy backend):', text);
+                return;
+            }
+            this.speakWebSpeech(text);
         } catch (error) {
             this.speakWebSpeech(text);
         }

@@ -2016,6 +2016,33 @@ router.post('/goal-board/upload-asset', authMiddleware, goalAssetUpload.single('
     }
 });
 
+router.get('/google-tts', async (req, res) => {
+    try {
+        const text = req.query.text;
+        const lang = req.query.lang || 'vi';
+        if (!text) return res.status(400).json({ error: 'Missing text parameter' });
+
+        const googleTTSUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${encodeURIComponent(lang)}&client=tw-ob`;
+        
+        const response = await fetch(googleTTSUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
+
+        if (!response.ok) {
+            return res.status(response.status).json({ error: 'Google TTS request failed' });
+        }
+
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        const arrayBuffer = await response.arrayBuffer();
+        res.send(Buffer.from(arrayBuffer));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 router.use((error, _req, res, next) => {
     if (error instanceof multer.MulterError || error?.message?.startsWith('Chỉ hỗ trợ ')) {
         return res.status(400).json({ success: false, error: error.message });
