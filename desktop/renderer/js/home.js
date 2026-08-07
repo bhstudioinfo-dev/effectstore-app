@@ -6853,6 +6853,7 @@ class EffectStoreApp {
             if (data.success && data.event?.replyText) {
                 this.showNotification('success', `🤖 AI Cà khịa: "${data.event.replyText}"`);
                 if (data.event.usage) this.renderAiUsageUI(data.event.usage);
+                this.speakText(data.event.replyText, true);
             } else {
                 this.showNotification('warning', '⚠️ Hãy bật công tắc Bật AI Trợ lý Cà khịa!');
             }

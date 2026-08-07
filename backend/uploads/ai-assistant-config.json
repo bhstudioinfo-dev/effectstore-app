@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "persona": "sassy",
+  "cooldownSeconds": 20,
+  "donatorOnly": false,
+  "geminiApiKey": "AIzaSyDlIi-dMtzsDB8hRTNqcAbM27vFF5JZrmQ",
+  "elevenLabsApiKey": "",
+  "elevenLabsVoiceId": "21m00Tcm4TlvDq8ikWAM",
+  "ttsEngine": "webspeech",
+  "readSpeed": 1,
+  "volume": 1,
+  "usedCharactersThisMonth": 57,
+  "addonCharacters": 0,
+  "monthKey": "2026-08"
+}
