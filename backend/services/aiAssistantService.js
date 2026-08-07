@@ -16,10 +16,56 @@ const DEFAULT_CONFIG = {
     elevenLabsVoiceId: '21m00Tcm4TlvDq8ikWAM', // default voice
     ttsEngine: 'webspeech', // 'webspeech' | 'elevenlabs'
     readSpeed: 1.0,
-    volume: 1.0
+    volume: 1.0,
+    usedCharactersThisMonth: 0,
+    addonCharacters: 0,
+    monthKey: ''
 };
 
 let currentConfig = { ...DEFAULT_CONFIG };
+
+const PLAN_LIMITS = {
+    free: 1000,
+    basic: 10000,
+    pro: 35000
+};
+
+function getCharacterUsage(userPlan = 'free') {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (currentConfig.monthKey !== monthKey) {
+        currentConfig.monthKey = monthKey;
+        currentConfig.usedCharactersThisMonth = 0;
+        saveConfig(currentConfig);
+    }
+    
+    const baseLimit = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+    const addon = Number(currentConfig.addonCharacters || 0);
+    const totalLimit = baseLimit + addon;
+    const used = Number(currentConfig.usedCharactersThisMonth || 0);
+    
+    return {
+        used,
+        baseLimit,
+        addon,
+        totalLimit,
+        remaining: Math.max(0, totalLimit - used),
+        hasQuota: used < totalLimit,
+        monthKey
+    };
+}
+
+function recordCharacterUsage(count) {
+    currentConfig.usedCharactersThisMonth = (currentConfig.usedCharactersThisMonth || 0) + count;
+    saveConfig(currentConfig);
+}
+
+function addAddonCharacters(addonCount) {
+    currentConfig.addonCharacters = (currentConfig.addonCharacters || 0) + addonCount;
+    saveConfig(currentConfig);
+    return getCharacterUsage();
+}
 
 function loadConfig() {
     try {
@@ -148,7 +194,7 @@ async function generateReply(username, comment) {
     return getRandomFallback(persona);
 }
 
-async function processChatMessage({ username, comment, isDonator = false }) {
+async function processChatMessage({ username, comment, isDonator = false, userPlan = 'free' }) {
     const config = currentConfig;
     if (!config.enabled) return null;
     if (config.donatorOnly && !isDonator) return null;
@@ -163,6 +209,11 @@ async function processChatMessage({ username, comment, isDonator = false }) {
     lastSpeakTime = now;
     const replyText = await generateReply(username, cleanComment);
 
+    // Track character usage
+    const charLength = replyText ? replyText.length : 0;
+    recordCharacterUsage(charLength);
+    const usage = getCharacterUsage(userPlan);
+
     const eventData = {
         type: 'ai_assistant_speech',
         username,
@@ -174,6 +225,7 @@ async function processChatMessage({ username, comment, isDonator = false }) {
         elevenLabsVoiceId: config.elevenLabsVoiceId,
         readSpeed: config.readSpeed || 1.0,
         volume: config.volume || 1.0,
+        usage,
         timestamp: now
     };
 
@@ -189,5 +241,8 @@ module.exports = {
     saveConfig,
     setBroadcastCallback,
     processChatMessage,
-    generateReply
+    generateReply,
+    getCharacterUsage,
+    addAddonCharacters,
+    PLAN_LIMITS
 };

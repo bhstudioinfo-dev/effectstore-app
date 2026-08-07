@@ -934,7 +934,9 @@ const aiAssistantService = require('../services/aiAssistantService');
 router.get('/ai-config', authMiddleware, (req, res) => {
     try {
         const config = aiAssistantService.getConfig();
-        res.json({ success: true, config });
+        const userPlan = req.user?.plan || 'free';
+        const usage = aiAssistantService.getCharacterUsage(userPlan);
+        res.json({ success: true, config, usage });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -943,7 +945,41 @@ router.get('/ai-config', authMiddleware, (req, res) => {
 router.post('/ai-config', authMiddleware, (req, res) => {
     try {
         const updated = aiAssistantService.saveConfig(req.body || {});
-        res.json({ success: true, config: updated });
+        const userPlan = req.user?.plan || 'free';
+        const usage = aiAssistantService.getCharacterUsage(userPlan);
+        res.json({ success: true, config: updated, usage });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/ai-buy-addon', authMiddleware, (req, res) => {
+    try {
+        const { pack } = req.body || {};
+        let addonCharacters = 0;
+        let packName = '';
+
+        if (pack === '10k') {
+            addonCharacters = 1000;
+            packName = 'Gói Nạp Lẻ 1,000 ký tự (10,000 VNĐ)';
+        } else if (pack === '50k') {
+            addonCharacters = 5500;
+            packName = 'Gói Nạp Lẻ 5,500 ký tự (50,000 VNĐ)';
+        } else if (pack === '100k') {
+            addonCharacters = 12000;
+            packName = 'Gói Nạp Lẻ 12,000 ký tự (100,000 VNĐ)';
+        } else {
+            return res.status(400).json({ success: false, error: 'Gói nạp lẻ không hợp lệ' });
+        }
+
+        const userPlan = req.user?.plan || 'free';
+        const usage = aiAssistantService.addAddonCharacters(addonCharacters);
+        res.json({
+            success: true,
+            message: `🎉 Nạp thành công ${packName}!`,
+            addedCharacters: addonCharacters,
+            usage
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -952,10 +988,12 @@ router.post('/ai-config', authMiddleware, (req, res) => {
 router.post('/ai-test-speech', authMiddleware, async (req, res) => {
     try {
         const { username, comment } = req.body || {};
+        const userPlan = req.user?.plan || 'free';
         const testEvent = await aiAssistantService.processChatMessage({
             username: username || 'Viewer Thử nghiệm',
             comment: comment || 'Idol live hay quá!',
-            isDonator: true
+            isDonator: true,
+            userPlan
         });
         res.json({ success: true, event: testEvent });
     } catch (error) {

@@ -6747,7 +6747,52 @@ class EffectStoreApp {
                 if (document.getElementById('ai-assistant-gemini-key')) document.getElementById('ai-assistant-gemini-key').value = c.geminiApiKey || '';
                 if (document.getElementById('ai-assistant-eleven-key')) document.getElementById('ai-assistant-eleven-key').value = c.elevenLabsApiKey || '';
             }
+            if (data.success && data.usage) {
+                this.renderAiUsageUI(data.usage);
+            }
         } catch (_e) {}
+    }
+
+    renderAiUsageUI(usage) {
+        if (!usage) return;
+        const meterText = document.getElementById('ai-usage-meter-text');
+        const planBadge = document.getElementById('ai-usage-plan-badge');
+        if (meterText) {
+            meterText.textContent = `${(usage.used || 0).toLocaleString()} / ${(usage.totalLimit || 1000).toLocaleString()} ký tự`;
+        }
+        if (planBadge) {
+            const planName = (this.currentUser?.plan || 'free').toUpperCase();
+            planBadge.textContent = `Gói ${planName}`;
+        }
+    }
+
+    showBuyAiAddonModal() {
+        const modal = document.getElementById('ai-addon-modal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    async buyAiAddon(pack) {
+        try {
+            const res = await fetch(`${this.API_URL}/api/tiktok/ai-buy-addon`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ pack })
+            });
+            const data = await res.json();
+            if (data.success) {
+                this.showNotification('success', data.message);
+                if (data.usage) this.renderAiUsageUI(data.usage);
+                const modal = document.getElementById('ai-addon-modal');
+                if (modal) modal.style.display = 'none';
+            } else {
+                this.showNotification('error', data.error || 'Nạp gói lẻ không thành công.');
+            }
+        } catch (e) {
+            this.showNotification('error', '❌ Lỗi kết nối nạp gói: ' + e.message);
+        }
     }
 
     async saveAiAssistantConfig(sourceEl) {
@@ -6774,7 +6819,7 @@ class EffectStoreApp {
             if (document.getElementById('ai-assistant-eleven-key')) document.getElementById('ai-assistant-eleven-key').value = elevenLabsApiKey;
 
             const payload = { enabled, persona, cooldownSeconds, donatorOnly, geminiApiKey, elevenLabsApiKey };
-            await fetch(`${this.API_URL}/api/tiktok/ai-config`, {
+            const res = await fetch(`${this.API_URL}/api/tiktok/ai-config`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${this.authToken}`,
@@ -6782,6 +6827,10 @@ class EffectStoreApp {
                 },
                 body: JSON.stringify(payload)
             });
+            const data = await res.json();
+            if (data.success && data.usage) {
+                this.renderAiUsageUI(data.usage);
+            }
         } catch (_e) {}
     }
 
@@ -6803,6 +6852,7 @@ class EffectStoreApp {
             const data = await res.json();
             if (data.success && data.event?.replyText) {
                 this.showNotification('success', `🤖 AI Cà khịa: "${data.event.replyText}"`);
+                if (data.event.usage) this.renderAiUsageUI(data.event.usage);
             } else {
                 this.showNotification('warning', '⚠️ Hãy bật công tắc Bật AI Trợ lý Cà khịa!');
             }

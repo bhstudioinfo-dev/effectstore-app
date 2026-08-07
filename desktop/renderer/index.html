@@ -1504,8 +1504,18 @@
                         </div>
                     </div>
 
+                    <!-- AI Character Usage & Top-Up Bar -->
+                    <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:6px 10px; font-size:10px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="color:#a78bfa; font-weight:700;">📊 Dung lượng AI tháng này:</span>
+                            <span id="ai-usage-meter-text" style="color:#fff; font-weight:700;">0 / 1,000 ký tự</span>
+                            <span id="ai-usage-plan-badge" style="background:rgba(139,92,246,0.2); color:#c4b5fd; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:700;">Gói Free</span>
+                        </div>
+                        <button onclick="app.showBuyAiAddonModal()" style="background:linear-gradient(135deg,#f59e0b,#d97706); border:none; color:#fff; padding:3px 10px; border-radius:6px; font-size:9px; font-weight:800; cursor:pointer; outline:none;">⚡ Nạp lẻ ký tự (Chỉ từ 10k)</button>
+                    </div>
+
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
-                        <span style="font-size:10px; color:#a78bfa;">✨ Trợ lý AI Cà Khịa đã được tích hợp sẵn Gemini 1.5 Flash. Khách hàng không cần mua hay cài đặt API Key!</span>
+                        <span style="font-size:10px; color:#a78bfa;">✨ Hết ký tự AI cao cấp sẽ tự chuyển về Giọng đọc Mặc định Miễn phí. Không lo bị đứt tiếng khi đang live!</span>
                         <button onclick="app.testAiAssistantSpeech()" style="background:rgba(139,92,246,0.25); border:1px solid rgba(139,92,246,0.4); color:#c4b5fd; padding:4px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe thử AI Cà Khịa</button>
                     </div>
                 </div>
@@ -2506,6 +2516,36 @@
                 </div>
                 <div id="admin-payment-review-detail" style="padding:20px;overflow:auto;min-width:0;"></div>
             </div>
+        </div>
+    <!-- Modal Nạp Lẻ Ký Tự AI -->
+    <div id="ai-addon-modal" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
+        <div style="width:min(520px,100%);background:#111827;border:1px solid rgba(139,92,246,0.3);border-radius:20px;padding:24px;color:#fff;box-shadow:0 24px 80px rgba(139,92,246,0.3);position:relative;">
+            <span onclick="document.getElementById('ai-addon-modal').style.display='none';" style="position:absolute;top:16px;right:20px;font-size:24px;color:#94a3b8;cursor:pointer;">&times;</span>
+            <h3 style="margin:0 0 6px;font-size:18px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;">⚡ Nạp Lẻ Ký Tự AI Cà Khịa (ElevenLabs)</h3>
+            <p style="margin:0 0 16px;color:#94a3b8;font-size:11px;line-height:1.5;">Hết ký tự giọng AI? Nạp gói lẻ siêu tiết kiệm để tiếp tục đọc giọng AI siêu mượt mà trên LiveStream!</p>
+            
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+                <div onclick="app.buyAiAddon('10k')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:transform 0.15s, border-color 0.15s;" onmouseover="this.style.borderColor='#a78bfa';this.style.transform='scale(1.02)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.transform='scale(1)'">
+                    <div style="font-size:10px;color:#f59e0b;font-weight:800;">GÓI NHỎ</div>
+                    <div style="font-size:16px;font-weight:800;color:#fff;margin:4px 0;">10.000₫</div>
+                    <div style="font-size:11px;color:#a78bfa;font-weight:700;">+1,000 ký tự</div>
+                    <div style="font-size:9px;color:#94a3b8;margin-top:4px;">~10-12 câu đọc</div>
+                </div>
+                <div onclick="app.buyAiAddon('50k')" style="background:rgba(139,92,246,0.1);border:1px solid #8b5cf6;border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size:10px;color:#ec4899;font-weight:800;">⭐ BÁN CHẠY</div>
+                    <div style="font-size:16px;font-weight:800;color:#fff;margin:4px 0;">50.000₫</div>
+                    <div style="font-size:11px;color:#ec4899;font-weight:700;">+5,500 ký tự</div>
+                    <div style="font-size:9px;color:#cbd5e1;margin-top:4px;">Thưởng thêm 10%</div>
+                </div>
+                <div onclick="app.buyAiAddon('100k')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:transform 0.15s, border-color 0.15s;" onmouseover="this.style.borderColor='#a78bfa';this.style.transform='scale(1.02)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.transform='scale(1)'">
+                    <div style="font-size:10px;color:#10b981;font-weight:800;">SIÊU HỜI</div>
+                    <div style="font-size:16px;font-weight:800;color:#fff;margin:4px 0;">100.000₫</div>
+                    <div style="font-size:11px;color:#10b981;font-weight:700;">+12,000 ký tự</div>
+                    <div style="font-size:9px;color:#94a3b8;margin-top:4px;">Thưởng thêm 20%</div>
+                </div>
+            </div>
+            
+            <p style="margin:0;color:#94a3b8;font-size:10px;text-align:center;">💡 Ký tự nạp lẻ được cộng dồn vĩnh viễn và không bao giờ bị hết hạn!</p>
         </div>
     </div>
 
