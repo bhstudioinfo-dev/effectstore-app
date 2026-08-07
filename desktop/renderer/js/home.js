@@ -6733,6 +6733,13 @@ class EffectStoreApp {
             const data = await res.json();
             if (data.success && data.config) {
                 const c = data.config;
+                document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = Boolean(c.enabled));
+                document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = c.persona || 'sassy');
+                document.querySelectorAll('.ai-assistant-cooldown-input').forEach(el => el.value = String(c.cooldownSeconds || 20));
+                document.querySelectorAll('.ai-assistant-donator-only-input').forEach(el => el.value = String(c.donatorOnly || false));
+                document.querySelectorAll('.ai-assistant-gemini-key-input').forEach(el => el.value = c.geminiApiKey || '');
+                document.querySelectorAll('.ai-assistant-eleven-key-input').forEach(el => el.value = c.elevenLabsApiKey || '');
+
                 if (document.getElementById('ai-assistant-enabled')) document.getElementById('ai-assistant-enabled').checked = Boolean(c.enabled);
                 if (document.getElementById('ai-assistant-persona')) document.getElementById('ai-assistant-persona').value = c.persona || 'sassy';
                 if (document.getElementById('ai-assistant-cooldown')) document.getElementById('ai-assistant-cooldown').value = String(c.cooldownSeconds || 20);
@@ -6743,16 +6750,30 @@ class EffectStoreApp {
         } catch (_e) {}
     }
 
-    async saveAiAssistantConfig() {
+    async saveAiAssistantConfig(sourceEl) {
         try {
-            const payload = {
-                enabled: document.getElementById('ai-assistant-enabled')?.checked || false,
-                persona: document.getElementById('ai-assistant-persona')?.value || 'sassy',
-                cooldownSeconds: parseInt(document.getElementById('ai-assistant-cooldown')?.value || '20', 10),
-                donatorOnly: document.getElementById('ai-assistant-donator-only')?.value === 'true',
-                geminiApiKey: document.getElementById('ai-assistant-gemini-key')?.value || '',
-                elevenLabsApiKey: document.getElementById('ai-assistant-eleven-key')?.value || ''
-            };
+            const enabled = (sourceEl && sourceEl.classList.contains('ai-assistant-enabled-input')) ? sourceEl.checked : (document.querySelector('.ai-assistant-enabled-input')?.checked || document.getElementById('ai-assistant-enabled')?.checked || false);
+            const persona = (sourceEl && sourceEl.classList.contains('ai-assistant-persona-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-persona-input')?.value || document.getElementById('ai-assistant-persona')?.value || 'sassy');
+            const cooldownSeconds = parseInt((sourceEl && sourceEl.classList.contains('ai-assistant-cooldown-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-cooldown-input')?.value || document.getElementById('ai-assistant-cooldown')?.value || '20'), 10);
+            const donatorOnly = ((sourceEl && sourceEl.classList.contains('ai-assistant-donator-only-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-donator-only-input')?.value || document.getElementById('ai-assistant-donator-only')?.value)) === 'true';
+            const geminiApiKey = (sourceEl && sourceEl.classList.contains('ai-assistant-gemini-key-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-gemini-key-input')?.value || document.getElementById('ai-assistant-gemini-key')?.value || '');
+            const elevenLabsApiKey = (sourceEl && sourceEl.classList.contains('ai-assistant-eleven-key-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-eleven-key-input')?.value || document.getElementById('ai-assistant-eleven-key')?.value || '');
+
+            document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = enabled);
+            document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = persona);
+            document.querySelectorAll('.ai-assistant-cooldown-input').forEach(el => el.value = String(cooldownSeconds));
+            document.querySelectorAll('.ai-assistant-donator-only-input').forEach(el => el.value = String(donatorOnly));
+            document.querySelectorAll('.ai-assistant-gemini-key-input').forEach(el => el.value = geminiApiKey);
+            document.querySelectorAll('.ai-assistant-eleven-key-input').forEach(el => el.value = elevenLabsApiKey);
+
+            if (document.getElementById('ai-assistant-enabled')) document.getElementById('ai-assistant-enabled').checked = enabled;
+            if (document.getElementById('ai-assistant-persona')) document.getElementById('ai-assistant-persona').value = persona;
+            if (document.getElementById('ai-assistant-cooldown')) document.getElementById('ai-assistant-cooldown').value = String(cooldownSeconds);
+            if (document.getElementById('ai-assistant-donator-only')) document.getElementById('ai-assistant-donator-only').value = String(cooldownSeconds);
+            if (document.getElementById('ai-assistant-gemini-key')) document.getElementById('ai-assistant-gemini-key').value = geminiApiKey;
+            if (document.getElementById('ai-assistant-eleven-key')) document.getElementById('ai-assistant-eleven-key').value = elevenLabsApiKey;
+
+            const payload = { enabled, persona, cooldownSeconds, donatorOnly, geminiApiKey, elevenLabsApiKey };
             await fetch(`${this.API_URL}/api/tiktok/ai-config`, {
                 method: 'POST',
                 headers: {

@@ -584,17 +584,10 @@ app.on('activate', () => {
 
 ipcMain.handle('database-config:status', async () => {
     let status = await backendStatus(1200);
-    if (!status.reachable || status.database?.connected !== true) {
-        for (let i = 0; i < 8; i++) {
-            await new Promise(r => setTimeout(r, 400));
-            status = await backendStatus(800);
-            if (status.reachable && status.database?.connected === true) break;
-        }
-    }
     return {
         reachable: status.reachable === true,
         databaseConnected: status.database?.connected === true,
-        needsSetup: status.reachable === true && status.database?.connected !== true
+        needsSetup: false
     };
 });
 

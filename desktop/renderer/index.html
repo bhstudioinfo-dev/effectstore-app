@@ -485,12 +485,15 @@
     <div id="database-setup-modal" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
         <div style="width:min(560px,100%);background:#111827;border:1px solid #374151;border-radius:20px;padding:28px;color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.55);">
             <h2 style="margin:0 0 10px;">Thiết lập cơ sở dữ liệu</h2>
-            <p style="margin:0 0 18px;color:#cbd5e1;line-height:1.6;">LiveFlow chưa kết nối được MongoDB. Hãy nhập URI MongoDB Atlas hoặc MongoDB server của bạn. URI sẽ được mã hóa bằng kho bảo mật của Windows.</p>
-            <label for="database-setup-uri" style="display:block;margin-bottom:8px;font-weight:700;">MongoDB URI</label>
+            <p style="margin:0 0 18px;color:#cbd5e1;line-height:1.6;">LiveFlow chưa kết nối được MongoDB. Bạn có thể nhập URI MongoDB Atlas hoặc bấm Bỏ qua để dùng chế độ Standalone / Offline.</p>
+            <label for="database-setup-uri" style="display:block;margin-bottom:8px;font-weight:700;">MongoDB URI (Tuỳ chọn)</label>
             <input id="database-setup-uri" type="password" autocomplete="off" placeholder="mongodb+srv://user:password@cluster/effectstore" style="width:100%;box-sizing:border-box;padding:13px 14px;border-radius:10px;border:1px solid #4b5563;background:#030712;color:#fff;">
             <div id="database-setup-error" style="min-height:22px;margin-top:10px;color:#fca5a5;font-size:13px;"></div>
-            <button id="database-setup-save" onclick="app.saveDatabaseSetup()" style="width:100%;padding:13px;border:0;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;cursor:pointer;">Lưu và kiểm tra kết nối</button>
-            <p style="margin:14px 0 0;color:#94a3b8;font-size:12px;line-height:1.5;">LiveFlow không hiển thị lại URI đã lưu. Bạn có thể thay đổi URI bằng màn hình này khi database mất kết nối.</p>
+            <div style="display:flex;gap:10px;">
+                <button id="database-setup-save" onclick="app.saveDatabaseSetup()" style="flex:1;padding:13px;border:0;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;cursor:pointer;">Lưu & Kết nối</button>
+                <button onclick="document.getElementById('database-setup-modal').style.display='none';" style="flex:1;padding:13px;border:1px solid #4b5563;border-radius:10px;background:rgba(255,255,255,0.05);color:#cbd5e1;font-weight:700;cursor:pointer;">Bỏ qua & Chạy ứng dụng</button>
+            </div>
+            <p style="margin:14px 0 0;color:#94a3b8;font-size:12px;line-height:1.5;">Chế độ Standalone cho phép sử dụng trọn vẹn hiệu ứng, OBS WebSocket & AI Trợ lý Cà khịa không phụ thuộc MongoDB.</p>
         </div>
     </div>
     <div id="admin-setup-modal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
@@ -1341,6 +1344,31 @@
                     </div>
                 </div>
 
+                <!-- Cấu hình API Key AI (Cài đặt) -->
+                <div style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px; margin-top:24px;">
+                    <h3 style="color:#fff; font-size:16px; margin:0 0 6px; display:flex; align-items:center; gap:8px;">
+                        🔑 Cấu hình API Key AI & Giọng nói TTS
+                    </h3>
+                    <p style="color:var(--text-muted); font-size:12px; margin:0 0 16px 0;">Nhập API Key để kích hoạt AI Trợ lý Cà khịa và Giọng đọc ElevenLabs chuyên nghiệp.</p>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div>
+                            <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Google Gemini API Key (Cà khịa AI - Miễn phí 100%)</label>
+                            <input type="password" id="settings-gemini-key" class="ai-assistant-gemini-key-input upload-form-input" placeholder="AIzaSy..." style="width:100%;" onchange="app.saveAiAssistantConfig(this)">
+                            <span style="font-size:10px; color:var(--text-muted); margin-top:4px; display:block;">💡 Mặc định hệ thống đã có sẵn Key dùng thử. Điền Key riêng nếu muốn hạn mức cao hơn.</span>
+                        </div>
+                        <div>
+                            <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">ElevenLabs API Key (Giọng nói AI đọc hài hước)</label>
+                            <input type="password" id="settings-eleven-key" class="ai-assistant-eleven-key-input upload-form-input" placeholder="xi-api-key..." style="width:100%;" onchange="app.saveAiAssistantConfig(this)">
+                            <span style="font-size:10px; color:var(--text-muted); margin-top:4px; display:block;">💡 Để trống nếu muốn dùng giọng đọc đọc chuẩn Web Speech của máy tính.</span>
+                        </div>
+                    </div>
+
+                    <button onclick="app.saveAiAssistantConfig(this)" class="pro-btn" style="padding:10px 20px; background:linear-gradient(135deg,#8b5cf6,#7c3aed); font-size:13px; font-weight:700; cursor:pointer;">
+                        <i class="fas fa-save"></i> Lưu API Key AI
+                    </button>
+                </div>
+
                 <!-- 5. Admin operations -->
                 <div id="admin-operations-card"
                     style="display:none; background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px; margin-top:24px;">
@@ -1433,6 +1461,61 @@
                         <button id="btn-disconnect" onclick="app.disconnectTikTok()"
                             style="background:linear-gradient(135deg,#ef4444,#dc2626);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:100px;justify-content:center;opacity:0.6;">🔴
                             Ngắt</button>
+                    </div>
+                </div>
+
+                <!-- AI Streamer Assistant Panel (Gán hiệu ứng) -->
+                <div style="background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.2); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative; margin-bottom:18px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="ai-assistant-enabled-gm" class="ai-assistant-enabled-input" style="width:16px; height:16px; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
+                            <label for="ai-assistant-enabled-gm" style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">🤖 Trợ lý AI Cà Khịa Live Chat</label>
+                        </div>
+                        <span style="font-size:10px; background:rgba(139,92,246,0.2); color:#a78bfa; padding:2px 8px; border-radius:10px; font-weight:700;">PRO AI</span>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Tính cách AI</label>
+                            <select class="ai-assistant-persona-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
+                                <option value="sassy" selected>🔥 Xéo sắc, Cà khịa</option>
+                                <option value="funny">😂 Hài hước, Nhí nhảnh</option>
+                                <option value="sweet">🌸 Ngọt ngào, Dịu dàng</option>
+                                <option value="smart">🎓 Tinh tế, Thông thái</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Thời gian chờ (Cooldown)</label>
+                            <select class="ai-assistant-cooldown-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
+                                <option value="15">15 giây</option>
+                                <option value="20" selected>20 giây</option>
+                                <option value="30">30 giây</option>
+                                <option value="60">60 giây</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Chế độ phản hồi</label>
+                            <select class="ai-assistant-donator-only-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
+                                <option value="false" selected>🌐 Tất cả Viewer</option>
+                                <option value="true">👑 Chỉ Viewer đã Tặng quà (VIP)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Google Gemini API Key (Tuỳ chọn - Miễn phí 100%)</label>
+                            <input type="password" class="ai-assistant-gemini-key-input" placeholder="AIzaSy..." style="width:100%; font-size:10px; padding:4px 8px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none;" onchange="app.saveAiAssistantConfig(this)">
+                        </div>
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">ElevenLabs API Key (Tuỳ chọn - Giọng AI siêu thật)</label>
+                            <input type="password" class="ai-assistant-eleven-key-input" placeholder="xi-api-key..." style="width:100%; font-size:10px; padding:4px 8px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none;" onchange="app.saveAiAssistantConfig(this)">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
+                        <span style="font-size:10px; color:var(--text-muted);">💡 Trợ lý AI sẽ tự chọn comment khán giả và phát biểu xéo sắc/hài hước trực tiếp lên OBS.</span>
+                        <button onclick="app.testAiAssistantSpeech()" style="background:rgba(139,92,246,0.25); border:1px solid rgba(139,92,246,0.4); color:#c4b5fd; padding:4px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe thử AI Cà Khịa</button>
                     </div>
                 </div>
 
@@ -1569,11 +1652,11 @@
                     </div>
                 </div>
 
-                <!-- AI Streamer Assistant Panel -->
+                <!-- AI Streamer Assistant Panel (Dashboard) -->
                 <div style="background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.2); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative; margin-bottom:18px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <input type="checkbox" id="ai-assistant-enabled" style="width:16px; height:16px; cursor:pointer;" onchange="app.saveAiAssistantConfig()">
+                            <input type="checkbox" id="ai-assistant-enabled" class="ai-assistant-enabled-input" style="width:16px; height:16px; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
                             <label for="ai-assistant-enabled" style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">🤖 Trợ lý AI Cà Khịa Live Chat</label>
                         </div>
                         <span style="font-size:10px; background:rgba(139,92,246,0.2); color:#a78bfa; padding:2px 8px; border-radius:10px; font-weight:700;">PRO AI</span>
@@ -1582,7 +1665,7 @@
                     <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
                         <div>
                             <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Tính cách AI</label>
-                            <select id="ai-assistant-persona" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig()">
+                            <select id="ai-assistant-persona" class="ai-assistant-persona-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
                                 <option value="sassy" selected>🔥 Xéo sắc, Cà khịa</option>
                                 <option value="funny">😂 Hài hước, Nhí nhảnh</option>
                                 <option value="sweet">🌸 Ngọt ngào, Dịu dàng</option>
@@ -1591,7 +1674,7 @@
                         </div>
                         <div>
                             <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Thời gian chờ (Cooldown)</label>
-                            <select id="ai-assistant-cooldown" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig()">
+                            <select id="ai-assistant-cooldown" class="ai-assistant-cooldown-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
                                 <option value="15">15 giây</option>
                                 <option value="20" selected>20 giây</option>
                                 <option value="30">30 giây</option>
@@ -1600,7 +1683,7 @@
                         </div>
                         <div>
                             <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Chế độ phản hồi</label>
-                            <select id="ai-assistant-donator-only" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig()">
+                            <select id="ai-assistant-donator-only" class="ai-assistant-donator-only-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
                                 <option value="false" selected>🌐 Tất cả Viewer</option>
                                 <option value="true">👑 Chỉ Viewer đã Tặng quà (VIP)</option>
                             </select>
@@ -1610,11 +1693,11 @@
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                         <div>
                             <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Google Gemini API Key (Tuỳ chọn - Miễn phí 100%)</label>
-                            <input type="password" id="ai-assistant-gemini-key" placeholder="AIzaSy..." style="width:100%; font-size:10px; padding:4px 8px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none;" onchange="app.saveAiAssistantConfig()">
+                            <input type="password" id="ai-assistant-gemini-key" class="ai-assistant-gemini-key-input" placeholder="AIzaSy..." style="width:100%; font-size:10px; padding:4px 8px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none;" onchange="app.saveAiAssistantConfig(this)">
                         </div>
                         <div>
                             <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">ElevenLabs API Key (Tuỳ chọn - Giọng AI siêu thật)</label>
-                            <input type="password" id="ai-assistant-eleven-key" placeholder="xi-api-key..." style="width:100%; font-size:10px; padding:4px 8px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none;" onchange="app.saveAiAssistantConfig()">
+                            <input type="password" id="ai-assistant-eleven-key" class="ai-assistant-eleven-key-input" placeholder="xi-api-key..." style="width:100%; font-size:10px; padding:4px 8px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none;" onchange="app.saveAiAssistantConfig(this)">
                         </div>
                     </div>
 
