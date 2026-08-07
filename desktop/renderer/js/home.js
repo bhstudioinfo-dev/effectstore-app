@@ -7068,7 +7068,7 @@ class EffectStoreApp {
                 elevenLabsVoiceId = customInput?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
             }
 
-            const presetVoices = ['21m00Tcm4TlvDq8ikWAM', 'EXAVITQu4vr4xnSDxMaL', 'AZnzlk1XvdvUeBnXmlld', 'pNInz6obpgDQGcFmaJgB', 'ErXwobaYiN019PkySvjV', 'MF3mGyEYCl7XYWbV9V6O'];
+            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'CQAD6iKxS73fEAGjSwt5', 'UsgbMVmY3U59ijwK5mdh', 'qByVAGjXwGlkcRDJoiHg', 'x4KAhuXs2G8TfK9Zr7Q4'];
 
             document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = enabled);
             document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = persona);
@@ -7109,11 +7109,10 @@ class EffectStoreApp {
 
             const voiceTestSentences = {
                 'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
-                '21m00Tcm4TlvDq8ikWAM': 'Xin chào cả nhà! Chúc mọi người một buổi livestream thật nhiều niềm vui nha!',
-                'EXAVITQu4vr4xnSDxMaL': 'Dạ em chào anh chị ạ, anh chị ghé xem live nhớ thả tý tym ủng hộ em nhé!',
-                'AZnzlk1XvdvUeBnXmlld': 'Trời ơi tin được không, xem live chùa mà không thả tym là em dỗi đó nha!',
-                'ErXwobaYiN019PkySvjV': 'Alo alo 1 2 3 4, hôm nay Idol live game siêu cháy luôn nha anh em ơi!',
-                'MF3mGyEYCl7XYWbV9V6O': 'Cảm ơn các bạn đã ghé thăm kênh, chúc bạn có những phút giây thư giãn tuyệt vời!'
+                'CQAD6iKxS73fEAGjSwt5': 'Xin chào cả nhà! Chúc mọi người một buổi livestream thật nhiều niềm vui và tràn đầy năng lượng nha!',
+                'UsgbMVmY3U59ijwK5mdh': 'Chào anh em nha, hôm nay Idol live game siêu cháy luôn, vô thả tý tym ủng hộ anh em ơi!',
+                'qByVAGjXwGlkcRDJoiHg': 'Dạ em chào anh chị ạ, anh chị vô live nhớ thả tý tym và ghé giỏ hàng ủng hộ em nhé!',
+                'x4KAhuXs2G8TfK9Zr7Q4': 'Trời ơi tin được không, xem live chùa mà không thả tym là em dỗi nguyên buổi live đó nha!'
             };
 
             const testSentence = voiceTestSentences[voiceId] || 'Xin chào! Giọng đọc AI Cà khịa đã sẵn sàng phục vụ bạn!';
