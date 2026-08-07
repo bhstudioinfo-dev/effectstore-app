@@ -1500,13 +1500,15 @@
                     <input type="text" class="ai-assistant-custom-voice-input upload-form-input" placeholder="👉 Dán mã Voice ID tại đây (Ví dụ: AZnzlk1XvdvUeBnXmlld)..." style="display:none; width:100%; font-size:11px; padding:6px 10px; margin-top:6px; border-color:#8b5cf6; box-sizing:border-box;" oninput="app.saveAiAssistantConfig(this)" onchange="app.saveAiAssistantConfig(this)">
 
                     <!-- AI Character Usage & Top-Up Bar -->
-                    <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:6px 10px; font-size:10px;">
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span style="color:#a78bfa; font-weight:700;">📊 Dung lượng AI tháng này:</span>
-                            <span id="ai-usage-meter-text" style="color:#fff; font-weight:700;">0 / 1,000 ký tự</span>
-                            <span id="ai-usage-plan-badge" style="background:rgba(139,92,246,0.2); color:#c4b5fd; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:700;">Gói Free</span>
+                    <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(15,23,42,0.6); border:1px solid rgba(139,92,246,0.3); border-radius:10px; padding:10px 14px; margin-top:8px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="color:#c4b5fd; font-weight:700; font-size:12px;">📊 Dung lượng AI tháng này:</span>
+                            <span id="ai-usage-meter-text" style="color:#fff; font-weight:800; font-size:12px;">0 / 1,000 ký tự</span>
+                            <span id="ai-usage-plan-badge" style="background:rgba(139,92,246,0.25); color:#ddd6fe; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800; border:1px solid rgba(139,92,246,0.4);">Gói Free</span>
                         </div>
-                        <button onclick="app.showBuyAiAddonModal()" style="background:linear-gradient(135deg,#f59e0b,#d97706); border:none; color:#fff; padding:3px 10px; border-radius:6px; font-size:9px; font-weight:800; cursor:pointer; outline:none;">⚡ Nạp lẻ ký tự (Chỉ từ 10k)</button>
+                        <button onclick="document.getElementById('ai-addon-modal').style.display='flex';" style="background:linear-gradient(135deg, #f59e0b, #ec4899); border:none; color:#fff; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:800; cursor:pointer; outline:none; box-shadow:0 4px 12px rgba(245,158,11,0.35); transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
+                            ⚡ Nạp lẻ ký tự (Chỉ từ 10k)
+                        </button>
                     </div>
 
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
@@ -2516,7 +2518,7 @@
     <div id="ai-addon-modal" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
         <div style="width:min(520px,100%);background:#111827;border:1px solid rgba(139,92,246,0.3);border-radius:20px;padding:24px;color:#fff;box-shadow:0 24px 80px rgba(139,92,246,0.3);position:relative;">
             <span onclick="document.getElementById('ai-addon-modal').style.display='none';" style="position:absolute;top:16px;right:20px;font-size:24px;color:#94a3b8;cursor:pointer;">&times;</span>
-            <h3 style="margin:0 0 6px;font-size:18px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;">⚡ Nạp Lẻ Ký Tự AI Cà Khịa (ElevenLabs)</h3>
+            <h3 style="margin:0 0 6px;font-size:18px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;">⚡ Nạp Lẻ Ký Tự AI Cà Khịa (Giọng Đọc VIP)</h3>
             <p style="margin:0 0 16px;color:#94a3b8;font-size:11px;line-height:1.5;">Hết ký tự giọng AI? Nạp gói lẻ siêu tiết kiệm để tiếp tục đọc giọng AI siêu mượt mà trên LiveStream!</p>
             
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
