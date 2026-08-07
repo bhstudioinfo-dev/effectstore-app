@@ -4640,6 +4640,7 @@ class EffectStoreApp {
             // Load danh sách users
             this.loadAdminUsers();
             this.loadAdminEffectAcquisitions();
+            this.loadAiAssistantConfig();
         } catch (error) {
             console.error('Dashboard error:', error);
             this.showNotification('error', 'Lỗi load dashboard: ' + error.message);

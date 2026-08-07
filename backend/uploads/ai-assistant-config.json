@@ -1,6 +1,6 @@
 {
-  "enabled": true,
-  "persona": "funny",
+  "enabled": false,
+  "persona": "sweet",
   "cooldownSeconds": 20,
   "donatorOnly": false,
   "geminiApiKey": "AIzaSyDlIi-dMtzsDB8hRTNqcAbM27vFF5JZrmQ",
