@@ -6981,6 +6981,16 @@ class EffectStoreApp {
         }
     }
 
+    getActiveVoiceId() {
+        const visibleSelect = Array.from(document.querySelectorAll('.ai-assistant-eleven-voice-input')).find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+        let voiceId = visibleSelect ? visibleSelect.value : (document.querySelector('.ai-assistant-eleven-voice-input')?.value || 'pNInz6obpgDQGcFmaJgB');
+        if (voiceId === 'custom') {
+            const visibleCustom = Array.from(document.querySelectorAll('.ai-assistant-custom-voice-input')).find(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+            voiceId = visibleCustom?.value?.trim() || document.querySelector('.ai-assistant-custom-voice-input')?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
+        }
+        return voiceId || 'pNInz6obpgDQGcFmaJgB';
+    }
+
     async saveAiAssistantConfig(sourceEl) {
         try {
             const enabled = (sourceEl && sourceEl.classList.contains('ai-assistant-enabled-input')) ? sourceEl.checked : (document.querySelector('.ai-assistant-enabled-input')?.checked || document.getElementById('ai-assistant-enabled')?.checked || false);
@@ -6990,10 +7000,13 @@ class EffectStoreApp {
             const geminiApiKey = (sourceEl && sourceEl.classList.contains('ai-assistant-gemini-key-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-gemini-key-input')?.value || document.getElementById('admin-gemini-key')?.value || '');
             const elevenLabsApiKey = (sourceEl && sourceEl.classList.contains('ai-assistant-eleven-key-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-eleven-key-input')?.value || document.getElementById('admin-eleven-key')?.value || '');
             
-            let elevenLabsVoiceId = document.getElementById('admin-eleven-voice-id')?.value || '21m00Tcm4TlvDq8ikWAM';
+            let elevenLabsVoiceId = (sourceEl && sourceEl.classList.contains('ai-assistant-eleven-voice-input')) ? sourceEl.value : this.getActiveVoiceId();
             if (elevenLabsVoiceId === 'custom') {
-                elevenLabsVoiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || '21m00Tcm4TlvDq8ikWAM';
+                const customInput = Array.from(document.querySelectorAll('.ai-assistant-custom-voice-input')).find(el => el.offsetWidth > 0 && el.offsetHeight > 0) || document.querySelector('.ai-assistant-custom-voice-input');
+                elevenLabsVoiceId = customInput?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
             }
+
+            const presetVoices = ['21m00Tcm4TlvDq8ikWAM', 'EXAVITQu4vr4xnSDxMaL', 'AZnzlk1XvdvUeBnXmlld', 'pNInz6obpgDQGcFmaJgB', 'ErXwobaYiN019PkySvjV', 'MF3mGyEYCl7XYWbV9V6O'];
 
             document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = enabled);
             document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = persona);
@@ -7001,11 +7014,12 @@ class EffectStoreApp {
             document.querySelectorAll('.ai-assistant-donator-only-input').forEach(el => el.value = String(donatorOnly));
             document.querySelectorAll('.ai-assistant-gemini-key-input').forEach(el => el.value = geminiApiKey);
             document.querySelectorAll('.ai-assistant-eleven-key-input').forEach(el => el.value = elevenLabsApiKey);
+            document.querySelectorAll('.ai-assistant-eleven-voice-input').forEach(el => el.value = presetVoices.includes(elevenLabsVoiceId) ? elevenLabsVoiceId : 'custom');
 
             if (document.getElementById('ai-assistant-enabled')) document.getElementById('ai-assistant-enabled').checked = enabled;
             if (document.getElementById('ai-assistant-persona')) document.getElementById('ai-assistant-persona').value = persona;
             if (document.getElementById('ai-assistant-cooldown')) document.getElementById('ai-assistant-cooldown').value = String(cooldownSeconds);
-            if (document.getElementById('ai-assistant-donator-only')) document.getElementById('ai-assistant-donator-only').value = String(cooldownSeconds);
+            if (document.getElementById('ai-assistant-donator-only')) document.getElementById('ai-assistant-donator-only').value = String(donatorOnly);
             if (document.getElementById('admin-gemini-key')) document.getElementById('admin-gemini-key').value = geminiApiKey;
             if (document.getElementById('admin-eleven-key')) document.getElementById('admin-eleven-key').value = elevenLabsApiKey;
 
@@ -7028,13 +7042,8 @@ class EffectStoreApp {
 
     async testAiAssistantSpeech() {
         try {
+            const voiceId = this.getActiveVoiceId();
             await this.saveAiAssistantConfig();
-
-            let voiceId = 'pNInz6obpgDQGcFmaJgB';
-            const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input') || document.getElementById('admin-eleven-voice-id');
-            if (voiceSelect && voiceSelect.value) {
-                voiceId = voiceSelect.value;
-            }
 
             const voiceTestSentences = {
                 'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
