@@ -1797,7 +1797,7 @@ class EffectStoreApp {
         const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
 
         if (elevenKeyList.length > 0) {
-            const useV3First = ['pNInz6obpgDQGcFmaJgB', 'ErXwobaYiN019PkySvjV'].includes(voiceId);
+            const useV3First = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO'].includes(voiceId);
             const modelsToTry = useV3First ? ['eleven_v3', 'eleven_multilingual_v2', 'eleven_flash_v2_5'] : ['eleven_multilingual_v2', 'eleven_flash_v2_5', 'eleven_v3'];
 
             for (const elevenKey of elevenKeyList) {
@@ -7021,7 +7021,7 @@ class EffectStoreApp {
                 elevenLabsVoiceId = customInput?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
             }
 
-            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'ErXwobaYiN019PkySvjV', '21m00Tcm4TlvDq8ikWAM', 'EXAVITQu4vr4xnSDxMaL', 'MF3mGyEYCl7XYWbV9V6O'];
+            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', '21m00Tcm4TlvDq8ikWAM', 'EXAVITQu4vr4xnSDxMaL', 'MF3mGyEYCl7XYWbV9V6O'];
 
             document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = enabled);
             document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = persona);
@@ -7065,28 +7065,28 @@ class EffectStoreApp {
             const matrix = {
                 sassy: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ! Nhìn Idol live chùa hoài không mỏi tay hả, thả cho quả tym xem nào!',
-                    'ErXwobaYiN019PkySvjV': 'Xem live mà lặng thinh như tờ giấy vậy anh em, gõ chữ chat ủng hộ Idol đi chứ!',
+                    'N2lVS1w4EtoT3dr4eOWO': 'Xem live mà lặng thinh như tờ giấy vậy anh em, gõ chữ chat ủng hộ Idol đi chứ!',
                     '21m00Tcm4TlvDq8ikWAM': 'Trời ơi tin được không, lướt qua live mà bấm theo dõi cũng tiếc một cái chạm tay hả người đẹp?',
                     'EXAVITQu4vr4xnSDxMaL': 'Dạ em chào anh nha, anh xem live từ nãy giờ rồi đó, thả tý tym cho em ấm lòng đi ạ!',
                     'MF3mGyEYCl7XYWbV9V6O': 'Ghét ghê dị đó, xem live hăng hái mà thả tim cái mỏi tay quá hả mấy nết ơi!'
                 },
                 funny: {
                     'pNInz6obpgDQGcFmaJgB': 'Ủa alo? Mấy ông xem live mà giấu giếm cái tym ở đâu vậy, lôi ra thả cho Idol coi nào!',
-                    'ErXwobaYiN019PkySvjV': 'Cảnh báo: Xem live này quá 180 giây có nguy cơ gây nghiện cực cao, thả tym ngay để giải độc!',
+                    'N2lVS1w4EtoT3dr4eOWO': 'Cảnh báo: Xem live này quá 180 giây có nguy cơ gây nghiện cực cao, thả tym ngay để giải độc!',
                     '21m00Tcm4TlvDq8ikWAM': 'Ủa alo người đẹp ơi, tay đang bận ăn vặt hay sao mà chưa bấm thả tym cho tui dị?',
                     'EXAVITQu4vr4xnSDxMaL': 'Nhìn cái gì mà nhìn, thấy em dễ thương quá nên quên thả tym rồi đúng hông nè!',
                     'MF3mGyEYCl7XYWbV9V6O': 'Cười vui vẻ hò reo vậy thôi chứ tim với quà đâu hổng thấy, buồn nhẹ 5 giây nha!'
                 },
                 sweet: {
                     'pNInz6obpgDQGcFmaJgB': 'Em ơi, đường vào tim em có khó không mà anh lướt live gặp em là tim đập thình thịch rồi nè!',
-                    'ErXwobaYiN019PkySvjV': 'Thấy em vào live cái là khung chat sáng bừng luôn, ở lại trò chuyện với anh lâu lâu nha!',
+                    'N2lVS1w4EtoT3dr4eOWO': 'Thấy em vào live cái là khung chat sáng bừng luôn, ở lại trò chuyện với anh lâu lâu nha!',
                     '21m00Tcm4TlvDq8ikWAM': 'Anh ơi, người ta thả tym cho live, còn em chỉ muốn thả nụ cười này cho riêng anh thôi đó!',
                     'EXAVITQu4vr4xnSDxMaL': 'Dạ anh ơi, hôm nay anh có mệt không? Ghé live em ngồi nghỉ xíu rồi em đọc thoại ngọt ngào cho nghe nè!',
                     'MF3mGyEYCl7XYWbV9V6O': 'Chúc cả nhà một buổi tối ngập tràn niềm vui và luôn luôn bình an, mỉm cười thiệt nhiều nha!'
                 },
                 smart: {
                     'pNInz6obpgDQGcFmaJgB': 'Chào mừng bạn đã đến với phòng livestream. Chúc bạn có những phút giây thư giãn thật tuyệt vời nhé.',
-                    'ErXwobaYiN019PkySvjV': 'Xin chào mọi người. Rất vui được gặp lại cả nhà trong buổi phát sóng hôm nay.',
+                    'N2lVS1w4EtoT3dr4eOWO': 'Xin chào mọi người. Rất vui được gặp lại cả nhà trong buổi phát sóng hôm nay.',
                     '21m00Tcm4TlvDq8ikWAM': 'Dạ em xin kính chào quý anh chị. Chúc cả nhà một buổi tối xem live vui vẻ và nhiều may mắn ạ.',
                     'EXAVITQu4vr4xnSDxMaL': 'Chào mừng quý vị đã ghé thăm. Sự hiện diện của bạn chính là niềm vinh hạnh cho phòng live của chúng tôi.',
                     'MF3mGyEYCl7XYWbV9V6O': 'Cảm ơn quý khán giả đã đồng hành. Chúc bạn cùng gia đình luôn tràn đầy sức khỏe và may mắn.'
