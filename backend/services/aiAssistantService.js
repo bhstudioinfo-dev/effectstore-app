@@ -81,7 +81,15 @@ function loadConfig() {
 
 function saveConfig(newConfig) {
     try {
-        currentConfig = { ...currentConfig, ...newConfig };
+        const geminiApiKey = (newConfig.geminiApiKey !== undefined && newConfig.geminiApiKey !== '') ? newConfig.geminiApiKey : currentConfig.geminiApiKey;
+        const elevenLabsApiKey = (newConfig.elevenLabsApiKey !== undefined && newConfig.elevenLabsApiKey !== '') ? newConfig.elevenLabsApiKey : currentConfig.elevenLabsApiKey;
+
+        currentConfig = { 
+            ...currentConfig, 
+            ...newConfig,
+            geminiApiKey: geminiApiKey || '',
+            elevenLabsApiKey: elevenLabsApiKey || ''
+        };
         fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true });
         fs.writeFileSync(CONFIG_FILE, JSON.stringify(currentConfig, null, 2), 'utf8');
     } catch (e) {
