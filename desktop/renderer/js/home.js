@@ -6740,13 +6740,15 @@ class EffectStoreApp {
                 document.querySelectorAll('.ai-assistant-donator-only-input').forEach(el => el.value = String(c.donatorOnly || false));
                 document.querySelectorAll('.ai-assistant-gemini-key-input').forEach(el => el.value = c.geminiApiKey || '');
                 document.querySelectorAll('.ai-assistant-eleven-key-input').forEach(el => el.value = c.elevenLabsApiKey || '');
+                document.querySelectorAll('.ai-assistant-eleven-voice-input').forEach(el => el.value = c.elevenLabsVoiceId || '21m00Tcm4TlvDq8ikWAM');
 
                 if (document.getElementById('ai-assistant-enabled')) document.getElementById('ai-assistant-enabled').checked = Boolean(c.enabled);
                 if (document.getElementById('ai-assistant-persona')) document.getElementById('ai-assistant-persona').value = c.persona || 'sassy';
                 if (document.getElementById('ai-assistant-cooldown')) document.getElementById('ai-assistant-cooldown').value = String(c.cooldownSeconds || 20);
                 if (document.getElementById('ai-assistant-donator-only')) document.getElementById('ai-assistant-donator-only').value = String(c.donatorOnly || false);
-                if (document.getElementById('ai-assistant-gemini-key')) document.getElementById('ai-assistant-gemini-key').value = c.geminiApiKey || '';
-                if (document.getElementById('ai-assistant-eleven-key')) document.getElementById('ai-assistant-eleven-key').value = c.elevenLabsApiKey || '';
+                if (document.getElementById('admin-gemini-key')) document.getElementById('admin-gemini-key').value = c.geminiApiKey || '';
+                if (document.getElementById('admin-eleven-key')) document.getElementById('admin-eleven-key').value = c.elevenLabsApiKey || '';
+                if (document.getElementById('admin-eleven-voice-id')) document.getElementById('admin-eleven-voice-id').value = c.elevenLabsVoiceId || '21m00Tcm4TlvDq8ikWAM');
             }
             if (data.success && data.usage) {
                 this.renderAiUsageUI(data.usage);
