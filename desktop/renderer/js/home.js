@@ -1793,35 +1793,13 @@ class EffectStoreApp {
         }
 
         // Check if ElevenLabs is configured for high quality Voice playback
-        const rawElevenKeys = document.getElementById('admin-eleven-key')?.value || '';
+        const rawElevenKeys = (this.aiAssistantConfig && this.aiAssistantConfig.elevenLabsApiKey) || document.getElementById('admin-eleven-key')?.value || '';
         const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
-        const elevenKey = elevenKeyList.length > 0 ? elevenKeyList[Math.floor(Math.random() * elevenKeyList.length)] : '';
 
-        if (elevenKey) {
-            try {
-                let elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'audio/mpeg',
-                        'Content-Type': 'application/json',
-                        'xi-api-key': elevenKey
-                    },
-                    body: JSON.stringify({
-                        text: text,
-                        model_id: 'eleven_v3',
-                        voice_settings: {
-                            stability: 0.15,
-                            similarity_boost: 0.85,
-                            style: 0.20,
-                            use_speaker_boost: true
-                        }
-                    })
-                });
-
-                if (!elevenRes.ok) {
-                    const errDetail = await elevenRes.clone().text().catch(() => '');
-                    console.warn(`ElevenLabs v3 failed (${elevenRes.status}):`, errDetail);
-                    elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        if (elevenKeyList.length > 0) {
+            for (const elevenKey of elevenKeyList) {
+                try {
+                    let elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                         method: 'POST',
                         headers: {
                             'Accept': 'audio/mpeg',
@@ -1830,7 +1808,7 @@ class EffectStoreApp {
                         },
                         body: JSON.stringify({
                             text: text,
-                            model_id: 'eleven_multilingual_v2',
+                            model_id: 'eleven_v3',
                             voice_settings: {
                                 stability: 0.15,
                                 similarity_boost: 0.85,
@@ -1839,70 +1817,80 @@ class EffectStoreApp {
                             }
                         })
                     });
-                }
 
-                if (!elevenRes.ok) {
-                    const errDetail2 = await elevenRes.clone().text().catch(() => '');
-                    console.warn(`ElevenLabs v2 failed (${elevenRes.status}):`, errDetail2);
-                    elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'audio/mpeg',
-                            'Content-Type': 'application/json',
-                            'xi-api-key': elevenKey
-                        },
-                        body: JSON.stringify({
-                            text: text,
-                            model_id: 'eleven_flash_v2_5',
-                            voice_settings: {
-                                stability: 0.15,
-                                similarity_boost: 0.85
-                            }
-                        })
-                    });
-                }
-
-                if (!elevenRes.ok) {
-                    const finalErr = await elevenRes.clone().text().catch(() => '');
-                    console.error(`ElevenLabs API failed with status ${elevenRes.status}:`, finalErr);
-                    if (finalErr.includes('paid_plan_required') || finalErr.includes('library voices')) {
-                        this.showNotification('warning', '💡 Giọng này cần bấm "Add to Voice Lab" trên ElevenLabs để dùng Free API!');
-                    } else {
-                        this.showNotification('error', `⚠️ ElevenLabs (${elevenRes.status}): Vui lòng kiểm tra lại API Key trong Trang Quản Trị!`);
-                    }
-                }
-
-                if (elevenRes.ok) {
-                    const blob = await elevenRes.blob();
-                    const reader = new FileReader();
-                    reader.readAsDataURL(blob);
-                    reader.onloadend = () => {
-                        const dataUrl = reader.result;
-                        try {
-                            localStorage.setItem('es_voice_cache_' + cacheKey, dataUrl);
-                        } catch (_e) {}
-
-                        fetch(`${this.API_URL}/api/tiktok/save-voice-sample`, {
+                    if (!elevenRes.ok) {
+                        const errDetail = await elevenRes.clone().text().catch(() => '');
+                        console.warn(`ElevenLabs v3 failed with key (${elevenKey.slice(-4)}):`, errDetail);
+                        elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                             method: 'POST',
                             headers: {
-                                'Authorization': `Bearer ${this.authToken}`,
-                                'Content-Type': 'application/json'
+                                'Accept': 'audio/mpeg',
+                                'Content-Type': 'application/json',
+                                'xi-api-key': elevenKey
                             },
-                            body: JSON.stringify({ voiceId, audioBase64: dataUrl })
-                        }).catch(() => {});
-                    };
-                    const audioUrl = URL.createObjectURL(blob);
-                    this.currentAudio = new Audio(audioUrl);
-                    this.currentAudio.volume = this.ttsVolume;
-                    this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
-                    this.currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); this.processTTSQueue(); };
-                    this.currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); this.processTTSQueue(); };
-                    await this.currentAudio.play();
-                    console.log('🗣️ Đang phát ElevenLabs TTS:', text, 'Voice:', voiceId);
-                    return;
-                }
-            } catch (_elevenErr) {
-                console.warn('ElevenLabs playback fallback to Google TTS:', _elevenErr);
+                            body: JSON.stringify({
+                                text: text,
+                                model_id: 'eleven_multilingual_v2',
+                                voice_settings: {
+                                    stability: 0.15,
+                                    similarity_boost: 0.85,
+                                    style: 0.20,
+                                    use_speaker_boost: true
+                                }
+                            })
+                        });
+                    }
+
+                    if (!elevenRes.ok) {
+                        const errDetail2 = await elevenRes.clone().text().catch(() => '');
+                        console.warn(`ElevenLabs v2 failed with key (${elevenKey.slice(-4)}):`, errDetail2);
+                        elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'audio/mpeg',
+                                'Content-Type': 'application/json',
+                                'xi-api-key': elevenKey
+                            },
+                            body: JSON.stringify({
+                                text: text,
+                                model_id: 'eleven_flash_v2_5',
+                                voice_settings: {
+                                    stability: 0.15,
+                                    similarity_boost: 0.85
+                                }
+                            })
+                        });
+                    }
+
+                    if (elevenRes.ok) {
+                        const blob = await elevenRes.blob();
+                        const reader = new FileReader();
+                        reader.readAsDataURL(blob);
+                        reader.onloadend = () => {
+                            const dataUrl = reader.result;
+                            try {
+                                localStorage.setItem('es_voice_cache_' + cacheKey, dataUrl);
+                            } catch (_e) {}
+
+                            fetch(`${this.API_URL}/api/tiktok/save-voice-sample`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ voiceId, audioBase64: dataUrl })
+                            }).catch(() => {});
+                        };
+                        const audioUrl = URL.createObjectURL(blob);
+                        this.currentAudio = new Audio(audioUrl);
+                        this.currentAudio.volume = this.ttsVolume;
+                        this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
+                        this.currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); this.processTTSQueue(); };
+                        this.currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); this.processTTSQueue(); };
+                        await this.currentAudio.play();
+                        console.log('🗣️ Đang phát ElevenLabs TTS:', text, 'Voice:', voiceId);
+                        return;
+                    }
+                } catch (_keyErr) {}
             }
         }
 
