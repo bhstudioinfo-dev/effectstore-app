@@ -60,7 +60,9 @@
         "from": "../backend/node_modules",
         "to": "backend/node_modules",
         "filter": [
-          "**/*"
+          "**/*",
+          "!nodemon/**/*",
+          "!.bin/**/*"
         ]
       },
       {
@@ -70,7 +72,8 @@
     ],
     "win": {
       "target": "nsis",
-      "artifactName": "LiveFlow-Setup-${version}.${ext}"
+      "artifactName": "LiveFlow-Setup-${version}.${ext}",
+      "signAndEditExecutable": false
     },
     "publish": {
       "provider": "generic",
@@ -78,8 +81,8 @@
       "channel": "latest"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "deleteAppDataOnUninstall": false
