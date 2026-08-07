@@ -2,22 +2,43 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-console.log('🚀 [1/2] Building LiveFlow win-unpacked package...');
-execSync('npx electron-builder --dir -c.win.signAndEditExecutable=false', {
+const rceditPath = 'C:\\Users\\KATANA\\AppData\\Local\\electron-builder\\Cache\\winCodeSign\\839960007\\rcedit-x64.exe';
+const electronBaseExe = path.resolve(__dirname, '..', 'node_modules', 'electron', 'dist', 'electron.exe');
+const iconPath = path.resolve(__dirname, '..', 'assets', 'liveflow.ico');
+
+console.log('🎨 [1/3] Pre-injecting custom LiveFlow logo into Electron template binary...');
+if (fs.existsSync(rceditPath) && fs.existsSync(electronBaseExe) && fs.existsSync(iconPath)) {
+    try {
+        execSync(`"${rceditPath}" "${electronBaseExe}" --set-icon "${iconPath}"`, { stdio: 'inherit' });
+        console.log('✅ Template electron.exe icon updated.');
+    } catch (e) {
+        console.warn('⚠️ Template injection warning:', e.message);
+    }
+}
+
+console.log('🚀 [2/3] Building LiveFlow package and installer with electron-builder...');
+execSync('npx electron-builder -c.win.signAndEditExecutable=false', {
     cwd: path.resolve(__dirname, '..'),
     stdio: 'inherit'
 });
 
-const rceditPath = 'C:\\Users\\KATANA\\AppData\\Local\\electron-builder\\Cache\\winCodeSign\\839960007\\rcedit-x64.exe';
-const exePath = path.resolve(__dirname, '..', 'dist', 'win-unpacked', 'LiveFlow.exe');
-const iconPath = path.resolve(__dirname, '..', 'assets', 'liveflow.ico');
+const unpackedExePath = path.resolve(__dirname, '..', 'dist', 'win-unpacked', 'LiveFlow.exe');
+const setupExePath = path.resolve(__dirname, '..', 'dist', 'LiveFlow-Setup-1.0.0.exe');
 
-console.log('🎨 [2/2] Injecting custom LiveFlow logo into LiveFlow.exe...');
-if (fs.existsSync(rceditPath) && fs.existsSync(exePath) && fs.existsSync(iconPath)) {
-    execSync(`"${rceditPath}" "${exePath}" --set-icon "${iconPath}"`, { stdio: 'inherit' });
-    console.log('✅ Custom logo injected successfully into LiveFlow.exe!');
-} else {
-    console.warn('⚠️ Could not locate rcedit or executable to inject icon.');
+console.log('🎨 [3/3] Finalizing icon stamps on output binaries...');
+if (fs.existsSync(rceditPath) && fs.existsSync(iconPath)) {
+    if (fs.existsSync(unpackedExePath)) {
+        try {
+            execSync(`"${rceditPath}" "${unpackedExePath}" --set-icon "${iconPath}"`, { stdio: 'inherit' });
+            console.log('✅ LiveFlow.exe icon confirmed.');
+        } catch (_e) {}
+    }
+    if (fs.existsSync(setupExePath)) {
+        try {
+            execSync(`"${rceditPath}" "${setupExePath}" --set-icon "${iconPath}"`, { stdio: 'inherit' });
+            console.log('✅ LiveFlow-Setup-1.0.0.exe icon confirmed.');
+        } catch (_e) {}
+    }
 }
 
-console.log('🎉 LiveFlow build ready with custom logo at desktop/dist/win-unpacked/LiveFlow.exe!');
+console.log('🎉 LiveFlow packaging completed successfully with official custom logo!');

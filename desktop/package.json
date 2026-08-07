@@ -86,7 +86,10 @@
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "assets/liveflow.ico",
+      "uninstallerIcon": "assets/liveflow.ico",
+      "installerHeaderIcon": "assets/liveflow.ico"
     }
   }
 }
