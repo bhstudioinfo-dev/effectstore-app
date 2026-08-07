@@ -1539,6 +1539,23 @@ class EffectStoreApp {
     // ===== TEXT TO SPEECH (TTS) =====
     async speakText(text, isTest = false) {
         if (!text) return;
+
+        let voiceId = document.getElementById('admin-eleven-voice-id')?.value || '21m00Tcm4TlvDq8ikWAM';
+        if (voiceId === 'custom') {
+            voiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || '21m00Tcm4TlvDq8ikWAM';
+        }
+        this.testAudioCache = this.testAudioCache || {};
+        const cacheKey = voiceId + '_' + text;
+
+        // If audio is cached for testing, bypass usage limit checks completely (0 Credit deduction!)
+        if (isTest && this.testAudioCache[cacheKey]) {
+            this.ttsQueue.push(text);
+            if (!this.isProcessingTTS) {
+                this.processTTSQueue();
+            }
+            return;
+        }
+
         try {
             const response = await fetch(`${this.API_URL}/api/tiktok/usage/tts`, {
                 method: 'POST',
@@ -1743,15 +1760,33 @@ class EffectStoreApp {
         this.isProcessingTTS = true;
         const text = this.ttsQueue.shift();
 
-        // Check if ElevenLabs is configured for high quality Voice playback
-        const rawElevenKeys = document.getElementById('admin-eleven-key')?.value || '';
-        const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
-        const elevenKey = elevenKeyList.length > 0 ? elevenKeyList[Math.floor(Math.random() * elevenKeyList.length)] : '';
-        
         let voiceId = document.getElementById('admin-eleven-voice-id')?.value || '21m00Tcm4TlvDq8ikWAM';
         if (voiceId === 'custom') {
             voiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || '21m00Tcm4TlvDq8ikWAM';
         }
+
+        this.testAudioCache = this.testAudioCache || {};
+        const cacheKey = voiceId + '_' + text;
+
+        if (this.testAudioCache[cacheKey]) {
+            console.log('⚡ Phát ngay từ Audio Cache thử nghiệm (0đ Credit, 0đ Token):', text);
+            try {
+                this.currentAudio = new Audio(this.testAudioCache[cacheKey]);
+                this.currentAudio.volume = this.ttsVolume;
+                this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
+                this.currentAudio.onended = () => { this.processTTSQueue(); };
+                this.currentAudio.onerror = () => { this.processTTSQueue(); };
+                await this.currentAudio.play();
+                return;
+            } catch (_cacheErr) {
+                console.warn('Audio cache playback failed, generating new:', _cacheErr);
+            }
+        }
+
+        // Check if ElevenLabs is configured for high quality Voice playback
+        const rawElevenKeys = document.getElementById('admin-eleven-key')?.value || '';
+        const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
+        const elevenKey = elevenKeyList.length > 0 ? elevenKeyList[Math.floor(Math.random() * elevenKeyList.length)] : '';
 
         if (elevenKey) {
             try {
@@ -1797,6 +1832,11 @@ class EffectStoreApp {
 
                 if (elevenRes.ok) {
                     const blob = await elevenRes.blob();
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = () => {
+                        this.testAudioCache[cacheKey] = reader.result;
+                    };
                     const audioUrl = URL.createObjectURL(blob);
                     this.currentAudio = new Audio(audioUrl);
                     this.currentAudio.volume = this.ttsVolume;
