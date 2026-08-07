@@ -1808,17 +1808,38 @@ class EffectStoreApp {
                         },
                         body: JSON.stringify({
                             text: text,
-                            model_id: 'eleven_multilingual_v2',
+                            model_id: 'eleven_v3',
                             voice_settings: {
-                                stability: 0.50,
-                                similarity_boost: 0.75
+                                stability: 0.25,
+                                similarity_boost: 0.85
                             }
                         })
                     });
 
                     if (!elevenRes.ok) {
                         const errDetail = await elevenRes.clone().text().catch(() => '');
-                        console.warn(`ElevenLabs v2 failed with key (${elevenKey.slice(-4)}):`, errDetail);
+                        console.warn(`ElevenLabs v3 failed with key (${elevenKey.slice(-4)}):`, errDetail);
+                        elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'audio/mpeg',
+                                'Content-Type': 'application/json',
+                                'xi-api-key': elevenKey
+                            },
+                            body: JSON.stringify({
+                                text: text,
+                                model_id: 'eleven_multilingual_v2',
+                                voice_settings: {
+                                    stability: 0.35,
+                                    similarity_boost: 0.85
+                                }
+                            })
+                        });
+                    }
+
+                    if (!elevenRes.ok) {
+                        const errDetail2 = await elevenRes.clone().text().catch(() => '');
+                        console.warn(`ElevenLabs v2 failed with key (${elevenKey.slice(-4)}):`, errDetail2);
                         elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                             method: 'POST',
                             headers: {
@@ -1830,29 +1851,8 @@ class EffectStoreApp {
                                 text: text,
                                 model_id: 'eleven_flash_v2_5',
                                 voice_settings: {
-                                    stability: 0.50,
-                                    similarity_boost: 0.75
-                                }
-                            })
-                        });
-                    }
-
-                    if (!elevenRes.ok) {
-                        const errDetail2 = await elevenRes.clone().text().catch(() => '');
-                        console.warn(`ElevenLabs flash failed with key (${elevenKey.slice(-4)}):`, errDetail2);
-                        elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'audio/mpeg',
-                                'Content-Type': 'application/json',
-                                'xi-api-key': elevenKey
-                            },
-                            body: JSON.stringify({
-                                text: text,
-                                model_id: 'eleven_v3',
-                                voice_settings: {
-                                    stability: 0.50,
-                                    similarity_boost: 0.75
+                                    stability: 0.35,
+                                    similarity_boost: 0.85
                                 }
                             })
                         });
