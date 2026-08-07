@@ -27,7 +27,8 @@ let currentConfig = { ...DEFAULT_CONFIG };
 const PLAN_LIMITS = {
     free: 1000,
     basic: 10000,
-    pro: 35000
+    pro: 35000,
+    admin: 999999999
 };
 
 function getCharacterUsage(userPlan = 'free') {
@@ -40,6 +41,19 @@ function getCharacterUsage(userPlan = 'free') {
         saveConfig(currentConfig);
     }
     
+    if (userPlan === 'admin' || userPlan === 'ADMIN') {
+        return {
+            used: Number(currentConfig.usedCharactersThisMonth || 0),
+            baseLimit: 999999999,
+            addon: 0,
+            totalLimit: 999999999,
+            remaining: 999999999,
+            hasQuota: true,
+            isAdmin: true,
+            monthKey
+        };
+    }
+
     const baseLimit = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
     const addon = Number(currentConfig.addonCharacters || 0);
     const totalLimit = baseLimit + addon;

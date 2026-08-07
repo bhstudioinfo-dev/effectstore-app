@@ -934,7 +934,7 @@ const aiAssistantService = require('../services/aiAssistantService');
 router.get('/ai-config', authMiddleware, (req, res) => {
     try {
         const config = aiAssistantService.getConfig();
-        const userPlan = req.user?.plan || 'free';
+        const userPlan = (req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.plan || 'free');
         const usage = aiAssistantService.getCharacterUsage(userPlan);
         const systemStatus = aiAssistantService.getSystemStatus();
         res.json({ success: true, config, usage, systemStatus });
@@ -946,7 +946,7 @@ router.get('/ai-config', authMiddleware, (req, res) => {
 router.post('/ai-config', authMiddleware, (req, res) => {
     try {
         const updated = aiAssistantService.saveConfig(req.body || {});
-        const userPlan = req.user?.plan || 'free';
+        const userPlan = (req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.plan || 'free');
         const usage = aiAssistantService.getCharacterUsage(userPlan);
         res.json({ success: true, config: updated, usage });
     } catch (error) {

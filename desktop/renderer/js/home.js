@@ -1799,7 +1799,7 @@ class EffectStoreApp {
                     },
                     body: JSON.stringify({
                         text: text,
-                        model_id: 'eleven_v3',
+                        model_id: 'eleven_multilingual_v2',
                         voice_settings: {
                             stability: 0.15,
                             similarity_boost: 0.85,
@@ -1819,7 +1819,7 @@ class EffectStoreApp {
                         },
                         body: JSON.stringify({
                             text: text,
-                            model_id: 'eleven_multilingual_v2',
+                            model_id: 'eleven_v3',
                             voice_settings: {
                                 stability: 0.15,
                                 similarity_boost: 0.85,
@@ -6886,12 +6886,24 @@ class EffectStoreApp {
         if (!usage) return;
         const meterText = document.getElementById('ai-usage-meter-text');
         const planBadge = document.getElementById('ai-usage-plan-badge');
+        const isAdmin = usage.isAdmin || this.currentUser?.isAdmin || this.currentUser?.role === 'admin';
+
         if (meterText) {
-            meterText.textContent = `${(usage.used || 0).toLocaleString()} / ${(usage.totalLimit || 1000).toLocaleString()} ký tự`;
+            if (isAdmin || usage.totalLimit >= 999000000) {
+                meterText.textContent = `${(usage.used || 0).toLocaleString()} ký tự (Không giới hạn ♾️)`;
+            } else {
+                meterText.textContent = `${(usage.used || 0).toLocaleString()} / ${(usage.totalLimit || 1000).toLocaleString()} ký tự`;
+            }
         }
         if (planBadge) {
-            const planName = (this.currentUser?.plan || 'free').toUpperCase();
-            planBadge.textContent = `Gói ${planName}`;
+            if (isAdmin || usage.totalLimit >= 999000000) {
+                planBadge.textContent = 'Gói ADMIN (Vĩnh Viễn)';
+                planBadge.style.background = 'linear-gradient(135deg, #ef4444, #f59e0b)';
+                planBadge.style.color = '#fff';
+            } else {
+                const planName = (this.currentUser?.plan || 'free').toUpperCase();
+                planBadge.textContent = `Gói ${planName}`;
+            }
         }
     }
 
