@@ -7103,11 +7103,25 @@ class EffectStoreApp {
 
             const personaSentences = matrix[persona] || matrix['sassy'];
             const testSentence = personaSentences[voiceId] || 'Xin chào! Giọng đọc AI đã sẵn sàng phục vụ bạn!';
+
+            // Always purge existing cache entry for this test sentence so fresh audio is generated from ElevenLabs & saved
+            const cacheKey = voiceId + '_' + testSentence;
+            localStorage.removeItem('es_voice_cache_' + cacheKey);
+
             this.showNotification('success', `🤖 AI (${persona}): "${testSentence}"`);
             this.speakText(testSentence, true);
         } catch (e) {
             this.showNotification('error', '❌ Lỗi: ' + e.message);
         }
+    }
+
+    clearVoiceCache() {
+        Object.keys(localStorage).forEach(k => {
+            if (k.startsWith('es_voice_cache_')) {
+                localStorage.removeItem(k);
+            }
+        });
+        this.showNotification('success', '🧹 Đã xóa toàn bộ bộ nhớ tạm âm thanh AI!');
     }
 
     clearAppData() {
