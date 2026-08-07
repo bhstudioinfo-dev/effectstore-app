@@ -7009,7 +7009,23 @@ class EffectStoreApp {
         try {
             await this.saveAiAssistantConfig();
             this.testAudioCache = {};
-            const testSentence = 'Hello các vợ, lại là anh đây hihi';
+
+            let voiceId = 'pNInz6obpgDQGcFmaJgB';
+            const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input') || document.getElementById('admin-eleven-voice-id');
+            if (voiceSelect && voiceSelect.value) {
+                voiceId = voiceSelect.value;
+            }
+
+            const voiceTestSentences = {
+                'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
+                '21m00Tcm4TlvDq8ikWAM': 'Xin chào cả nhà! Chúc mọi người một buổi livestream thật nhiều niềm vui nha!',
+                'EXAVITQu4vr4xnSDxMaL': 'Dạ em chào anh chị ạ, anh chị ghé xem live nhớ thả tý tym ủng hộ em nhé!',
+                'AZnzlk1XvdvUeBnXmlld': 'Trời ơi tin được không, xem live chùa mà không thả tym là em dỗi đó nha!',
+                'ErXwobaYiN019PkySvjV': 'Alo alo 1 2 3 4, hôm nay Idol live game siêu cháy luôn nha anh em ơi!',
+                'MF3mGyEYCl7XYWbV9V6O': 'Cảm ơn các bạn đã ghé thăm kênh, chúc bạn có những phút giây thư giãn tuyệt vời!'
+            };
+
+            const testSentence = voiceTestSentences[voiceId] || 'Xin chào! Giọng đọc AI Cà khịa đã sẵn sàng phục vụ bạn!';
             this.showNotification('success', `🤖 AI Cà khịa: "${testSentence}"`);
             this.speakText(testSentence, true);
         } catch (e) {
