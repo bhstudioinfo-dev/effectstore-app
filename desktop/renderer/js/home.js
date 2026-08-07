@@ -1797,6 +1797,10 @@ class EffectStoreApp {
         const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
 
         if (elevenKeyList.length > 0) {
+            const isMaleV3 = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO'].includes(voiceId);
+            const primaryModel = isMaleV3 ? 'eleven_v3' : 'eleven_multilingual_v2';
+            const primarySettings = isMaleV3 ? { stability: 0.15, similarity_boost: 0.85, style: 0.20, use_speaker_boost: true } : { stability: 0.35, similarity_boost: 0.85 };
+
             for (const elevenKey of elevenKeyList) {
                 try {
                     let elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
@@ -1808,19 +1812,14 @@ class EffectStoreApp {
                         },
                         body: JSON.stringify({
                             text: text,
-                            model_id: 'eleven_v3',
-                            voice_settings: {
-                                stability: 0.05,
-                                similarity_boost: 0.85,
-                                style: 0.20,
-                                use_speaker_boost: true
-                            }
+                            model_id: primaryModel,
+                            voice_settings: primarySettings
                         })
                     });
 
                     if (!elevenRes.ok) {
-                        const errDetail = await elevenRes.clone().text().catch(() => '');
-                        console.warn(`ElevenLabs v3 failed with key (${elevenKey.slice(-4)}):`, errDetail);
+                        const fallbackModel = isMaleV3 ? 'eleven_multilingual_v2' : 'eleven_flash_v2_5';
+                        const fallbackSettings = { stability: 0.35, similarity_boost: 0.85 };
                         elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                             method: 'POST',
                             headers: {
@@ -1830,12 +1829,8 @@ class EffectStoreApp {
                             },
                             body: JSON.stringify({
                                 text: text,
-                                model_id: 'eleven_multilingual_v2',
-                                language_code: 'vi',
-                                voice_settings: {
-                                    stability: 0.35,
-                                    similarity_boost: 0.85
-                                }
+                                model_id: fallbackModel,
+                                voice_settings: fallbackSettings
                             })
                         });
                     }
@@ -7034,7 +7029,7 @@ class EffectStoreApp {
                 elevenLabsVoiceId = customInput?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
             }
 
-            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', 'qSeXEcewz7tA0Q0qk9fH', 'g6xIsTj2HwM6VR4iXFCw'];
+            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', 'TxGEqnHWrfWFTfGW9XjX'];
 
             document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = enabled);
             document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = persona);
@@ -7079,26 +7074,22 @@ class EffectStoreApp {
                 sassy: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Xem live mà lặng thinh như tờ giấy vậy anh em, gõ chữ chat ủng hộ Idol đi chứ!',
-                    'qSeXEcewz7tA0Q0qk9fH': 'Trời ơi tin được không, lướt qua live mà bấm theo dõi cũng tiếc một cái chạm tay hả người đẹp?',
-                    'g6xIsTj2HwM6VR4iXFCw': 'Dạ em chào anh nha, anh xem live từ nãy giờ rồi đó, thả tý tym cho em ấm lòng đi ạ!'
+                    'TxGEqnHWrfWFTfGW9XjX': 'Vào live ngắm Idol say đắm luôn rồi đúng không, nhớ bấm chia sẻ live nha fan cứng!'
                 },
                 funny: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Cảnh báo: Xem live này quá 180 giây có nguy cơ gây nghiện cực cao, thả tym ngay để giải độc!',
-                    'qSeXEcewz7tA0Q0qk9fH': 'Ủa alo người đẹp ơi, tay đang bận ăn vặt hay sao mà chưa bấm thả tym cho tui dị?',
-                    'g6xIsTj2HwM6VR4iXFCw': 'Nhìn cái gì mà nhìn, thấy em dễ thương quá nên quên thả tym rồi đúng hông nè!'
+                    'TxGEqnHWrfWFTfGW9XjX': 'Đừng nhìn Idol bằng đôi mắt trìu mến đó nữa, thả tim và tặng quà thực tế đi anh em!'
                 },
                 sweet: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Thấy em vào live cái là khung chat sáng bừng luôn, ở lại trò chuyện với anh lâu lâu nha!',
-                    'qSeXEcewz7tA0Q0qk9fH': 'Anh ơi, người ta thả tym cho live, còn em chỉ muốn thả nụ cười này cho riêng anh thôi đó!',
-                    'g6xIsTj2HwM6VR4iXFCw': 'Dạ anh ơi, hôm nay anh có mệt không? Ghé live em ngồi nghỉ xíu rồi em đọc thoại ngọt ngào cho nghe nè!'
+                    'TxGEqnHWrfWFTfGW9XjX': 'Gặp nhau ở đây chắc là duyên rồi, anh thả tym một cái là em nhớ anh cả đêm luôn đó!'
                 },
                 smart: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Xin chào mọi người. Rất vui được gặp lại cả nhà trong buổi phát sóng hôm nay.',
-                    'qSeXEcewz7tA0Q0qk9fH': 'Dạ em xin kính chào quý anh chị. Chúc cả nhà một buổi tối xem live vui vẻ và nhiều may mắn ạ.',
-                    'g6xIsTj2HwM6VR4iXFCw': 'Chào mừng quý vị đã ghé thăm. Sự hiện diện của bạn chính là niềm vinh hạnh cho phòng live của chúng tôi.'
+                    'TxGEqnHWrfWFTfGW9XjX': 'Trân trọng cảm ơn sự ủng hộ của quý khán giả. Chúc bạn luôn tràn ngập niềm vui và hạnh phúc.'
                 }
             };
 
