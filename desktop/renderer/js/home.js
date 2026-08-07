@@ -7035,7 +7035,7 @@ class EffectStoreApp {
                 elevenLabsVoiceId = customInput?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
             }
 
-            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', 'cgSgspJ2msm6clMCkdW9', '9BWtsMINqrJLrRacOk9x'];
+            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', 'qSeXEcewz7tA0Q0qk9fH', 'g6xIsTj2HwM6VR4iXFCw'];
 
             document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = enabled);
             document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = persona);
@@ -7080,26 +7080,26 @@ class EffectStoreApp {
                 sassy: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Xem live mà lặng thinh như tờ giấy vậy anh em, gõ chữ chat ủng hộ Idol đi chứ!',
-                    'cgSgspJ2msm6clMCkdW9': 'Trời ơi tin được không, lướt qua live mà bấm theo dõi cũng tiếc một cái chạm tay hả người đẹp?',
-                    '9BWtsMINqrJLrRacOk9x': 'Dạ em chào anh nha, anh xem live từ nãy giờ rồi đó, thả tý tym cho em ấm lòng đi ạ!'
+                    'qSeXEcewz7tA0Q0qk9fH': 'Trời ơi tin được không, lướt qua live mà bấm theo dõi cũng tiếc một cái chạm tay hả người đẹp?',
+                    'g6xIsTj2HwM6VR4iXFCw': 'Dạ em chào anh nha, anh xem live từ nãy giờ rồi đó, thả tý tym cho em ấm lòng đi ạ!'
                 },
                 funny: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Cảnh báo: Xem live này quá 180 giây có nguy cơ gây nghiện cực cao, thả tym ngay để giải độc!',
-                    'cgSgspJ2msm6clMCkdW9': 'Ủa alo người đẹp ơi, tay đang bận ăn vặt hay sao mà chưa bấm thả tym cho tui dị?',
-                    '9BWtsMINqrJLrRacOk9x': 'Nhìn cái gì mà nhìn, thấy em dễ thương quá nên quên thả tym rồi đúng hông nè!'
+                    'qSeXEcewz7tA0Q0qk9fH': 'Ủa alo người đẹp ơi, tay đang bận ăn vặt hay sao mà chưa bấm thả tym cho tui dị?',
+                    'g6xIsTj2HwM6VR4iXFCw': 'Nhìn cái gì mà nhìn, thấy em dễ thương quá nên quên thả tym rồi đúng hông nè!'
                 },
                 sweet: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Thấy em vào live cái là khung chat sáng bừng luôn, ở lại trò chuyện với anh lâu lâu nha!',
-                    'cgSgspJ2msm6clMCkdW9': 'Anh ơi, người ta thả tym cho live, còn em chỉ muốn thả nụ cười này cho riêng anh thôi đó!',
-                    '9BWtsMINqrJLrRacOk9x': 'Dạ anh ơi, hôm nay anh có mệt không? Ghé live em ngồi nghỉ xíu rồi em đọc thoại ngọt ngào cho nghe nè!'
+                    'qSeXEcewz7tA0Q0qk9fH': 'Anh ơi, người ta thả tym cho live, còn em chỉ muốn thả nụ cười này cho riêng anh thôi đó!',
+                    'g6xIsTj2HwM6VR4iXFCw': 'Dạ anh ơi, hôm nay anh có mệt không? Ghé live em ngồi nghỉ xíu rồi em đọc thoại ngọt ngào cho nghe nè!'
                 },
                 smart: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Xin chào mọi người. Rất vui được gặp lại cả nhà trong buổi phát sóng hôm nay.',
-                    'cgSgspJ2msm6clMCkdW9': 'Dạ em xin kính chào quý anh chị. Chúc cả nhà một buổi tối xem live vui vẻ và nhiều may mắn ạ.',
-                    '9BWtsMINqrJLrRacOk9x': 'Chào mừng quý vị đã ghé thăm. Sự hiện diện của bạn chính là niềm vinh hạnh cho phòng live của chúng tôi.'
+                    'qSeXEcewz7tA0Q0qk9fH': 'Dạ em xin kính chào quý anh chị. Chúc cả nhà một buổi tối xem live vui vẻ và nhiều may mắn ạ.',
+                    'g6xIsTj2HwM6VR4iXFCw': 'Chào mừng quý vị đã ghé thăm. Sự hiện diện của bạn chính là niềm vinh hạnh cho phòng live của chúng tôi.'
                 }
             };
 
