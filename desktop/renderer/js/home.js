@@ -6828,8 +6828,9 @@ class EffectStoreApp {
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            if (data.success && data.usage) {
-                this.renderAiUsageUI(data.usage);
+            if (data.success) {
+                if (data.usage) this.renderAiUsageUI(data.usage);
+                this.showNotification('success', '💾 Đã lưu API Key Hệ Thống AI thành công!');
             }
         } catch (_e) {}
     }

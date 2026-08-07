@@ -1,9 +1,9 @@
 {
-  "enabled": true,
+  "enabled": false,
   "persona": "sassy",
   "cooldownSeconds": 20,
   "donatorOnly": false,
-  "geminiApiKey": "",
+  "geminiApiKey": "AIzaSyDlIi-dMtzsDB8hRTNqcAbM27vFF5JZrmQ",
   "elevenLabsApiKey": "",
   "elevenLabsVoiceId": "21m00Tcm4TlvDq8ikWAM",
   "ttsEngine": "webspeech",
