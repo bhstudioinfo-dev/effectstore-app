@@ -57,6 +57,13 @@
         ]
       },
       {
+        "from": "../backend/node_modules",
+        "to": "backend/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "../frontend/overlay",
         "to": "frontend/overlay"
       }
