@@ -1810,10 +1810,8 @@ class EffectStoreApp {
                             text: text,
                             model_id: 'eleven_v3',
                             voice_settings: {
-                                stability: 0.15,
-                                similarity_boost: 0.85,
-                                style: 0.20,
-                                use_speaker_boost: true
+                                stability: 0.35,
+                                similarity_boost: 0.85
                             }
                         })
                     });
@@ -1832,10 +1830,8 @@ class EffectStoreApp {
                                 text: text,
                                 model_id: 'eleven_multilingual_v2',
                                 voice_settings: {
-                                    stability: 0.15,
-                                    similarity_boost: 0.85,
-                                    style: 0.20,
-                                    use_speaker_boost: true
+                                    stability: 0.35,
+                                    similarity_boost: 0.85
                                 }
                             })
                         });
@@ -1855,7 +1851,7 @@ class EffectStoreApp {
                                 text: text,
                                 model_id: 'eleven_flash_v2_5',
                                 voice_settings: {
-                                    stability: 0.15,
+                                    stability: 0.35,
                                     similarity_boost: 0.85
                                 }
                             })
