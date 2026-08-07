@@ -1797,10 +1797,6 @@ class EffectStoreApp {
         const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
 
         if (elevenKeyList.length > 0) {
-            const isMaleV3 = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO'].includes(voiceId);
-            const primaryModel = isMaleV3 ? 'eleven_v3' : 'eleven_multilingual_v2';
-            const primarySettings = isMaleV3 ? { stability: 0.15, similarity_boost: 0.85, style: 0.20, use_speaker_boost: true } : { stability: 0.35, similarity_boost: 0.85 };
-
             for (const elevenKey of elevenKeyList) {
                 try {
                     let elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
@@ -1812,14 +1808,20 @@ class EffectStoreApp {
                         },
                         body: JSON.stringify({
                             text: text,
-                            model_id: primaryModel,
-                            voice_settings: primarySettings
+                            model_id: 'eleven_v3',
+                            language_code: 'vi',
+                            voice_settings: {
+                                stability: 0.15,
+                                similarity_boost: 0.85,
+                                style: 0.20,
+                                use_speaker_boost: true
+                            }
                         })
                     });
 
                     if (!elevenRes.ok) {
-                        const fallbackModel = isMaleV3 ? 'eleven_multilingual_v2' : 'eleven_flash_v2_5';
-                        const fallbackSettings = { stability: 0.35, similarity_boost: 0.85 };
+                        const errDetail = await elevenRes.clone().text().catch(() => '');
+                        console.warn(`ElevenLabs v3 failed with key (${elevenKey.slice(-4)}):`, errDetail);
                         elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                             method: 'POST',
                             headers: {
@@ -1829,8 +1831,12 @@ class EffectStoreApp {
                             },
                             body: JSON.stringify({
                                 text: text,
-                                model_id: fallbackModel,
-                                voice_settings: fallbackSettings
+                                model_id: 'eleven_multilingual_v2',
+                                language_code: 'vi',
+                                voice_settings: {
+                                    stability: 0.35,
+                                    similarity_boost: 0.85
+                                }
                             })
                         });
                     }
