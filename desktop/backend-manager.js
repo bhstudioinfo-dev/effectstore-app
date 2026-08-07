@@ -98,8 +98,8 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
         ENCRYPTION_PASSWORD: readSecret('ENCRYPTION_PASSWORD'),
         INITIAL_SETUP_TOKEN: readSecret('INITIAL_SETUP_TOKEN'),
         MONGODB_URI: readSecret('MONGODB_URI'),
-        API_HOST: '127.0.0.1',
-        WS_HOST: '127.0.0.1'
+        API_HOST: '0.0.0.0',
+        WS_HOST: '0.0.0.0'
     };
     if (config.JWT_SECRET.length < 32) {
         config.JWT_SECRET = crypto.randomBytes(48).toString('hex');

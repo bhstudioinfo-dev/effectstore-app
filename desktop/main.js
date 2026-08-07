@@ -420,11 +420,11 @@ function startLocalServer() {
         });
     });
     
-    localServer = expressApp.listen(PORT, '127.0.0.1', () => {
+    localServer = expressApp.listen(PORT, '0.0.0.0', () => {
         console.log(`🌐 Server: http://localhost:${PORT}`);
     });
     
-    wss = new WebSocketServer({ port: WS_PORT, host: '127.0.0.1', maxPayload: 64 * 1024, perMessageDeflate: false });
+    wss = new WebSocketServer({ port: WS_PORT, host: '0.0.0.0', maxPayload: 64 * 1024, perMessageDeflate: false });
     
     wss.on('connection', (ws) => {
         connectedClients.add(ws);
