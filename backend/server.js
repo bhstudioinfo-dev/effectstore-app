@@ -268,8 +268,8 @@ async function seedInitialGifts() {
 }
 
 let databaseSchemaReady = false;
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/effectstore', {
-    serverSelectionTimeoutMS: 10000,
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/effectstore', {
+    serverSelectionTimeoutMS: 3000,
     maxPoolSize: 10,
     minPoolSize: 0
 })
@@ -282,7 +282,8 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/effectsto
     })
     .catch(err => {
         databaseSchemaReady = false;
-        console.error('❌ MongoDB Error:', err);
+        console.warn('⚠️  Local MongoDB Connection Warning (App running in standalone mode):', err.message);
+        initOBSConnection().catch(() => {});
     });
 
 // ========================================

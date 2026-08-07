@@ -503,7 +503,7 @@ app.whenReady().then(async () => {
         const status = await waitForDatabaseConnection(10000);
         console.log('🚀 Backend database connection status:', status);
         if (!status.database?.connected) {
-            throw new Error('Không thể kết nối cơ sở dữ liệu backend. Vui lòng kiểm tra MongoDB và cấu hình URI.');
+            console.warn('⚠️ Backend DB is not connected locally. LiveFlow is running in standalone mode.');
         }
     } catch (error) {
         console.error('Backend startup error:', error);
