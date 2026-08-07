@@ -1885,16 +1885,30 @@ class EffectStoreApp {
             };
 
             this.currentAudio.onerror = () => {
-                console.error('Google TTS Error, skipping...');
-                this.processTTSQueue();
+                this.speakWebSpeech(text);
             };
 
-            await this.currentAudio.play().catch(e => {
-                if (e.name !== 'AbortError') console.error('Google TTS Play Error:', e);
+            await this.currentAudio.play().catch(_e => {
+                this.speakWebSpeech(text);
             });
             console.log('🗣️ Đang phát Google TTS:', text);
         } catch (error) {
-            console.error('Google TTS Play Error:', error);
+            this.speakWebSpeech(text);
+        }
+    }
+
+    speakWebSpeech(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'vi-VN';
+            utterance.volume = this.ttsVolume || 1.0;
+            utterance.rate = this.ttsSpeed || 1.0;
+            utterance.onend = () => { this.processTTSQueue(); };
+            utterance.onerror = () => { this.processTTSQueue(); };
+            window.speechSynthesis.speak(utterance);
+            console.log('🗣️ Đang phát Web Speech API (Giọng máy mặc định):', text);
+        } else {
             this.processTTSQueue();
         }
     }
@@ -6979,6 +6993,21 @@ class EffectStoreApp {
         } catch (e) {
             this.showNotification('error', '❌ Lỗi kết nối nạp gói: ' + e.message);
         }
+    }
+
+    onElevenVoiceSelectChange(el) {
+        const val = el ? el.value : 'pNInz6obpgDQGcFmaJgB';
+        document.querySelectorAll('.ai-assistant-eleven-voice-input').forEach(s => s.value = val);
+        document.querySelectorAll('.ai-assistant-custom-voice-input').forEach(inp => {
+            if (val === 'custom') {
+                inp.style.display = 'block';
+                inp.focus();
+            } else {
+                inp.style.display = 'none';
+                inp.value = '';
+            }
+        });
+        this.saveAiAssistantConfig(el);
     }
 
     getActiveVoiceId() {
