@@ -1792,11 +1792,6 @@ class EffectStoreApp {
             }
         }
 
-        if (voiceId === 'google_vi') {
-            await this.speakGoogleTTSProxy(text, cacheKey);
-            return;
-        }
-
         // Check if ElevenLabs is configured for high quality Voice playback
         const rawElevenKeys = (this.aiAssistantConfig && this.aiAssistantConfig.elevenLabsApiKey) || document.getElementById('admin-eleven-key')?.value || '';
         const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
@@ -1872,36 +1867,25 @@ class EffectStoreApp {
             }
         }
 
-        await this.speakGoogleTTSProxy(text, cacheKey);
-    }
-
-    async speakGoogleTTSProxy(text, cacheKey) {
         try {
-            const googleTTSUrl = `${this.API_URL}/api/tiktok/google-tts?text=${encodeURIComponent(text)}&lang=vi`;
+            const googleTTSUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=vi&client=tw-ob`;
 
-            const res = await fetch(googleTTSUrl);
-            if (res.ok) {
-                const blob = await res.blob();
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = () => {
-                    const dataUrl = reader.result;
-                    try {
-                        if (cacheKey) localStorage.setItem('es_voice_cache_' + cacheKey, dataUrl);
-                    } catch (_e) {}
-                };
+            this.currentAudio = new Audio(googleTTSUrl);
+            this.currentAudio.volume = this.ttsVolume;
+            this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
 
-                const audioUrl = URL.createObjectURL(blob);
-                this.currentAudio = new Audio(audioUrl);
-                this.currentAudio.volume = this.ttsVolume;
-                this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
-                this.currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); this.processTTSQueue(); };
-                this.currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); this.speakWebSpeech(text); };
-                await this.currentAudio.play();
-                console.log('🗣️ Đang phát Google TTS Chị Google (Proxy backend):', text);
-                return;
-            }
-            this.speakWebSpeech(text);
+            this.currentAudio.onended = () => {
+                this.processTTSQueue();
+            };
+
+            this.currentAudio.onerror = () => {
+                this.speakWebSpeech(text);
+            };
+
+            await this.currentAudio.play().catch(_e => {
+                this.speakWebSpeech(text);
+            });
+            console.log('🗣️ Đang phát Google TTS:', text);
         } catch (error) {
             this.speakWebSpeech(text);
         }
@@ -7045,7 +7029,7 @@ class EffectStoreApp {
                 elevenLabsVoiceId = customInput?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
             }
 
-            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', 'EXAVITQu4vr4xnSDxMaL', '21m00Tcm4TlvDq8ikWAM', 'MF3mGyEYCl7XYWbV9V6O', 'google_vi'];
+            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', 'cgSgspJ2msm6clMCkdW9', '9BWtsMINqrJLrRacOk9x'];
 
             document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = enabled);
             document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = persona);
@@ -7090,30 +7074,26 @@ class EffectStoreApp {
                 sassy: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Xem live mà lặng thinh như tờ giấy vậy anh em, gõ chữ chat ủng hộ Idol đi chứ!',
-                    '21m00Tcm4TlvDq8ikWAM': 'Trời ơi tin được không, lướt qua live mà bấm theo dõi cũng tiếc một cái chạm tay hả người đẹp?',
-                    'EXAVITQu4vr4xnSDxMaL': 'Dạ em chào anh nha, anh xem live từ nãy giờ rồi đó, thả tý tym cho em ấm lòng đi ạ!',
-                    'MF3mGyEYCl7XYWbV9V6O': 'Ghét ghê dị đó, xem live hăng hái mà thả tim cái mỏi tay quá hả mấy nết ơi!'
+                    'cgSgspJ2msm6clMCkdW9': 'Trời ơi tin được không, lướt qua live mà bấm theo dõi cũng tiếc một cái chạm tay hả người đẹp?',
+                    '9BWtsMINqrJLrRacOk9x': 'Dạ em chào anh nha, anh xem live từ nãy giờ rồi đó, thả tý tym cho em ấm lòng đi ạ!'
                 },
                 funny: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Cảnh báo: Xem live này quá 180 giây có nguy cơ gây nghiện cực cao, thả tym ngay để giải độc!',
-                    '21m00Tcm4TlvDq8ikWAM': 'Ủa alo người đẹp ơi, tay đang bận ăn vặt hay sao mà chưa bấm thả tym cho tui dị?',
-                    'EXAVITQu4vr4xnSDxMaL': 'Nhìn cái gì mà nhìn, thấy em dễ thương quá nên quên thả tym rồi đúng hông nè!',
-                    'MF3mGyEYCl7XYWbV9V6O': 'Cười vui vẻ hò reo vậy thôi chứ tim với quà đâu hổng thấy, buồn nhẹ 5 giây nha!'
+                    'cgSgspJ2msm6clMCkdW9': 'Ủa alo người đẹp ơi, tay đang bận ăn vặt hay sao mà chưa bấm thả tym cho tui dị?',
+                    '9BWtsMINqrJLrRacOk9x': 'Nhìn cái gì mà nhìn, thấy em dễ thương quá nên quên thả tym rồi đúng hông nè!'
                 },
                 sweet: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Thấy em vào live cái là khung chat sáng bừng luôn, ở lại trò chuyện với anh lâu lâu nha!',
-                    '21m00Tcm4TlvDq8ikWAM': 'Anh ơi, người ta thả tym cho live, còn em chỉ muốn thả nụ cười này cho riêng anh thôi đó!',
-                    'EXAVITQu4vr4xnSDxMaL': 'Dạ anh ơi, hôm nay anh có mệt không? Ghé live em ngồi nghỉ xíu rồi em đọc thoại ngọt ngào cho nghe nè!',
-                    'MF3mGyEYCl7XYWbV9V6O': 'Chúc cả nhà một buổi tối ngập tràn niềm vui và luôn luôn bình an, mỉm cười thiệt nhiều nha!'
+                    'cgSgspJ2msm6clMCkdW9': 'Anh ơi, người ta thả tym cho live, còn em chỉ muốn thả nụ cười này cho riêng anh thôi đó!',
+                    '9BWtsMINqrJLrRacOk9x': 'Dạ anh ơi, hôm nay anh có mệt không? Ghé live em ngồi nghỉ xíu rồi em đọc thoại ngọt ngào cho nghe nè!'
                 },
                 smart: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Xin chào mọi người. Rất vui được gặp lại cả nhà trong buổi phát sóng hôm nay.',
-                    '21m00Tcm4TlvDq8ikWAM': 'Dạ em xin kính chào quý anh chị. Chúc cả nhà một buổi tối xem live vui vẻ và nhiều may mắn ạ.',
-                    'EXAVITQu4vr4xnSDxMaL': 'Chào mừng quý vị đã ghé thăm. Sự hiện diện của bạn chính là niềm vinh hạnh cho phòng live của chúng tôi.',
-                    'MF3mGyEYCl7XYWbV9V6O': 'Cảm ơn quý khán giả đã đồng hành. Chúc bạn cùng gia đình luôn tràn đầy sức khỏe và may mắn.'
+                    'cgSgspJ2msm6clMCkdW9': 'Dạ em xin kính chào quý anh chị. Chúc cả nhà một buổi tối xem live vui vẻ và nhiều may mắn ạ.',
+                    '9BWtsMINqrJLrRacOk9x': 'Chào mừng quý vị đã ghé thăm. Sự hiện diện của bạn chính là niềm vinh hạnh cho phòng live của chúng tôi.'
                 }
             };
 
