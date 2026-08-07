@@ -151,36 +151,45 @@ function getRandomFallback(persona) {
 }
 
 async function callGeminiApi(apiKey, systemPrompt, username, userMessage) {
-    return new Promise((resolve, reject) => {
-        const payload = JSON.stringify({
-            systemInstruction: {
-                parts: [{ text: systemPrompt }]
-            },
-            contents: [
-                { role: 'user', parts: [{ text: `Khán giả "${username}" vừa bình luận: "${userMessage}"` }] }
-            ],
-            generationConfig: { maxOutputTokens: 60, temperature: 0.9 }
-        });
+    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    for (const model of models) {
+        try {
+            const resText = await new Promise((resolve, reject) => {
+                const payload = JSON.stringify({
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                    contents: [
+                        { role: 'user', parts: [{ text: `Khán giả "${username}" vừa bình luận: "${userMessage}"` }] }
+                    ],
+                    generationConfig: { maxOutputTokens: 150, temperature: 0.9 }
+                });
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-        const req = https.request(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } }, (res) => {
-            let data = '';
-            res.on('data', chunk => { data += chunk; });
-            res.on('end', () => {
-                try {
-                    const parsed = JSON.parse(data);
-                    const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (text) resolve(text.trim());
-                    else reject(new Error('No response text from Gemini'));
-                } catch (e) {
-                    reject(e);
-                }
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+                const req = https.request(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } }, (res) => {
+                    let data = '';
+                    res.on('data', chunk => { data += chunk; });
+                    res.on('end', () => {
+                        try {
+                            const parsed = JSON.parse(data);
+                            const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (res.statusCode === 200 && text) resolve(text.trim());
+                            else reject(new Error(parsed?.error?.message || `HTTP ${res.statusCode}`));
+                        } catch (e) {
+                            reject(e);
+                        }
+                    });
+                });
+                req.on('error', reject);
+                req.write(payload);
+                req.end();
             });
-        });
-        req.on('error', reject);
-        req.write(payload);
-        req.end();
-    });
+            if (resText) return resText;
+        } catch (err) {
+            console.warn(`Gemini model ${model} failed, trying next:`, err.message);
+        }
+    }
+    throw new Error('All Gemini models failed');
 }
 
 async function generateReply(username, comment) {
