@@ -272,6 +272,11 @@ async function processChatMessage({ username, comment, isDonator = false, userPl
     recordCharacterUsage(charLength);
     const usage = getCharacterUsage(userPlan);
 
+    // Rotate ElevenLabs API Keys if multiple are provided
+    const rawElevenKeys = config.elevenLabsApiKey || '';
+    const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
+    const activeElevenKey = elevenKeyList.length > 0 ? elevenKeyList[Math.floor(Math.random() * elevenKeyList.length)] : '';
+
     const eventData = {
         type: 'ai_assistant_speech',
         username,
@@ -279,7 +284,7 @@ async function processChatMessage({ username, comment, isDonator = false, userPl
         replyText,
         persona: config.persona,
         ttsEngine: config.ttsEngine,
-        elevenLabsApiKey: config.elevenLabsApiKey,
+        elevenLabsApiKey: activeElevenKey,
         elevenLabsVoiceId: config.elevenLabsVoiceId,
         readSpeed: config.readSpeed || 1.0,
         volume: config.volume || 1.0,
