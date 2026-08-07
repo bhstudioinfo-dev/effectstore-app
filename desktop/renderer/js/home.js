@@ -1541,7 +1541,7 @@ class EffectStoreApp {
         if (!text) return;
 
         let voiceId = 'pNInz6obpgDQGcFmaJgB';
-        const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input') || document.getElementById('admin-eleven-voice-id');
+        const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input');
         if (voiceSelect && voiceSelect.value) {
             voiceId = voiceSelect.value;
         }
@@ -1766,7 +1766,7 @@ class EffectStoreApp {
         const text = this.ttsQueue.shift();
 
         let voiceId = 'pNInz6obpgDQGcFmaJgB';
-        const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input') || document.getElementById('admin-eleven-voice-id');
+        const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input');
         if (voiceSelect && voiceSelect.value) {
             voiceId = voiceSelect.value;
         }
