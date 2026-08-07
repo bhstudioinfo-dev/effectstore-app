@@ -7102,20 +7102,6 @@ class EffectStoreApp {
                     'TxGEqnHWrfWFTfGW9XjX': 'Vào live ngắm Idol say đắm luôn rồi đúng không, nhớ bấm chia sẻ live nha fan cứng!',
                     'EXAVITQu4vr4xnSDxMaL': 'Dạ em chào anh nha, anh xem live từ nãy giờ rồi đó, thả tý tym cho em ấm lòng đi ạ!'
                 },
-                flirty: {
-                    'pNInz6obpgDQGcFmaJgB': 'Em ơi, đường vào tim em có khó không mà anh lướt live gặp em là tim đập thình thịch rồi nè!',
-                    '21m00Tcm4TlvDq8ikWAM': 'Anh ơi, người ta thả tym cho live, còn em chỉ muốn thả nụ cười này cho riêng anh thôi đó!',
-                    'ErXwobaYiN019PkySvjV': 'Thấy em vào live cái là khung chat sáng bừng luôn, ở lại trò chuyện với anh lâu lâu nha!',
-                    'TxGEqnHWrfWFTfGW9XjX': 'Gặp nhau ở đây chắc là duyên rồi, anh thả tym một cái là em nhớ anh cả đêm luôn đó!',
-                    'EXAVITQu4vr4xnSDxMaL': 'Dạ anh ơi, hôm nay anh có mệt không? Ghé live em ngồi nghỉ xíu rồi em đọc thoại ngọt ngào cho nghe nè!'
-                },
-                enthusiastic: {
-                    'pNInz6obpgDQGcFmaJgB': 'Alo alo! Chào mừng 500 anh em đã cập bến phòng live! Hôm nay nổ mắt xem Idol quẩy banh nóc nha!',
-                    '21m00Tcm4TlvDq8ikWAM': 'Cháy quá anh chị em ơi! Đẩy view đẩy tym nhiệt tình lên nào, hôm nay quà to ngợp trời luôn!',
-                    'ErXwobaYiN019PkySvjV': 'Lên là lên luôn! Anh em vô thả tim dồn dập cho Idol đi nào, mười vạn tim là quẩy tới sáng!',
-                    'TxGEqnHWrfWFTfGW9XjX': 'Năng lượng bùng nổ hôm nay đây rồi! Cảm ơn anh em đã có mặt, chiến hết mình cùng phòng live nhé!',
-                    'EXAVITQu4vr4xnSDxMaL': 'Hôm nay vui quá cả nhà ơi! Ghé live thả tim và tương tác rộn ràng cùng em nhé!'
-                },
                 funny: {
                     'pNInz6obpgDQGcFmaJgB': 'Ủa alo? Mấy ông xem live mà giấu giếm cái tym ở đâu vậy, lôi ra thả cho Idol coi nào!',
                     '21m00Tcm4TlvDq8ikWAM': 'Ủa alo người đẹp ơi, tay đang bận ăn vặt hay sao mà chưa bấm thả tym cho tui dị?',
@@ -7123,12 +7109,19 @@ class EffectStoreApp {
                     'TxGEqnHWrfWFTfGW9XjX': 'Đừng nhìn Idol bằng đôi mắt trìu mến đó nữa, thả tim và tặng quà thực tế đi anh em!',
                     'EXAVITQu4vr4xnSDxMaL': 'Nhìn cái gì mà nhìn, thấy em dễ thương quá nên quên thả tym rồi đúng hông nè!'
                 },
-                gentle: {
+                sweet: {
+                    'pNInz6obpgDQGcFmaJgB': 'Em ơi, đường vào tim em có khó không mà anh lướt live gặp em là tim đập thình thịch rồi nè!',
+                    '21m00Tcm4TlvDq8ikWAM': 'Anh ơi, người ta thả tym cho live, còn em chỉ muốn thả nụ cười này cho riêng anh thôi đó!',
+                    'ErXwobaYiN019PkySvjV': 'Thấy em vào live cái là khung chat sáng bừng luôn, ở lại trò chuyện với anh lâu lâu nha!',
+                    'TxGEqnHWrfWFTfGW9XjX': 'Gặp nhau ở đây chắc là duyên rồi, anh thả tym một cái là em nhớ anh cả đêm luôn đó!',
+                    'EXAVITQu4vr4xnSDxMaL': 'Dạ anh ơi, hôm nay anh có mệt không? Ghé live em ngồi nghỉ xíu rồi em đọc thoại ngọt ngào cho nghe nè!'
+                },
+                smart: {
                     'pNInz6obpgDQGcFmaJgB': 'Chào mừng bạn đã đến với phòng livestream. Chúc bạn có những phút giây thư giãn thật tuyệt vời nhé.',
                     '21m00Tcm4TlvDq8ikWAM': 'Dạ em xin kính chào quý anh chị. Chúc cả nhà một buổi tối xem live vui vẻ và nhiều may mắn ạ.',
                     'ErXwobaYiN019PkySvjV': 'Xin chào mọi người. Rất vui được gặp lại cả nhà trong buổi phát sóng hôm nay.',
                     'TxGEqnHWrfWFTfGW9XjX': 'Trân trọng cảm ơn sự ủng hộ của quý khán giả. Chúc bạn luôn tràn ngập niềm vui và hạnh phúc.',
-                    'EXAVITQu4vr4xnSDxMaL': 'Dạ em chào anh chị ạ. Cảm ơn anh chị đã luôn dành thời gian yêu thương và ủng hộ phòng live.'
+                    'EXAVITQu4vr4xnSDxMaL': 'Chào mừng quý vị đã ghé thăm. Sự hiện diện của bạn chính là niềm vinh hạnh cho phòng live của chúng tôi.'
                 }
             };
 
