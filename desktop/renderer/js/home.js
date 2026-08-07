@@ -1870,6 +1870,27 @@ class EffectStoreApp {
         try {
             const googleTTSUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=vi&client=tw-ob`;
 
+            fetch(googleTTSUrl)
+                .then(r => r.blob())
+                .then(blob => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = () => {
+                        const dataUrl = reader.result;
+                        try {
+                            localStorage.setItem('es_voice_cache_' + cacheKey, dataUrl);
+                        } catch (_e) {}
+
+                        fetch(`${this.API_URL}/api/tiktok/save-voice-sample`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ voiceId, audioBase64: dataUrl })
+                        }).catch(() => {});
+                    };
+                }).catch(() => {});
+
             this.currentAudio = new Audio(googleTTSUrl);
             this.currentAudio.volume = this.ttsVolume;
             this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
