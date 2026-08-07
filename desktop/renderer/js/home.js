@@ -1892,6 +1892,7 @@ class EffectStoreApp {
                     }
                 } catch (_keyErr) {}
             }
+            this.showNotification('warning', '💡 Mẹo: Vào trang ElevenLabs -> My Voices -> Bấm 3 chấm "..." -> Copy Voice ID cá nhân dán vào ô Tùy Chỉnh để chạy Free 100%!');
         }
 
         try {
