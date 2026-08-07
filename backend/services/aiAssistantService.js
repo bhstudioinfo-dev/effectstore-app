@@ -180,14 +180,25 @@ async function generateReply(username, comment) {
     const persona = config.persona || 'sassy';
     const systemPrompt = PERSONA_PROMPTS[persona] || PERSONA_PROMPTS.sassy;
     const cleanComment = sanitizeText(comment);
-    const activeApiKey = config.geminiApiKey || process.env.GEMINI_API_KEY || '';
+    const rawKeys = config.geminiApiKey || process.env.GEMINI_API_KEY || '';
+    const keyList = rawKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
 
-    if (activeApiKey) {
+    if (keyList.length > 0) {
+        // Rotate randomly between available keys to distribute traffic load
+        const activeApiKey = keyList[Math.floor(Math.random() * keyList.length)];
         try {
             const aiText = await callGeminiApi(activeApiKey, systemPrompt, username, cleanComment);
             if (aiText) return aiText.replace(/^["']|["']$/g, '');
         } catch (e) {
-            console.warn('Gemini API call failed, using fallback:', e.message);
+            console.warn('Gemini API call failed, attempting fallback or alternate key:', e.message);
+            // Retry with secondary key if available
+            if (keyList.length > 1) {
+                const altKey = keyList.find(k => k !== activeApiKey) || keyList[0];
+                try {
+                    const altText = await callGeminiApi(altKey, systemPrompt, username, cleanComment);
+                    if (altText) return altText.replace(/^["']|["']$/g, '');
+                } catch (_altErr) {}
+            }
         }
     }
 
