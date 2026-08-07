@@ -6850,22 +6850,7 @@ class EffectStoreApp {
             if (data.success && data.config) {
                 const c = data.config;
                 const presetVoices = ['21m00Tcm4TlvDq8ikWAM', 'EXAVITQu4vr4xnSDxMaL', 'AZnzlk1XvdvUeBnXmlld', 'pNInz6obpgDQGcFmaJgB', 'ErXwobaYiN019PkySvjV', 'MF3mGyEYCl7XYWbV9V6O'];
-                const savedVoice = c.elevenLabsVoiceId || '21m00Tcm4TlvDq8ikWAM';
-
-                const voiceSelect = document.getElementById('admin-eleven-voice-id');
-                const customVoiceInput = document.getElementById('admin-eleven-custom-voice');
-
-                if (voiceSelect && customVoiceInput) {
-                    if (presetVoices.includes(savedVoice)) {
-                        voiceSelect.value = savedVoice;
-                        customVoiceInput.style.display = 'none';
-                        customVoiceInput.value = '';
-                    } else {
-                        voiceSelect.value = 'custom';
-                        customVoiceInput.style.display = 'block';
-                        customVoiceInput.value = savedVoice;
-                    }
-                }
+                const savedVoice = c.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB';
 
                 document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = Boolean(c.enabled));
                 document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = c.persona || 'sassy');
@@ -6873,7 +6858,16 @@ class EffectStoreApp {
                 document.querySelectorAll('.ai-assistant-donator-only-input').forEach(el => el.value = String(c.donatorOnly || false));
                 document.querySelectorAll('.ai-assistant-gemini-key-input').forEach(el => el.value = c.geminiApiKey || '');
                 document.querySelectorAll('.ai-assistant-eleven-key-input').forEach(el => el.value = c.elevenLabsApiKey || '');
-                document.querySelectorAll('.ai-assistant-eleven-voice-input').forEach(el => el.value = c.elevenLabsVoiceId || '21m00Tcm4TlvDq8ikWAM');
+                document.querySelectorAll('.ai-assistant-eleven-voice-input').forEach(el => el.value = presetVoices.includes(savedVoice) ? savedVoice : 'custom');
+                document.querySelectorAll('.ai-assistant-custom-voice-input').forEach(el => {
+                    if (!presetVoices.includes(savedVoice)) {
+                        el.style.display = 'block';
+                        el.value = savedVoice;
+                    } else {
+                        el.style.display = 'none';
+                        el.value = '';
+                    }
+                });
 
                 if (document.getElementById('ai-assistant-enabled')) document.getElementById('ai-assistant-enabled').checked = Boolean(c.enabled);
                 if (document.getElementById('ai-assistant-persona')) document.getElementById('ai-assistant-persona').value = c.persona || 'sassy';
@@ -6881,7 +6875,6 @@ class EffectStoreApp {
                 if (document.getElementById('ai-assistant-donator-only')) document.getElementById('ai-assistant-donator-only').value = String(c.donatorOnly || false);
                 if (document.getElementById('admin-gemini-key')) document.getElementById('admin-gemini-key').value = c.geminiApiKey || '';
                 if (document.getElementById('admin-eleven-key')) document.getElementById('admin-eleven-key').value = c.elevenLabsApiKey || '';
-                if (document.getElementById('admin-eleven-voice-id')) document.getElementById('admin-eleven-voice-id').value = c.elevenLabsVoiceId || '21m00Tcm4TlvDq8ikWAM';
             }
             if (data.success && data.usage) {
                 this.renderAiUsageUI(data.usage);
