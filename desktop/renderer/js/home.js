@@ -7029,7 +7029,7 @@ class EffectStoreApp {
                 elevenLabsVoiceId = customInput?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
             }
 
-            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', 'TxGEqnHWrfWFTfGW9XjX'];
+            const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', 'TxGEqnHWrfWFTfGW9XjX', 'IKne3meq5aSn9XLyUdCD'];
 
             document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = enabled);
             document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = persona);
@@ -7074,22 +7074,26 @@ class EffectStoreApp {
                 sassy: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Xem live mà lặng thinh như tờ giấy vậy anh em, gõ chữ chat ủng hộ Idol đi chứ!',
-                    'TxGEqnHWrfWFTfGW9XjX': 'Vào live ngắm Idol say đắm luôn rồi đúng không, nhớ bấm chia sẻ live nha fan cứng!'
+                    'TxGEqnHWrfWFTfGW9XjX': 'Vào live ngắm Idol say đắm luôn rồi đúng không, nhớ bấm chia sẻ live nha fan cứng!',
+                    'IKne3meq5aSn9XLyUdCD': 'Hello anh em nha, xem live vui vẻ mà nhớ gõ vài câu tương tác ủng hộ Idol nhé!'
                 },
                 funny: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Cảnh báo: Xem live này quá 180 giây có nguy cơ gây nghiện cực cao, thả tym ngay để giải độc!',
-                    'TxGEqnHWrfWFTfGW9XjX': 'Đừng nhìn Idol bằng đôi mắt trìu mến đó nữa, thả tim và tặng quà thực tế đi anh em!'
+                    'TxGEqnHWrfWFTfGW9XjX': 'Đừng nhìn Idol bằng đôi mắt trìu mến đó nữa, thả tim và tặng quà thực tế đi anh em!',
+                    'IKne3meq5aSn9XLyUdCD': 'Ủa alo anh em ơi, có ai còn thức xem live không thả nhẹ quả tim cho xôm nào!'
                 },
                 sweet: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Thấy em vào live cái là khung chat sáng bừng luôn, ở lại trò chuyện với anh lâu lâu nha!',
-                    'TxGEqnHWrfWFTfGW9XjX': 'Gặp nhau ở đây chắc là duyên rồi, anh thả tym một cái là em nhớ anh cả đêm luôn đó!'
+                    'TxGEqnHWrfWFTfGW9XjX': 'Gặp nhau ở đây chắc là duyên rồi, anh thả tym một cái là em nhớ anh cả đêm luôn đó!',
+                    'IKne3meq5aSn9XLyUdCD': 'Chúc cả nhà một buổi tối xem livestream tràn ngập tiếng cười và nhiều niềm vui nha!'
                 },
                 smart: {
                     'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
                     'N2lVS1w4EtoT3dr4eOWO': 'Xin chào mọi người. Rất vui được gặp lại cả nhà trong buổi phát sóng hôm nay.',
-                    'TxGEqnHWrfWFTfGW9XjX': 'Trân trọng cảm ơn sự ủng hộ của quý khán giả. Chúc bạn luôn tràn ngập niềm vui và hạnh phúc.'
+                    'TxGEqnHWrfWFTfGW9XjX': 'Trân trọng cảm ơn sự ủng hộ của quý khán giả. Chúc bạn luôn tràn ngập niềm vui và hạnh phúc.',
+                    'IKne3meq5aSn9XLyUdCD': 'Rất vinh hạnh được chào đón quý khán giả ghé thăm phòng livestream hôm nay.'
                 }
             };
 
