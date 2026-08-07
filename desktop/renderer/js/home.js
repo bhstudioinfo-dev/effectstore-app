@@ -1755,7 +1755,7 @@ class EffectStoreApp {
 
         if (elevenKey) {
             try {
-                const elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                let elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                     method: 'POST',
                     headers: {
                         'Accept': 'audio/mpeg',
@@ -1764,15 +1764,36 @@ class EffectStoreApp {
                     },
                     body: JSON.stringify({
                         text: text,
-                        model_id: 'eleven_multilingual_v2',
+                        model_id: 'eleven_v3',
                         voice_settings: {
-                            stability: 0.38,
+                            stability: 0.15,
                             similarity_boost: 0.85,
-                            style: 0.15,
+                            style: 0.20,
                             use_speaker_boost: true
                         }
                     })
                 });
+
+                if (!elevenRes.ok) {
+                    elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'audio/mpeg',
+                            'Content-Type': 'application/json',
+                            'xi-api-key': elevenKey
+                        },
+                        body: JSON.stringify({
+                            text: text,
+                            model_id: 'eleven_multilingual_v2',
+                            voice_settings: {
+                                stability: 0.15,
+                                similarity_boost: 0.85,
+                                style: 0.20,
+                                use_speaker_boost: true
+                            }
+                        })
+                    });
+                }
 
                 if (elevenRes.ok) {
                     const blob = await elevenRes.blob();
@@ -6918,26 +6939,9 @@ class EffectStoreApp {
     async testAiAssistantSpeech() {
         try {
             await this.saveAiAssistantConfig();
-            this.showNotification('info', '🤖 Đang phát sinh lời thoại AI Cà khịa...');
-            const res = await fetch(`${this.API_URL}/api/tiktok/ai-test-speech`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.authToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    username: 'Khán giả Thử nghiệm',
-                    comment: 'Hôm nay Idol live game hay quá ta!'
-                })
-            });
-            const data = await res.json();
-            if (data.success && data.event?.replyText) {
-                this.showNotification('success', `🤖 AI Cà khịa: "${data.event.replyText}"`);
-                if (data.event.usage) this.renderAiUsageUI(data.event.usage);
-                this.speakText(data.event.replyText, true);
-            } else {
-                this.showNotification('warning', '⚠️ Hãy bật công tắc Bật AI Trợ lý Cà khịa!');
-            }
+            const testSentence = 'Hello các vợ, lại là anh đây hihi';
+            this.showNotification('success', `🤖 AI Cà khịa: "${testSentence}"`);
+            this.speakText(testSentence, true);
         } catch (e) {
             this.showNotification('error', '❌ Lỗi: ' + e.message);
         }
