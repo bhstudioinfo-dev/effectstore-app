@@ -174,6 +174,10 @@ app.use('/uploads/thumbs', express.static(dataPaths.thumbsDir, {
     etag: true,
     lastModified: true
 }));
+app.use('/assets/audio/voice-samples', express.static(path.join(__dirname, 'public', 'assets', 'audio', 'voice-samples'), {
+    maxAge: '1y',
+    immutable: true
+}));
 app.use('/uploads', express.static(dataPaths.uploadsDir, {
     maxAge: '1y',
     immutable: true
