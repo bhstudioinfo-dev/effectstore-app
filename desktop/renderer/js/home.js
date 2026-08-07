@@ -6755,7 +6755,7 @@ class EffectStoreApp {
                 if (document.getElementById('ai-assistant-donator-only')) document.getElementById('ai-assistant-donator-only').value = String(c.donatorOnly || false);
                 if (document.getElementById('admin-gemini-key')) document.getElementById('admin-gemini-key').value = c.geminiApiKey || '';
                 if (document.getElementById('admin-eleven-key')) document.getElementById('admin-eleven-key').value = c.elevenLabsApiKey || '';
-                if (document.getElementById('admin-eleven-voice-id')) document.getElementById('admin-eleven-voice-id').value = c.elevenLabsVoiceId || '21m00Tcm4TlvDq8ikWAM');
+                if (document.getElementById('admin-eleven-voice-id')) document.getElementById('admin-eleven-voice-id').value = c.elevenLabsVoiceId || '21m00Tcm4TlvDq8ikWAM';
             }
             if (data.success && data.usage) {
                 this.renderAiUsageUI(data.usage);
