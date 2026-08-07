@@ -271,8 +271,14 @@ async function processChatMessage({ username, comment, isDonator = false, userPl
     if (!config.enabled) return null;
     if (config.donatorOnly && !isDonator) return null;
 
+    const usage = getCharacterUsage(userPlan);
+
+    const baseCooldownSec = Number(config.cooldownSeconds) || 20;
+    // Bumping cooldown to 45s for free users when ElevenLabs quota runs out to protect Gemini usage
+    const effectiveCooldownSec = (!usage.hasQuota && userPlan !== 'admin') ? Math.max(baseCooldownSec, 45) : baseCooldownSec;
+    const cooldownMs = effectiveCooldownSec * 1000;
+
     const now = Date.now();
-    const cooldownMs = (Number(config.cooldownSeconds) || 20) * 1000;
     if (now - lastSpeakTime < cooldownMs) return null;
 
     const cleanComment = sanitizeText(comment);
@@ -284,10 +290,10 @@ async function processChatMessage({ username, comment, isDonator = false, userPl
     // Track character usage
     const charLength = replyText ? replyText.length : 0;
     recordCharacterUsage(charLength);
-    const usage = getCharacterUsage(userPlan);
+    const updatedUsage = getCharacterUsage(userPlan);
 
-    // Rotate ElevenLabs API Keys if multiple are provided
-    const rawElevenKeys = config.elevenLabsApiKey || '';
+    // Rotate ElevenLabs API Keys only if user still has quota. Fall back to free machine TTS when quota ends!
+    const rawElevenKeys = updatedUsage.hasQuota ? (config.elevenLabsApiKey || '') : '';
     const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
     const activeElevenKey = elevenKeyList.length > 0 ? elevenKeyList[Math.floor(Math.random() * elevenKeyList.length)] : '';
 
@@ -297,20 +303,19 @@ async function processChatMessage({ username, comment, isDonator = false, userPl
         comment: cleanComment,
         replyText,
         persona: config.persona,
-        ttsEngine: config.ttsEngine,
+        ttsEngine: updatedUsage.hasQuota ? config.ttsEngine : 'google_free',
         elevenLabsApiKey: activeElevenKey,
-        elevenLabsVoiceId: config.elevenLabsVoiceId,
-        readSpeed: config.readSpeed || 1.0,
-        volume: config.volume || 1.0,
-        usage,
-        timestamp: now
+        elevenLabsVoiceId: config.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB',
+        usage: updatedUsage,
+        timestamp: Date.now()
     };
 
-    if (typeof broadcastCallback === 'function') {
-        broadcastCallback(eventData);
-    }
+    try {
+        const obsService = require('./obsService');
+        obsService.broadcastWebSocketMessage(eventData);
+    } catch (_err) {}
 
-    return eventData;
+    return replyText;
 }
 
 module.exports = {
