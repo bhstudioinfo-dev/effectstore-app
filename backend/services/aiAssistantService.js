@@ -134,10 +134,11 @@ async function generateReply(username, comment) {
     const persona = config.persona || 'sassy';
     const systemPrompt = PERSONA_PROMPTS[persona] || PERSONA_PROMPTS.sassy;
     const cleanComment = sanitizeText(comment);
+    const activeApiKey = config.geminiApiKey || process.env.GEMINI_API_KEY || '';
 
-    if (config.geminiApiKey) {
+    if (activeApiKey) {
         try {
-            const aiText = await callGeminiApi(config.geminiApiKey, systemPrompt, username, cleanComment);
+            const aiText = await callGeminiApi(activeApiKey, systemPrompt, username, cleanComment);
             if (aiText) return aiText.replace(/^["']|["']$/g, '');
         } catch (e) {
             console.warn('Gemini API call failed, using fallback:', e.message);

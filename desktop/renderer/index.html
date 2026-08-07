@@ -1344,29 +1344,31 @@
                     </div>
                 </div>
 
-                <!-- Cấu hình API Key AI (Cài đặt) -->
+                <!-- Trạng thái Kết nối AI & Giọng nói TTS (Cài đặt) -->
                 <div style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px; margin-top:24px;">
                     <h3 style="color:#fff; font-size:16px; margin:0 0 6px; display:flex; align-items:center; gap:8px;">
-                        🔑 Cấu hình API Key AI & Giọng nói TTS
+                        🤖 Trạng thái Trợ lý AI Cà khịa & Giọng nói TTS
                     </h3>
-                    <p style="color:var(--text-muted); font-size:12px; margin:0 0 16px 0;">Nhập API Key để kích hoạt AI Trợ lý Cà khịa và Giọng đọc ElevenLabs chuyên nghiệp.</p>
+                    <p style="color:var(--text-muted); font-size:12px; margin:0 0 16px 0;">LiveFlow đã tự động tích hợp sẵn Gemini 1.5 Flash AI & Giọng đọc TTS. Khách hàng sử dụng ngay không cần cài đặt API Key!</p>
 
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-                        <div>
-                            <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Google Gemini API Key (Cà khịa AI - Miễn phí 100%)</label>
-                            <input type="password" id="settings-gemini-key" class="ai-assistant-gemini-key-input upload-form-input" placeholder="AIzaSy..." style="width:100%;" onchange="app.saveAiAssistantConfig(this)">
-                            <span style="font-size:10px; color:var(--text-muted); margin-top:4px; display:block;">💡 Mặc định hệ thống đã có sẵn Key dùng thử. Điền Key riêng nếu muốn hạn mức cao hơn.</span>
+                        <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2); border-radius:12px; padding:14px;">
+                            <div style="font-size:13px; font-weight:800; color:#10b981; margin-bottom:4px; display:flex; align-items:center; gap:6px;">⚡ Gemini 1.5 Flash AI (Đã kết nối ngầm)</div>
+                            <div style="font-size:11px; color:#cbd5e1; line-height:1.5;">Hệ thống tự động phát sinh lời thoại xéo sắc, hài hước khi khán giả bình luận. Khách hàng chỉ việc bật công tắc ở tab Gán hiệu ứng.</div>
+                            <div style="margin-top:10px;">
+                                <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Key riêng (Tuỳ chọn - Để trống để dùng mặc định)</label>
+                                <input type="password" id="settings-gemini-key" class="ai-assistant-gemini-key-input upload-form-input" placeholder="AIzaSy..." style="width:100%; font-size:11px; padding:6px 10px;" onchange="app.saveAiAssistantConfig(this)">
+                            </div>
                         </div>
-                        <div>
-                            <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">ElevenLabs API Key (Giọng nói AI đọc hài hước)</label>
-                            <input type="password" id="settings-eleven-key" class="ai-assistant-eleven-key-input upload-form-input" placeholder="xi-api-key..." style="width:100%;" onchange="app.saveAiAssistantConfig(this)">
-                            <span style="font-size:10px; color:var(--text-muted); margin-top:4px; display:block;">💡 Để trống nếu muốn dùng giọng đọc đọc chuẩn Web Speech của máy tính.</span>
+                        <div style="background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.2); border-radius:12px; padding:14px;">
+                            <div style="font-size:13px; font-weight:800; color:#a78bfa; margin-bottom:4px; display:flex; align-items:center; gap:6px;">🎤 Giọng đọc TTS Tự Động</div>
+                            <div style="font-size:11px; color:#cbd5e1; line-height:1.5;">Phát giọng đọc chuẩn Web Speech của máy tính. Tự động chuyển giọng đọc cao cấp khi nâng cấp gói dịch vụ.</div>
+                            <div style="margin-top:10px;">
+                                <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">ElevenLabs Key (Tuỳ chọn - Nếu có Key riêng)</label>
+                                <input type="password" id="settings-eleven-key" class="ai-assistant-eleven-key-input upload-form-input" placeholder="xi-api-key..." style="width:100%; font-size:11px; padding:6px 10px;" onchange="app.saveAiAssistantConfig(this)">
+                            </div>
                         </div>
                     </div>
-
-                    <button onclick="app.saveAiAssistantConfig(this)" class="pro-btn" style="padding:10px 20px; background:linear-gradient(135deg,#8b5cf6,#7c3aed); font-size:13px; font-weight:700; cursor:pointer;">
-                        <i class="fas fa-save"></i> Lưu API Key AI
-                    </button>
                 </div>
 
                 <!-- 5. Admin operations -->
@@ -1503,7 +1505,7 @@
                     </div>
 
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
-                        <span style="font-size:10px; color:var(--text-muted);">💡 Trợ lý AI sẽ tự chọn comment khán giả và phát biểu xéo sắc/hài hước trực tiếp lên OBS. API Key cấu hình trong mục Cài đặt.</span>
+                        <span style="font-size:10px; color:#a78bfa;">✨ Trợ lý AI Cà Khịa đã được tích hợp sẵn Gemini 1.5 Flash. Khách hàng không cần mua hay cài đặt API Key!</span>
                         <button onclick="app.testAiAssistantSpeech()" style="background:rgba(139,92,246,0.25); border:1px solid rgba(139,92,246,0.4); color:#c4b5fd; padding:4px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe thử AI Cà Khịa</button>
                     </div>
                 </div>
