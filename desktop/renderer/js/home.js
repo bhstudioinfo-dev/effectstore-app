@@ -6952,7 +6952,8 @@ class EffectStoreApp {
                 planBadge.style.background = 'linear-gradient(135deg, #ef4444, #f59e0b)';
                 planBadge.style.color = '#fff';
             } else {
-                const planName = (this.currentUser?.plan || 'free').toUpperCase();
+                const sub = (this.currentUser?.subscription || this.currentUser?.plan || document.querySelector('.user-card .plan')?.textContent?.trim() || 'BASIC').toLowerCase();
+                const planName = (sub.includes('basic') || sub === 'pro') ? 'Basic' : (sub.includes('business') ? 'Pro' : (sub.includes('free') ? 'Free' : 'Basic'));
                 planBadge.textContent = `Gói ${planName}`;
             }
         }
@@ -7197,16 +7198,30 @@ function filterCategory(cat) {
 function filterEffects() { const active = document.querySelector('.filter-btn-new.active'); const cat = active?.dataset?.cat || 'all'; app.renderEffects(cat, document.getElementById('search-input').value); }
 function switchView(view) { app.switchView(view); }
 function showAccount() {
-    if (!app.currentUser) return;
-    const u = app.currentUser;
+    let u = app.currentUser;
+    if (!u) {
+        try {
+            u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
+        } catch (_e) {}
+    }
+    if (!u) {
+        const nameEl = document.querySelector('.user-card .name')?.textContent?.trim() || 'teest';
+        const planEl = document.querySelector('.user-card .plan')?.textContent?.trim() || 'BASIC';
+        u = {
+            name: nameEl,
+            email: `${nameEl}@liveflow.app`,
+            subscription: (planEl.toLowerCase().includes('basic') || planEl.toLowerCase().includes('pro')) ? 'pro' : 'free'
+        };
+    }
+    app.currentUser = u;
     const planInfo = {
         admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.12)', border: 'rgba(255,107,53,0.25)' },
         business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.25)' },
         pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.12)', border: 'rgba(212,175,55,0.25)' },
         free: { label: '🆓 Miễn phí', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.18)' }
     };
-    const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
-    const plan = planInfo[planKey] || planInfo.free;
+    const planKey = u.isAdmin ? 'admin' : (u.subscription || 'pro');
+    const plan = planInfo[planKey] || planInfo.pro;
     const avatarBg = u.isAdmin ? 'linear-gradient(135deg,#ff6b35,#ff9a3c)'
         : (u.subscription === 'business' ? 'linear-gradient(135deg,#a78bfa,#7c3aed)'
             : (u.subscription === 'pro' ? 'linear-gradient(135deg,#d4af37,#f4e4ba)'
@@ -7217,7 +7232,7 @@ function showAccount() {
                 <div style="text-align:center; padding: 12px 0;">
                     <div style="width:72px;height:72px;border-radius:50%;background:${avatarBg};display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:${avatarColor};margin:0 auto 14px;box-shadow:0 8px 24px rgba(0,0,0,0.3);">${(u.name || 'U')[0].toUpperCase()}</div>
                     <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;">${u.name || 'Người dùng'}</div>
-                    <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">${u.email}</div>
+                    <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">${u.email || 'test@liveflow.app'}</div>
                     <div style="font-size:12px;padding:5px 16px;border-radius:20px;display:inline-block;background:${plan.bg};color:${plan.color};border:1px solid ${plan.border};font-weight:700;">${plan.label}</div>
                 </div>
                 <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);">
