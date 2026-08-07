@@ -1197,51 +1197,25 @@
                             <option value="legacy">Dữ liệu cũ</option>
                         </select>
                     </div>
-                <!-- Admin Operations & System AI Key Management Card -->
-                <div id="admin-operations-card"
-                    style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px; margin-top:24px;">
-                    <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+                <!-- Admin System AI Key Management Card -->
+                <div style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px; margin-top:24px;">
+                    <h3 style="color:#fff; font-size:16px; margin:0 0 6px; display:flex; align-items:center; gap:8px;">
+                        🔑 Quản Lý API Key Hệ Thống AI (Dành Cho Admin)
+                    </h3>
+                    <p style="color:var(--text-muted); font-size:12px; margin:0 0 16px 0;">Cấu hình Gemini & ElevenLabs API Keys cấp hệ thống để cung cấp dịch vụ AI Cà khịa cho tất cả khách hàng.</p>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
                         <div>
-                            <h3 style="color:#fff; font-size:16px; margin:0 0 6px; display:flex; align-items:center; gap:8px;">
-                                <i class="fas fa-tools" style="color:#a78bfa;"></i> Vận hành, Phục hồi & Cấu hình AI Hệ Thống
-                            </h3>
-                            <p style="color:var(--text-muted); font-size:12px; margin:0;">Sao lưu dữ liệu, xem log và cấu hình API Key hệ thống cho khách hàng.</p>
+                            <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Google Gemini API Key Hệ Thống</label>
+                            <input type="password" id="admin-gemini-key" class="ai-assistant-gemini-key-input upload-form-input" placeholder="AIzaSy..." style="width:100%; font-size:12px; padding:8px 12px;" onchange="app.saveAiAssistantConfig(this)">
                         </div>
-                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <button id="create-database-backup-btn" class="pro-btn" onclick="app.createDatabaseBackup()"
-                                style="width:auto; padding:10px 16px; background:linear-gradient(135deg,#7c3aed,#6d28d9);">
-                                <i class="fas fa-database"></i> Tạo backup
-                            </button>
-                            <button onclick="app.loadDatabaseBackups()" style="padding:10px 14px; border:1px solid var(--card-border); border-radius:10px; background:rgba(255,255,255,.04); color:#fff; cursor:pointer;">
-                                <i class="fas fa-sync-alt"></i> Làm mới
-                            </button>
+                        <div>
+                            <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">ElevenLabs API Key Hệ Thống (Giọng AI)</label>
+                            <input type="password" id="admin-eleven-key" class="ai-assistant-eleven-key-input upload-form-input" placeholder="xi-api-key..." style="width:100%; font-size:12px; padding:8px 12px;" onchange="app.saveAiAssistantConfig(this)">
                         </div>
                     </div>
-                    <div id="database-backups-list" style="margin-top:16px; display:flex; flex-direction:column; gap:8px;"></div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; padding-top:16px; border-top:1px solid var(--card-border);">
-                        <button onclick="app.openOperationDirectory('data')" style="padding:9px 12px; border:1px solid var(--card-border); border-radius:9px; background:transparent; color:#fff; cursor:pointer;"><i class="fas fa-folder-open"></i> Dữ liệu</button>
-                        <button onclick="app.openOperationDirectory('logs')" style="padding:9px 12px; border:1px solid var(--card-border); border-radius:9px; background:transparent; color:#fff; cursor:pointer;"><i class="fas fa-file-alt"></i> Log</button>
-                        <button onclick="app.openOperationDirectory('backups')" style="padding:9px 12px; border:1px solid var(--card-border); border-radius:9px; background:transparent; color:#fff; cursor:pointer;"><i class="fas fa-archive"></i> Bản sao lưu</button>
-                        <button onclick="app.createDiagnosticReport()" style="padding:9px 12px; border:1px solid rgba(16,185,129,.35); border-radius:9px; background:rgba(16,185,129,.08); color:#34d399; cursor:pointer;"><i class="fas fa-stethoscope"></i> Xuất chẩn đoán</button>
-                    </div>
-
-                    <!-- AI API Keys Configuration (Admin Only) -->
-                    <div style="margin-top:20px; padding-top:20px; border-top:1px solid var(--card-border);">
-                        <h4 style="color:#fff; font-size:14px; margin:0 0 6px; display:flex; align-items:center; gap:8px;">
-                            🔑 Quản Lý API Key Hệ Thống AI (Dành Cho Admin)
-                        </h4>
-                        <p style="color:var(--text-muted); font-size:11px; margin:0 0 12px 0;">Cấu hình Gemini & ElevenLabs API Keys cấp hệ thống để cung cấp dịch vụ AI Cà khịa cho khách hàng.</p>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                            <div>
-                                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">Google Gemini API Key Hệ Thống</label>
-                                <input type="password" id="admin-gemini-key" class="ai-assistant-gemini-key-input upload-form-input" placeholder="AIzaSy..." style="width:100%; font-size:11px; padding:6px 10px;" onchange="app.saveAiAssistantConfig(this)">
-                            </div>
-                            <div>
-                                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">ElevenLabs API Key Hệ Thống (Giọng AI)</label>
-                                <input type="password" id="admin-eleven-key" class="ai-assistant-eleven-key-input upload-form-input" placeholder="xi-api-key..." style="width:100%; font-size:11px; padding:6px 10px;" onchange="app.saveAiAssistantConfig(this)">
-                            </div>
-                        </div>
-                    </div>
+                    <button onclick="app.saveAiAssistantConfig(this)" class="pro-btn" style="padding:10px 20px; background:linear-gradient(135deg,#8b5cf6,#7c3aed); font-size:13px; font-weight:700; cursor:pointer;">
+                        <i class="fas fa-save"></i> Lưu API Key Hệ Thống
+                    </button>
                 </div>
             </div>
 
