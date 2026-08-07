@@ -7090,18 +7090,51 @@ class EffectStoreApp {
     async testAiAssistantSpeech() {
         try {
             const voiceId = this.getActiveVoiceId();
+            const personaSelect = document.querySelector('.ai-assistant-persona-input');
+            const persona = personaSelect ? personaSelect.value : (this.aiAssistantConfig?.persona || 'sassy');
             await this.saveAiAssistantConfig();
 
-            const voiceTestSentences = {
-                'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
-                '21m00Tcm4TlvDq8ikWAM': 'Xin chào cả nhà! Chúc mọi người một buổi livestream thật nhiều niềm vui và tràn đầy năng lượng nha!',
-                'ErXwobaYiN019PkySvjV': 'Alo alo 1 2 3 4, hôm nay Idol live game siêu cháy luôn nha anh em ơi!',
-                'TxGEqnHWrfWFTfGW9XjX': 'Cảm ơn các bạn đã ghé thăm kênh, chúc bạn có những phút giây thư giãn tuyệt vời nhé!',
-                'EXAVITQu4vr4xnSDxMaL': 'Dạ em chào anh chị ạ, anh chị ghé xem live nhớ thả tý tym và ghé giỏ hàng ủng hộ em nhé!'
+            const matrix = {
+                sassy: {
+                    'pNInz6obpgDQGcFmaJgB': 'Hello các vợ! Nhìn Idol live chùa hoài không mỏi tay hả, thả cho quả tym xem nào!',
+                    '21m00Tcm4TlvDq8ikWAM': 'Trời ơi tin được không, lướt qua live mà bấm theo dõi cũng tiếc một cái chạm tay hả người đẹp?',
+                    'ErXwobaYiN019PkySvjV': 'Xem live mà lặng thinh như tờ giấy vậy anh em, gõ chữ chat ủng hộ Idol đi chứ!',
+                    'TxGEqnHWrfWFTfGW9XjX': 'Vào live ngắm Idol say đắm luôn rồi đúng không, nhớ bấm chia sẻ live nha fan cứng!',
+                    'EXAVITQu4vr4xnSDxMaL': 'Dạ em chào anh nha, anh xem live từ nãy giờ rồi đó, thả tý tym cho em ấm lòng đi ạ!'
+                },
+                flirty: {
+                    'pNInz6obpgDQGcFmaJgB': 'Em ơi, đường vào tim em có khó không mà anh lướt live gặp em là tim đập thình thịch rồi nè!',
+                    '21m00Tcm4TlvDq8ikWAM': 'Anh ơi, người ta thả tym cho live, còn em chỉ muốn thả nụ cười này cho riêng anh thôi đó!',
+                    'ErXwobaYiN019PkySvjV': 'Thấy em vào live cái là khung chat sáng bừng luôn, ở lại trò chuyện với anh lâu lâu nha!',
+                    'TxGEqnHWrfWFTfGW9XjX': 'Gặp nhau ở đây chắc là duyên rồi, anh thả tym một cái là em nhớ anh cả đêm luôn đó!',
+                    'EXAVITQu4vr4xnSDxMaL': 'Dạ anh ơi, hôm nay anh có mệt không? Ghé live em ngồi nghỉ xíu rồi em đọc thoại ngọt ngào cho nghe nè!'
+                },
+                enthusiastic: {
+                    'pNInz6obpgDQGcFmaJgB': 'Alo alo! Chào mừng 500 anh em đã cập bến phòng live! Hôm nay nổ mắt xem Idol quẩy banh nóc nha!',
+                    '21m00Tcm4TlvDq8ikWAM': 'Cháy quá anh chị em ơi! Đẩy view đẩy tym nhiệt tình lên nào, hôm nay quà to ngợp trời luôn!',
+                    'ErXwobaYiN019PkySvjV': 'Lên là lên luôn! Anh em vô thả tim dồn dập cho Idol đi nào, mười vạn tim là quẩy tới sáng!',
+                    'TxGEqnHWrfWFTfGW9XjX': 'Năng lượng bùng nổ hôm nay đây rồi! Cảm ơn anh em đã có mặt, chiến hết mình cùng phòng live nhé!',
+                    'EXAVITQu4vr4xnSDxMaL': 'Hôm nay vui quá cả nhà ơi! Ghé live thả tim và tương tác rộn ràng cùng em nhé!'
+                },
+                funny: {
+                    'pNInz6obpgDQGcFmaJgB': 'Ủa alo? Mấy ông xem live mà giấu giếm cái tym ở đâu vậy, lôi ra thả cho Idol coi nào!',
+                    '21m00Tcm4TlvDq8ikWAM': 'Ủa alo người đẹp ơi, tay đang bận ăn vặt hay sao mà chưa bấm thả tym cho tui dị?',
+                    'ErXwobaYiN019PkySvjV': 'Cảnh báo: Xem live này quá 180 giây có nguy cơ gây nghiện cực cao, thả tym ngay để giải độc!',
+                    'TxGEqnHWrfWFTfGW9XjX': 'Đừng nhìn Idol bằng đôi mắt trìu mến đó nữa, thả tim và tặng quà thực tế đi anh em!',
+                    'EXAVITQu4vr4xnSDxMaL': 'Nhìn cái gì mà nhìn, thấy em dễ thương quá nên quên thả tym rồi đúng hông nè!'
+                },
+                gentle: {
+                    'pNInz6obpgDQGcFmaJgB': 'Chào mừng bạn đã đến với phòng livestream. Chúc bạn có những phút giây thư giãn thật tuyệt vời nhé.',
+                    '21m00Tcm4TlvDq8ikWAM': 'Dạ em xin kính chào quý anh chị. Chúc cả nhà một buổi tối xem live vui vẻ và nhiều may mắn ạ.',
+                    'ErXwobaYiN019PkySvjV': 'Xin chào mọi người. Rất vui được gặp lại cả nhà trong buổi phát sóng hôm nay.',
+                    'TxGEqnHWrfWFTfGW9XjX': 'Trân trọng cảm ơn sự ủng hộ của quý khán giả. Chúc bạn luôn tràn ngập niềm vui và hạnh phúc.',
+                    'EXAVITQu4vr4xnSDxMaL': 'Dạ em chào anh chị ạ. Cảm ơn anh chị đã luôn dành thời gian yêu thương và ủng hộ phòng live.'
+                }
             };
 
-            const testSentence = voiceTestSentences[voiceId] || 'Xin chào! Giọng đọc AI Cà khịa đã sẵn sàng phục vụ bạn!';
-            this.showNotification('success', `🤖 AI Cà khịa: "${testSentence}"`);
+            const personaSentences = matrix[persona] || matrix['sassy'];
+            const testSentence = personaSentences[voiceId] || 'Xin chào! Giọng đọc AI đã sẵn sàng phục vụ bạn!';
+            this.showNotification('success', `🤖 AI (${persona}): "${testSentence}"`);
             this.speakText(testSentence, true);
         } catch (e) {
             this.showNotification('error', '❌ Lỗi: ' + e.message);
