@@ -6887,6 +6887,7 @@ class EffectStoreApp {
         const meterText = document.getElementById('ai-usage-meter-text');
         const planBadge = document.getElementById('ai-usage-plan-badge');
         const isAdmin = usage.isAdmin || this.currentUser?.isAdmin || this.currentUser?.role === 'admin';
+        const hasQuota = isAdmin || usage.hasQuota || (usage.remaining > 0);
 
         if (meterText) {
             if (isAdmin || usage.totalLimit >= 999000000) {
@@ -6905,6 +6906,29 @@ class EffectStoreApp {
                 planBadge.textContent = `Gói ${planName}`;
             }
         }
+
+        // Lock 15s, 20s, 30s options when character quota runs out, leaving only 60s free option
+        document.querySelectorAll('.ai-assistant-cooldown-input').forEach(selectEl => {
+            Array.from(selectEl.options).forEach(opt => {
+                if (opt.value === '15') {
+                    opt.disabled = !hasQuota;
+                    opt.textContent = hasQuota ? '15 giây' : '15 giây (🔒 Hết ký tự)';
+                } else if (opt.value === '20') {
+                    opt.disabled = !hasQuota;
+                    opt.textContent = hasQuota ? '20 giây' : '20 giây (🔒 Hết ký tự)';
+                } else if (opt.value === '30') {
+                    opt.disabled = !hasQuota;
+                    opt.textContent = hasQuota ? '30 giây' : '30 giây (🔒 Hết ký tự)';
+                } else if (opt.value === '60') {
+                    opt.disabled = false;
+                    opt.textContent = hasQuota ? '60 giây' : '60 giây (Miễn phí)';
+                }
+            });
+
+            if (!hasQuota && selectEl.value !== '60') {
+                selectEl.value = '60';
+            }
+        });
     }
 
     showBuyAiAddonModal() {
