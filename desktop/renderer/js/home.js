@@ -6616,7 +6616,6 @@ class EffectStoreApp {
             if (button) button.disabled = false;
         }
     }
-
     async restoreDatabaseBackup(filename) {
         if (this.currentUser?.isAdmin !== true) return;
         const confirmation = window.prompt(`Hệ thống sẽ cập nhật dữ liệu từ ${filename} và tự tạo một bản sao lưu an toàn trước khi thực hiện.\nNhập RESTORE_MERGE để tiếp tục:`);
@@ -6741,6 +6740,24 @@ class EffectStoreApp {
             const data = await res.json();
             if (data.success && data.config) {
                 const c = data.config;
+                const presetVoices = ['21m00Tcm4TlvDq8ikWAM', 'EXAVITQu4vr4xnSDxMaL', 'AZnzlk1XvdvUeBnXmlld', 'pNInz6obpgDQGcFmaJgB', 'ErXwobaYiN019PkySvjV', 'MF3mGyEYCl7XYWbV9V6O'];
+                const savedVoice = c.elevenLabsVoiceId || '21m00Tcm4TlvDq8ikWAM';
+
+                const voiceSelect = document.getElementById('admin-eleven-voice-id');
+                const customVoiceInput = document.getElementById('admin-eleven-custom-voice');
+
+                if (voiceSelect && customVoiceInput) {
+                    if (presetVoices.includes(savedVoice)) {
+                        voiceSelect.value = savedVoice;
+                        customVoiceInput.style.display = 'none';
+                        customVoiceInput.value = '';
+                    } else {
+                        voiceSelect.value = 'custom';
+                        customVoiceInput.style.display = 'block';
+                        customVoiceInput.value = savedVoice;
+                    }
+                }
+
                 document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = Boolean(c.enabled));
                 document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = c.persona || 'sassy');
                 document.querySelectorAll('.ai-assistant-cooldown-input').forEach(el => el.value = String(c.cooldownSeconds || 20));
