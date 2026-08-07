@@ -7093,22 +7093,22 @@ class EffectStoreApp {
 
             const matrix = {
                 sassy: {
-                    'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
+                    'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi! Nhìn Idol live chùa hoài không mỏi tay hả, thả cho quả tym xem nào!',
                     'N2lVS1w4EtoT3dr4eOWO': 'Xem live mà lặng thinh như tờ giấy vậy anh em, gõ chữ chat ủng hộ Idol đi chứ!',
                     'google_female_vi': 'Dạ em chào anh nha, anh xem live từ nãy giờ rồi đó, thả tý tym cho em ấm lòng đi ạ!'
                 },
                 funny: {
-                    'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
+                    'pNInz6obpgDQGcFmaJgB': 'Ủa alo các vợ ơi? Mấy ông xem live mà giấu giếm cái tym ở đâu vậy, lôi ra thả cho Idol coi nào!',
                     'N2lVS1w4EtoT3dr4eOWO': 'Cảnh báo: Xem live này quá 180 giây có nguy cơ gây nghiện cực cao, thả tym ngay để giải độc!',
                     'google_female_vi': 'Ủa alo người đẹp ơi, tay đang bận ăn vặt hay sao mà chưa bấm thả tym cho tui dị?'
                 },
                 sweet: {
-                    'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
+                    'pNInz6obpgDQGcFmaJgB': 'Hello các vợ yêu, đường vào tim em có khó không mà anh lướt live gặp em là tim đập thình thịch rồi nè!',
                     'N2lVS1w4EtoT3dr4eOWO': 'Thấy em vào live cái là khung chat sáng bừng luôn, ở lại trò chuyện với anh lâu lâu nha!',
                     'google_female_vi': 'Anh ơi, người ta thả tym cho live, còn em chỉ muốn thả nụ cười này cho riêng anh thôi đó!'
                 },
                 smart: {
-                    'pNInz6obpgDQGcFmaJgB': 'Hello các vợ, lại là anh đây hihi',
+                    'pNInz6obpgDQGcFmaJgB': 'Chào mừng cả nhà đã đến với phòng livestream. Chúc mọi người có những phút giây thư giãn thật tuyệt vời nhé.',
                     'N2lVS1w4EtoT3dr4eOWO': 'Xin chào mọi người. Rất vui được gặp lại cả nhà trong buổi phát sóng hôm nay.',
                     'google_female_vi': 'Dạ em xin kính chào quý anh chị. Chúc cả nhà một buổi tối xem live vui vẻ và nhiều may mắn ạ.'
                 }
