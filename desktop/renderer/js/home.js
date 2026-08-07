@@ -1797,13 +1797,30 @@ class EffectStoreApp {
         const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
 
         if (elevenKeyList.length > 0) {
-            const useV3First = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO'].includes(voiceId);
-            const modelsToTry = useV3First ? ['eleven_v3', 'eleven_multilingual_v2', 'eleven_flash_v2_5'] : ['eleven_multilingual_v2', 'eleven_flash_v2_5', 'eleven_v3'];
-
             for (const elevenKey of elevenKeyList) {
                 try {
-                    let elevenRes = null;
-                    for (const modelId of modelsToTry) {
+                    let elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'audio/mpeg',
+                            'Content-Type': 'application/json',
+                            'xi-api-key': elevenKey
+                        },
+                        body: JSON.stringify({
+                            text: text,
+                            model_id: 'eleven_v3',
+                            voice_settings: {
+                                stability: 0.15,
+                                similarity_boost: 0.85,
+                                style: 0.20,
+                                use_speaker_boost: true
+                            }
+                        })
+                    });
+
+                    if (!elevenRes.ok) {
+                        const errDetail = await elevenRes.clone().text().catch(() => '');
+                        console.warn(`ElevenLabs v3 failed with key (${elevenKey.slice(-4)}):`, errDetail);
                         elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                             method: 'POST',
                             headers: {
@@ -1813,20 +1830,16 @@ class EffectStoreApp {
                             },
                             body: JSON.stringify({
                                 text: text,
-                                model_id: modelId,
+                                model_id: 'eleven_multilingual_v2',
                                 voice_settings: {
-                                    stability: modelId === 'eleven_v3' ? 0.25 : 0.40,
-                                    similarity_boost: 0.80
+                                    stability: 0.35,
+                                    similarity_boost: 0.85
                                 }
                             })
                         });
-
-                        if (elevenRes.ok) break;
-                        const errDetail = await elevenRes.clone().text().catch(() => '');
-                        console.warn(`ElevenLabs (${modelId}) failed with key (${elevenKey.slice(-4)}):`, errDetail);
                     }
 
-                    if (elevenRes && elevenRes.ok) {
+                    if (elevenRes.ok) {
                         const blob = await elevenRes.blob();
                         const reader = new FileReader();
                         reader.readAsDataURL(blob);
@@ -1856,7 +1869,6 @@ class EffectStoreApp {
                     }
                 } catch (_keyErr) {}
             }
-            this.showNotification('warning', '💡 Mẹo: Vào trang ElevenLabs -> My Voices -> Bấm 3 chấm "..." -> Copy Voice ID cá nhân dán vào ô Tùy Chỉnh để chạy Free 100%!');
         }
 
         try {
