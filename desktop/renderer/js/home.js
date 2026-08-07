@@ -1743,6 +1743,49 @@ class EffectStoreApp {
         this.isProcessingTTS = true;
         const text = this.ttsQueue.shift();
 
+        // Check if ElevenLabs is configured for high quality Voice playback
+        const rawElevenKeys = document.getElementById('admin-eleven-key')?.value || '';
+        const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
+        const elevenKey = elevenKeyList.length > 0 ? elevenKeyList[Math.floor(Math.random() * elevenKeyList.length)] : '';
+        
+        let voiceId = document.getElementById('admin-eleven-voice-id')?.value || '21m00Tcm4TlvDq8ikWAM';
+        if (voiceId === 'custom') {
+            voiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || '21m00Tcm4TlvDq8ikWAM';
+        }
+
+        if (elevenKey) {
+            try {
+                const elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'audio/mpeg',
+                        'Content-Type': 'application/json',
+                        'xi-api-key': elevenKey
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        model_id: 'eleven_multilingual_v2',
+                        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+                    })
+                });
+
+                if (elevenRes.ok) {
+                    const blob = await elevenRes.blob();
+                    const audioUrl = URL.createObjectURL(blob);
+                    this.currentAudio = new Audio(audioUrl);
+                    this.currentAudio.volume = this.ttsVolume;
+                    this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
+                    this.currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); this.processTTSQueue(); };
+                    this.currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); this.processTTSQueue(); };
+                    await this.currentAudio.play();
+                    console.log('🗣️ Đang phát ElevenLabs TTS:', text, 'Voice:', voiceId);
+                    return;
+                }
+            } catch (_elevenErr) {
+                console.warn('ElevenLabs playback fallback to Google TTS:', _elevenErr);
+            }
+        }
+
         try {
             const googleTTSUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=vi&client=tw-ob`;
 
@@ -6828,8 +6871,13 @@ class EffectStoreApp {
             const persona = (sourceEl && sourceEl.classList.contains('ai-assistant-persona-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-persona-input')?.value || document.getElementById('ai-assistant-persona')?.value || 'sassy');
             const cooldownSeconds = parseInt((sourceEl && sourceEl.classList.contains('ai-assistant-cooldown-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-cooldown-input')?.value || document.getElementById('ai-assistant-cooldown')?.value || '20'), 10);
             const donatorOnly = ((sourceEl && sourceEl.classList.contains('ai-assistant-donator-only-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-donator-only-input')?.value || document.getElementById('ai-assistant-donator-only')?.value)) === 'true';
-            const geminiApiKey = (sourceEl && sourceEl.classList.contains('ai-assistant-gemini-key-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-gemini-key-input')?.value || document.getElementById('ai-assistant-gemini-key')?.value || '');
-            const elevenLabsApiKey = (sourceEl && sourceEl.classList.contains('ai-assistant-eleven-key-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-eleven-key-input')?.value || document.getElementById('ai-assistant-eleven-key')?.value || '');
+            const geminiApiKey = (sourceEl && sourceEl.classList.contains('ai-assistant-gemini-key-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-gemini-key-input')?.value || document.getElementById('admin-gemini-key')?.value || '');
+            const elevenLabsApiKey = (sourceEl && sourceEl.classList.contains('ai-assistant-eleven-key-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-eleven-key-input')?.value || document.getElementById('admin-eleven-key')?.value || '');
+            
+            let elevenLabsVoiceId = document.getElementById('admin-eleven-voice-id')?.value || '21m00Tcm4TlvDq8ikWAM';
+            if (elevenLabsVoiceId === 'custom') {
+                elevenLabsVoiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || '21m00Tcm4TlvDq8ikWAM';
+            }
 
             document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = enabled);
             document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = persona);
@@ -6842,10 +6890,10 @@ class EffectStoreApp {
             if (document.getElementById('ai-assistant-persona')) document.getElementById('ai-assistant-persona').value = persona;
             if (document.getElementById('ai-assistant-cooldown')) document.getElementById('ai-assistant-cooldown').value = String(cooldownSeconds);
             if (document.getElementById('ai-assistant-donator-only')) document.getElementById('ai-assistant-donator-only').value = String(cooldownSeconds);
-            if (document.getElementById('ai-assistant-gemini-key')) document.getElementById('ai-assistant-gemini-key').value = geminiApiKey;
-            if (document.getElementById('ai-assistant-eleven-key')) document.getElementById('ai-assistant-eleven-key').value = elevenLabsApiKey;
+            if (document.getElementById('admin-gemini-key')) document.getElementById('admin-gemini-key').value = geminiApiKey;
+            if (document.getElementById('admin-eleven-key')) document.getElementById('admin-eleven-key').value = elevenLabsApiKey;
 
-            const payload = { enabled, persona, cooldownSeconds, donatorOnly, geminiApiKey, elevenLabsApiKey };
+            const payload = { enabled, persona, cooldownSeconds, donatorOnly, geminiApiKey, elevenLabsApiKey, elevenLabsVoiceId };
             const res = await fetch(`${this.API_URL}/api/tiktok/ai-config`, {
                 method: 'POST',
                 headers: {
