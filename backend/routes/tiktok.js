@@ -957,6 +957,32 @@ router.post('/ai-config', authMiddleware, (req, res) => {
     }
 });
 
+router.post('/save-voice-sample', authMiddleware, (req, res) => {
+    try {
+        const { voiceId, audioBase64 } = req.body || {};
+        if (!voiceId || !audioBase64) return res.status(400).json({ success: false, error: 'Missing params' });
+        
+        const base64Data = audioBase64.replace(/^data:audio\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        const filePaths = [
+            path.join(__dirname, '../public/assets/audio/voice-samples', `sample_${voiceId}.mp3`),
+            path.join(__dirname, '../../desktop/renderer/assets/audio/voice-samples', `sample_${voiceId}.mp3`)
+        ];
+
+        filePaths.forEach(fp => {
+            try {
+                fs.mkdirSync(path.dirname(fp), { recursive: true });
+                fs.writeFileSync(fp, buffer);
+            } catch (_e) {}
+        });
+
+        res.json({ success: true, message: `Sample saved for voice ${voiceId}` });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 router.post('/ai-buy-addon', authMiddleware, (req, res) => {
     try {
         const { pack } = req.body || {};

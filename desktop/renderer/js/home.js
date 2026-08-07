@@ -1844,9 +1844,19 @@ class EffectStoreApp {
                     const reader = new FileReader();
                     reader.readAsDataURL(blob);
                     reader.onloadend = () => {
+                        const dataUrl = reader.result;
                         try {
-                            localStorage.setItem('es_voice_cache_' + cacheKey, reader.result);
+                            localStorage.setItem('es_voice_cache_' + cacheKey, dataUrl);
                         } catch (_e) {}
+
+                        fetch(`${this.API_URL}/api/tiktok/save-voice-sample`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${this.authToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ voiceId, audioBase64: dataUrl })
+                        }).catch(() => {});
                     };
                     const audioUrl = URL.createObjectURL(blob);
                     this.currentAudio = new Audio(audioUrl);
