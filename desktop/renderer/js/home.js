@@ -1799,7 +1799,7 @@ class EffectStoreApp {
                     },
                     body: JSON.stringify({
                         text: text,
-                        model_id: 'eleven_multilingual_v2',
+                        model_id: 'eleven_v3',
                         voice_settings: {
                             stability: 0.15,
                             similarity_boost: 0.85,
@@ -1819,7 +1819,7 @@ class EffectStoreApp {
                         },
                         body: JSON.stringify({
                             text: text,
-                            model_id: 'eleven_v3',
+                            model_id: 'eleven_multilingual_v2',
                             voice_settings: {
                                 stability: 0.15,
                                 similarity_boost: 0.85,
@@ -7008,6 +7008,7 @@ class EffectStoreApp {
     async testAiAssistantSpeech() {
         try {
             await this.saveAiAssistantConfig();
+            this.testAudioCache = {};
             const testSentence = 'Hello các vợ, lại là anh đây hihi';
             this.showNotification('success', `🤖 AI Cà khịa: "${testSentence}"`);
             this.speakText(testSentence, true);
