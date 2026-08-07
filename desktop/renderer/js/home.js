@@ -172,6 +172,8 @@ class EffectStoreApp {
         this.syncControlDeckToRemote();
     }
     async init() {
+        // Safety watchdog: dismiss loading screen after 5 seconds max if any network/auth step lags
+        const safetyTimer = setTimeout(() => this.hideAppLoadingOverlay(), 5000);
         try {
             this.showAppLoadingOverlay('🚀 Đang khởi động hệ thống...', 15);
 
@@ -187,11 +189,13 @@ class EffectStoreApp {
 
             const databaseReady = await this.checkDatabaseSetup();
             if (!databaseReady) {
+                clearTimeout(safetyTimer);
                 this.hideAppLoadingOverlay();
                 return;
             }
             const adminReady = await this.checkInitialAdminSetup();
             if (!adminReady) {
+                clearTimeout(safetyTimer);
                 this.hideAppLoadingOverlay();
                 return;
             }
@@ -365,6 +369,7 @@ class EffectStoreApp {
 
         if (!token) {
             document.getElementById('auth-modal')?.classList.add('show');
+            this.hideAppLoadingOverlay();
             return;
         }
 
@@ -386,11 +391,13 @@ class EffectStoreApp {
             } else {
                 localStorage.removeItem('token');
                 document.getElementById('auth-modal')?.classList.add('show');
+                this.hideAppLoadingOverlay();
             }
         } catch (e) {
             console.error('Auth error', e);
             localStorage.removeItem('token');
             document.getElementById('auth-modal')?.classList.add('show');
+            this.hideAppLoadingOverlay();
         }
     }
 
