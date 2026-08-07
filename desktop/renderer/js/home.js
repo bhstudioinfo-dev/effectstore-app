@@ -1819,6 +1819,8 @@ class EffectStoreApp {
                 });
 
                 if (!elevenRes.ok) {
+                    const errDetail = await elevenRes.clone().text().catch(() => '');
+                    console.warn(`ElevenLabs v3 failed (${elevenRes.status}):`, errDetail);
                     elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
                         method: 'POST',
                         headers: {
@@ -1837,6 +1839,33 @@ class EffectStoreApp {
                             }
                         })
                     });
+                }
+
+                if (!elevenRes.ok) {
+                    const errDetail2 = await elevenRes.clone().text().catch(() => '');
+                    console.warn(`ElevenLabs v2 failed (${elevenRes.status}):`, errDetail2);
+                    elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'audio/mpeg',
+                            'Content-Type': 'application/json',
+                            'xi-api-key': elevenKey
+                        },
+                        body: JSON.stringify({
+                            text: text,
+                            model_id: 'eleven_flash_v2_5',
+                            voice_settings: {
+                                stability: 0.15,
+                                similarity_boost: 0.85
+                            }
+                        })
+                    });
+                }
+
+                if (!elevenRes.ok) {
+                    const finalErr = await elevenRes.clone().text().catch(() => '');
+                    console.error(`ElevenLabs API failed with status ${elevenRes.status}:`, finalErr);
+                    this.showNotification('error', `⚠️ ElevenLabs (${elevenRes.status}): Vui lòng kiểm tra lại API Key trong Trang Quản Trị!`);
                 }
 
                 if (elevenRes.ok) {
