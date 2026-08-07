@@ -1821,48 +1821,24 @@ class EffectStoreApp {
                 if (!elevenRes.ok) {
                     const errDetail = await elevenRes.clone().text().catch(() => '');
                     console.warn(`ElevenLabs v3 failed (${elevenRes.status}):`, errDetail);
-
-                    // If Library voice is restricted on Free plan, fallback to standard premade Voice (Adam) on ElevenLabs
-                    if (errDetail.includes('paid_plan_required') || errDetail.includes('library voices')) {
-                        console.log('🔄 Library voice restricted on Free Plan API, retrying with standard Adam premade voice...');
-                        elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB`, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'audio/mpeg',
-                                'Content-Type': 'application/json',
-                                'xi-api-key': elevenKey
-                            },
-                            body: JSON.stringify({
-                                text: text,
-                                model_id: 'eleven_v3',
-                                voice_settings: {
-                                    stability: 0.15,
-                                    similarity_boost: 0.85,
-                                    style: 0.20,
-                                    use_speaker_boost: true
-                                }
-                            })
-                        });
-                    } else {
-                        elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'audio/mpeg',
-                                'Content-Type': 'application/json',
-                                'xi-api-key': elevenKey
-                            },
-                            body: JSON.stringify({
-                                text: text,
-                                model_id: 'eleven_multilingual_v2',
-                                voice_settings: {
-                                    stability: 0.15,
-                                    similarity_boost: 0.85,
-                                    style: 0.20,
-                                    use_speaker_boost: true
-                                }
-                            })
-                        });
-                    }
+                    elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'audio/mpeg',
+                            'Content-Type': 'application/json',
+                            'xi-api-key': elevenKey
+                        },
+                        body: JSON.stringify({
+                            text: text,
+                            model_id: 'eleven_multilingual_v2',
+                            voice_settings: {
+                                stability: 0.15,
+                                similarity_boost: 0.85,
+                                style: 0.20,
+                                use_speaker_boost: true
+                            }
+                        })
+                    });
                 }
 
                 if (!elevenRes.ok) {
@@ -1889,7 +1865,11 @@ class EffectStoreApp {
                 if (!elevenRes.ok) {
                     const finalErr = await elevenRes.clone().text().catch(() => '');
                     console.error(`ElevenLabs API failed with status ${elevenRes.status}:`, finalErr);
-                    this.showNotification('error', `⚠️ ElevenLabs (${elevenRes.status}): Vui lòng kiểm tra lại API Key trong Trang Quản Trị!`);
+                    if (finalErr.includes('paid_plan_required') || finalErr.includes('library voices')) {
+                        this.showNotification('warning', '💡 Giọng này cần bấm "Add to Voice Lab" trên ElevenLabs để dùng Free API!');
+                    } else {
+                        this.showNotification('error', `⚠️ ElevenLabs (${elevenRes.status}): Vui lòng kiểm tra lại API Key trong Trang Quản Trị!`);
+                    }
                 }
 
                 if (elevenRes.ok) {

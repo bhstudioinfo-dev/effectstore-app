@@ -957,7 +957,7 @@ router.post('/ai-config', authMiddleware, (req, res) => {
     }
 });
 
-router.post('/save-voice-sample', authMiddleware, (req, res) => {
+router.post('/save-voice-sample', (req, res) => {
     try {
         const { voiceId, audioBase64 } = req.body || {};
         if (!voiceId || !audioBase64) return res.status(400).json({ success: false, error: 'Missing params' });
