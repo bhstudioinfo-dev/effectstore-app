@@ -968,7 +968,7 @@ const aiAssistantService = require('../services/aiAssistantService');
 router.get('/ai-config', optionalAuthMiddleware, (req, res) => {
     try {
         const config = aiAssistantService.getConfig();
-        const userPlan = (req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.plan || 'pro');
+        const userPlan = (req.isAdmin || req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.subscription || req.user?.plan || 'free');
         const usage = aiAssistantService.getCharacterUsage(userPlan);
         const systemStatus = aiAssistantService.getSystemStatus();
         res.json({ success: true, config, usage, systemStatus });
