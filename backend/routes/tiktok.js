@@ -259,8 +259,12 @@ router.get('/available-effects', optionalAuthMiddleware, async (req, res) => {
     }
 });
 
-router.get('/challenge-wheels', authMiddleware, async (req, res) => {
+router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
     try {
+        if (!req.userId) {
+            const wheels = await ChallengeWheel.find({ isTemplate: true }).lean();
+            return res.json({ success: true, wheels });
+        }
         // Backfill a wheel for an admin's already-published challenge-wheel
         // template. Older published products predate the ChallengeWheel record.
         const owner = await User.findById(req.userId).select('isAdmin subscription').lean();

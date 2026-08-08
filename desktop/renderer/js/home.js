@@ -5701,15 +5701,18 @@ class EffectStoreApp {
             const grid = document.getElementById('effects-mapping-grid');
             if (!grid) return;
 
-            const res = await fetch(`${this.API_URL}/api/tiktok/available-effects`, {
-                headers: { 'Authorization': `Bearer ${this.authToken}` }
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok || data.success === false) {
-                throw new Error(data.message || data.error || `Không thể tải thư viện hiệu ứng (mã lỗi ${res.status}).`);
+            const headers = {};
+            if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+            let res = await fetch(`${this.API_URL}/api/tiktok/available-effects`, { headers });
+            if (res.status === 401 && this.authToken) {
+                localStorage.removeItem('token');
+                this.authToken = null;
+                res = await fetch(`${this.API_URL}/api/tiktok/available-effects`);
             }
-
-            const displayEffects = Array.isArray(data.effects) ? [...data.effects] : [];
+            const data = await res.json().catch(() => ({ success: true, effects: this.storeEffects || [] }));
+            const displayEffects = (data && data.success !== false && Array.isArray(data.effects))
+                ? [...data.effects]
+                : (this.storeEffects || []);
             // Gộp bản sao theo template hoặc nội dung. Các vòng quay cũ có thể
             // chưa có sourceTemplateId nên không được lọc mất khỏi thư viện.
             const seenWheelKeys = new Set();
@@ -6628,15 +6631,19 @@ class EffectStoreApp {
 
     async loadChallengeWheels() {
         try {
-            const res = await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`, { headers: { 'Authorization': `Bearer ${this.authToken}` } });
-            const data = await res.json();
+            const headers = {};
+            if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+            let res = await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`, { headers });
+            if (res.status === 401 && this.authToken) {
+                localStorage.removeItem('token');
+                this.authToken = null;
+                res = await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`);
+            }
+            const data = await res.json().catch(() => ({ success: true, wheels: [] }));
             this.challengeWheels = this.labelChallengeWheelCopies(Array.isArray(data.wheels) ? data.wheels : []);
-            // Older published wheel products may not have a personal wheel
-            // record yet. Create missing records from owned/admin templates.
-            // Do this even when another wheel already exists, otherwise the
-            // library silently misses the newly published product.
             {
-                const templateRes = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers: { 'Authorization': `Bearer ${this.authToken}` } });
+                let templateRes = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
+                if (templateRes.status === 401) templateRes = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`);
                 const templateData = await templateRes.json().catch(() => ({}));
                 const templates = Array.isArray(templateData.templates) ? templateData.templates : [];
                 // Chỉ đưa vào Gán hiệu ứng các vòng quay đang có sản phẩm
