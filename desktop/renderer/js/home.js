@@ -4834,13 +4834,14 @@ class EffectStoreApp {
             }
 
             // Fetch pending payments
+            const token = this.authToken || localStorage.getItem('token') || '';
             const paymentsRes = await fetch(`${this.API_URL}/api/payment/admin/payments`, {
                 headers: {
-                    'Authorization': `Bearer ${this.authToken}`,
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
-            const paymentsData = await paymentsRes.json();
+            const paymentsData = await paymentsRes.json().catch(() => ({}));
             console.log('Payments loaded:', paymentsData);
 
             if (paymentsData.success) {
@@ -7015,10 +7016,11 @@ class EffectStoreApp {
 
     async loadAiAssistantConfig() {
         try {
+            const token = this.authToken || localStorage.getItem('token') || '';
             const headers = {};
-            if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+            if (token) headers['Authorization'] = `Bearer ${token}`;
             let res = await fetch(`${this.API_URL}/api/tiktok/ai-config`, { headers });
-            if (res.status === 401 && this.authToken) {
+            if (res.status === 401 && token) {
                 localStorage.removeItem('token');
                 this.authToken = null;
                 res = await fetch(`${this.API_URL}/api/tiktok/ai-config`);
