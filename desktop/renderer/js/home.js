@@ -7261,7 +7261,7 @@ class EffectStoreApp {
                     ? (this.currentUser?.subscription?.plan || 'free')
                     : (this.currentUser?.subscription || this.currentUser?.plan || document.querySelector('.user-card .plan')?.textContent?.trim() || 'FREE');
                 const sub = String(rawSub).toLowerCase();
-                const planName = (sub.includes('business') || sub === 'pro') ? 'Pro' : (sub.includes('basic') ? 'Basic' : 'Free');
+                const planName = (sub === 'basic' || sub.includes('basic')) ? 'Basic' : ((sub === 'pro' || sub.includes('business')) ? 'Pro' : 'Free');
                 planBadge.textContent = `Gói ${planName}`;
                 planBadge.style.background = planName === 'Pro'
                     ? 'rgba(167,139,250,0.15)'
