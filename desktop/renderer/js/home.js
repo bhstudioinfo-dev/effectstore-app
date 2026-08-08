@@ -4925,7 +4925,7 @@ class EffectStoreApp {
             if (paymentsData.success) {
                 const container = document.getElementById('admin-payments-list');
                 if (container) {
-                    const pending = (paymentsData.payments || []).filter(p => p.status === 'pending');
+                    const pending = (paymentsData.payments || []).filter(p => p.status === 'pending' || p.status === 'created');
                     if (pending.length === 0) {
                         container.innerHTML = '<div class="empty-state">💳 Không có payment chờ</div>';
                     } else {
