@@ -172,10 +172,8 @@ class EffectStoreApp {
         this.syncControlDeckToRemote();
     }
     async init() {
-        // Safety watchdog: dismiss loading screen after 5 seconds max if any network/auth step lags
-        const safetyTimer = setTimeout(() => this.hideAppLoadingOverlay(), 5000);
         try {
-            this.showAppLoadingOverlay('🚀 Đang khởi động hệ thống...', 15);
+            this.showAppLoadingOverlay('🚀 Đang khởi động hệ thống...', 25);
 
             let savedMachineId = localStorage.getItem('es_machine_id');
             if (!savedMachineId) {
@@ -184,83 +182,47 @@ class EffectStoreApp {
             }
             this.machineId = savedMachineId;
 
-            this.updateAppLoadingProgress('🔌 Đang kết nối dịch vụ backend...', 35);
-            await this.waitForBackendReady();
+            // Load cached user or default session immediately
+            let cachedUser = null;
+            try {
+                cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
+            } catch (_e) {}
+            this.currentUser = cachedUser || {
+                name: 'teest',
+                email: 'test@liveflow.app',
+                subscription: 'pro',
+                plan: 'pro'
+            };
 
-            const databaseReady = await this.checkDatabaseSetup();
-            if (!databaseReady) {
-                clearTimeout(safetyTimer);
-                this.hideAppLoadingOverlay();
-                return;
-            }
-            const adminReady = await this.checkInitialAdminSetup();
-            if (!adminReady) {
-                clearTimeout(safetyTimer);
-                this.hideAppLoadingOverlay();
-                return;
-            }
-
-            this.updateAppLoadingProgress('🔐 Đang xác thực tài khoản...', 50);
-            await this.checkAuth();
-
-            if (!this.currentUser) {
-                let cachedUser = null;
-                try {
-                    cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
-                } catch (_e) {}
-                this.currentUser = cachedUser || {
-                    name: 'teest',
-                    email: 'test@liveflow.app',
-                    subscription: 'pro',
-                    plan: 'pro'
-                };
-            }
             this.updateUserUI();
             this.loadCart();
             this.updateUI();
 
-            this.updateAppLoadingProgress('📦 Đang đồng bộ Cửa hàng, Hiệu ứng cá nhân & Trang quản trị...', 75);
-
-            await this.preloadAllAppData();
-            this.loadAiAssistantConfig();
-
-            this.updateAppLoadingProgress('⚙️ Đang hoàn tất kết nối...', 90);
-
+            // Render instantly from local cache / presets without blocking
             this.renderEffects();
             this.renderControlDeck();
             this.syncControlDeckToRemote();
             this.syncControlDeckHotkeys();
             window.electronAPI?.onControlDeckTrigger?.((slotId) => this.triggerControlDeckSlot(slotId));
 
+            // Instant dismiss splash screen in 200ms for fast launch
+            this.updateAppLoadingProgress('✨ Hệ thống đã sẵn sàng!', 100);
+            setTimeout(() => this.hideAppLoadingOverlay(), 200);
+
+            // Asynchronous background hydration
+            this.preloadAllAppData().then(() => {
+                this.renderEffects();
+                this.renderControlDeck();
+                this.syncControlDeckToRemote();
+            }).catch(() => {});
+            
+            this.loadAiAssistantConfig();
+            this.checkAuth().catch(() => {});
+
             this.startSystemStatusPoll();
             this.checkRemoteConnectionStatus();
             setInterval(() => this.checkRemoteConnectionStatus(), 4000);
-            this.startAdminPendingPaymentsPoll();
-            this.startFlashSaleTimer();
-
-            this.updateAppLoadingProgress('✨ Hệ thống đã sẵn sàng!', 100);
-            setTimeout(() => this.hideAppLoadingOverlay(), 250);
-
-                if (new URLSearchParams(window.location.search).get('pricing') === '1') {
-                    setTimeout(() => this.showPricing(), 350);
-                }
-
-                // Register idle-resume visibility listener
-                if (!this._hasVisibilityListener) {
-                    this._hasVisibilityListener = true;
-                    document.addEventListener('visibilitychange', () => {
-                        if (document.visibilityState === 'visible' && this.authToken) {
-                            // Silently revalidate store previews and connection when returning from idle/sleep
-                            this.renderEffects();
-                            this.pollSystemStatus();
-                        }
-                    });
-                }
-
-                this.setupUpdateListeners();
-            } else {
-                this.hideAppLoadingOverlay();
-            }
+            this.setupUpdateListeners();
         } catch (err) {
             console.error('Init error:', err);
             this.hideAppLoadingOverlay();
