@@ -23,8 +23,8 @@ assert.strictEqual(first.INITIAL_SETUP_TOKEN.length >= 32, true);
 assert.strictEqual(first.JWT_SECRET, second.JWT_SECRET);
 assert.strictEqual(first.ENCRYPTION_PASSWORD, second.ENCRYPTION_PASSWORD);
 assert.strictEqual(first.INITIAL_SETUP_TOKEN, second.INITIAL_SETUP_TOKEN);
-assert.strictEqual(first.API_HOST, '127.0.0.1');
-assert.strictEqual(first.WS_HOST, '127.0.0.1');
+assert.strictEqual(first.API_HOST, '0.0.0.0');
+assert.strictEqual(first.WS_HOST, '0.0.0.0');
 const ignoredSharedJwt = ensureBackendConfig(userDataPath, codec, {
     jwtSecret: 'shared-cloud-jwt-secret-must-not-be-used-123456789'
 });

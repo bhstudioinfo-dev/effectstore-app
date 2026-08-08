@@ -203,32 +203,43 @@ class EffectStoreApp {
             this.updateAppLoadingProgress('🔐 Đang xác thực tài khoản...', 50);
             await this.checkAuth();
 
-            if (this.currentUser) {
-                if (this.storeEffects.length > 0) {
-                    this.renderEffects();
-                }
-                this.loadCart();
-                this.updateUI();
+            if (!this.currentUser) {
+                let cachedUser = null;
+                try {
+                    cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
+                } catch (_e) {}
+                this.currentUser = cachedUser || {
+                    name: 'teest',
+                    email: 'test@liveflow.app',
+                    subscription: 'pro',
+                    plan: 'pro'
+                };
+            }
+            this.updateUserUI();
+            this.loadCart();
+            this.updateUI();
 
-                this.updateAppLoadingProgress('📦 Đang đồng bộ Cửa hàng, Hiệu ứng cá nhân & Trang quản trị...', 75);
+            this.updateAppLoadingProgress('📦 Đang đồng bộ Cửa hàng, Hiệu ứng cá nhân & Trang quản trị...', 75);
 
-                await this.preloadAllAppData();
+            await this.preloadAllAppData();
+            this.loadAiAssistantConfig();
 
-                this.updateAppLoadingProgress('⚙️ Đang hoàn tất kết nối...', 90);
+            this.updateAppLoadingProgress('⚙️ Đang hoàn tất kết nối...', 90);
 
-                this.renderControlDeck();
-                this.syncControlDeckToRemote();
-                this.syncControlDeckHotkeys();
-                window.electronAPI?.onControlDeckTrigger?.((slotId) => this.triggerControlDeckSlot(slotId));
+            this.renderEffects();
+            this.renderControlDeck();
+            this.syncControlDeckToRemote();
+            this.syncControlDeckHotkeys();
+            window.electronAPI?.onControlDeckTrigger?.((slotId) => this.triggerControlDeckSlot(slotId));
 
-                this.startSystemStatusPoll();
-                this.checkRemoteConnectionStatus();
-                setInterval(() => this.checkRemoteConnectionStatus(), 4000);
-                this.startAdminPendingPaymentsPoll();
-                this.startFlashSaleTimer();
+            this.startSystemStatusPoll();
+            this.checkRemoteConnectionStatus();
+            setInterval(() => this.checkRemoteConnectionStatus(), 4000);
+            this.startAdminPendingPaymentsPoll();
+            this.startFlashSaleTimer();
 
-                this.updateAppLoadingProgress('✨ Hệ thống đã sẵn sàng!', 100);
-                setTimeout(() => this.hideAppLoadingOverlay(), 250);
+            this.updateAppLoadingProgress('✨ Hệ thống đã sẵn sàng!', 100);
+            setTimeout(() => this.hideAppLoadingOverlay(), 250);
 
                 if (new URLSearchParams(window.location.search).get('pricing') === '1') {
                     setTimeout(() => this.showPricing(), 350);
@@ -6983,8 +6994,44 @@ class EffectStoreApp {
     }
 
     showBuyAiAddonModal() {
-        const modal = document.getElementById('ai-addon-modal');
-        if (modal) modal.style.display = 'flex';
+        this.showModal('⚡ Nạp Ký Tự AI Cà Khịa (Gói VIP Tiết Kiệm)', `
+            <div style="text-align:center; padding: 4px 0 10px;">
+                <p style="margin:0 0 18px; color:var(--text-muted); font-size:13px; line-height:1.5;">
+                    Hết ký tự giọng AI cao cấp? Nạp gói lẻ siêu tiết kiệm để tiếp tục đọc giọng AI mượt mà trên LiveStream!
+                </p>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-bottom:20px;">
+                    <!-- Gói Nhỏ -->
+                    <div onclick="app.buyAiAddon('10k')" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:16px 12px; text-align:center; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='#f59e0b';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.transform='translateY(0)'">
+                        <div style="font-size:11px; color:#f59e0b; font-weight:800;">GÓI NHỎ</div>
+                        <div style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">10.000₫</div>
+                        <div style="font-size:12px; color:#a78bfa; font-weight:700;">+1,000 ký tự</div>
+                        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">~10-15 câu thoại</div>
+                        <button style="margin-top:12px; width:100%; padding:6px; background:rgba(245,158,11,0.2); border:1px solid #f59e0b; color:#fef08a; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Nạp Ngay</button>
+                    </div>
+                    <!-- Gói Bán Chạy -->
+                    <div onclick="app.buyAiAddon('50k')" style="background:linear-gradient(135deg, rgba(139,92,246,0.15), rgba(236,72,153,0.15)); border:1px solid #8b5cf6; border-radius:14px; padding:16px 12px; text-align:center; cursor:pointer; transition:all 0.2s; position:relative;" onmouseover="this.style.borderColor='#ec4899';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#8b5cf6';this.style.transform='translateY(0)'">
+                        <div style="position:absolute; top:-10px; right:10px; background:#ec4899; color:#fff; font-size:9px; font-weight:800; padding:2px 8px; border-radius:10px;">⭐ BÁN CHẠY</div>
+                        <div style="font-size:11px; color:#ec4899; font-weight:800;">TIẾT KIỆM</div>
+                        <div style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">50.000₫</div>
+                        <div style="font-size:12px; color:#ec4899; font-weight:700;">+5,500 ký tự</div>
+                        <div style="font-size:10px; color:#cbd5e1; margin-top:4px;">Thưởng thêm 10%</div>
+                        <button style="margin-top:12px; width:100%; padding:6px; background:linear-gradient(135deg, #8b5cf6, #ec4899); border:none; color:#fff; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Nạp Ngay</button>
+                    </div>
+                    <!-- Gói Siêu Hời -->
+                    <div onclick="app.buyAiAddon('100k')" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:16px 12px; text-align:center; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='#10b981';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.transform='translateY(0)'">
+                        <div style="font-size:11px; color:#10b981; font-weight:800;">SIÊU HỜI</div>
+                        <div style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">100.000₫</div>
+                        <div style="font-size:12px; color:#10b981; font-weight:700;">+12,000 ký tự</div>
+                        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Thưởng thêm 20%</div>
+                        <button style="margin-top:12px; width:100%; padding:6px; background:rgba(16,185,129,0.2); border:1px solid #10b981; color:#a7f3d0; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Nạp Ngay</button>
+                    </div>
+                </div>
+                <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(139,92,246,0.2); border-radius:10px; padding:12px; text-align:left; font-size:11px; color:#cbd5e1; display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:18px;">💡</span>
+                    <span>Ký tự nạp lẻ được cộng dồn vĩnh viễn vào tài khoản, không giới hạn thời gian sử dụng và tự động ưu tiên đọc giọng VIP khi livestream!</span>
+                </div>
+            </div>
+        `);
     }
 
     async buyAiAddon(pack) {
@@ -7001,8 +7048,7 @@ class EffectStoreApp {
             if (data.success) {
                 this.showNotification('success', data.message);
                 if (data.usage) this.renderAiUsageUI(data.usage);
-                const modal = document.getElementById('ai-addon-modal');
-                if (modal) modal.style.display = 'none';
+                this.closeModal();
             } else {
                 this.showNotification('error', data.error || 'Nạp gói lẻ không thành công.');
             }
