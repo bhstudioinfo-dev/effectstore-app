@@ -631,9 +631,9 @@
                 <span class="badge" id="cart-count">0</span>
             </div>
 
-            <div class="icon-btn">
+            <div class="icon-btn" id="header-admin-bell" style="position:relative; cursor:pointer;" onclick="app.openPendingPaymentsModal()" title="Thông báo đơn thanh toán chờ duyệt">
                 <i class="fas fa-bell"></i>
-                <span class="badge">0</span>
+                <span class="badge" id="admin-notification-badge" style="display:none; background:#ef4444; color:#fff; font-weight:800;">0</span>
             </div>
         </div>
     </nav>
@@ -658,6 +658,7 @@
                 </div>
                 <div class="menu-item-new" id="admin-nav-item" style="display:none;" onclick="switchView('admin')">
                     <i class="fas fa-user-shield"></i> Trang quản trị
+                    <span id="admin-sidebar-pending-badge" style="display:none; margin-left:auto; background:#ef4444; color:#fff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px;">0</span>
                 </div>
                 <div class="menu-item-new" onclick="switchView('settings')">
                     <i class="fas fa-cog"></i> Cài đặt

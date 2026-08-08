@@ -384,6 +384,7 @@ class EffectStoreApp {
                 if (this.currentView === 'admin' || data.user.isAdmin || data.user.email === 'admin@effectstore.vn') {
                     this.loadAdminDashboard();
                 }
+                this.startAdminPendingPaymentsPoll();
             } else {
                 localStorage.removeItem('token');
                 localStorage.removeItem('currentUser');
@@ -5062,6 +5063,96 @@ class EffectStoreApp {
         } catch (error) {
             this.showNotification('error', error.message);
         }
+    }
+
+    playNotificationChime() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            const now = ctx.currentTime;
+            
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(587.33, now);
+            gain1.gain.setValueAtTime(0.2, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.35);
+
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(880, now + 0.12);
+            gain2.gain.setValueAtTime(0.25, now + 0.12);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start(now + 0.12);
+            osc2.stop(now + 0.55);
+        } catch (_e) {}
+    }
+
+    updateAdminBadges(count) {
+        const headerBadge = document.getElementById('admin-notification-badge');
+        const sidebarBadge = document.getElementById('admin-sidebar-pending-badge');
+        if (headerBadge) {
+            if (count > 0) {
+                headerBadge.textContent = count;
+                headerBadge.style.display = 'inline-block';
+            } else {
+                headerBadge.style.display = 'none';
+            }
+        }
+        if (sidebarBadge) {
+            if (count > 0) {
+                sidebarBadge.textContent = count;
+                sidebarBadge.style.display = 'inline-block';
+            } else {
+                sidebarBadge.style.display = 'none';
+            }
+        }
+    }
+
+    startAdminPendingPaymentsPoll() {
+        if (this._adminPollInterval) clearInterval(this._adminPollInterval);
+        const poll = async () => {
+            const isAdmin = Boolean(
+                this.currentUser?.isAdmin ||
+                this.currentUser?.role === 'admin' ||
+                this.currentUser?.email === 'admin@effectstore.vn' ||
+                document.querySelector('.user-card .plan')?.textContent?.trim() === 'ADMIN'
+            );
+            if (!isAdmin) return;
+            const token = this.authToken || localStorage.getItem('token');
+            if (!token) return;
+            try {
+                const res = await fetch(`${this.API_URL}/api/payment/admin/payments`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (data.success && Array.isArray(data.payments)) {
+                    const pendingList = data.payments.filter(p => p.status === 'pending' || p.status === 'created');
+                    const count = pendingList.length;
+                    this.updateAdminBadges(count);
+                    
+                    const prevCount = this._prevPendingCount;
+                    if (prevCount !== undefined && count > prevCount) {
+                        this.playNotificationChime();
+                        const newest = pendingList[0];
+                        const userName = newest?.user?.name || newest?.user?.email || newest?.userId || 'Khách hàng';
+                        const amountStr = newest ? this.formatPrice(newest.amount) : '';
+                        this.showNotification('success', `🔔 [Admin]: Có ${count} đơn thanh toán mới (${userName} - ${amountStr}) đang chờ duyệt!`);
+                    }
+                    this._prevPendingCount = count;
+                }
+            } catch (_e) {}
+        };
+        poll();
+        this._adminPollInterval = setInterval(poll, 8000);
     }
 
     async addToTrending() {
