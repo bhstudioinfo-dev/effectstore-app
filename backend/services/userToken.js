@@ -15,7 +15,8 @@ function getCloudPrivateKey() {
 
 function issueUserToken(payload, options = {}) {
     const privateKey = getCloudPrivateKey();
-    const signOptions = { expiresIn: options.expiresIn || '7d' };
+    // Default to 10 years (3650 days) so streamers have a permanent lifetime session on desktop
+    const signOptions = { expiresIn: options.expiresIn || '3650d' };
     if (privateKey) {
         return jwt.sign(payload, privateKey, { ...signOptions, algorithm: 'RS256' });
     }
