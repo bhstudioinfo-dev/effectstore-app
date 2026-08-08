@@ -831,6 +831,10 @@ class EffectStoreApp {
         if (adminNavItem) {
             adminNavItem.style.display = u.isAdmin ? '' : 'none';
         }
+
+        this.controlDeck = this.loadControlDeckState();
+        this.renderControlDeck();
+        this.syncControlDeckToRemote();
     }
 
 
@@ -3693,20 +3697,29 @@ class EffectStoreApp {
         }
     }
 
+    getControlDeckStorageKey() {
+        const userKey = String(this.currentUser?._id || this.currentUser?.id || this.currentUser?.email || 'guest');
+        return `liveflow_control_deck_${userKey}`;
+    }
+
     loadControlDeckState() {
         const fallback = { effect: { visible: 10, slots: [] }, sound: { visible: 10, slots: [] } };
         try {
-            const saved = JSON.parse(localStorage.getItem('liveflow_control_deck') || 'null');
-            for (const type of ['effect', 'sound']) {
-                fallback[type].visible = Math.max(10, Math.min(20, Number(saved?.[type]?.visible) || 10));
-                fallback[type].slots = Array.isArray(saved?.[type]?.slots) ? saved[type].slots.slice(0, 20) : [];
+            const key = this.getControlDeckStorageKey();
+            const saved = JSON.parse(localStorage.getItem(key) || 'null');
+            if (saved) {
+                for (const type of ['effect', 'sound']) {
+                    fallback[type].visible = Math.max(10, Math.min(20, Number(saved?.[type]?.visible) || 10));
+                    fallback[type].slots = Array.isArray(saved?.[type]?.slots) ? saved[type].slots.slice(0, 20) : [];
+                }
             }
         } catch (_error) {}
         return fallback;
     }
 
     saveControlDeckState() {
-        localStorage.setItem('liveflow_control_deck', JSON.stringify(this.controlDeck));
+        const key = this.getControlDeckStorageKey();
+        localStorage.setItem(key, JSON.stringify(this.controlDeck));
         this.syncControlDeckHotkeys();
         this.syncControlDeckToRemote();
     }
