@@ -187,12 +187,7 @@ class EffectStoreApp {
             try {
                 cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
             } catch (_e) {}
-            this.currentUser = cachedUser || {
-                name: 'teest',
-                email: 'test@liveflow.app',
-                subscription: 'pro',
-                plan: 'pro'
-            };
+            this.currentUser = cachedUser;
 
             this.updateUserUI();
             this.loadCart();
@@ -698,7 +693,35 @@ class EffectStoreApp {
     }
 
     updateUserUI() {
-        if (!this.currentUser) return;
+        if (!this.currentUser) {
+            const avatarEl = document.getElementById('user-avatar-small');
+            if (avatarEl) {
+                avatarEl.textContent = '👤';
+                const parentAvatar = avatarEl.parentElement;
+                if (parentAvatar) {
+                    parentAvatar.style.background = 'linear-gradient(135deg,#374151,#4b5563)';
+                    parentAvatar.style.color = '#fff';
+                }
+            }
+            const nameEl = document.getElementById('user-name-display');
+            if (nameEl) nameEl.textContent = 'Chưa đăng nhập';
+            const rankBadge = document.getElementById('user-rank-badge');
+            if (rankBadge) {
+                rankBadge.textContent = 'ĐĂNG NHẬP';
+                rankBadge.style.background = 'rgba(139,92,246,0.2)';
+                rankBadge.style.color = '#c084fc';
+                rankBadge.style.border = '1px solid rgba(139,92,246,0.4)';
+                rankBadge.style.display = 'inline-flex';
+                rankBadge.style.cursor = 'pointer';
+            }
+            const emailEl = document.getElementById('user-email-display');
+            if (emailEl) {
+                emailEl.innerHTML = '<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(139,92,246,0.15);color:#a78bfa;font-weight:700;cursor:pointer;">Đăng nhập / Đăng ký</span>';
+            }
+            const adminNavItem = document.getElementById('admin-nav-item');
+            if (adminNavItem) adminNavItem.style.display = 'none';
+            return;
+        }
         const u = this.currentUser;
         const nameChar = (u.name && u.name.length > 0) ? u.name[0].toUpperCase() : 'U';
 
@@ -920,7 +943,13 @@ class EffectStoreApp {
             }
         } catch (_error) { }
         localStorage.removeItem('token');
-        location.reload();
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('user');
+        this.authToken = null;
+        this.currentUser = null;
+        this.updateUserUI();
+        this.openAuthModal();
+        this.showNotification('info', '👋 Đã đăng xuất! Vui lòng nhập email & mật khẩu tài khoản Admin để đăng nhập.');
     }
 
     openStudioContact() {
