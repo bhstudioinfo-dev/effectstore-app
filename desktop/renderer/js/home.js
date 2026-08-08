@@ -6963,29 +6963,29 @@ class EffectStoreApp {
                 </p>
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-bottom:20px;">
                     <!-- Gói Nhỏ -->
-                    <div onclick="app.buyAiAddon('10k')" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:16px 12px; text-align:center; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='#f59e0b';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.transform='translateY(0)'">
+                    <div onclick="app.showAiPaymentQR('10k')" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:16px 12px; text-align:center; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='#f59e0b';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.transform='translateY(0)'">
                         <div style="font-size:11px; color:#f59e0b; font-weight:800;">GÓI NHỎ</div>
                         <div style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">10.000₫</div>
                         <div style="font-size:12px; color:#a78bfa; font-weight:700;">+1,000 ký tự</div>
                         <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">~10-15 câu thoại</div>
-                        <button style="margin-top:12px; width:100%; padding:6px; background:rgba(245,158,11,0.2); border:1px solid #f59e0b; color:#fef08a; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Nạp Ngay</button>
+                        <button style="margin-top:12px; width:100%; padding:6px; background:rgba(245,158,11,0.2); border:1px solid #f59e0b; color:#fef08a; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Nạp Ngay ➔</button>
                     </div>
                     <!-- Gói Bán Chạy -->
-                    <div onclick="app.buyAiAddon('50k')" style="background:linear-gradient(135deg, rgba(139,92,246,0.15), rgba(236,72,153,0.15)); border:1px solid #8b5cf6; border-radius:14px; padding:16px 12px; text-align:center; cursor:pointer; transition:all 0.2s; position:relative;" onmouseover="this.style.borderColor='#ec4899';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#8b5cf6';this.style.transform='translateY(0)'">
+                    <div onclick="app.showAiPaymentQR('50k')" style="background:linear-gradient(135deg, rgba(139,92,246,0.15), rgba(236,72,153,0.15)); border:1px solid #8b5cf6; border-radius:14px; padding:16px 12px; text-align:center; cursor:pointer; transition:all 0.2s; position:relative;" onmouseover="this.style.borderColor='#ec4899';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#8b5cf6';this.style.transform='translateY(0)'">
                         <div style="position:absolute; top:-10px; right:10px; background:#ec4899; color:#fff; font-size:9px; font-weight:800; padding:2px 8px; border-radius:10px;">⭐ BÁN CHẠY</div>
                         <div style="font-size:11px; color:#ec4899; font-weight:800;">TIẾT KIỆM</div>
                         <div style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">50.000₫</div>
                         <div style="font-size:12px; color:#ec4899; font-weight:700;">+5,500 ký tự</div>
                         <div style="font-size:10px; color:#cbd5e1; margin-top:4px;">Thưởng thêm 10%</div>
-                        <button style="margin-top:12px; width:100%; padding:6px; background:linear-gradient(135deg, #8b5cf6, #ec4899); border:none; color:#fff; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Nạp Ngay</button>
+                        <button style="margin-top:12px; width:100%; padding:6px; background:linear-gradient(135deg, #8b5cf6, #ec4899); border:none; color:#fff; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Nạp Ngay ➔</button>
                     </div>
                     <!-- Gói Siêu Hời -->
-                    <div onclick="app.buyAiAddon('100k')" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:16px 12px; text-align:center; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='#10b981';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.transform='translateY(0)'">
+                    <div onclick="app.showAiPaymentQR('100k')" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:16px 12px; text-align:center; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='#10b981';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.transform='translateY(0)'">
                         <div style="font-size:11px; color:#10b981; font-weight:800;">SIÊU HỜI</div>
                         <div style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">100.000₫</div>
                         <div style="font-size:12px; color:#10b981; font-weight:700;">+12,000 ký tự</div>
                         <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Thưởng thêm 20%</div>
-                        <button style="margin-top:12px; width:100%; padding:6px; background:rgba(16,185,129,0.2); border:1px solid #10b981; color:#a7f3d0; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Nạp Ngay</button>
+                        <button style="margin-top:12px; width:100%; padding:6px; background:rgba(16,185,129,0.2); border:1px solid #10b981; color:#a7f3d0; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Nạp Ngay ➔</button>
                     </div>
                 </div>
                 <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(139,92,246,0.2); border-radius:10px; padding:12px; text-align:left; font-size:11px; color:#cbd5e1; display:flex; align-items:center; gap:8px;">
@@ -6996,8 +6996,113 @@ class EffectStoreApp {
         `);
     }
 
-    async buyAiAddon(pack) {
+    showAiPaymentQR(pack) {
+        let amount = 10000;
+        let packTitle = 'Gói Nhỏ (+1,000 ký tự)';
+        let syntax = 'LF AI 10K';
+
+        if (pack === '50k') {
+            amount = 50000;
+            packTitle = 'Gói Tiết Kiệm (+5,500 ký tự)';
+            syntax = 'LF AI 50K';
+        } else if (pack === '100k') {
+            amount = 100000;
+            packTitle = 'Gói Siêu Hời (+12,000 ký tự)';
+            syntax = 'LF AI 100K';
+        }
+
+        const bankName = 'MBBank (Ngân Hàng Quân Đội)';
+        const accountNumber = '0347895899';
+        const accountName = 'NGUYEN THANH LONG';
+        const formattedAmount = this.formatPrice(amount);
+        const qrUrl = `https://img.vietqr.io/image/MB-${accountNumber}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(syntax)}&accountName=${encodeURIComponent(accountName)}`;
+
+        this.showModal(`Thanh toán ${packTitle}`, `
+            <div style="font-family:inherit;max-width:480px;margin:0 auto;">
+                <!-- QR Block -->
+                <div style="text-align:center;margin-bottom:18px;">
+                    <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:6px 14px;margin-bottom:14px;">
+                        <span style="font-size:14px;">📲</span>
+                        <span style="font-size:13px;color:#10b981;font-weight:600;">Quét QR để nạp ký tự AI</span>
+                    </div>
+                    <div style="background:#fff;border-radius:16px;padding:12px;display:inline-block;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+                        <img src="${qrUrl}" alt="QR Code" style="width:200px;height:200px;display:block;border-radius:8px;">
+                        <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            <span style="color:#d4145a;font-size:11px;font-weight:800;letter-spacing:0.5px;">VIET</span><span style="color:#00b14f;font-size:11px;font-weight:800;letter-spacing:0.5px;">QR</span>
+                            <span style="color:#bbb;font-size:11px;">•</span>
+                            <span style="color:#555;font-size:12px;font-weight:700;">MBBank</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bank Info -->
+                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <span style="font-size:14px;">🏦</span>
+                        <span style="font-size:13px;font-weight:700;color:#fff;">Thông tin chuyển khoản</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="color:#6b7280;font-size:13px;">Ngân hàng</span>
+                            <span style="color:#60a5fa;font-weight:700;font-size:13px;">${bankName}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="color:#6b7280;font-size:13px;">Số tài khoản</span>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span style="color:#fff;font-weight:700;font-size:14px;letter-spacing:1px;">${accountNumber}</span>
+                                <button onclick="navigator.clipboard.writeText('${accountNumber}');app.showNotification('success','Đã sao chép STK!');" style="padding:2px 8px;font-size:10px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;color:#fff;cursor:pointer;">📋 Copy</button>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="color:#6b7280;font-size:13px;">Chủ tài khoản</span>
+                            <span style="color:#a78bfa;font-weight:700;font-size:13px;">${accountName}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
+                            <span style="color:#6b7280;font-size:13px;">Số tiền nạp</span>
+                            <span style="color:#d4af37;font-weight:800;font-size:18px;">${formattedAmount}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="color:#6b7280;font-size:13px;">Nội dung CK</span>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span style="color:#10b981;font-weight:700;font-size:13px;background:rgba(16,185,129,0.1);padding:3px 10px;border-radius:6px;border:1px solid rgba(16,185,129,0.2);">${syntax}</span>
+                                <button onclick="navigator.clipboard.writeText('${syntax}');app.showNotification('success','Đã sao chép cú pháp!');" style="padding:2px 8px;font-size:10px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;color:#fff;cursor:pointer;">📋 Copy</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hướng dẫn -->
+                <div style="background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.15);border-radius:12px;padding:14px;margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                        <span>⚡</span>
+                        <span style="font-size:13px;font-weight:700;color:#fbbf24;">Hướng dẫn nạp ký tự:</span>
+                    </div>
+                    <ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;">
+                        <li style="font-size:12px;color:#9ca3af;">Mở App Ngân hàng hoặc Ví MoMo quét mã QR</li>
+                        <li style="font-size:12px;color:#9ca3af;">Kiểm tra số tiền <strong style="color:#d4af37;">${formattedAmount}</strong> và nội dung <strong style="color:#10b981;">${syntax}</strong></li>
+                        <li style="font-size:12px;color:#9ca3af;">Hoàn tất chuyển khoản</li>
+                        <li style="font-size:12px;color:#9ca3af;">Bấm nút <strong style="color:#fff;">"✅ Xác nhận đã chuyển khoản"</strong> bên dưới để cộng ký tự ngay!</li>
+                    </ol>
+                </div>
+
+                <!-- Buttons -->
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <button onclick="app.confirmAiAddonPayment('${pack}')" style="width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#ec4899);border:none;border-radius:12px;color:#fff;font-weight:800;font-size:15px;cursor:pointer;transition:all 0.2s;"
+                        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(124,58,237,0.5)'"
+                        onmouseout="this.style.transform='';this.style.boxShadow=''">
+                        ✅ Xác nhận đã chuyển khoản (${formattedAmount})
+                    </button>
+                    <button onclick="app.showBuyAiAddonModal()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#9ca3af;font-size:13px;cursor:pointer;">
+                        ⬅️ Quay lại chọn gói khác
+                    </button>
+                </div>
+            </div>
+        `);
+    }
+
+    async confirmAiAddonPayment(pack) {
         try {
+            this.showNotification('info', '⏳ Đang xác nhận thanh toán...');
             const res = await fetch(`${this.API_URL}/api/tiktok/ai-buy-addon`, {
                 method: 'POST',
                 headers: {
@@ -7008,7 +7113,7 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', data.message);
+                this.showNotification('success', data.message || '🎉 Nạp thành công gói ký tự AI!');
                 if (data.usage) this.renderAiUsageUI(data.usage);
                 this.closeModal();
             } else {
@@ -7017,6 +7122,10 @@ class EffectStoreApp {
         } catch (e) {
             this.showNotification('error', '❌ Lỗi kết nối nạp gói: ' + e.message);
         }
+    }
+
+    async buyAiAddon(pack) {
+        this.showAiPaymentQR(pack);
     }
 
     onElevenVoiceSelectChange(el) {
