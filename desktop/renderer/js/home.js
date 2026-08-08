@@ -387,12 +387,7 @@ class EffectStoreApp {
             try {
                 cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
             } catch (_e) {}
-            this.currentUser = cachedUser || {
-                name: 'teest',
-                email: 'test@liveflow.app',
-                subscription: 'pro',
-                plan: 'pro'
-            };
+            this.currentUser = cachedUser || null;
         }
         document.getElementById('auth-modal')?.classList.remove('show');
         this.updateUserUI();
@@ -811,9 +806,10 @@ class EffectStoreApp {
             const data = await res.json();
             if (data.success) {
                 localStorage.setItem('token', data.token);
+                localStorage.setItem('currentUser', JSON.stringify(data.user));
                 this.currentUser = data.user;
                 this.authToken = data.token;
-                document.getElementById('auth-modal')?.classList.remove('show');
+                this.closeAuthModal();
                 this.showAppLoadingOverlay('🔓 Đăng nhập thành công! Đang đồng bộ hệ thống...', 25);
                 this.updateUserUI();
 
