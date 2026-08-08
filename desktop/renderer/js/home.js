@@ -4522,7 +4522,7 @@ class EffectStoreApp {
                     }))
             }));
             this.adminPendingPayments = payments
-                .filter((payment) => payment.status === 'pending')
+                .filter((payment) => payment.status === 'pending' || payment.status === 'created')
                 .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
             const count = this.adminPendingPayments.length;
             const countEl = document.getElementById('admin-modal-pending-count');
