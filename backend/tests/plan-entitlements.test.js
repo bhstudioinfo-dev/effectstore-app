@@ -8,8 +8,8 @@ const {
 } = require('../config/planEntitlements');
 
 const free = getEntitlements({ subscription: 'free' });
-const basic = getEntitlements({ subscription: 'pro' });
-const pro = getEntitlements({ subscription: 'business' });
+const basic = getEntitlements({ subscription: 'basic' });
+const pro = getEntitlements({ subscription: 'pro' });
 const expired = getEntitlements({ subscription: 'business', subscriptionExpiresAt: new Date(Date.now() - 1000) });
 
 assert.strictEqual(free.mappings, 5);
@@ -24,7 +24,7 @@ assert.strictEqual(pro.devices, 1);
 assert.strictEqual(pro.mappings, Infinity);
 assert.strictEqual(expired.key, 'free');
 assert.strictEqual(upgradePayload('mappings', 'x', free).recommendedPlan, 'pro');
-assert.strictEqual(upgradePayload('menuAdvanced', 'x', basic).recommendedPlan, 'business');
+assert.strictEqual(upgradePayload('menuAdvanced', 'x', basic).recommendedPlan, 'pro');
 assert.strictEqual(PLAN_ENTITLEMENTS.studio.devices, Infinity);
 
 assert.strictEqual(validateDesignerItems([{ type: 'goal-bar', animationType: 'None' }], free), null);

@@ -756,11 +756,17 @@ class EffectStoreApp {
         // Badge + màu theo cấp độ
         const planInfo = {
             admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
+            studio: { label: '💎 Studio', color: '#38bdf8', bg: 'rgba(56,189,248,0.15)', border: 'rgba(56,189,248,0.3)' },
             business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
-            pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
-            free: { label: '🆓 Miễn phí', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
+            pro: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
+            basic: { label: '⚡ Basic', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: 'rgba(251,191,36,0.3)' },
+            free: { label: '🆓 Miễn phí', color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.2)' }
         };
-        const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
+        const rawSub = String(u.isAdmin || u.role === 'admin' || u.email === 'admin@effectstore.vn' ? 'admin' : (u.subscription || u.plan || 'free')).toLowerCase();
+        const planKey = (rawSub === 'admin' || u.isAdmin) ? 'admin'
+            : (rawSub === 'basic' ? 'basic'
+            : ((rawSub === 'pro' || rawSub === 'business') ? 'pro'
+            : (rawSub === 'studio' ? 'studio' : 'free')));
         const plan = planInfo[planKey] || planInfo.free;
         this.updateSidebarPromo(planKey);
 
@@ -770,12 +776,14 @@ class EffectStoreApp {
             avatarEl.textContent = nameChar;
             const parentAvatar = avatarEl.parentElement;
             if (parentAvatar) {
-                parentAvatar.style.background = u.isAdmin
+                parentAvatar.style.background = planKey === 'admin'
                     ? 'linear-gradient(135deg,#ff6b35,#ff9a3c)'
-                    : (u.subscription === 'business' ? 'linear-gradient(135deg,#a78bfa,#7c3aed)'
-                        : (u.subscription === 'pro' ? 'linear-gradient(135deg,#d4af37,#f4e4ba)'
+                    : (planKey === 'pro' || planKey === 'business'
+                        ? 'linear-gradient(135deg,#a78bfa,#7c3aed)'
+                        : (planKey === 'basic'
+                            ? 'linear-gradient(135deg,#fbbf24,#d97706)'
                             : 'linear-gradient(135deg,#374151,#4b5563)'));
-                parentAvatar.style.color = u.isAdmin ? '#fff' : (u.subscription === 'pro' ? '#000' : '#fff');
+                parentAvatar.style.color = planKey === 'basic' ? '#000' : '#fff';
             }
             avatarEl.style.background = 'transparent';
         }

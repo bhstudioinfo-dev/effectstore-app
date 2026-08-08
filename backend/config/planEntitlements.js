@@ -4,10 +4,16 @@ const PLAN_ENTITLEMENTS = Object.freeze({
         layouts: 1, menuAssets: 0, goalTrackers: 1, commentsPerSession: 20,
         ttsPerSession: 10, designerLevel: 'lite', mappingAutomation: 'standard'
     }),
-    pro: Object.freeze({
-        key: 'pro', label: 'Basic', devices: 1, mappings: 30, customEffects: 100,
+    basic: Object.freeze({
+        key: 'basic', label: 'Basic', devices: 1, mappings: 30, customEffects: 100,
         layouts: 10, menuAssets: 20, goalTrackers: 10, commentsPerSession: Infinity,
         ttsPerSession: Infinity, designerLevel: 'basic', mappingAutomation: 'standard'
+    }),
+    pro: Object.freeze({
+        key: 'pro', label: 'Pro', devices: 1, mappings: Infinity, customEffects: Infinity,
+        layouts: Infinity, menuAssets: Infinity, goalTrackers: Infinity,
+        commentsPerSession: Infinity, ttsPerSession: Infinity, designerLevel: 'advanced',
+        mappingAutomation: 'advanced'
     }),
     business: Object.freeze({
         key: 'business', label: 'Pro', devices: 1, mappings: Infinity, customEffects: Infinity,
@@ -32,9 +38,12 @@ const PLAN_ENTITLEMENTS = Object.freeze({
 });
 
 function normalizePlan(user) {
-    if (user && user.isAdmin === true) return 'admin';
+    if (user && (user.isAdmin === true || user.role === 'admin' || user.email === 'admin@effectstore.vn')) return 'admin';
     if (user?.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt).getTime() < Date.now()) return 'free';
-    const key = String(user?.subscription || 'free').toLowerCase();
+    const key = String(user?.subscription || user?.plan || 'free').toLowerCase();
+    if (key === 'basic') return 'basic';
+    if (key === 'pro' || key === 'business') return key;
+    if (key === 'studio') return 'studio';
     return PLAN_ENTITLEMENTS[key] ? key : 'free';
 }
 
@@ -45,7 +54,7 @@ function getEntitlements(user) {
 function upgradePayload(feature, message, entitlements) {
     const recommendedPlan = entitlements?.key === 'free'
         ? 'pro'
-        : (entitlements?.key === 'pro' ? 'business' : 'studio');
+        : (entitlements?.key === 'basic' ? 'pro' : (entitlements?.key === 'pro' ? 'business' : 'studio'));
     return {
         success: false,
         upgradeRequired: true,
