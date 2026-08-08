@@ -1014,32 +1014,60 @@ router.post('/save-voice-sample', (req, res) => {
     }
 });
 
-router.post('/ai-buy-addon', optionalAuthMiddleware, (req, res) => {
+router.post('/ai-buy-addon', optionalAuthMiddleware, async (req, res) => {
     try {
         const { pack } = req.body || {};
         let addonCharacters = 0;
         let packName = '';
+        let amount = 10000;
 
         if (pack === '10k') {
             addonCharacters = 1000;
             packName = 'Gói Nạp Lẻ 1,000 ký tự (10,000 VNĐ)';
+            amount = 10000;
         } else if (pack === '50k') {
             addonCharacters = 5500;
             packName = 'Gói Nạp Lẻ 5,500 ký tự (50,000 VNĐ)';
+            amount = 50000;
         } else if (pack === '100k') {
             addonCharacters = 12000;
             packName = 'Gói Nạp Lẻ 12,000 ký tự (100,000 VNĐ)';
+            amount = 100000;
         } else {
             return res.status(400).json({ success: false, error: 'Gói nạp lẻ không hợp lệ' });
         }
 
-        const userPlan = req.user?.plan || 'free';
-        const usage = aiAssistantService.addAddonCharacters(addonCharacters);
+        const userPlan = (req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.plan || 'pro');
+
+        if (req.isAdmin === true) {
+            // Admin test: direct grant
+            const usage = aiAssistantService.addAddonCharacters(addonCharacters);
+            return res.json({
+                success: true,
+                message: `🎉 [Admin] Đã kích hoạt ${packName}!`,
+                addedCharacters: addonCharacters,
+                usage
+            });
+        }
+
+        // Regular user: create pending payment for admin review
+        const Payment = require('../models/Payment');
+        const orderId = 'AI' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
+        await Payment.create({
+            userId: String(req.userId || 'guest-user'),
+            orderId,
+            amount,
+            effectIds: [`AI_ADDON_${pack.toUpperCase()}`],
+            status: 'pending',
+            hasProof: true
+        });
+
         res.json({
             success: true,
-            message: `🎉 Nạp thành công ${packName}!`,
-            addedCharacters: addonCharacters,
-            usage
+            pending: true,
+            message: `✅ Đã gửi yêu cầu nạp ${packName}! Quản trị viên (Admin) đang xác thực giao dịch và sẽ duyệt đơn cho bạn ngay.`,
+            orderId,
+            usage: aiAssistantService.getCharacterUsage(userPlan)
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

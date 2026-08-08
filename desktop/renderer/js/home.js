@@ -199,6 +199,16 @@ class EffectStoreApp {
             this.updateUI();
 
             // Render instantly from local cache / presets without blocking
+            const cachedBanner = localStorage.getItem('es_cached_banner_url');
+            if (cachedBanner) {
+                this.bannerUrl = cachedBanner;
+                const heroBanner = document.querySelector('.hero-banner-new');
+                if (heroBanner) {
+                    heroBanner.style.backgroundImage = `url('${cachedBanner}')`;
+                    heroBanner.style.backgroundSize = 'cover';
+                    heroBanner.style.backgroundPosition = 'center';
+                }
+            }
             this.renderEffects();
             this.renderControlDeck();
             this.syncControlDeckToRemote();
@@ -1074,6 +1084,10 @@ class EffectStoreApp {
                     : this.API_URL.replace('localhost', '127.0.0.1');
                 const fallbackUrl = normalizeBannerUrl(fallbackBase, data.banner.url);
                 const bannerUrl = `${encodeURI(primaryUrl)}?v=${bannerVersion}`;
+                this.bannerUrl = bannerUrl;
+                try {
+                    localStorage.setItem('es_cached_banner_url', bannerUrl);
+                } catch (_e) {}
                 // Use backgroundImage to preserve existing background settings like gradient overlays
                 heroBanner.style.backgroundImage = `url('${bannerUrl}')`;
                 heroBanner.style.backgroundSize = 'cover';
@@ -3518,6 +3532,12 @@ class EffectStoreApp {
                 this.loadAdminDashboard();
             } else if (view === 'store') {
                 document.getElementById('page-title').textContent = '🛒 Cửa Hàng';
+                const heroBanner = document.querySelector('.hero-banner-new');
+                if (heroBanner && this.bannerUrl) {
+                    heroBanner.style.backgroundImage = `url('${this.bannerUrl}')`;
+                    heroBanner.style.backgroundSize = 'cover';
+                    heroBanner.style.backgroundPosition = 'center';
+                }
                 this.renderEffects();
             } else if (view === 'library') {
                 document.getElementById('page-title').textContent = '📚 Thư Viện';

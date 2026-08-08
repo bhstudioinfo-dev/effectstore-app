@@ -95,6 +95,21 @@ async function grantPayment(payment) {
     const paidEffectsById = new Map(paidEffects.map((effect) => [String(effect._id), effect]));
 
     for (const itemId of payment.effectIds) {
+        if (itemId === 'AI_ADDON_10K') {
+            const aiAssistantService = require('./aiAssistantService');
+            aiAssistantService.addAddonCharacters(1000);
+            continue;
+        }
+        if (itemId === 'AI_ADDON_50K') {
+            const aiAssistantService = require('./aiAssistantService');
+            aiAssistantService.addAddonCharacters(5500);
+            continue;
+        }
+        if (itemId === 'AI_ADDON_100K') {
+            const aiAssistantService = require('./aiAssistantService');
+            aiAssistantService.addAddonCharacters(12000);
+            continue;
+        }
         const subscription = SUBSCRIPTION_PRODUCTS[itemId];
         if (subscription) {
             user.subscription = subscription.plan;
