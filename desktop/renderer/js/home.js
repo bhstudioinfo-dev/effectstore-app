@@ -7160,14 +7160,22 @@ class EffectStoreApp {
     async confirmAiAddonPayment(pack) {
         try {
             this.showNotification('info', '⏳ Đang xác nhận thanh toán...');
-            const res = await fetch(`${this.API_URL}/api/tiktok/ai-buy-addon`, {
+            const headers = { 'Content-Type': 'application/json' };
+            if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+            let res = await fetch(`${this.API_URL}/api/tiktok/ai-buy-addon`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.authToken}`,
-                    'Content-Type': 'application/json'
-                },
+                headers,
                 body: JSON.stringify({ pack })
             });
+            if (res.status === 401 && this.authToken) {
+                localStorage.removeItem('token');
+                this.authToken = null;
+                res = await fetch(`${this.API_URL}/api/tiktok/ai-buy-addon`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pack })
+                });
+            }
             const data = await res.json();
             if (data.success) {
                 this.showNotification('success', data.message || '🎉 Nạp thành công gói ký tự AI!');

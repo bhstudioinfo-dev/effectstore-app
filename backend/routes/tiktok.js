@@ -1014,7 +1014,7 @@ router.post('/save-voice-sample', (req, res) => {
     }
 });
 
-router.post('/ai-buy-addon', authMiddleware, (req, res) => {
+router.post('/ai-buy-addon', optionalAuthMiddleware, (req, res) => {
     try {
         const { pack } = req.body || {};
         let addonCharacters = 0;
