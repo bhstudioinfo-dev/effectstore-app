@@ -984,7 +984,7 @@ class EffectStoreApp {
         this.currentUser = null;
         this.updateUserUI();
         this.openAuthModal();
-        this.showNotification('info', '👋 Đã đăng xuất! Vui lòng nhập email & mật khẩu tài khoản Admin để đăng nhập.');
+        this.showNotification('info', '👋 Đã đăng xuất thành công!');
     }
 
     openAuthModal() {
