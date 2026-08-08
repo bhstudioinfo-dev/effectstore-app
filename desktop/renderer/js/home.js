@@ -4846,27 +4846,32 @@ class EffectStoreApp {
             if (paymentsData.success) {
                 const container = document.getElementById('admin-payments-list');
                 if (container) {
-                    const pending = paymentsData.payments.filter(p => p.status === 'pending');
+                    const pending = (paymentsData.payments || []).filter(p => p.status === 'pending');
                     if (pending.length === 0) {
                         container.innerHTML = '<div class="empty-state">💳 Không có payment chờ</div>';
                     } else {
-                        container.innerHTML = pending.map(p => `
-                                    <div class="effect-item-row" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display:flex; flex-direction:column; gap:8px;">
-                                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                                            <div style="overflow:hidden;">
-                                                <h4 style="font-size:12px; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Người dùng: ${p.userId}</h4>
-                                                <span style="font-size:10px; color:var(--text-muted);">${new Date(p.createdAt).toLocaleString('vi-VN')}</span>
-                                            </div>
-                                            <div style="color: #fbbf24; font-weight: 700; font-size: 13px;">${this.formatPrice(p.amount)}</div>
+                        container.innerHTML = pending.map(p => {
+                            const userName = p.user?.name || p.user?.email || p.userId || 'Khách hàng';
+                            const productName = (p.products || []).map(pr => pr.name).join(', ') || `${p.effectIds?.length || 1} sản phẩm`;
+                            return `
+                                <div class="effect-item-row" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(251,191,36,0.25); border-radius: 12px; padding: 12px; display:flex; flex-direction:column; gap:8px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                        <div style="overflow:hidden;">
+                                            <h4 style="font-size:13px; margin:0; color:#fbbf24; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${this.adminPaymentText(userName)}</h4>
+                                            <span style="font-size:10px; color:var(--text-muted);">🕒 ${new Date(p.createdAt).toLocaleString('vi-VN')}</span>
                                         </div>
-                                        <div style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top:8px;">
-                                            <span style="font-size:11px; color:#a78bfa;">${p.effectIds.length} hiệu ứng</span>
-                                            <div style="display:flex; gap:5px;">
-                                                <button onclick="app.openPendingPaymentsModal('${p._id}')" style="background:rgba(59,130,246,0.12); color:#93c5fd; border:1px solid rgba(59,130,246,.22); padding:4px 10px; border-radius:6px; font-size:10px; font-weight:700; cursor:pointer;">Xem</button>
-                                            </div>
+                                        <div style="color: #4ade80; font-weight: 800; font-size: 14px;">${this.formatPrice(p.amount)}</div>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid rgba(255,255,255,0.08); padding-top:8px;">
+                                        <span style="font-size:11px; color:#c4b5fd; font-weight:600;">📦 ${this.adminPaymentText(productName)}</span>
+                                        <div style="display:flex; gap:6px;">
+                                            <button onclick="app.approvePendingPayment('${p._id}')" style="background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">✅ Duyệt đơn</button>
+                                            <button onclick="app.openPendingPaymentsModal('${p._id}')" style="background:rgba(59,130,246,0.15); color:#93c5fd; border:1px solid rgba(59,130,246,.3); padding:5px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">👁️ Xem</button>
                                         </div>
                                     </div>
-                                `).join('');
+                                </div>
+                            `;
+                        }).join('');
                     }
                 }
             }
@@ -4938,11 +4943,8 @@ class EffectStoreApp {
         }
     }
     async deleteEffect(effectId) { if (!confirm('⚠️ Xóa effect?')) return; try { const res = await fetch(`${this.API_URL}/api/effects/${effectId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.authToken}` } }); const data = await res.json(); if (data.success) { this.showNotification('success', '✅ Đã xóa'); this.loadAdminDashboard(); this.loadEffects(); } } catch (error) { this.showNotification('error', '❌ ' + error.message); } }
-    async approvePayment(paymentId, fromReviewModal = false) {
-        if (!fromReviewModal) {
-            await this.openPendingPaymentsModal(paymentId);
-            return;
-        }
+    async approvePendingPayment(paymentId, fromReviewModal = false) {
+        if (!fromReviewModal && !confirm('Xác nhận đã nhận được tiền và duyệt đơn nạp này?')) return;
         try {
             const res = await fetch(`${this.API_URL}/api/payment/admin/approve`, {
                 method: 'POST',
@@ -4951,11 +4953,14 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Không thể duyệt yêu cầu');
-            this.showNotification('success', 'Đã xác nhận thanh toán và kích hoạt quyền lợi.');
-            await this.openPendingPaymentsModal();
+            this.showNotification('success', '✅ Đã duyệt đơn thành công và cộng ký tự / kích hoạt quyền lợi!');
+            if (document.getElementById('admin-alert-modal')?.style.display === 'flex') {
+                await this.openPendingPaymentsModal();
+            }
             this.loadAdminDashboard();
+            this.loadAiAssistantConfig();
         } catch (error) {
-            this.showNotification('error', error.message);
+            this.showNotification('error', 'Lỗi: ' + error.message);
         }
     }
 
