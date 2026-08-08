@@ -32,6 +32,7 @@ const PLAN_LIMITS = {
 };
 
 function getCharacterUsage(userPlan = 'free') {
+    loadConfig();
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     
