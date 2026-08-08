@@ -349,8 +349,10 @@ class EffectStoreApp {
         const token = localStorage.getItem('token');
 
         if (!token) {
-            document.getElementById('auth-modal')?.classList.remove('show');
-            this.ensureActiveUser();
+            this.authToken = null;
+            this.currentUser = null;
+            this.updateUserUI();
+            this.openAuthModal();
             return;
         }
 
@@ -366,18 +368,34 @@ class EffectStoreApp {
             if (data.success && data.user) {
                 this.currentUser = data.user;
                 this.authToken = token;
-                document.getElementById('auth-modal')?.classList.remove('show');
+                this.closeAuthModal();
                 this.updateUserUI();
             } else {
                 localStorage.removeItem('token');
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('user');
                 this.authToken = null;
-                document.getElementById('auth-modal')?.classList.remove('show');
-                this.ensureActiveUser();
+                this.currentUser = null;
+                this.updateUserUI();
+                this.openAuthModal();
             }
         } catch (e) {
-            console.warn('Auth check skipped / offline:', e.message);
-            document.getElementById('auth-modal')?.classList.remove('show');
-            this.ensureActiveUser();
+            console.warn('Auth check offline:', e.message);
+            let cachedUser = null;
+            try {
+                cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
+            } catch (_e) {}
+            if (cachedUser && token) {
+                this.currentUser = cachedUser;
+                this.authToken = token;
+                this.closeAuthModal();
+                this.updateUserUI();
+            } else {
+                this.authToken = null;
+                this.currentUser = null;
+                this.updateUserUI();
+                this.openAuthModal();
+            }
         }
     }
 
@@ -867,8 +885,14 @@ class EffectStoreApp {
             const data = await res.json();
             if (data.success) {
                 localStorage.setItem('token', data.token);
+                if (data.user) {
+                    localStorage.setItem('currentUser', JSON.stringify(data.user));
+                    this.currentUser = data.user;
+                }
+                this.authToken = data.token;
+                this.closeAuthModal();
                 this.showNotification('success', 'Đăng ký thành công!');
-                location.reload();
+                this.updateUserUI();
             } else {
                 this.showNotification('error', data.error || data.message || 'Đăng ký thất bại');
             }
