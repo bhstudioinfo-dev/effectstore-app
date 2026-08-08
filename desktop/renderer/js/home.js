@@ -7179,7 +7179,7 @@ class EffectStoreApp {
 
     async confirmAiAddonPayment(pack) {
         try {
-            this.showNotification('info', '⏳ Đang xác nhận thanh toán...');
+            this.showNotification('info', '⏳ Đang gửi xác nhận chuyển khoản...');
             const headers = { 'Content-Type': 'application/json' };
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
             let res = await fetch(`${this.API_URL}/api/tiktok/ai-buy-addon`, {
@@ -7198,8 +7198,7 @@ class EffectStoreApp {
             }
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', data.message || '🎉 Nạp thành công gói ký tự AI!');
-                if (data.usage) this.renderAiUsageUI(data.usage);
+                this.showNotification('success', data.message || '✅ Đã gửi yêu cầu nạp! Quản trị viên (Admin) đang duyệt đơn.');
                 this.closeModal();
             } else {
                 this.showNotification('error', data.error || 'Nạp gói lẻ không thành công.');

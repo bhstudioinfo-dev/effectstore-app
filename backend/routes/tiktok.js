@@ -1037,20 +1037,9 @@ router.post('/ai-buy-addon', optionalAuthMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Gói nạp lẻ không hợp lệ' });
         }
 
-        const userPlan = (req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.plan || 'pro');
+        const userPlan = (req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.subscription || req.user?.plan || 'free');
 
-        if (req.isAdmin === true) {
-            // Admin test: direct grant
-            const usage = aiAssistantService.addAddonCharacters(addonCharacters);
-            return res.json({
-                success: true,
-                message: `🎉 [Admin] Đã kích hoạt ${packName}!`,
-                addedCharacters: addonCharacters,
-                usage
-            });
-        }
-
-        // Regular user: create pending payment for admin review
+        // Create pending payment for admin review
         const Payment = require('../models/Payment');
         const orderId = 'AI' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
         await Payment.create({
