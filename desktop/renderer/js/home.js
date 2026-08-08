@@ -7011,11 +7011,12 @@ class EffectStoreApp {
             syntax = 'LF AI 100K';
         }
 
-        const bankName = 'MBBank (Ngân Hàng Quân Đội)';
-        const accountNumber = '0347895899';
-        const accountName = 'NGUYEN THANH LONG';
+        const bankCode = 'TCB';
+        const bankName = 'Techcombank (Ngân Hàng Kỹ Thương Việt Nam)';
+        const accountNumber = '7698689999';
+        const accountName = 'HUYNH BAO HUNG';
         const formattedAmount = this.formatPrice(amount);
-        const qrUrl = `https://img.vietqr.io/image/MB-${accountNumber}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(syntax)}&accountName=${encodeURIComponent(accountName)}`;
+        const qrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNumber}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(syntax)}&accountName=${encodeURIComponent(accountName)}`;
 
         this.showModal(`Thanh toán ${packTitle}`, `
             <div style="font-family:inherit;max-width:480px;margin:0 auto;">
@@ -7030,7 +7031,7 @@ class EffectStoreApp {
                         <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;">
                             <span style="color:#d4145a;font-size:11px;font-weight:800;letter-spacing:0.5px;">VIET</span><span style="color:#00b14f;font-size:11px;font-weight:800;letter-spacing:0.5px;">QR</span>
                             <span style="color:#bbb;font-size:11px;">•</span>
-                            <span style="color:#555;font-size:12px;font-weight:700;">MBBank</span>
+                            <span style="color:#555;font-size:12px;font-weight:700;">Techcombank</span>
                         </div>
                     </div>
                 </div>
