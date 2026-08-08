@@ -8,8 +8,7 @@ const ChallengeWheel = require('../models/ChallengeWheel');
 const GiftLog = require('../models/GiftLog');
 const GiftConfig = require('../models/GiftConfig');
 const Effect = require('../models/Effect');
-const User = require('../models/User');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
 const GiftMenuLayout = require('../models/GiftMenuLayout');
 const multer = require('multer');
 const { spawn } = require('child_process');
@@ -241,16 +240,18 @@ router.get('/stats', (req, res) => {
 });
 
 // Mappings
-router.get('/mappings', authMiddleware, async (req, res) => {
+router.get('/mappings', optionalAuthMiddleware, async (req, res) => {
     try {
+        if (!req.userId) return res.json({ success: true, mappings: [] });
         const mappings = await GiftMapping.find({ userId: req.userId });
         res.json({ success: true, mappings });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 // Available effects for the canonical Gift Mapping picker
-router.get('/available-effects', authMiddleware, async (req, res) => {
+router.get('/available-effects', optionalAuthMiddleware, async (req, res) => {
     try {
+        if (!req.userId) return res.json({ success: true, effects: [] });
         const effects = await getUserAvailableEffects(req.userId);
         res.json({ success: true, effects });
     } catch (error) {
@@ -960,10 +961,10 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
 const aiAssistantService = require('../services/aiAssistantService');
 
 // AI Assistant Config API
-router.get('/ai-config', authMiddleware, (req, res) => {
+router.get('/ai-config', optionalAuthMiddleware, (req, res) => {
     try {
         const config = aiAssistantService.getConfig();
-        const userPlan = (req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.plan || 'free');
+        const userPlan = (req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.plan || 'pro');
         const usage = aiAssistantService.getCharacterUsage(userPlan);
         const systemStatus = aiAssistantService.getSystemStatus();
         res.json({ success: true, config, usage, systemStatus });
@@ -1182,7 +1183,7 @@ router.get('/gift-menu-layouts', authMiddleware, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.get('/gift-menu-templates', authMiddleware, async (req, res) => {
+router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.userId);
         const ownedEffectIds = user ? user.purchasedEffects.map(pe => pe.effectId?.toString()).filter(Boolean) : [];

@@ -1080,16 +1080,22 @@ class EffectStoreApp {
     }
     async loadEffects() {
         try {
-            const response = await fetch(this.API_URL + '/api/effects', {
-                headers: { 'Authorization': `Bearer ${this.authToken}` }
-            });
+            const headers = {};
+            if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+            let response = await fetch(this.API_URL + '/api/effects', { headers });
+            if (response.status === 401 && this.authToken) {
+                localStorage.removeItem('token');
+                this.authToken = null;
+                response = await fetch(this.API_URL + '/api/effects');
+            }
             const data = await response.json();
-            if (!response.ok || data.success === false) throw new Error(data.error || 'Không thể tải cửa hàng.');
-            this.storeEffects = data.effects || [];
-            this.effects = this.storeEffects;
-            try {
-                localStorage.setItem('es_cache_store_effects', JSON.stringify(this.storeEffects));
-            } catch (_e) {}
+            if (data.success !== false && Array.isArray(data.effects)) {
+                this.storeEffects = data.effects;
+                this.effects = this.storeEffects;
+                try {
+                    localStorage.setItem('es_cache_store_effects', JSON.stringify(this.storeEffects));
+                } catch (_e) {}
+            }
             this.menuTemplateUsage = new Map();
             this.menuTemplateLayoutIds = new Map();
             if (this.authToken) {
@@ -1111,7 +1117,20 @@ class EffectStoreApp {
                 }
             }
             if (this.currentView === 'store') this.renderEffects();
-        } catch (error) { console.error('Error loading effects:', error); this.storeEffects = []; this.effects = []; if (this.currentView === 'store') this.renderEffects(); }
+        } catch (error) {
+            console.error('Error loading effects:', error);
+            if (this.effects.length === 0) {
+                try {
+                    this.effects = JSON.parse(localStorage.getItem('es_cache_store_effects') || '[]');
+                    this.storeEffects = this.effects;
+                } catch (_e) {}
+                if (this.effects.length === 0) {
+                    this.storeEffects = [];
+                    this.effects = [];
+                }
+            }
+            if (this.currentView === 'store') this.renderEffects();
+        }
     }
     async loadTrending() {
         try {

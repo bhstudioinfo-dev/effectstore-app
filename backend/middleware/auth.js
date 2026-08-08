@@ -24,9 +24,37 @@ const authMiddleware = async (req, res, next) => {
     } catch (error) { res.status(401).json({ error: 'Invalid or expired token' }); }
 };
 
+const optionalAuthMiddleware = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) {
+            req.userId = null;
+            req.isAdmin = false;
+            return next();
+        }
+        const decoded = verifyUserToken(token);
+        const user = await User.findById(decoded.userId).select('_id isAdmin isActive');
+        if (user && user.isActive !== false) {
+            req.userId = decoded.userId;
+            req.isAdmin = user.isAdmin === true;
+            req.machineId = decoded.machineId || null;
+            const algorithm = require('jsonwebtoken').decode(token, { complete: true })?.header?.alg;
+            if (algorithm === 'RS256') rememberCloudSessionToken(decoded.userId, token);
+        } else {
+            req.userId = null;
+            req.isAdmin = false;
+        }
+        next();
+    } catch (_error) {
+        req.userId = null;
+        req.isAdmin = false;
+        next();
+    }
+};
+
 const adminMiddleware = (req, res, next) => {
     if (!req.isAdmin) return res.status(403).json({ error: 'Admin access required' });
     next();
 };
 
-module.exports = { authMiddleware, adminMiddleware };
+module.exports = { authMiddleware, optionalAuthMiddleware, adminMiddleware };

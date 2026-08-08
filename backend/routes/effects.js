@@ -5,7 +5,7 @@ const Effect = require('../models/Effect');
 const User = require('../models/User');
 const GiftMapping = require('../models/GiftMapping');
 const GiftMenuLayout = require('../models/GiftMenuLayout');
-const { authMiddleware, adminMiddleware } = require('../middleware/auth');
+const { authMiddleware, optionalAuthMiddleware, adminMiddleware } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -44,7 +44,7 @@ function sanitizeEffectForCatalog(effect, userId = null) {
 }
 
 // Get all effects
-router.get('/effects', authMiddleware, async (req, res) => {
+router.get('/effects', optionalAuthMiddleware, async (req, res) => {
     try {
         const { category, search } = req.query;
         let query = { isActive: true };
