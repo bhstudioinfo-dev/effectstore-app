@@ -4626,9 +4626,73 @@ class EffectStoreApp {
         }
     }
 
+    async approvePayment(paymentId, closeModal = false) {
+        try {
+            this.showAppLoadingOverlay('⏳ Đang duyệt đơn và kích hoạt dịch vụ...', 30);
+            const res = await fetch(`${this.API_URL}/api/payment/admin/approve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`
+                },
+                body: JSON.stringify({ paymentId })
+            });
+            const data = await res.json().catch(() => ({}));
+            this.hideAppLoadingOverlay();
+            if (data.success) {
+                this.showNotification('success', '✅ Đã duyệt đơn và kích hoạt dịch vụ thành công!');
+                if (closeModal) this.closePendingPaymentsModal();
+                await this.loadAdminDashboard();
+            } else {
+                this.showNotification('error', '❌ ' + (data.message || data.error || 'Không thể duyệt đơn.'));
+            }
+        } catch (e) {
+            this.hideAppLoadingOverlay();
+            this.showNotification('error', '❌ Lỗi kết nối máy chủ: ' + e.message);
+        }
+    }
+
+    async rejectPayment(paymentId, reason, closeModal = false) {
+        try {
+            this.showAppLoadingOverlay('⏳ Đang xử lý từ chối đơn...', 30);
+            const res = await fetch(`${this.API_URL}/api/payment/admin/reject`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`
+                },
+                body: JSON.stringify({ paymentId, reason })
+            });
+            const data = await res.json().catch(() => ({}));
+            this.hideAppLoadingOverlay();
+            if (data.success) {
+                this.showNotification('success', '✅ Đã từ chối đơn thanh toán thành công.');
+                if (closeModal) this.closePendingPaymentsModal();
+                await this.loadAdminDashboard();
+            } else {
+                this.showNotification('error', '❌ ' + (data.message || data.error || 'Không thể từ chối đơn.'));
+            }
+        } catch (e) {
+            this.hideAppLoadingOverlay();
+            this.showNotification('error', '❌ Lỗi kết nối: ' + e.message);
+        }
+    }
+
+    async approvePendingPayment(paymentId) {
+        const payment = (this.adminPendingPayments || []).find((item) => String(item._id) === String(paymentId));
+        const account = payment?.user?.email || payment?.user?.name || payment?.userId || 'Khách hàng';
+        const products = payment?.products?.map((item) => item.name).join(', ') || 'sản phẩm';
+        const amountStr = payment ? this.formatPrice(payment.amount) : '';
+        if (!confirm(`Xác nhận đã nhận ${amountStr} và kích hoạt ${products} cho ${account}?`)) return;
+        await this.approvePayment(paymentId, false);
+    }
+
     async confirmPendingPayment(paymentId) {
         const payment = (this.adminPendingPayments || []).find((item) => String(item._id) === String(paymentId));
-        if (!payment) return;
+        if (!payment) {
+            await this.approvePayment(paymentId, true);
+            return;
+        }
         const account = payment.user?.email || payment.user?.name || payment.userId;
         const products = payment.products?.map((item) => item.name).join(', ') || 'sản phẩm đã chọn';
         if (!confirm(`Xác nhận đã nhận ${this.formatPrice(payment.amount)} và kích hoạt ${products} cho ${account}?`)) return;
