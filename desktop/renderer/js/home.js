@@ -7079,7 +7079,10 @@ class EffectStoreApp {
                 planBadge.style.background = 'linear-gradient(135deg, #ef4444, #f59e0b)';
                 planBadge.style.color = '#fff';
             } else {
-                const sub = (this.currentUser?.subscription || this.currentUser?.plan || document.querySelector('.user-card .plan')?.textContent?.trim() || 'FREE').toLowerCase();
+                const rawSub = typeof this.currentUser?.subscription === 'object'
+                    ? (this.currentUser?.subscription?.plan || 'free')
+                    : (this.currentUser?.subscription || this.currentUser?.plan || document.querySelector('.user-card .plan')?.textContent?.trim() || 'FREE');
+                const sub = String(rawSub).toLowerCase();
                 const planName = (sub.includes('business') || sub === 'pro') ? 'Pro' : (sub.includes('basic') ? 'Basic' : 'Free');
                 planBadge.textContent = `Gói ${planName}`;
                 planBadge.style.background = planName === 'Pro'

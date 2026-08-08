@@ -26,8 +26,8 @@ let currentConfig = { ...DEFAULT_CONFIG };
 
 const PLAN_LIMITS = {
     free: 1000,
-    basic: 10000,
-    pro: 35000,
+    basic: 3000,
+    pro: 10000,
     admin: 999999999
 };
 
