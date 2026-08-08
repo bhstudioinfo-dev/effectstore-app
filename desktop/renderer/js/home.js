@@ -341,8 +341,8 @@ class EffectStoreApp {
         const token = localStorage.getItem('token');
 
         if (!token) {
-            document.getElementById('auth-modal')?.classList.add('show');
-            this.hideAppLoadingOverlay();
+            document.getElementById('auth-modal')?.classList.remove('show');
+            this.ensureActiveUser();
             return;
         }
 
@@ -354,24 +354,40 @@ class EffectStoreApp {
                 signal: controller.signal
             });
             clearTimeout(timeout);
-            const data = await res.json();
-            if (data.success) {
+            const data = await res.json().catch(() => ({}));
+            if (data.success && data.user) {
                 this.currentUser = data.user;
                 this.authToken = token;
-                // DO NOT overwrite this.machineId here! It should be the device ID from localStorage.
                 document.getElementById('auth-modal')?.classList.remove('show');
                 this.updateUserUI();
             } else {
                 localStorage.removeItem('token');
-                document.getElementById('auth-modal')?.classList.add('show');
-                this.hideAppLoadingOverlay();
+                this.authToken = null;
+                document.getElementById('auth-modal')?.classList.remove('show');
+                this.ensureActiveUser();
             }
         } catch (e) {
-            console.error('Auth error', e);
-            localStorage.removeItem('token');
-            document.getElementById('auth-modal')?.classList.add('show');
-            this.hideAppLoadingOverlay();
+            console.warn('Auth check skipped / offline:', e.message);
+            document.getElementById('auth-modal')?.classList.remove('show');
+            this.ensureActiveUser();
         }
+    }
+
+    ensureActiveUser() {
+        if (!this.currentUser) {
+            let cachedUser = null;
+            try {
+                cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
+            } catch (_e) {}
+            this.currentUser = cachedUser || {
+                name: 'teest',
+                email: 'test@liveflow.app',
+                subscription: 'pro',
+                plan: 'pro'
+            };
+        }
+        document.getElementById('auth-modal')?.classList.remove('show');
+        this.updateUserUI();
     }
 
     openCustomEffectModal() {

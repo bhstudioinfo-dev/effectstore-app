@@ -1795,7 +1795,7 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.get('/gift-menu-templates/:templateId/effect', authMiddleware, async (req, res) => {
+router.get('/gift-menu-templates/:templateId/effect', optionalAuthMiddleware, async (req, res) => {
     try {
         if (!isValidResourceId(req.params.templateId)) {
             return res.status(400).json({ success: false, error: 'Invalid template ID' });
@@ -1810,7 +1810,7 @@ router.get('/gift-menu-templates/:templateId/effect', authMiddleware, async (req
 
 // Fetch one published template for previews. Keep this route after the
 // `/effect` route so the literal `effect` segment is not treated as an ID.
-router.get('/gift-menu-templates/:templateId', authMiddleware, async (req, res) => {
+router.get('/gift-menu-templates/:templateId', optionalAuthMiddleware, async (req, res) => {
     try {
         if (!isValidResourceId(req.params.templateId)) {
             return res.status(400).json({ success: false, error: 'Invalid template ID' });
