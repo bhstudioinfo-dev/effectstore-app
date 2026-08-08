@@ -988,7 +988,7 @@ router.get('/ai-config', optionalAuthMiddleware, async (req, res) => {
 router.post('/ai-config', authMiddleware, (req, res) => {
     try {
         const updated = aiAssistantService.saveConfig(req.body || {});
-        const userPlan = (req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.plan || 'free');
+        const userPlan = (req.isAdmin || req.user?.isAdmin || req.user?.role === 'admin' || req.user?.email === 'admin@effectstore.vn') ? 'admin' : (req.user?.subscription || req.user?.plan || 'free');
         const usage = aiAssistantService.getCharacterUsage(userPlan);
         res.json({ success: true, config: updated, usage });
     } catch (error) {

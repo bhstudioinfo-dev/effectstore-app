@@ -370,6 +370,10 @@ class EffectStoreApp {
                 this.authToken = token;
                 this.closeAuthModal();
                 this.updateUserUI();
+                this.loadAiAssistantConfig();
+                if (this.currentView === 'admin' || data.user.isAdmin || data.user.email === 'admin@effectstore.vn') {
+                    this.loadAdminDashboard();
+                }
             } else {
                 localStorage.removeItem('token');
                 localStorage.removeItem('currentUser');
