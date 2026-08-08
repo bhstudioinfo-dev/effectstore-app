@@ -5382,6 +5382,7 @@ class EffectStoreApp {
         initGiftMapping() {
         this.connectWebSocket();
         this.loadGifts();
+        this.loadAiAssistantConfig();
         // Load wheels first so purchased Challenge Wheel products can appear
         // in the mapping library.
         this.loadChallengeWheels().then(() => this.loadEffectsForMapping());
