@@ -6056,12 +6056,15 @@ class EffectStoreApp {
     async loadMappings() {
         try {
             console.log('📋 Loading mappings...');
-            const res = await fetch(`${this.API_URL}/api/tiktok/mappings`, {
-                headers: { 'Authorization': `Bearer ${this.authToken}` }
-            });
-            const data = await res.json();
-            console.log('Mappings data:', data);
-
+            const headers = {};
+            if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+            let res = await fetch(`${this.API_URL}/api/tiktok/mappings`, { headers });
+            if (res.status === 401 && this.authToken) {
+                localStorage.removeItem('token');
+                this.authToken = null;
+                res = await fetch(`${this.API_URL}/api/tiktok/mappings`);
+            }
+            const data = await res.json().catch(() => ({ success: true, mappings: [] }));
             const list = document.getElementById('mappings-list');
             console.log('Mappings list element:', list);
 
@@ -6901,10 +6904,15 @@ class EffectStoreApp {
 
     async loadAiAssistantConfig() {
         try {
-            const res = await fetch(`${this.API_URL}/api/tiktok/ai-config`, {
-                headers: { 'Authorization': `Bearer ${this.authToken}` }
-            });
-            const data = await res.json();
+            const headers = {};
+            if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+            let res = await fetch(`${this.API_URL}/api/tiktok/ai-config`, { headers });
+            if (res.status === 401 && this.authToken) {
+                localStorage.removeItem('token');
+                this.authToken = null;
+                res = await fetch(`${this.API_URL}/api/tiktok/ai-config`);
+            }
+            const data = await res.json().catch(() => ({}));
             if (data.success && data.config) {
                 const c = data.config;
                 const presetVoices = ['21m00Tcm4TlvDq8ikWAM', 'EXAVITQu4vr4xnSDxMaL', 'AZnzlk1XvdvUeBnXmlld', 'pNInz6obpgDQGcFmaJgB', 'ErXwobaYiN019PkySvjV', 'MF3mGyEYCl7XYWbV9V6O'];
