@@ -86,9 +86,9 @@ async function claimFreeEffects(effectIds, user) {
 }
 
 async function grantPayment(payment) {
-    const user = await User.findById(payment.userId);
-    if (!user) throw new Error('Payment user not found.');
-    const paidEffectIds = payment.effectIds.filter((itemId) => !SUBSCRIPTION_PRODUCTS[itemId]);
+    const isObjectId = /^[a-fA-F0-9]{24}$/.test(String(payment.userId || ''));
+    const user = isObjectId ? await User.findById(payment.userId) : null;
+    const paidEffectIds = (payment.effectIds || []).filter((itemId) => !SUBSCRIPTION_PRODUCTS[itemId] && !String(itemId).startsWith('AI_ADDON_') && /^[a-fA-F0-9]{24}$/.test(String(itemId)));
     const paidEffects = paidEffectIds.length
         ? await Effect.find({ _id: { $in: paidEffectIds } }).lean()
         : [];
@@ -110,6 +110,7 @@ async function grantPayment(payment) {
             aiAssistantService.addAddonCharacters(12000);
             continue;
         }
+        if (!user) continue;
         const subscription = SUBSCRIPTION_PRODUCTS[itemId];
         if (subscription) {
             user.subscription = subscription.plan;
@@ -120,9 +121,10 @@ async function grantPayment(payment) {
             continue;
         }
 
-        const exists = user.purchasedEffects.some((entry) => String(entry.effectId) === String(itemId));
+        const exists = (user.purchasedEffects || []).some((entry) => String(entry.effectId) === String(itemId));
         if (!exists) {
             const effect = paidEffectsById.get(String(itemId));
+            user.purchasedEffects = user.purchasedEffects || [];
             user.purchasedEffects.push({
                 effectId: itemId,
                 purchasedAt: new Date(),
@@ -133,8 +135,10 @@ async function grantPayment(payment) {
         }
     }
 
-    user.totalSpent = (user.totalSpent || 0) + Number(payment.amount || 0);
-    await user.save();
+    if (user) {
+        user.totalSpent = (user.totalSpent || 0) + Number(payment.amount || 0);
+        await user.save();
+    }
 }
 
 async function approvePayment(paymentId, allowedStatuses = ['pending']) {

@@ -216,15 +216,16 @@ router.post('/admin/approve', authMiddleware, adminMiddleware, async (req, res) 
     try {
         const paymentId = req.body?.paymentId;
         if (!isValidResourceId(paymentId)) return res.status(400).json({ success: false, error: 'Invalid payment ID' });
-        const payment = await approvePayment(paymentId, ['pending']);
+        const payment = await approvePayment(paymentId, ['created', 'pending']);
         if (!payment) return res.status(409).json({ success: false, message: 'Payment is not pending or is already being processed.' });
         await Payment.updateOne(
             { _id: payment._id },
             { $set: { reviewedBy: String(req.userId), reviewedAt: new Date() }, $unset: { rejectionReason: 1 } }
         );
         return res.json({ success: true, message: 'Payment approved.' });
-    } catch (_error) {
-        return res.status(500).json({ success: false, error: 'Unable to approve payment.' });
+    } catch (error) {
+        console.error('Approve error:', error);
+        return res.status(500).json({ success: false, error: error.message || 'Unable to approve payment.' });
     }
 });
 

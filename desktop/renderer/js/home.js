@@ -146,6 +146,12 @@ class EffectStoreApp {
     }
 
     async preloadAllAppData() {
+        const isAdminUser = Boolean(
+            this.currentUser?.isAdmin ||
+            this.currentUser?.role === 'admin' ||
+            this.currentUser?.email === 'admin@effectstore.vn' ||
+            document.querySelector('.user-card .plan')?.textContent?.trim() === 'ADMIN'
+        );
         const tasks = [
             this.loadBanner(),
             this.loadOwnedEffects(),
@@ -163,8 +169,12 @@ class EffectStoreApp {
         if (typeof this.loadSoundLibrary === 'function') {
             tasks.push(this.loadSoundLibrary());
         }
-        if (this.currentUser?.isAdmin && typeof this.loadAdminDashboard === 'function') {
-            tasks.push(this.loadAdminDashboard());
+        if (typeof this.loadAiAssistantConfig === 'function') {
+            tasks.push(this.loadAiAssistantConfig());
+        }
+        if (isAdminUser) {
+            if (typeof this.loadAdminDashboard === 'function') tasks.push(this.loadAdminDashboard());
+            if (typeof this.loadAdminEffectAcquisitions === 'function') tasks.push(this.loadAdminEffectAcquisitions());
         }
         await Promise.allSettled(tasks);
         this.renderEffects();
