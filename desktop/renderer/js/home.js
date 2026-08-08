@@ -182,7 +182,7 @@ class EffectStoreApp {
             }
             this.machineId = savedMachineId;
 
-            // Load cached user or default session immediately
+            // Load cached user immediately for instant profile display
             let cachedUser = null;
             try {
                 cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
@@ -209,7 +209,10 @@ class EffectStoreApp {
             this.updateAppLoadingProgress('✨ Hệ thống đã sẵn sàng!', 100);
             setTimeout(() => this.hideAppLoadingOverlay(), 200);
 
-            // Asynchronous background hydration
+            // Validate authentication token first to cleanly purge expired credentials
+            await this.checkAuth().catch(() => {});
+
+            // Asynchronous background hydration with verified auth state
             this.preloadAllAppData().then(() => {
                 this.renderEffects();
                 this.renderControlDeck();
@@ -217,7 +220,7 @@ class EffectStoreApp {
             }).catch(() => {});
             
             this.loadAiAssistantConfig();
-            this.checkAuth().catch(() => {});
+            this.connectWebSocket();
 
             this.startSystemStatusPoll();
             this.checkRemoteConnectionStatus();
@@ -1114,23 +1117,26 @@ class EffectStoreApp {
             }
             this.menuTemplateUsage = new Map();
             this.menuTemplateLayoutIds = new Map();
-            if (this.authToken) {
-                try {
-                    const templateResponse = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, {
-                        headers: { 'Authorization': `Bearer ${this.authToken}` }
-                    });
-                    const templateData = await templateResponse.json();
-                    if (templateData.success && Array.isArray(templateData.templates)) {
-                        templateData.templates.forEach(template => {
-                            this.menuTemplateUsage.set(String(template._id), Boolean(template.isUsed));
-                            if (template.usedLayoutId) {
-                                this.menuTemplateLayoutIds.set(String(template._id), String(template.usedLayoutId));
-                            }
-                        });
-                    }
-                } catch (templateError) {
-                    console.warn('Could not load menu template usage:', templateError);
+            try {
+                const headers = {};
+                if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+                let templateResponse = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
+                if (templateResponse.status === 401 && this.authToken) {
+                    localStorage.removeItem('token');
+                    this.authToken = null;
+                    templateResponse = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`);
                 }
+                const templateData = await templateResponse.json().catch(() => ({}));
+                if (templateData.success && Array.isArray(templateData.templates)) {
+                    templateData.templates.forEach(template => {
+                        this.menuTemplateUsage.set(String(template._id), Boolean(template.isUsed));
+                        if (template.usedLayoutId) {
+                            this.menuTemplateLayoutIds.set(String(template._id), String(template.usedLayoutId));
+                        }
+                    });
+                }
+            } catch (templateError) {
+                console.warn('Could not load menu template usage:', templateError);
             }
             if (this.currentView === 'store') this.renderEffects();
         } catch (error) {

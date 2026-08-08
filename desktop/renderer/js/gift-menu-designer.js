@@ -653,8 +653,11 @@
             listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
             try {
                 const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
-                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-templates`, { headers });
-                const data = await res.json();
+                let res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-templates`, { headers });
+                if (res.status === 401 && this.token) {
+                    res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-templates`);
+                }
+                const data = await res.json().catch(() => ({ success: true, templates: [] }));
                 if (data.success && Array.isArray(data.templates)) {
                     this.serverTemplates = data.templates;
                     const purchasedOnly = data.templates.filter(t => t.isPurchased === true);
