@@ -185,8 +185,8 @@ router.get('/admin/payments', authMiddleware, adminMiddleware, async (_req, res)
         const usersById = new Map(users.map((user) => [String(user._id), user]));
         const effectsById = new Map(effects.map((effect) => [String(effect._id), effect]));
         const productName = (id) => {
-            if (id === 'SUBSCRIPTION_PRO') return 'Gói Basic · 30 ngày';
-            if (id === 'SUBSCRIPTION_BUSINESS') return 'Gói Pro · 30 ngày';
+            if (id === 'SUBSCRIPTION_BASIC') return 'Gói Basic · 30 ngày';
+            if (id === 'SUBSCRIPTION_PRO' || id === 'SUBSCRIPTION_BUSINESS') return 'Gói Pro · 30 ngày';
             if (id === 'AI_ADDON_10K') return 'Nạp lẻ 1,000 ký tự AI (10,000đ)';
             if (id === 'AI_ADDON_50K') return 'Nạp lẻ 5,500 ký tự AI (50,000đ)';
             if (id === 'AI_ADDON_100K') return 'Nạp lẻ 12,000 ký tự AI (100,000đ)';

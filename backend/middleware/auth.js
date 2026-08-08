@@ -7,7 +7,7 @@ const authMiddleware = async (req, res, next) => {
         const token = req.headers.authorization?.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'No token provided' });
         const decoded = verifyUserToken(token);
-        const user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan');
+        const user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt');
         if (!user || user.isActive === false) {
             return res.status(401).json({ error: 'Account is unavailable' });
         }
@@ -35,7 +35,7 @@ const optionalAuthMiddleware = async (req, res, next) => {
             return next();
         }
         const decoded = verifyUserToken(token);
-        const user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan');
+        const user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt');
         if (user && user.isActive !== false) {
             req.userId = decoded.userId;
             req.user = user;

@@ -23,7 +23,7 @@ assert.strictEqual(basic.goalTrackers, 10);
 assert.strictEqual(pro.devices, 1);
 assert.strictEqual(pro.mappings, Infinity);
 assert.strictEqual(expired.key, 'free');
-assert.strictEqual(upgradePayload('mappings', 'x', free).recommendedPlan, 'pro');
+assert.strictEqual(upgradePayload('mappings', 'x', free).recommendedPlan, 'basic');
 assert.strictEqual(upgradePayload('menuAdvanced', 'x', basic).recommendedPlan, 'pro');
 assert.strictEqual(PLAN_ENTITLEMENTS.studio.devices, Infinity);
 
@@ -71,7 +71,7 @@ assert.strictEqual(validateDesignerItems(Array.from({ length: 11 }, () => ({ typ
 assert.strictEqual(validateDesignerItems([{ type: 'gift', animationType: 'Shake', auraType: 'Electric Aura' }], pro), null);
 assert.strictEqual(validateMappingAutomation({ effects: [{ effectId: 'a' }] }, free), null);
 assert.strictEqual(validateMappingAutomation({ effects: [{ effectId: 'a' }, { effectId: 'b' }] }, basic).feature, 'automationAdvanced');
-assert.strictEqual(validateMappingAutomation({ playbackMode: 'sequential' }, basic).recommendedPlan, 'business');
+assert.strictEqual(validateMappingAutomation({ playbackMode: 'sequential' }, basic).recommendedPlan, 'pro');
 assert.strictEqual(validateMappingAutomation({ cooldown: 5, cooldownAction: 'ignore' }, basic).feature, 'automationAdvanced');
 assert.strictEqual(validateMappingAutomation({ effects: [{ effectId: 'a' }, { effectId: 'b' }], cooldown: 5 }, pro), null);
 

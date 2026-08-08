@@ -13,7 +13,7 @@ const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth')
 const GiftMenuLayout = require('../models/GiftMenuLayout');
 const multer = require('multer');
 const { spawn } = require('child_process');
-const { getEntitlements, upgradePayload, validateDesignerItems, validateMappingAutomation } = require('../config/planEntitlements');
+const { getEntitlements, upgradePayload, validateDesignerItems, validateMappingAutomation, normalizePlan } = require('../config/planEntitlements');
 const {
     getUserAvailableEffects,
     resolveEffectForUser,
@@ -967,13 +967,7 @@ const aiAssistantService = require('../services/aiAssistantService');
 router.get('/ai-config', optionalAuthMiddleware, (req, res) => {
     try {
         const config = aiAssistantService.getConfig();
-        let userPlan = 'free';
-        if (req.isAdmin || req.user?.isAdmin || req.user?.email === 'admin@effectstore.vn') {
-            userPlan = 'admin';
-        } else if (req.user) {
-            userPlan = req.user.subscription || req.user.plan || 'free';
-        }
-        const usage = aiAssistantService.getCharacterUsage(userPlan);
+        const usage = aiAssistantService.getCharacterUsage(req.user || 'free');
         const systemStatus = aiAssistantService.getSystemStatus();
         res.json({ success: true, config, usage, systemStatus });
     } catch (error) {
@@ -984,8 +978,7 @@ router.get('/ai-config', optionalAuthMiddleware, (req, res) => {
 router.post('/ai-config', authMiddleware, (req, res) => {
     try {
         const updated = aiAssistantService.saveConfig(req.body || {});
-        const userPlan = (req.isAdmin || req.user?.isAdmin || req.user?.role === 'admin' || req.user?.email === 'admin@effectstore.vn') ? 'admin' : (req.user?.subscription || req.user?.plan || 'free');
-        const usage = aiAssistantService.getCharacterUsage(userPlan);
+        const usage = aiAssistantService.getCharacterUsage(req.user || 'free');
         res.json({ success: true, config: updated, usage });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -1041,7 +1034,7 @@ router.post('/ai-buy-addon', optionalAuthMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Gói nạp lẻ không hợp lệ' });
         }
 
-        const userPlan = (req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.subscription || req.user?.plan || 'free');
+        const userPlan = normalizePlan(req.user);
 
         // Create pending payment for admin review
         const Payment = require('../models/Payment');
@@ -1070,7 +1063,7 @@ router.post('/ai-buy-addon', optionalAuthMiddleware, async (req, res) => {
 router.post('/ai-test-speech', authMiddleware, async (req, res) => {
     try {
         const { username, comment } = req.body || {};
-        const userPlan = req.user?.plan || 'free';
+        const userPlan = normalizePlan(req.user);
         const testEvent = await aiAssistantService.processChatMessage({
             username: username || 'Viewer Thử nghiệm',
             comment: comment || 'Idol live hay quá!',

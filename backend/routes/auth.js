@@ -10,6 +10,17 @@ const { createRateLimiter } = require('../middleware/rateLimit');
 const crypto = require('crypto');
 const SystemState = require('../models/SystemState');
 
+// Lazily collapses an expired paid plan back to 'free' so every response
+// that echoes user.subscription (login/me/profile) reflects the same plan
+// planEntitlements.js/normalizePlan() would enforce server-side.
+async function expireSubscriptionIfNeeded(user) {
+    if (user.subscription !== 'free' && user.subscriptionExpiresAt && new Date() > user.subscriptionExpiresAt) {
+        user.subscription = 'free';
+        user.subscriptionExpiresAt = null;
+        await user.save();
+    }
+}
+
 const RESERVED_ADMIN_EMAIL = 'admin@effectstore.vn';
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const registerRateLimiter = createRateLimiter({
@@ -209,6 +220,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
         if (user.isActive === false) {
             return res.status(403).json({ success: false, error: 'Tài khoản đã bị vô hiệu hóa.' });
         }
+        await expireSubscriptionIfNeeded(user);
 
         const isAdmin = isAdminUser(user);
         if (!isAdmin && machineId) {
@@ -263,11 +275,7 @@ router.get('/me', authMiddleware, async (req, res) => {
             return res.status(403).json({ success: false, message: 'Tài khoản đã bị vô hiệu hóa.' });
         }
 
-        if (user.subscription !== 'free' && user.subscriptionExpiresAt && new Date() > user.subscriptionExpiresAt) {
-            user.subscription = 'free';
-            user.subscriptionExpiresAt = null;
-            await user.save();
-        }
+        await expireSubscriptionIfNeeded(user);
 
         const isAdmin = isAdminUser(user);
         return res.json({
@@ -296,6 +304,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.userId);
         if (!user || user.isActive === false) return res.status(404).json({ success: false, error: 'Không tìm thấy tài khoản.' });
+        await expireSubscriptionIfNeeded(user);
         const name = String(req.body?.name || '').trim().slice(0, 100);
         const phone = normalizePhone(req.body?.phone);
         if (!name) return res.status(400).json({ success: false, error: 'Tên hiển thị không được để trống.' });

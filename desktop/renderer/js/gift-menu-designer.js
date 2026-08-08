@@ -91,7 +91,7 @@
         }
 
         templateNeedsHigherPlan(template) {
-            const rank = { free: 0, basic: 1, pro: 2, studio: 3, business: 4, admin: 5 };
+            const rank = { free: 0, basic: 1, pro: 2, business: 2, studio: 3, admin: 4 };
             const current = rank[this.actualPlanKey] ?? 0;
             const explicitPlan = String(template?.requiredPlan || '').toLowerCase();
             if (explicitPlan && explicitPlan !== 'free') return current < (rank[explicitPlan] ?? 0);
@@ -101,13 +101,17 @@
         }
 
         get planKey() {
-            return 'admin';
+            return this.actualPlanKey;
         }
 
-        showUpgrade(feature, message) {
+        showUpgrade(feature, message, recommendedPlan) {
             if (window.app && typeof window.app.showUpgradePopup === 'function') {
+                // Prefer the server's recommendedPlan (computed from the same
+                // entitlements check that produced the limit) over a local
+                // guess based on actualPlanKey, which can be stale/wrong.
                 const actualPlan = this.actualPlanKey;
-                const targetPlan = actualPlan === 'free' ? 'pro' : (actualPlan === 'pro' ? 'business' : 'studio');
+                const targetPlan = recommendedPlan
+                    || (actualPlan === 'free' ? 'basic' : (actualPlan === 'basic' ? 'pro' : 'studio'));
                 window.app.showUpgradePopup(feature, message, targetPlan);
             } else if (window.app && typeof window.app.showNotification === 'function') {
                 window.app.showNotification('warning', message || 'Tính năng này cần nâng cấp gói.');
@@ -116,13 +120,13 @@
 
         handlePlanLimit(data, feature) {
             if (!data || data.upgradeRequired !== true) return false;
-            this.showUpgrade(data.feature || feature, data.message);
+            this.showUpgrade(data.feature || feature, data.message, data.recommendedPlan);
             return true;
         }
 
         get goalTrackerLimit() {
             if (this.planKey === 'free') return 1;
-            if (this.planKey === 'pro') return 10;
+            if (this.planKey === 'basic') return 10;
             return Infinity;
         }
 
@@ -2404,7 +2408,7 @@
         }
 
         triggerFrameUpload(rank) {
-            if (!['business', 'studio', 'admin'].includes(this.planKey)) {
+            if (!['pro', 'business', 'studio', 'admin'].includes(this.planKey)) {
                 this.showUpgrade('avatarFrames', 'Nâng cấp Pro để tải khung viền avatar riêng.');
                 return;
             }
@@ -2688,7 +2692,7 @@
                 this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu và dùng hiệu ứng động.');
                 return;
             }
-            if (this.planKey === 'pro' && ((key === 'animationType' && !['None', 'Pulse', 'Bounce', 'Float'].includes(String(value))) || (key === 'auraType' && !['None', 'Glow'].includes(String(value))))) {
+            if (this.planKey === 'basic' && ((key === 'animationType' && !['None', 'Pulse', 'Bounce', 'Float'].includes(String(value))) || (key === 'auraType' && !['None', 'Glow'].includes(String(value))))) {
                 this.showUpgrade('menuAdvanced', 'Hiệu ứng chuyển động cao cấp dành cho gói Pro.');
                 return;
             }
@@ -2718,7 +2722,7 @@
                 this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu và dùng hiệu ứng động.');
                 return;
             }
-            if (this.planKey === 'pro' && ((key === 'animationType' && !['None', 'Pulse', 'Bounce', 'Float'].includes(String(value))) || (key === 'auraType' && !['None', 'Glow'].includes(String(value))))) {
+            if (this.planKey === 'basic' && ((key === 'animationType' && !['None', 'Pulse', 'Bounce', 'Float'].includes(String(value))) || (key === 'auraType' && !['None', 'Glow'].includes(String(value))))) {
                 this.showUpgrade('menuAdvanced', 'Hiệu ứng chuyển động cao cấp dành cho gói Pro.');
                 return;
             }
@@ -3978,7 +3982,7 @@
                 const layerId = btn.dataset.layerId;
                 const tab = btn.dataset.tab;
                 if (tab === 'gift' || tab === 'layers') {
-                    if (tab === 'layers' && !['business', 'studio', 'admin'].includes(this.planKey)) {
+                    if (tab === 'layers' && !['pro', 'business', 'studio', 'admin'].includes(this.planKey)) {
                         this.showUpgrade('menuAdvanced', 'Hệ thống lớp nâng cao dành cho gói Pro.');
                         return;
                     }
@@ -4052,7 +4056,7 @@
                     alert('Hướng dẫn thiết kế bảng quà\n\n• Kéo thả để di chuyển\n• Giữ Shift và nhấp chuột để chọn nhiều mục\n• Ctrl + D để nhân bản\n• Ctrl + Z / Ctrl + Y để hoàn tác / làm lại\n• Phím Delete để xóa\n• Giữ Ctrl và cuộn chuột để phóng to, thu nhỏ\n• Giữ phím cách hoặc chuột giữa để di chuyển vùng thiết kế');
                     return;
                 }
-                if (['layer-toggle-visible', 'layer-toggle-lock', 'layer-up', 'layer-down', 'align-left', 'align-center-x', 'align-right', 'align-top', 'align-center-y', 'align-bottom', 'distribute-x', 'distribute-y'].includes(action) && !['business', 'studio', 'admin'].includes(this.planKey)) {
+                if (['layer-toggle-visible', 'layer-toggle-lock', 'layer-up', 'layer-down', 'align-left', 'align-center-x', 'align-right', 'align-top', 'align-center-y', 'align-bottom', 'distribute-x', 'distribute-y'].includes(action) && !['pro', 'business', 'studio', 'admin'].includes(this.planKey)) {
                     this.showUpgrade('menuAdvanced', 'Hệ thống lớp nâng cao dành cho gói Pro.');
                     return;
                 }
@@ -7932,7 +7936,7 @@
             const item = this.findInteractiveItem(this.selectedId);
             if (!item) return;
 
-            if (this.planKey === 'pro' && ((key === 'panelEffect' && !['none', 'breathing'].includes(String(value))) || (key === 'borderEffect' && !['none', 'glow', 'pulse'].includes(String(value))))) {
+            if (this.planKey === 'basic' && ((key === 'panelEffect' && !['none', 'breathing'].includes(String(value))) || (key === 'borderEffect' && !['none', 'glow', 'pulse'].includes(String(value))))) {
                 this.showUpgrade('menuAdvanced', 'Tùy chỉnh chuyển động nâng cao dành cho gói Pro.');
                 return;
             }

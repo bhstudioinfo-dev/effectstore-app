@@ -24,27 +24,42 @@ const DEFAULT_CONFIG = {
 
 let currentConfig = { ...DEFAULT_CONFIG };
 
+// Keys must cover every backend/config/planEntitlements.js plan key so no
+// tier silently falls back to PLAN_LIMITS.free. 'business' is the legacy
+// alias for 'pro' and gets the same quota; 'studio' continues the ~3x
+// progression above 'pro'.
 const PLAN_LIMITS = {
     free: 1000,
     basic: 3000,
     pro: 10000,
+    business: 10000,
+    studio: 30000,
     admin: 999999999
 };
 
-function getCharacterUsage(userPlan = 'free') {
+function getCharacterUsage(userOrPlan = 'free', userDoc = null) {
     loadConfig();
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     
+    const user = (typeof userOrPlan === 'object' && userOrPlan !== null) ? userOrPlan : userDoc;
+    const userPlan = (typeof userOrPlan === 'string') ? userOrPlan : (user?.subscription || user?.plan || (user?.isAdmin ? 'admin' : 'free'));
+
+    if (user && user.aiMonthKey !== monthKey) {
+        user.aiMonthKey = monthKey;
+        user.usedCharactersThisMonth = 0;
+        if (typeof user.save === 'function') user.save().catch(() => {});
+    }
+
     if (currentConfig.monthKey !== monthKey) {
         currentConfig.monthKey = monthKey;
         currentConfig.usedCharactersThisMonth = 0;
         saveConfig(currentConfig);
     }
     
-    if (userPlan === 'admin' || userPlan === 'ADMIN') {
+    if (userPlan === 'admin' || userPlan === 'ADMIN' || user?.isAdmin === true || user?.role === 'admin' || user?.email === 'admin@effectstore.vn') {
         return {
-            used: Number(currentConfig.usedCharactersThisMonth || 0),
+            used: Number((user ? user.usedCharactersThisMonth : currentConfig.usedCharactersThisMonth) || 0),
             baseLimit: 999999999,
             addon: 0,
             totalLimit: 999999999,
@@ -56,9 +71,9 @@ function getCharacterUsage(userPlan = 'free') {
     }
 
     const baseLimit = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
-    const addon = Number(currentConfig.addonCharacters || 0);
+    const addon = Number((user ? user.addonCharacters : currentConfig.addonCharacters) || 0);
     const totalLimit = baseLimit + addon;
-    const used = Number(currentConfig.usedCharactersThisMonth || 0);
+    const used = Number((user ? user.usedCharactersThisMonth : currentConfig.usedCharactersThisMonth) || 0);
     
     return {
         used,
@@ -71,15 +86,23 @@ function getCharacterUsage(userPlan = 'free') {
     };
 }
 
-function recordCharacterUsage(count) {
+async function recordCharacterUsage(count, user = null) {
+    if (user) {
+        user.usedCharactersThisMonth = (user.usedCharactersThisMonth || 0) + count;
+        if (typeof user.save === 'function') await user.save().catch(() => {});
+    }
     currentConfig.usedCharactersThisMonth = (currentConfig.usedCharactersThisMonth || 0) + count;
     saveConfig(currentConfig);
 }
 
-function addAddonCharacters(addonCount) {
+async function addAddonCharacters(addonCount, user = null) {
+    if (user) {
+        user.addonCharacters = (user.addonCharacters || 0) + addonCount;
+        if (typeof user.save === 'function') await user.save().catch(() => {});
+    }
     currentConfig.addonCharacters = (currentConfig.addonCharacters || 0) + addonCount;
     saveConfig(currentConfig);
-    return getCharacterUsage();
+    return getCharacterUsage(user || 'free');
 }
 
 function loadConfig() {

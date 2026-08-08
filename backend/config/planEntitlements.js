@@ -53,8 +53,8 @@ function getEntitlements(user) {
 
 function upgradePayload(feature, message, entitlements) {
     const recommendedPlan = entitlements?.key === 'free'
-        ? 'pro'
-        : (entitlements?.key === 'basic' ? 'pro' : (entitlements?.key === 'pro' ? 'business' : 'studio'));
+        ? 'basic'
+        : (entitlements?.key === 'basic' ? 'pro' : 'studio');
     return {
         success: false,
         upgradeRequired: true,
@@ -219,7 +219,7 @@ function validateMappingAutomation(payload, entitlements) {
             'Gộp nhiều hiệu ứng, chạy tuần tự và cooldown nâng cao dành cho gói Pro.',
             entitlements
         ),
-        recommendedPlan: 'business'
+        recommendedPlan: 'pro'
     };
 }
 

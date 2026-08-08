@@ -10,6 +10,38 @@ function openBannerManager() {
     navigateTo('admin-banner.html');
 }
 
+// Single source of truth for how a raw user.subscription value maps to a
+// display badge. Keys/labels must stay in sync with
+// backend/config/planEntitlements.js (free/basic/pro/business/studio/admin,
+// where legacy 'business' is a functional duplicate of 'pro').
+const PLAN_DISPLAY = Object.freeze({
+    admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)', avatarBg: 'linear-gradient(135deg,#ff6b35,#ff9a3c)', avatarColor: '#fff' },
+    studio: { label: '💎 Studio', color: '#38bdf8', bg: 'rgba(56,189,248,0.15)', border: 'rgba(56,189,248,0.3)', avatarBg: 'linear-gradient(135deg,#10b981,#34d399)', avatarColor: '#fff' },
+    pro: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)', avatarBg: 'linear-gradient(135deg,#a78bfa,#7c3aed)', avatarColor: '#fff' },
+    basic: { label: '⚡ Basic', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: 'rgba(251,191,36,0.3)', avatarBg: 'linear-gradient(135deg,#fbbf24,#d97706)', avatarColor: '#000' },
+    free: { label: '🆓 Miễn phí', color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.2)', avatarBg: 'linear-gradient(135deg,#374151,#4b5563)', avatarColor: '#fff' }
+});
+
+// Normalizes a user object's raw subscription/plan string (including the
+// legacy 'business' alias for 'pro') into a PLAN_DISPLAY key. Mirrors
+// backend/config/planEntitlements.js normalizePlan(), including the
+// expiry check, so a stale/expired paid plan never displays as active.
+function resolvePlanKey(user) {
+    if (!user) return 'free';
+    if (user.isAdmin === true || user.role === 'admin' || user.email === 'admin@effectstore.vn') return 'admin';
+    if (user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt).getTime() < Date.now()) return 'free';
+    const raw = String(user.subscription || user.plan || 'free').toLowerCase();
+    if (raw === 'basic') return 'basic';
+    if (raw === 'pro' || raw === 'business') return 'pro';
+    if (raw === 'studio') return 'studio';
+    if (raw === 'admin') return 'admin';
+    return 'free';
+}
+
+function resolvePlanDisplay(user) {
+    return PLAN_DISPLAY[resolvePlanKey(user)] || PLAN_DISPLAY.free;
+}
+
 // ===== APP CLASS =====
 class EffectStoreApp {
     constructor() {
@@ -754,20 +786,8 @@ class EffectStoreApp {
         const nameChar = (u.name && u.name.length > 0) ? u.name[0].toUpperCase() : 'U';
 
         // Badge + màu theo cấp độ
-        const planInfo = {
-            admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
-            studio: { label: '💎 Studio', color: '#38bdf8', bg: 'rgba(56,189,248,0.15)', border: 'rgba(56,189,248,0.3)' },
-            business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
-            pro: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
-            basic: { label: '⚡ Basic', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: 'rgba(251,191,36,0.3)' },
-            free: { label: '🆓 Miễn phí', color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.2)' }
-        };
-        const rawSub = String(u.isAdmin || u.role === 'admin' || u.email === 'admin@effectstore.vn' ? 'admin' : (u.subscription || u.plan || 'free')).toLowerCase();
-        const planKey = (rawSub === 'admin' || u.isAdmin) ? 'admin'
-            : (rawSub === 'basic' ? 'basic'
-            : ((rawSub === 'pro' || rawSub === 'business') ? 'pro'
-            : (rawSub === 'studio' ? 'studio' : 'free')));
-        const plan = planInfo[planKey] || planInfo.free;
+        const planKey = resolvePlanKey(u);
+        const plan = resolvePlanDisplay(u);
         this.updateSidebarPromo(planKey);
 
         // Cập nhật avatar chữ
@@ -776,14 +796,8 @@ class EffectStoreApp {
             avatarEl.textContent = nameChar;
             const parentAvatar = avatarEl.parentElement;
             if (parentAvatar) {
-                parentAvatar.style.background = planKey === 'admin'
-                    ? 'linear-gradient(135deg,#ff6b35,#ff9a3c)'
-                    : (planKey === 'pro' || planKey === 'business'
-                        ? 'linear-gradient(135deg,#a78bfa,#7c3aed)'
-                        : (planKey === 'basic'
-                            ? 'linear-gradient(135deg,#fbbf24,#d97706)'
-                            : 'linear-gradient(135deg,#374151,#4b5563)'));
-                parentAvatar.style.color = planKey === 'basic' ? '#000' : '#fff';
+                parentAvatar.style.background = plan.avatarBg;
+                parentAvatar.style.color = plan.avatarColor;
             }
             avatarEl.style.background = 'transparent';
         }
@@ -990,6 +1004,19 @@ class EffectStoreApp {
         localStorage.removeItem('user');
         this.authToken = null;
         this.currentUser = null;
+        if (this._adminPollInterval) {
+            clearInterval(this._adminPollInterval);
+            this._adminPollInterval = null;
+        }
+        this._prevPendingCount = 0;
+        this.adminPendingPayments = [];
+        this.selectedAdminPaymentId = null;
+        this.effects = [];
+        this.ownedEffects = [];
+        this.personalEffects = [];
+        this.giftMappings = [];
+        this.controlDeckSlots = [];
+        this.updateAdminBadges(0);
         this.updateUserUI();
         this.openAuthModal();
         this.showNotification('info', '👋 Đã đăng xuất thành công!');
@@ -2654,7 +2681,7 @@ class EffectStoreApp {
                 }
 
                 const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
-                const isBusiness = this.currentUser && this.currentUser.subscription === 'business';
+                const isBusiness = this.currentUser && ['pro', 'studio'].includes(resolvePlanKey(this.currentUser));
                 const hasPurchased = effect.isOwned === true ||
                     this.ownedEffects.some(e => String(e.id || e._id) === String(effectId));
 
@@ -5219,15 +5246,9 @@ class EffectStoreApp {
             const data = await res.json();
             if (!data.success) throw new Error(data.error);
 
-                        const planBadge = (sub, isAdmin) => {
-                if (isAdmin || sub === 'admin') return '<span style="padding:2px 10px;border-radius:12px;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:11px;font-weight:700;">👑 Admin</span>';
-                const map = {
-                    studio: '<span style="padding:2px 10px;border-radius:12px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-size:11px;font-weight:700;">💎 Studio</span>',
-                    business: '<span style="padding:2px 10px;border-radius:12px;background:rgba(236,72,153,0.15);color:#ec4899;border:1px solid rgba(236,72,153,0.3);font-size:11px;font-weight:700;">⭐ Pro</span>',
-                    pro: '<span style="padding:2px 10px;border-radius:12px;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);font-size:11px;font-weight:700;">⚡ Basic</span>',
-                    free: '<span style="padding:2px 10px;border-radius:12px;background:rgba(107,114,128,0.12);color:#9ca3af;border:1px solid rgba(107,114,128,0.2);font-size:11px;font-weight:700;">🆓 Miễn phí</span>'
-                };
-                return map[sub] || map.free;
+                        const planBadge = (u) => {
+                const plan = resolvePlanDisplay(u);
+                return `<span style="padding:2px 10px;border-radius:12px;background:${plan.bg};color:${plan.color};border:1px solid ${plan.border};font-size:11px;font-weight:700;">${plan.label}</span>`;
             };
 
             const formatTimeAgo = (date) => {
@@ -5264,7 +5285,7 @@ class EffectStoreApp {
                                         <tr style="border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background=''">
                                             <td style="padding:12px 16px;">
                                                 <div style="display:flex;align-items:center;gap:10px;">
-                                                    <div style="width:36px;height:36px;border-radius:50%;background:${u.isAdmin || u.subscription === 'admin' ? 'linear-gradient(135deg,#ef4444,#ff6b6b)' : (u.subscription === 'studio' ? 'linear-gradient(135deg,#10b981,#34d399)' : (u.subscription === 'business' ? 'linear-gradient(135deg,#ec4899,#f472b6)' : (u.subscription === 'pro' ? 'linear-gradient(135deg,#f59e0b,#fbbf24)' : 'linear-gradient(135deg,#374151,#4b5563)')))};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:${u.subscription === 'pro' && !u.isAdmin ? '#000' : '#fff'};flex-shrink:0;">
+                                                    <div style="width:36px;height:36px;border-radius:50%;background:${resolvePlanDisplay(u).avatarBg};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:${resolvePlanDisplay(u).avatarColor};flex-shrink:0;">
                                                         ${(u.name || u.email || '?')[0].toUpperCase()}
                                                     </div>
                                                     <div>
@@ -5273,7 +5294,7 @@ class EffectStoreApp {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td style="padding:12px 16px;">${planBadge(u.subscription, u.isAdmin)}</td>
+                                            <td style="padding:12px 16px;">${planBadge(u)}</td>
                                             <td style="padding:12px 16px;">
                                                 <div style="color:${(new Date() - new Date(u.lastActive)) > 86400000 * 7 ? '#ef4444' : '#6b7280'}; font-size:12px;">
                                                     ${formatTimeAgo(u.lastActive)}
@@ -5283,8 +5304,8 @@ class EffectStoreApp {
                                             <td style="padding:12px 16px;text-align:center;">
                                                  ${u.isAdmin ? '<span style="color:#6b7280;font-size:12px;">—</span>' : `
                                                  <div style="display:flex;gap:6px;justify-content:center;align-items:center;">
-                                                     <button onclick="app.upgradeSubscription('${u._id}','pro',30)" style="padding:5px 10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#f59e0b;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Cấp gói Basic 30 ngày</button>
-                                                     <button onclick="app.upgradeSubscription('${u._id}','business',30)" style="padding:5px 10px;background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.3);border-radius:6px;color:#ec4899;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Pro 30 ngày</button>
+                                                     <button onclick="app.upgradeSubscription('${u._id}','basic',30)" style="padding:5px 10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;color:#f59e0b;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Cấp gói Basic 30 ngày</button>
+                                                     <button onclick="app.upgradeSubscription('${u._id}','pro',30)" style="padding:5px 10px;background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.3);border-radius:6px;color:#ec4899;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Pro 30 ngày</button>
                                                      <button onclick="app.upgradeSubscription('${u._id}','studio',3650)" style="padding:5px 10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:6px;color:#10b981;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Set Studio</button>
                                                      ${u.subscription && u.subscription !== 'free' ? `<button onclick="app.upgradeSubscription('${u._id}','${u.subscription}',30,true)" style="padding:5px 10px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:6px;color:#3b82f6;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;">Gia hạn 30 ngày</button>` : ''}
                                                      <button onclick="app.upgradeSubscription('${u._id}','free',0)" style="padding:5px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600;">Chuyển về gói miễn phí</button>
@@ -5308,7 +5329,7 @@ class EffectStoreApp {
     }
 
         async upgradeSubscription(userId, plan, durationDays, extend = false) {
-        const planLabel = { pro: 'Basic', business: 'Pro', studio: 'Studio', free: 'Miễn phí' }[plan] || plan;
+        const planLabel = { basic: 'Basic', pro: 'Pro', business: 'Pro', studio: 'Studio', free: 'Miễn phí' }[plan] || plan;
         const msg = plan === 'free'
             ? `Chuyển tài khoản về gói miễn phí?`
             : (extend ? `Gia hạn thêm gói ${planLabel} thêm ${durationDays} ngày?` : `Đặt gói ${planLabel} trong ${durationDays} ngày?`);
@@ -5365,10 +5386,10 @@ class EffectStoreApp {
             automationAdvanced: 'Gộp nhiều hiệu ứng, chạy tuần tự và cooldown nâng cao'
         };
         const primaryBenefit = featureCopy[feature] || 'Menu quà tặng chuyên nghiệp';
-        const currentPlan = String(this.currentUser?.subscription || 'free').toLowerCase();
-        const targetPlan = recommendedPlan || (currentPlan === 'free' ? 'pro' : (currentPlan === 'pro' ? 'business' : 'studio'));
-        const targetLabel = targetPlan === 'pro' ? 'Basic' : (targetPlan === 'business' ? 'Pro' : 'Studio');
-        const isBasicOffer = targetPlan === 'pro';
+        const currentPlan = resolvePlanKey(this.currentUser);
+        const targetPlan = recommendedPlan || (currentPlan === 'free' ? 'basic' : (currentPlan === 'basic' ? 'pro' : 'studio'));
+        const targetLabel = targetPlan === 'basic' ? 'Basic' : ((targetPlan === 'pro' || targetPlan === 'business') ? 'Pro' : 'Studio');
+        const isBasicOffer = targetPlan === 'basic';
         this.showModal('Bạn đã dùng hết giới hạn hiện tại', `
             <div style="color:#cbd5e1;font-size:14px;line-height:1.6;">
                 ${message ? `<div style="padding:10px 12px;margin-bottom:14px;border-radius:10px;background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.22);color:#fbbf24;">${this.escapeHtml ? this.escapeHtml(message) : message}</div>` : ''}
@@ -6795,23 +6816,13 @@ class EffectStoreApp {
         if (emailEl) emailEl.textContent = u.email;
         if (avatarEl) {
             avatarEl.textContent = (u.name || 'U')[0].toUpperCase();
-            avatarEl.style.background = u.isAdmin
-                ? 'linear-gradient(135deg,#ff6b35,#ff9a3c)'
-                : (u.subscription === 'business' ? 'linear-gradient(135deg,#a78bfa,#7c3aed)'
-                    : (u.subscription === 'pro' ? 'linear-gradient(135deg,#d4af37,#f4e4ba)'
-                        : 'linear-gradient(135deg,#374151,#4b5563)'));
-            avatarEl.style.color = (u.subscription === 'pro' && !u.isAdmin) ? '#000' : '#fff';
+            const avatarPlan = resolvePlanDisplay(u);
+            avatarEl.style.background = avatarPlan.avatarBg;
+            avatarEl.style.color = avatarPlan.avatarColor;
         }
 
         if (badgeEl) {
-            const planInfo = {
-                admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.15)', border: 'rgba(255,107,53,0.3)' },
-                business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
-                pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.15)', border: 'rgba(212,175,55,0.3)' },
-                free: { label: '🆓 Miễn phí', color: '#6b7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.2)' }
-            };
-            const planKey = u.isAdmin ? 'admin' : (u.subscription || 'free');
-            const plan = planInfo[planKey] || planInfo.free;
+            const plan = resolvePlanDisplay(u);
             badgeEl.innerHTML = `<span style="font-size:11px;padding:4px 12px;border-radius:12px;background:${plan.bg};color:${plan.color};border:1px solid ${plan.border};font-weight:700;">${plan.label}</span>`;
         }
 
@@ -6956,7 +6967,7 @@ class EffectStoreApp {
                 const eligible = templates.filter((template) => {
                     const templateItems = [...(template.items || []), ...(template.exportedItems || [])];
                     const isWheel = template.productType === 'challenge-wheel' || templateItems.some((item) => item?.type === 'challenge-wheel');
-                    return isWheel && !existingSourceIds.has(String(template._id)) && (template.isPurchased || this.currentUser?.isAdmin || this.currentUser?.subscription === 'business');
+                    return isWheel && !existingSourceIds.has(String(template._id)) && (template.isPurchased || this.currentUser?.isAdmin || ['pro', 'studio'].includes(resolvePlanKey(this.currentUser)));
                 });
                 for (const template of eligible) {
                     const item = [...(template.items || []), ...(template.exportedItems || [])].find((entry) => entry?.type === 'challenge-wheel');
@@ -7681,26 +7692,17 @@ function showAccount() {
     if (!u) {
         const nameEl = document.querySelector('.user-card .name')?.textContent?.trim() || 'teest';
         const planEl = document.querySelector('.user-card .plan')?.textContent?.trim() || 'BASIC';
+        const planElLower = planEl.toLowerCase();
         u = {
             name: nameEl,
             email: `${nameEl}@liveflow.app`,
-            subscription: (planEl.toLowerCase().includes('basic') || planEl.toLowerCase().includes('pro')) ? 'pro' : 'free'
+            subscription: planElLower.includes('basic') ? 'basic' : (planElLower.includes('pro') ? 'pro' : 'free')
         };
     }
     app.currentUser = u;
-    const planInfo = {
-        admin: { label: '👑 Admin', color: '#ff6b35', bg: 'rgba(255,107,53,0.12)', border: 'rgba(255,107,53,0.25)' },
-        business: { label: '⭐ Pro', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.25)' },
-        pro: { label: '⚡ Basic', color: '#d4af37', bg: 'rgba(212,175,55,0.12)', border: 'rgba(212,175,55,0.25)' },
-        free: { label: '🆓 Miễn phí', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.18)' }
-    };
-    const planKey = u.isAdmin ? 'admin' : (u.subscription || 'pro');
-    const plan = planInfo[planKey] || planInfo.pro;
-    const avatarBg = u.isAdmin ? 'linear-gradient(135deg,#ff6b35,#ff9a3c)'
-        : (u.subscription === 'business' ? 'linear-gradient(135deg,#a78bfa,#7c3aed)'
-            : (u.subscription === 'pro' ? 'linear-gradient(135deg,#d4af37,#f4e4ba)'
-                : 'linear-gradient(135deg,#374151,#4b5563)'));
-    const avatarColor = (u.subscription === 'pro' && !u.isAdmin) ? '#000' : '#fff';
+    const plan = resolvePlanDisplay(u);
+    const avatarBg = plan.avatarBg;
+    const avatarColor = plan.avatarColor;
 
     app.showModal('Tài khoản của tôi', `
                 <div style="text-align:center; padding: 12px 0;">

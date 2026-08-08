@@ -17,6 +17,7 @@ const {
     restoreDatabaseBackup
 } = require('../services/databaseBackupService');
 const { runSchemaMigrations } = require('../services/schemaMigrationService');
+const { PLAN_ENTITLEMENTS } = require('../config/planEntitlements');
 
 const imageUploadOptions = {
     dest: dataPaths.tempDir,
@@ -156,14 +157,20 @@ router.get('/effect-acquisitions', authMiddleware, adminMiddleware, async (_req,
 router.put('/users/:userId/subscription', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const { plan, durationDays, extend } = req.body;
+        const planKey = String(plan || '').toLowerCase();
+        // 'admin' is derived from user.isAdmin/role, not a grantable subscription value.
+        if (planKey !== 'free' && !(PLAN_ENTITLEMENTS[planKey] && planKey !== 'admin')) {
+            return res.status(400).json({ success: false, error: `Invalid plan: ${plan}` });
+        }
         const user = await User.findById(req.params.userId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-        user.subscription = plan;
-        if (plan !== 'free') {
-            const exp = new Date();
-            exp.setDate(exp.getDate() + (parseInt(durationDays) || 30));
-            user.subscriptionExpiresAt = exp;
+        user.subscription = planKey;
+        if (planKey !== 'free') {
+            const baseTime = extend && user.subscriptionExpiresAt && user.subscriptionExpiresAt > new Date()
+                ? user.subscriptionExpiresAt.getTime()
+                : Date.now();
+            user.subscriptionExpiresAt = new Date(baseTime + (parseInt(durationDays) || 30) * 24 * 60 * 60 * 1000);
         } else {
             user.subscriptionExpiresAt = null;
         }

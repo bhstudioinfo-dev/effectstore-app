@@ -98,17 +98,17 @@ async function grantPayment(payment) {
     for (const itemId of payment.effectIds) {
         if (itemId === 'AI_ADDON_10K') {
             const aiAssistantService = require('./aiAssistantService');
-            aiAssistantService.addAddonCharacters(1000);
+            aiAssistantService.addAddonCharacters(1000, user);
             continue;
         }
         if (itemId === 'AI_ADDON_50K') {
             const aiAssistantService = require('./aiAssistantService');
-            aiAssistantService.addAddonCharacters(5500);
+            aiAssistantService.addAddonCharacters(5500, user);
             continue;
         }
         if (itemId === 'AI_ADDON_100K') {
             const aiAssistantService = require('./aiAssistantService');
-            aiAssistantService.addAddonCharacters(12000);
+            aiAssistantService.addAddonCharacters(12000, user);
             continue;
         }
         if (!user) continue;

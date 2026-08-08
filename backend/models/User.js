@@ -39,6 +39,9 @@ const UserSchema = new mongoose.Schema({
     }],
     totalSpent: { type: Number, default: 0 },
     totalUses: { type: Number, default: 0 },
+    usedCharactersThisMonth: { type: Number, default: 0 },
+    addonCharacters: { type: Number, default: 0 },
+    aiMonthKey: { type: String, default: '' },
     isAdmin: { type: Boolean, default: false }, // Added this as I saw it used in DB
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
