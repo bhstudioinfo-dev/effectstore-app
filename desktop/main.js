@@ -311,10 +311,21 @@ function createWindow() {
         console.log('❌ HTML load failed:', errorDesc);
     });
     
-    // Clear cache to ensure changes are always loaded fresh
+    // Clear cache and enable instant live reload on Ctrl+R without restarting
     if (mainWindow && mainWindow.webContents && mainWindow.webContents.session) {
         mainWindow.webContents.session.clearCache().catch(e => console.error('Failed to clear cache:', e));
     }
+
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+        if (input.key?.toLowerCase() === 'r' && (input.control || input.meta)) {
+            event.preventDefault();
+            mainWindow.webContents.session.clearCache().then(() => {
+                mainWindow.webContents.reloadIgnoringCache();
+            }).catch(() => {
+                mainWindow.webContents.reloadIgnoringCache();
+            });
+        }
+    });
 
     // Load HTML file - path chính xác
     const htmlPath = path.join(__dirname, 'renderer', 'index.html');

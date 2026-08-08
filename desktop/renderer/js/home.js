@@ -7063,7 +7063,13 @@ class EffectStoreApp {
         if (!usage) return;
         const meterText = document.getElementById('ai-usage-meter-text');
         const planBadge = document.getElementById('ai-usage-plan-badge');
-        const isAdmin = Boolean(this.currentUser && (this.currentUser.isAdmin === true || this.currentUser.role === 'admin'));
+        const isUserCardAdmin = document.querySelector('.user-card .plan')?.textContent?.trim() === 'ADMIN';
+        const isAdmin = Boolean(
+            (this.currentUser && (this.currentUser.isAdmin === true || this.currentUser.role === 'admin' || this.currentUser.email === 'admin@effectstore.vn')) ||
+            usage.isAdmin === true ||
+            usage.totalLimit >= 999000000 ||
+            isUserCardAdmin
+        );
         const hasQuota = isAdmin || usage.hasQuota || (usage.remaining > 0);
 
         if (meterText) {
