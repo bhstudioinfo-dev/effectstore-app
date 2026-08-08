@@ -21,7 +21,8 @@ assert.strictEqual(effectiveEffectPrice({
     flashSalePrice: 75000,
     flashSaleEndsAt: new Date(Date.now() - 60000)
 }), 100000);
-assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_PRO.amount, 199000);
+assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_BASIC.amount, 199000);
+assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_PRO.amount, 399000);
 assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_BUSINESS.amount, 399000);
 
 function middlewareNames(path, method) {

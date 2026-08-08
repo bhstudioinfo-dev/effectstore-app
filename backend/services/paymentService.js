@@ -3,8 +3,8 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 
 const SUBSCRIPTION_PRODUCTS = Object.freeze({
-    SUBSCRIPTION_BASIC: Object.freeze({ plan: 'basic', amount: 99000 }),
-    SUBSCRIPTION_PRO: Object.freeze({ plan: 'pro', amount: 199000 }),
+    SUBSCRIPTION_BASIC: Object.freeze({ plan: 'basic', amount: 199000 }),
+    SUBSCRIPTION_PRO: Object.freeze({ plan: 'pro', amount: 399000 }),
     SUBSCRIPTION_BUSINESS: Object.freeze({ plan: 'business', amount: 399000 })
 });
 

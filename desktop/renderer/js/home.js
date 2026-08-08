@@ -5398,15 +5398,16 @@ class EffectStoreApp {
         modal.classList.add('show');
 
         const u = this.currentUser;
-        const isAdmin = u && (u.isAdmin || u.hasAdminUI);
-        const currentPlan = (u && u.subscription) ? u.subscription.toLowerCase() : 'free';
+        const isAdmin = u && (u.isAdmin || u.hasAdminUI || u.role === 'admin' || u.email === 'admin@effectstore.vn');
+        const rawSub = (u && (u.subscription || u.plan)) ? String(u.subscription || u.plan).toLowerCase() : 'free';
+        const currentPlan = isAdmin ? 'admin' : (rawSub === 'basic' ? 'basic' : ((rawSub === 'pro' || rawSub === 'business') ? 'pro' : (rawSub === 'studio' ? 'studio' : 'free')));
 
         // Reset buttons
         const btnFree = document.getElementById('plan-btn-free');
         const btnPro = document.getElementById('plan-btn-pro');
         const btnBusiness = document.getElementById('plan-btn-business');
         const btnStudio = document.getElementById('plan-btn-studio');
-        const rank = { free: 0, pro: 1, business: 2, studio: 3, admin: 4 };
+        const rank = { free: 0, basic: 1, pro: 2, studio: 3, admin: 4 };
         const currentRank = isAdmin ? 4 : (rank[currentPlan] ?? 0);
 
         if (isAdmin) {
@@ -5422,14 +5423,14 @@ class EffectStoreApp {
                 if (currentPlan !== 'free') btnFree.classList.add('disabled');
             }
             if (btnPro) {
-                btnPro.innerText = currentPlan === 'pro' ? 'GÓI HIỆN TẠI' : (currentRank > 1 ? 'ĐÃ BAO GỒM' : 'NÂNG CẤP BASIC');
+                btnPro.innerText = currentPlan === 'basic' ? 'GÓI HIỆN TẠI' : (currentRank > 1 ? 'ĐÃ BAO GỒM' : 'NÂNG CẤP BASIC');
                 btnPro.className = currentRank >= 1 ? 'plan-btn disabled' : 'plan-btn active';
-                btnPro.onclick = currentRank >= 1 ? null : () => this.buySubscription('pro');
+                btnPro.onclick = currentRank >= 1 ? null : () => this.buySubscription('basic');
             }
             if (btnBusiness) {
-                btnBusiness.innerText = currentPlan === 'business' ? 'GÓI HIỆN TẠI' : (currentRank > 2 ? 'ĐÃ BAO GỒM' : 'NÂNG CẤP PRO');
+                btnBusiness.innerText = currentPlan === 'pro' ? 'GÓI HIỆN TẠI' : (currentRank > 2 ? 'ĐÃ BAO GỒM' : 'NÂNG CẤP PRO');
                 btnBusiness.className = currentRank >= 2 ? 'plan-btn disabled' : 'plan-btn';
-                btnBusiness.onclick = currentRank >= 2 ? null : () => this.buySubscription('business');
+                btnBusiness.onclick = currentRank >= 2 ? null : () => this.buySubscription('pro');
             }
             if (btnStudio && currentPlan === 'studio') {
                 btnStudio.innerText = 'GÓI HIỆN TẠI';
@@ -5450,9 +5451,10 @@ class EffectStoreApp {
     }
 
     async buySubscription(plan) {
-        const price = plan === 'pro' ? 199000 : 399000;
-        const subCode = plan === 'pro' ? 'SUBSCRIPTION_PRO' : 'SUBSCRIPTION_BUSINESS';
-        const planName = plan === 'pro' ? 'Basic' : 'Pro';
+        const isBasic = plan === 'basic';
+        const price = isBasic ? 199000 : 399000;
+        const subCode = isBasic ? 'SUBSCRIPTION_BASIC' : 'SUBSCRIPTION_PRO';
+        const planName = isBasic ? 'Basic' : 'Pro';
 
         // CRITICAL FIX: Set pendingEffects so confirmPaymentWithProof sends the correct code
         this.pendingEffects = [{ effectId: subCode, effectName: `Gói ${planName}` }];
