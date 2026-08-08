@@ -438,9 +438,11 @@ initOBSConnection();
 // this mounts and behavior is unchanged.
 const { isCloudProxyEnabled, proxyToCloud } = require('./middleware/cloudProxy');
 if (isCloudProxyEnabled()) {
-    console.log('☁️  Cloud proxy enabled — auth/payment/banner-read/effects-catalog-read route to the central server.');
     app.use('/api/auth', proxyToCloud);
-    app.use('/api/payment', proxyToCloud);
+    app.use('/api/payment', (req, res, next) => {
+        if (req.originalUrl && req.originalUrl.includes('/admin')) return next();
+        return proxyToCloud(req, res);
+    });
     app.get('/api/banner', proxyToCloud);
     app.get('/api/effects', proxyToCloud);
     app.get('/api/effects/trending', proxyToCloud);

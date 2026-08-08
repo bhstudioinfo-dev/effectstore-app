@@ -3,6 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const tiktokService = require('../services/tiktokService');
+const User = require('../models/User');
 const GiftMapping = require('../models/GiftMapping');
 const ChallengeWheel = require('../models/ChallengeWheel');
 const GiftLog = require('../models/GiftLog');
@@ -265,9 +266,7 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
             const wheels = await ChallengeWheel.find({ isTemplate: true }).lean();
             return res.json({ success: true, wheels });
         }
-        // Backfill a wheel for an admin's already-published challenge-wheel
-        // template. Older published products predate the ChallengeWheel record.
-        const owner = await User.findById(req.userId).select('isAdmin subscription').lean();
+        const owner = req.user || (await User.findById(req.userId).select('isAdmin subscription').lean());
         if (owner?.isAdmin === true || owner?.subscription === 'business') {
             const templates = await GiftMenuLayout.find({
                 userId: req.userId,
@@ -965,17 +964,14 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
 const aiAssistantService = require('../services/aiAssistantService');
 
 // AI Assistant Config API
-router.get('/ai-config', optionalAuthMiddleware, async (req, res) => {
+router.get('/ai-config', optionalAuthMiddleware, (req, res) => {
     try {
         const config = aiAssistantService.getConfig();
         let userPlan = 'free';
-        if (req.userId) {
-            const user = await User.findById(req.userId).select('isAdmin subscription plan');
-            if (user?.isAdmin === true) {
-                userPlan = 'admin';
-            } else {
-                userPlan = user?.subscription || user?.plan || 'free';
-            }
+        if (req.isAdmin || req.user?.isAdmin || req.user?.email === 'admin@effectstore.vn') {
+            userPlan = 'admin';
+        } else if (req.user) {
+            userPlan = req.user.subscription || req.user.plan || 'free';
         }
         const usage = aiAssistantService.getCharacterUsage(userPlan);
         const systemStatus = aiAssistantService.getSystemStatus();

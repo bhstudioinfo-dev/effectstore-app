@@ -169,6 +169,7 @@ router.post('/sepay-webhook', async (req, res) => {
 router.get('/admin/payments', authMiddleware, adminMiddleware, async (_req, res) => {
     try {
         const payments = await Payment.find().sort({ createdAt: -1 }).lean();
+        console.log('API /admin/payments count:', payments.length, 'statuses:', payments.map(p => p.status));
         const userIds = [...new Set(payments.map((payment) => String(payment.userId || '')).filter(isValidResourceId))];
         const effectIds = [...new Set(payments.flatMap((payment) => payment.effectIds || [])
             .map(String)
