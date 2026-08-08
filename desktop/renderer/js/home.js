@@ -952,6 +952,30 @@ class EffectStoreApp {
         this.showNotification('info', '👋 Đã đăng xuất! Vui lòng nhập email & mật khẩu tài khoản Admin để đăng nhập.');
     }
 
+    openAuthModal() {
+        this.closeModal();
+        const modal = document.getElementById('auth-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('show');
+            const emailInput = document.getElementById('login-email');
+            if (emailInput) {
+                emailInput.value = '';
+                emailInput.focus();
+            }
+            const passwordInput = document.getElementById('login-password');
+            if (passwordInput) passwordInput.value = '';
+        }
+    }
+
+    closeAuthModal() {
+        const modal = document.getElementById('auth-modal');
+        if (modal) {
+            modal.classList.remove('show');
+            modal.classList.add('hidden');
+        }
+    }
+
     openStudioContact() {
         this.closePricing();
         this.openCustomEffectModal();

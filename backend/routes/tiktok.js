@@ -1206,15 +1206,24 @@ router.get('/gift-menu-layouts', authMiddleware, async (req, res) => {
 
 router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
     try {
+        const templates = await GiftMenuLayout.find({ isTemplate: true, category: { $ne: 'goal_board' } }).sort({ updatedAt: -1 }).lean();
+        if (!req.userId) {
+            return res.json({
+                success: true,
+                templates: templates.map(t => ({
+                    ...t,
+                    isPurchased: true,
+                    isUsed: false,
+                    usedLayoutId: null
+                }))
+            });
+        }
         const user = await User.findById(req.userId);
-        const ownedEffectIds = user ? user.purchasedEffects.map(pe => pe.effectId?.toString()).filter(Boolean) : [];
+        const ownedEffectIds = (user && Array.isArray(user.purchasedEffects)) ? user.purchasedEffects.map(pe => pe.effectId?.toString()).filter(Boolean) : [];
         const isAdmin = user ? user.isAdmin === true : false;
         const isBusiness = user ? user.subscription === 'business' : false;
 
-        const [templates, userLayouts] = await Promise.all([
-            GiftMenuLayout.find({ isTemplate: true, category: { $ne: 'goal_board' } }).sort({ updatedAt: -1 }).lean(),
-            GiftMenuLayout.find({ userId: req.userId, isTemplate: false }).select('_id name parentTemplateId').lean()
-        ]);
+        const userLayouts = await GiftMenuLayout.find({ userId: req.userId, isTemplate: false }).select('_id name parentTemplateId').lean();
         const usedTemplateIds = new Set(userLayouts.filter(layout => layout.parentTemplateId).map(layout => String(layout.parentTemplateId)));
         const usedTemplateNames = new Set(userLayouts.map(layout => String(layout.name || '').trim().toLowerCase()));
 
@@ -1243,7 +1252,10 @@ router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
         });
 
         res.json({ success: true, templates: mappedTemplates });
-    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+    } catch (error) {
+        console.error('Error in /gift-menu-templates:', error);
+        res.json({ success: true, templates: [] });
+    }
 });
 
 router.get('/gift-menu-overlay-layout', async (_req, res) => {
