@@ -965,10 +965,18 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
 const aiAssistantService = require('../services/aiAssistantService');
 
 // AI Assistant Config API
-router.get('/ai-config', optionalAuthMiddleware, (req, res) => {
+router.get('/ai-config', optionalAuthMiddleware, async (req, res) => {
     try {
         const config = aiAssistantService.getConfig();
-        const userPlan = (req.isAdmin || req.user?.isAdmin || req.user?.role === 'admin') ? 'admin' : (req.user?.subscription || req.user?.plan || 'free');
+        let userPlan = 'free';
+        if (req.userId) {
+            const user = await User.findById(req.userId).select('isAdmin subscription plan');
+            if (user?.isAdmin === true) {
+                userPlan = 'admin';
+            } else {
+                userPlan = user?.subscription || user?.plan || 'free';
+            }
+        }
         const usage = aiAssistantService.getCharacterUsage(userPlan);
         const systemStatus = aiAssistantService.getSystemStatus();
         res.json({ success: true, config, usage, systemStatus });

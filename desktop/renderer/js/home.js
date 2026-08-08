@@ -7063,25 +7063,29 @@ class EffectStoreApp {
         if (!usage) return;
         const meterText = document.getElementById('ai-usage-meter-text');
         const planBadge = document.getElementById('ai-usage-plan-badge');
-        const isAdmin = usage.isAdmin || this.currentUser?.isAdmin || this.currentUser?.role === 'admin';
+        const isAdmin = Boolean(this.currentUser && (this.currentUser.isAdmin === true || this.currentUser.role === 'admin'));
         const hasQuota = isAdmin || usage.hasQuota || (usage.remaining > 0);
 
         if (meterText) {
-            if (isAdmin || usage.totalLimit >= 999000000) {
+            if (isAdmin) {
                 meterText.textContent = `${(usage.used || 0).toLocaleString()} ký tự (Không giới hạn ♾️)`;
             } else {
                 meterText.textContent = `${(usage.used || 0).toLocaleString()} / ${(usage.totalLimit || 1000).toLocaleString()} ký tự`;
             }
         }
         if (planBadge) {
-            if (isAdmin || usage.totalLimit >= 999000000) {
+            if (isAdmin) {
                 planBadge.textContent = 'Gói ADMIN (Vĩnh Viễn)';
                 planBadge.style.background = 'linear-gradient(135deg, #ef4444, #f59e0b)';
                 planBadge.style.color = '#fff';
             } else {
-                const sub = (this.currentUser?.subscription || this.currentUser?.plan || document.querySelector('.user-card .plan')?.textContent?.trim() || 'BASIC').toLowerCase();
-                const planName = (sub.includes('basic') || sub === 'pro') ? 'Basic' : (sub.includes('business') ? 'Pro' : (sub.includes('free') ? 'Free' : 'Basic'));
+                const sub = (this.currentUser?.subscription || this.currentUser?.plan || document.querySelector('.user-card .plan')?.textContent?.trim() || 'FREE').toLowerCase();
+                const planName = (sub.includes('business') || sub === 'pro') ? 'Pro' : (sub.includes('basic') ? 'Basic' : 'Free');
                 planBadge.textContent = `Gói ${planName}`;
+                planBadge.style.background = planName === 'Pro'
+                    ? 'rgba(167,139,250,0.15)'
+                    : (planName === 'Basic' ? 'rgba(212,175,55,0.15)' : 'rgba(107,114,128,0.15)');
+                planBadge.style.color = planName === 'Pro' ? '#a78bfa' : (planName === 'Basic' ? '#fbbf24' : '#9ca3af');
             }
         }
 
