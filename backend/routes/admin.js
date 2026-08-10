@@ -7,6 +7,7 @@ const EffectRequest = require('../models/EffectRequest');
 const GiftConfig = require('../models/GiftConfig');
 const Banner = require('../models/Banner');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
+const { createRateLimiter } = require('../middleware/rateLimit');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -192,10 +193,16 @@ router.delete('/users/:userId', authMiddleware, adminMiddleware, async (req, res
 });
 
 // Effect Requests (matching /api/effect-requests and /api/admin/effect-requests)
-router.post('/effect-requests', async (req, res) => {
+const effectRequestRateLimiter = createRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: 'Bạn đã gửi quá nhiều yêu cầu hiệu ứng. Vui lòng thử lại sau.',
+    keyFn: (req) => `effect-request:${req.userId || req.ip || req.socket?.remoteAddress || 'unknown'}`
+});
+router.post('/effect-requests', authMiddleware, effectRequestRateLimiter, async (req, res) => {
     try {
         const { name, phone, description } = req.body;
-        const newReq = await EffectRequest.create({ name, phone, description });
+        const newReq = await EffectRequest.create({ name, phone, description, userId: req.userId });
         res.json({ success: true, message: 'Gửi yêu cầu thành công!', request: newReq });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

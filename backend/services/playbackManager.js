@@ -122,7 +122,16 @@ class PlaybackManager {
         } else {
             // Legacy OBS Trigger
             console.log(`[PLAYBACK] playbackType=${item.playbackType} → legacy triggerOBSEffect`);
-            await obsService.triggerOBSEffect(item.effectId, item.duration);
+            const triggered = await obsService.triggerOBSEffect(item.effectId, item.duration);
+            if (!triggered) {
+                // OBS wasn't connected or rejected the source update — the
+                // effect never actually appeared on stream. Throwing here
+                // (instead of arming a timer as if it played) routes back
+                // through effectQueue's catch, which emits effect_warning
+                // and frees the queue via failCurrent() instead of the
+                // streamer silently seeing nothing happen.
+                throw new Error('Không thể kích hoạt hiệu ứng trên OBS (OBS chưa kết nối hoặc từ chối yêu cầu).');
+            }
             this.currentTimer = setTimeout(() => {
                 this.clearCurrentAndFinished(onFinishedCallback, 'finished');
             }, item.duration);

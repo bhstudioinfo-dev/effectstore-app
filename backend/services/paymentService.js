@@ -5,7 +5,9 @@ const mongoose = require('mongoose');
 const SUBSCRIPTION_PRODUCTS = Object.freeze({
     SUBSCRIPTION_BASIC: Object.freeze({ plan: 'basic', amount: 199000 }),
     SUBSCRIPTION_PRO: Object.freeze({ plan: 'pro', amount: 399000 }),
-    SUBSCRIPTION_BUSINESS: Object.freeze({ plan: 'business', amount: 399000 })
+    // Kept so historical pending orders can still be granted correctly.
+    // New customers must use SUBSCRIPTION_PRO; Business is no longer sold.
+    SUBSCRIPTION_BUSINESS: Object.freeze({ plan: 'business', amount: 399000, purchasable: false })
 });
 
 function normalizeEffectIds(value) {
@@ -29,7 +31,11 @@ async function calculateOrder(effectIds, user) {
     const subscriptionIds = ids.filter((id) => SUBSCRIPTION_PRODUCTS[id]);
     if (subscriptionIds.length > 0) {
         if (ids.length !== 1) throw Object.assign(new Error('Subscription cannot be combined with effects.'), { status: 400 });
-        return { effectIds: ids, amount: SUBSCRIPTION_PRODUCTS[subscriptionIds[0]].amount };
+        const subscription = SUBSCRIPTION_PRODUCTS[subscriptionIds[0]];
+        if (subscription.purchasable === false) {
+            throw Object.assign(new Error('This legacy subscription is no longer available for purchase.'), { status: 410 });
+        }
+        return { effectIds: ids, amount: subscription.amount };
     }
 
     if (ids.some((id) => !mongoose.isObjectIdOrHexString(id))) {
@@ -96,6 +102,13 @@ async function grantPayment(payment) {
     const paidEffectsById = new Map(paidEffects.map((effect) => [String(effect._id), effect]));
 
     for (const itemId of payment.effectIds) {
+        // Every branch below mutates a specific account's own document, so a
+        // payment that never resolved to a real user (bad/missing userId)
+        // must not grant anything — least of all AI_ADDON_*, which used to
+        // skip this check and fall through to aiAssistantService's shared
+        // no-user fallback file, silently pooling real character grants into
+        // a bucket every account's usage widget can read from.
+        if (!user) continue;
         if (itemId === 'AI_ADDON_10K') {
             const aiAssistantService = require('./aiAssistantService');
             aiAssistantService.addAddonCharacters(1000, user);
@@ -111,7 +124,6 @@ async function grantPayment(payment) {
             aiAssistantService.addAddonCharacters(12000, user);
             continue;
         }
-        if (!user) continue;
         const subscription = SUBSCRIPTION_PRODUCTS[itemId];
         if (subscription) {
             user.subscription = subscription.plan;

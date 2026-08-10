@@ -202,13 +202,6 @@
                 </div>
                 <button class="picker-close" onclick="closePickerModal()">✕</button>
             </div>
-            <div style="padding:0 14px 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                <button id="upload-effect-btn" onclick="chooseRemoteUpload('effect')" style="border:1px solid rgba(168,85,247,.55);background:rgba(126,34,206,.18);color:#e9d5ff;border-radius:12px;padding:11px 8px;font-weight:800;">⬆ Video effect</button>
-                <button id="upload-sound-btn" onclick="chooseRemoteUpload('sound')" style="border:1px solid rgba(56,189,248,.55);background:rgba(2,132,199,.15);color:#bae6fd;border-radius:12px;padding:11px 8px;font-weight:800;">⬆ File âm thanh</button>
-                <input id="remote-effect-file" type="file" accept="video/mp4,video/webm,video/quicktime,.avi" hidden onchange="uploadRemoteMedia('effect',this)">
-                <input id="remote-sound-file" type="file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/aac,.m4a" hidden onchange="uploadRemoteMedia('sound',this)">
-            </div>
-            <div id="upload-status" style="display:none;margin:0 14px 12px;padding:10px;border-radius:10px;background:rgba(59,130,246,.12);color:#bfdbfe;font-size:12px;text-align:center;"></div>
             <div class="picker-grid" id="picker-grid">
                 <!-- Rendered by JS -->
             </div>
@@ -388,10 +381,6 @@
             const modalTitle = document.getElementById('picker-title');
             const grid = document.getElementById('picker-grid');
             if (modalTitle) modalTitle.textContent = type === 'effect' ? 'Chọn hiệu ứng' : 'Chọn âm thanh Soundboard';
-            document.getElementById('upload-effect-btn').style.display = type === 'effect' ? '' : 'none';
-            document.getElementById('upload-sound-btn').style.display = type === 'sound' ? '' : 'none';
-            const uploadStatus = document.getElementById('upload-status');
-            uploadStatus.style.display = 'none';
 
             const items = type === 'effect' ? (deckState.availableEffects || []) : (deckState.availableSounds || []);
 
@@ -493,52 +482,6 @@
                 showToast('⏹️ Đã tắt toàn bộ sound!');
             } catch (e) {
                 console.error('Stop all error:', e);
-            }
-        }
-
-        function chooseRemoteUpload(type) {
-            document.getElementById(type === 'effect' ? 'remote-effect-file' : 'remote-sound-file')?.click();
-        }
-
-        async function uploadRemoteMedia(type, input) {
-            const file = input?.files?.[0];
-            if (!file) return;
-            const maxBytes = type === 'effect' ? 500 * 1024 * 1024 : 30 * 1024 * 1024;
-            if (file.size > maxBytes) {
-                showToast(type === 'effect' ? '❌ Video phải dưới 500MB' : '❌ Âm thanh phải dưới 30MB');
-                input.value = '';
-                return;
-            }
-            const status = document.getElementById('upload-status');
-            status.style.display = 'block';
-            status.textContent = type === 'effect'
-                ? 'Đang gửi và tối ưu video trên PC… Không đóng trang.'
-                : 'Đang tải âm thanh lên PC…';
-            const form = new FormData();
-            form.append('media', file);
-            form.append('name', file.name.replace(/\.[^.]+$/, '').slice(0, 80));
-            form.append('index', String(pendingAssignIndex));
-            try {
-                const response = await fetch(remoteApiUrl(`/api/remote/upload/${type}`), {
-                    method: 'POST',
-                    headers: remoteHeaders(),
-                    body: form
-                });
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok || !data.success) throw new Error(data.error || 'Upload thất bại.');
-                const state = deckState[type] || { slots: [], visible: 10 };
-                state.slots = [...(state.slots || []).filter(slot => slot && Number(slot.index) !== pendingAssignIndex), data.slot];
-                deckState[type] = state;
-                const key = type === 'effect' ? 'availableEffects' : 'availableSounds';
-                deckState[key] = [...(deckState[key] || []).filter(item => String(item.id) !== String(data.item.id)), data.item];
-                closePickerModal();
-                renderDeck();
-                showToast(type === 'effect' ? '✅ Đã upload và thêm effect!' : '✅ Đã upload và thêm sound!');
-            } catch (error) {
-                status.textContent = `❌ ${error.message}`;
-                showToast(`❌ ${error.message}`);
-            } finally {
-                input.value = '';
             }
         }
 

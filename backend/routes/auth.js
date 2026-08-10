@@ -223,7 +223,15 @@ router.post('/login', loginRateLimiter, async (req, res) => {
         await expireSubscriptionIfNeeded(user);
 
         const isAdmin = isAdminUser(user);
-        if (!isAdmin && machineId) {
+        if (!isAdmin) {
+            // A client that simply omits machineId used to skip this whole
+            // check — the device cap only meant anything for clients that
+            // bothered to send an ID. The desktop app always generates and
+            // sends one (see home.js init()), so require it here instead of
+            // silently letting an unidentified device through ungated.
+            if (!machineId) {
+                return res.status(400).json({ success: false, error: 'Thiếu mã thiết bị (machineId).' });
+            }
             const entitlements = getEntitlements(user);
             const maxDevices = entitlements.devices;
             if (!user.activeDevices) user.activeDevices = [];

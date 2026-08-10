@@ -26,6 +26,13 @@ const obsService = require('../services/obsService');
 const { issueEffectAccessToken } = require('../services/effectAccessToken');
 const { isValidResourceId, ownedResourceFilter } = require('../utils/accessControl');
 const { paths: dataPaths } = require('../config/dataPaths');
+const {
+    fetchCloudTemplateJson,
+    mirrorCloudTemplates,
+    resolveCloudAssetUrl,
+    syncCloudTemplate,
+    syncCloudTemplateList
+} = require('../services/cloudTemplateCatalog');
 let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) { }
 const giftMenuLayoutPath = dataPaths.giftMenuLayoutPath;
@@ -267,6 +274,9 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
             return res.json({ success: true, wheels });
         }
         const owner = req.user || (await User.findById(req.userId).select('isAdmin subscription').lean());
+        // `business` is a legacy account value with historical bundled-product
+        // access. Current Pro/Studio subscriptions do not automatically own
+        // paid Store or Challenge Wheel products.
         if (owner?.isAdmin === true || owner?.subscription === 'business') {
             const templates = await GiftMenuLayout.find({
                 userId: req.userId,
@@ -967,7 +977,15 @@ const aiAssistantService = require('../services/aiAssistantService');
 router.get('/ai-config', optionalAuthMiddleware, (req, res) => {
     try {
         const config = aiAssistantService.getConfig();
-        const usage = aiAssistantService.getCharacterUsage(req.user || 'free');
+        // req.user is only absent when the request has no (or an invalid)
+        // auth token — e.g. a race before login finishes. getCharacterUsage
+        // falls back to a shared, no-account counter in that case, which
+        // must never be shown as if it were this viewer's own quota (it
+        // would leak whatever leftover figures live in that shared bucket
+        // onto any account that happens to hit this without a valid token).
+        const usage = req.user
+            ? aiAssistantService.getCharacterUsage(req.user)
+            : { used: 0, baseLimit: 1000, addon: 0, totalLimit: 1000, remaining: 1000, hasQuota: true, monthKey: '' };
         const systemStatus = aiAssistantService.getSystemStatus();
         res.json({ success: true, config, usage, systemStatus });
     } catch (error) {
@@ -1011,7 +1029,7 @@ router.post('/save-voice-sample', (req, res) => {
     }
 });
 
-router.post('/ai-buy-addon', optionalAuthMiddleware, async (req, res) => {
+router.post('/ai-buy-addon', authMiddleware, async (req, res) => {
     try {
         const { pack } = req.body || {};
         let addonCharacters = 0;
@@ -1036,16 +1054,21 @@ router.post('/ai-buy-addon', optionalAuthMiddleware, async (req, res) => {
 
         const userPlan = normalizePlan(req.user);
 
-        // Create pending payment for admin review
+        // Create pending payment for admin review. Unlike /create-qr +
+        // /confirm, this pack has no proof-upload step — the admin verifies
+        // the transfer against their own bank/Sepay records — so hasProof
+        // must stay false here; it must never be hardcoded true without an
+        // actual uploaded file, or the admin queue would show unverifiable
+        // orders as if proof had already been submitted.
         const Payment = require('../models/Payment');
         const orderId = 'AI' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
         await Payment.create({
-            userId: String(req.userId || 'guest-user'),
+            userId: String(req.userId),
             orderId,
             amount,
             effectIds: [`AI_ADDON_${pack.toUpperCase()}`],
             status: 'pending',
-            hasProof: true
+            hasProof: false
         });
 
         res.json({
@@ -1053,7 +1076,7 @@ router.post('/ai-buy-addon', optionalAuthMiddleware, async (req, res) => {
             pending: true,
             message: `✅ Đã gửi yêu cầu nạp ${packName}! Quản trị viên (Admin) đang xác thực giao dịch và sẽ duyệt đơn cho bạn ngay.`,
             orderId,
-            usage: aiAssistantService.getCharacterUsage(userPlan)
+            usage: aiAssistantService.getCharacterUsage(req.user || userPlan)
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -1068,7 +1091,8 @@ router.post('/ai-test-speech', authMiddleware, async (req, res) => {
             username: username || 'Viewer Thử nghiệm',
             comment: comment || 'Idol live hay quá!',
             isDonator: true,
-            userPlan
+            userPlan,
+            user: req.user
         });
         res.json({ success: true, event: testEvent });
     } catch (error) {
@@ -1203,29 +1227,40 @@ router.get('/gift-menu-layouts', authMiddleware, async (req, res) => {
 
 router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
     try {
+        const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
+        const cloudTemplates = await syncCloudTemplateList(bearerToken).catch((error) => {
+            console.warn('[templates] Cloud catalog sync failed; using local cache:', error.message);
+            return null;
+        });
+        const cloudById = new Map((cloudTemplates || []).map((template) => [String(template._id || template.id), template]));
         const templates = await GiftMenuLayout.find({ isTemplate: true, category: { $ne: 'goal_board' } }).sort({ updatedAt: -1 }).lean();
         if (!req.userId) {
             return res.json({
                 success: true,
-                templates: templates.map(t => ({
-                    ...t,
-                    isPurchased: true,
-                    isUsed: false,
-                    usedLayoutId: null
-                }))
+                templates: templates.map(t => {
+                    const cloudTemplate = cloudById.get(String(t._id));
+                    return {
+                        ...t,
+                        isPurchased: cloudTemplate
+                            ? Boolean(cloudTemplate.isPurchased)
+                            : Number(t.price || 0) <= 0,
+                        isUsed: false,
+                        usedLayoutId: null
+                    };
+                })
             });
         }
         const user = await User.findById(req.userId);
         const ownedEffectIds = (user && Array.isArray(user.purchasedEffects)) ? user.purchasedEffects.map(pe => pe.effectId?.toString()).filter(Boolean) : [];
         const isAdmin = user ? user.isAdmin === true : false;
-        const isBusiness = user ? user.subscription === 'business' : false;
+        const hasLegacyBundledProducts = user ? user.subscription === 'business' : false;
 
         const userLayouts = await GiftMenuLayout.find({ userId: req.userId, isTemplate: false }).select('_id name parentTemplateId').lean();
         const usedTemplateIds = new Set(userLayouts.filter(layout => layout.parentTemplateId).map(layout => String(layout.parentTemplateId)));
         const usedTemplateNames = new Set(userLayouts.map(layout => String(layout.name || '').trim().toLowerCase()));
 
         const templateEffectByLayoutId = new Map();
-        if (!isAdmin && !isBusiness && templates.length) {
+        if (!isAdmin && !hasLegacyBundledProducts && templates.length) {
             const templateEffects = await Effect.find({
                 category: 'menu_template',
                 fileUrl: { $in: templates.map((template) => String(template._id)) }
@@ -1240,12 +1275,18 @@ router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
                 String(layout.name || '').trim().toLowerCase() === normalizedName
             );
             const isUsed = usedTemplateIds.has(String(t._id)) || usedTemplateNames.has(normalizedName);
-            if (isAdmin || isBusiness) {
+            if (isAdmin || hasLegacyBundledProducts) {
                 return { ...t, isPurchased: true, isUsed, usedLayoutId: usedLayout?._id || null };
             }
             const correspondingEffectId = templateEffectByLayoutId.get(String(t._id));
             const isPurchased = correspondingEffectId ? ownedEffectIds.includes(correspondingEffectId) : false;
-            return { ...t, isPurchased, isUsed, usedLayoutId: usedLayout?._id || null };
+            const cloudTemplate = cloudById.get(String(t._id));
+            return {
+                ...t,
+                isPurchased: cloudTemplate ? Boolean(cloudTemplate.isPurchased) : isPurchased,
+                isUsed,
+                usedLayoutId: usedLayout?._id || null
+            };
         });
 
         res.json({ success: true, templates: mappedTemplates });
@@ -1298,6 +1339,49 @@ router.get('/gift-menu-layout', authMiddleware, async (req, res) => {
         }
         res.json({ success: true, layout });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+// The OBS gift-menu overlay renders whatever was last "Lưu & Xuất" to the
+// mirror file — it does not know or care which account is logged into the
+// desktop app. On a shared PC that meant switching accounts left the
+// previous account's board showing in OBS until someone republished. The
+// desktop app calls this right after login so the overlay picks up the new
+// account's own saved board automatically. It only rewrites the mirror's
+// content (the same self-heal `processGiftMenuGift` already does when a
+// real gift arrives) — it never touches OBS scene/source setup, which stays
+// exclusively behind explicit "Lưu & Xuất".
+router.post('/gift-menu-overlay-sync-active', authMiddleware, async (req, res) => {
+    try {
+        // Never clobber a different account's board while it's actually live.
+        if (tiktokService.currentLiveUserId && String(tiktokService.currentLiveUserId) !== String(req.userId)) {
+            return res.json({ success: true, synced: false, reason: 'live-session-active' });
+        }
+
+        let layout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true, isTemplate: false }).lean();
+        if (!layout) {
+            const fallback = await GiftMenuLayout.findOne({ userId: req.userId, isTemplate: false });
+            if (fallback) {
+                fallback.isActive = true;
+                await fallback.save();
+                layout = fallback.toObject();
+            }
+        }
+        if (!layout) return res.json({ success: true, synced: false });
+
+        let currentFileUserId = '';
+        try {
+            if (fs.existsSync(giftMenuLayoutPath)) {
+                const current = JSON.parse(fs.readFileSync(giftMenuLayoutPath, 'utf8') || 'null');
+                currentFileUserId = current && current.userId ? String(current.userId) : '';
+            }
+        } catch (_e) {}
+        if (currentFileUserId === String(req.userId)) return res.json({ success: true, synced: false });
+
+        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
+        res.json({ success: true, synced: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
@@ -1364,11 +1448,15 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             }
         }
 
-        const designerViolation = payload.draftOnly === true
-            ? null
-            : (validateDesignerItems(payload.items, entitlements) ||
-                validateDesignerItems(payload.exportedItems, entitlements));
-        if (designerViolation) return res.status(403).json(designerViolation);
+        // Saving is a draft/library action: keep every trial setting intact so
+        // Free users can return to a design they like. The same validation is
+        // still calculated for a friendly notice, while OBS export remains the
+        // authoritative blocking boundary in routes/obs.js.
+        const designerViolation = validateDesignerItems(payload.items, entitlements) ||
+            validateDesignerItems(payload.exportedItems, entitlements);
+        if (designerViolation && payload.draftOnly !== true) {
+            return res.status(403).json(designerViolation);
+        }
         if (!layout) {
             if (Number.isFinite(entitlements.layouts)) {
                 const layoutCount = await GiftMenuLayout.countDocuments({ userId: req.userId, isTemplate: false });
@@ -1484,7 +1572,15 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             });
         }
 
-        res.json({ success: true, layout });
+        const exportNotice = designerViolation && payload.draftOnly === true
+            ? {
+                upgradeRequired: true,
+                feature: designerViolation.feature,
+                recommendedPlan: designerViolation.recommendedPlan,
+                message: designerViolation.message
+            }
+            : null;
+        res.json({ success: true, layout, exportNotice });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
@@ -1566,6 +1662,21 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
         const isAdmin = Boolean(user && user.isAdmin === true);
         if (!isAdmin) return res.status(403).json({ success: false, error: 'Unauthorized' });
         const payload = req.body || {};
+        const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
+        const cloudPublish = await fetchCloudTemplateJson(
+            '/api/tiktok/gift-menu-layout/publish',
+            bearerToken,
+            { method: 'POST', body: payload }
+        ).catch((error) => {
+            if (process.env.EFFECTSTORE_DESKTOP_MANAGED === 'true') throw error;
+            return null;
+        });
+        if (cloudPublish) {
+            if (cloudPublish.template) {
+                await mirrorCloudTemplates([cloudPublish.template]);
+            }
+            return res.json(cloudPublish);
+        }
         const activeLayout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true, isTemplate: false });
         const sourceLayout = payload.layoutData && Array.isArray(payload.layoutData.items)
             ? payload.layoutData
@@ -1655,6 +1766,10 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
         if (!isValidResourceId(req.params.templateId)) {
             return res.status(400).json({ success: false, error: 'Invalid template ID' });
         }
+        const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
+        await syncCloudTemplate(req.params.templateId, bearerToken).catch((error) => {
+            console.warn('[templates] Cloud template refresh failed; using local cache:', error.message);
+        });
         const template = await GiftMenuLayout.findOne({ _id: req.params.templateId, isTemplate: true });
         if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
         const user = await User.findById(req.userId);
@@ -1662,10 +1777,17 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, 
 
         const price = Number(template.price) || 0;
         let hasPurchased = false;
-        const correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
+        let correspondingEffect = await Effect.findOne({ category: 'menu_template', fileUrl: template._id.toString() });
+        if (!correspondingEffect) {
+            const cloudEffectData = await fetchCloudTemplateJson(
+                `/api/tiktok/gift-menu-templates/${encodeURIComponent(template._id)}/effect`,
+                bearerToken
+            ).catch(() => null);
+            correspondingEffect = cloudEffectData?.effect || null;
+        }
         const isAdmin = user.isAdmin === true;
-        const isBusiness = user.subscription === 'business';
-        if (isAdmin || isBusiness) {
+        const hasLegacyBundledProducts = user.subscription === 'business';
+        if (isAdmin || hasLegacyBundledProducts) {
             hasPurchased = true;
         } else {
             hasPurchased = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
@@ -1845,6 +1967,8 @@ router.get('/gift-menu-templates/:templateId', optionalAuthMiddleware, async (re
         if (!isValidResourceId(req.params.templateId)) {
             return res.status(400).json({ success: false, error: 'Invalid template ID' });
         }
+        const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
+        await syncCloudTemplate(req.params.templateId, bearerToken).catch(() => null);
         const template = await GiftMenuLayout.findOne({ _id: req.params.templateId, isTemplate: true }).lean();
         if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
         res.json({ success: true, template });
@@ -1896,16 +2020,35 @@ router.get('/goal-board/assets', authMiddleware, async (req, res) => {
             return readAssets(adminDir, `/uploads/goal-assets/${adminId}`, 'shared')
                 .filter(asset => /vien/i.test(asset.name));
         });
-        const framePresets = [
+        let framePresets = [
             ...readAssets(sharedFrameDir, '/uploads/goal-assets/_shared-frames', 'shared').filter(asset => /vien/i.test(asset.name)),
             ...legacyAdminFrames
         ].filter((asset, index, list) => list.findIndex(other => other.url === asset.url) === index);
+        const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
+        const cloudAssets = await fetchCloudTemplateJson('/api/tiktok/goal-board/assets', bearerToken).catch(() => null);
+        if (cloudAssets) {
+            const cloudFrames = (cloudAssets.framePresets || []).map((asset) => ({
+                ...asset,
+                url: resolveCloudAssetUrl(asset.url),
+                scope: 'shared'
+            }));
+            framePresets = [...cloudFrames, ...framePresets]
+                .filter((asset, index, list) => list.findIndex(other => other.url === asset.url) === index);
+        }
         res.json({ success: true, assets, framePresets });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.get('/goal-board/templates', authMiddleware, async (req, res) => {
     try {
+        const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
+        const cloudTemplates = await fetchCloudTemplateJson('/api/tiktok/goal-board/templates', bearerToken).catch((error) => {
+            console.warn('[goal-templates] Cloud catalog unavailable; using local cache:', error.message);
+            return null;
+        });
+        if (cloudTemplates && Array.isArray(cloudTemplates.customTemplates)) {
+            return res.json({ success: true, customTemplates: cloudTemplates.customTemplates });
+        }
         const [user, templates] = await Promise.all([
             User.findById(req.userId).select('isAdmin subscription purchasedEffects'),
             GiftMenuLayout.find({ isTemplate: true, category: 'goal_board' }).sort({ updatedAt: -1 }).lean()
@@ -1918,6 +2061,8 @@ router.get('/goal-board/templates', authMiddleware, async (req, res) => {
             : [];
         const productByTemplate = new Map(products.map(product => [String(product.fileUrl), product]));
         const purchasedIds = new Set((user.purchasedEffects || []).map(entry => String(entry.effectId || '')));
+        // Paid subscription tiers still need to own paid Store products.
+        // Only admins and historical `business` accounts retain the old bundle.
         const privileged = user.isAdmin === true || user.subscription === 'business';
 
         // Buyer counts are only needed by admins, to warn before a delete revokes access.
@@ -1970,6 +2115,19 @@ router.delete('/goal-board/templates/:templateId', authMiddleware, async (req, r
         }
         if (!isValidResourceId(req.params.templateId)) {
             return res.status(400).json({ success: false, error: 'Mã mẫu không hợp lệ.' });
+        }
+        const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
+        const cloudDelete = await fetchCloudTemplateJson(
+            `/api/tiktok/goal-board/templates/${encodeURIComponent(req.params.templateId)}`,
+            bearerToken,
+            { method: 'DELETE' }
+        ).catch((error) => {
+            if (process.env.EFFECTSTORE_DESKTOP_MANAGED === 'true') throw error;
+            return null;
+        });
+        if (cloudDelete) {
+            await GiftMenuLayout.deleteOne({ _id: req.params.templateId, isTemplate: true });
+            return res.json(cloudDelete);
         }
         const template = await GiftMenuLayout.findOneAndDelete({
             _id: req.params.templateId,

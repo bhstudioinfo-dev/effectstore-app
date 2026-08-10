@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
+const net = require('net');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -81,7 +82,11 @@ function createSecretCodec(codec = {}) {
     };
 }
 
-function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {}) {
+function isLegacyDefaultMongoUri(uri) {
+    return /^mongodb:\/\/(?:127\.0\.0\.1|localhost):27017\/effectstore\/?(?:\?.*)?$/i.test(String(uri || '').trim());
+}
+
+function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {}, defaultMongodbUri = '') {
     const configPath = path.join(userDataPath, 'backend-config.json');
     let stored = {};
     if (fs.existsSync(configPath)) {
@@ -91,7 +96,12 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
     const readSecret = (name) => {
         if (stored[name]) return String(stored[name]); // migrate legacy plaintext config
         if (!stored.secrets?.[name]) return '';
-        try { return codec.reveal(stored.secrets[name]); } catch (_error) { return ''; }
+        try {
+            return codec.reveal(stored.secrets[name]);
+        } catch (error) {
+            try { require('electron-log').warn(`[backend-manager] Failed to decrypt stored ${name}: ${error.message}`); } catch (_e) {}
+            return '';
+        }
     };
     const config = {
         JWT_SECRET: readSecret('JWT_SECRET'),
@@ -102,13 +112,30 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
         WS_HOST: '0.0.0.0'
     };
     if (config.JWT_SECRET.length < 32) {
+        // A freshly-generated secret here invalidates every previously
+        // issued login token instantly (all logged-in sessions get rejected
+        // with 401 on their very next request) — this should only ever
+        // happen on this machine's first-ever run. If it logs on a run
+        // where a config file already existed, the stored JWT_SECRET failed
+        // to decrypt (see readSecret's swallowed catch above), which is the
+        // real bug to chase, not "token expired". Plain console.warn doesn't
+        // reach any file electron-manages in this (main) process, so this
+        // goes through electron-log to land in logs/main.log.
+        try {
+            require('electron-log').warn(`[backend-manager] Generating a NEW JWT_SECRET (existing config present: ${fs.existsSync(configPath)}) — this invalidates every currently logged-in session.`);
+        } catch (_e) {}
         config.JWT_SECRET = crypto.randomBytes(48).toString('hex');
     }
     if (config.ENCRYPTION_PASSWORD.length < 32) {
         config.ENCRYPTION_PASSWORD = crypto.randomBytes(48).toString('hex');
     }
     if (config.INITIAL_SETUP_TOKEN.length < 32) config.INITIAL_SETUP_TOKEN = crypto.randomBytes(48).toString('hex');
-    if (!config.MONGODB_URI) config.MONGODB_URI = 'mongodb://127.0.0.1:27017/effectstore';
+    // Prefer the bundled MongoDB on first run. Also migrate only the exact
+    // historical 27017 default left by older installers; custom local URIs
+    // and mongodb+srv/cloud URIs remain untouched.
+    if (!config.MONGODB_URI || (defaultMongodbUri && isLegacyDefaultMongoUri(config.MONGODB_URI))) {
+        config.MONGODB_URI = defaultMongodbUri || 'mongodb://127.0.0.1:27017/effectstore';
+    }
 
     fs.mkdirSync(userDataPath, { recursive: true });
     const persisted = {
@@ -149,7 +176,7 @@ async function startManagedBackend(options) {
 
     const backendEntry = resolveBackendPath(options);
     if (!fs.existsSync(backendEntry)) throw new Error(`Không tìm thấy backend: ${backendEntry}`);
-    const config = ensureBackendConfig(options.userDataPath, options.secretCodec);
+    const config = ensureBackendConfig(options.userDataPath, options.secretCodec, {}, options.defaultMongodbUri);
     const dataDirectory = path.join(options.userDataPath, 'backend-data');
     const logsDirectory = path.join(options.userDataPath, 'logs');
     fs.mkdirSync(dataDirectory, { recursive: true });
@@ -163,6 +190,7 @@ async function startManagedBackend(options) {
         ...config,
         NODE_ENV: options.isPackaged ? 'production' : (process.env.NODE_ENV || 'development'),
         EFFECTSTORE_STARTUP_TRACE: 'true',
+        EFFECTSTORE_DESKTOP_MANAGED: 'true',
         EFFECTSTORE_DATA_DIR: dataDirectory,
         EFFECTSTORE_LEGACY_DATA_DIR: options.legacyDataDirectory || '',
         CLOUD_API_URL: process.env.CLOUD_API_URL || options.cloudApiUrl || '',
@@ -180,6 +208,7 @@ async function startManagedBackend(options) {
         ? options.launchProcess(backendEntry, processOptions)
         : spawn(options.executablePath, [backendEntry], processOptions);
     child.__effectstoreExited = false;
+    child.__effectstoreSpawnError = null;
     if (child.stdout) child.stdout.pipe(logStream);
     if (child.stderr) child.stderr.pipe(logStream);
     child.once('exit', (code) => {
@@ -187,10 +216,23 @@ async function startManagedBackend(options) {
         child.__effectstoreExitCode = code;
         logStream.end();
     });
+    // A ChildProcess/UtilityProcess that fails to spawn at all (bad path,
+    // missing Node, permissions) emits 'error' — with zero listeners Node
+    // rethrows that as an uncaught exception in the Electron main process,
+    // crashing the whole app instead of surfacing a real error message here.
+    child.on('error', (err) => {
+        child.__effectstoreExited = true;
+        child.__effectstoreSpawnError = err;
+    });
 
     const deadline = Date.now() + 30000;
     while (Date.now() < deadline) {
-        if (child.__effectstoreExited) throw new Error(`Backend đã dừng với mã ${child.__effectstoreExitCode}. Xem logs/backend.log.`);
+        if (child.__effectstoreExited) {
+            if (child.__effectstoreSpawnError) {
+                throw new Error(`Không thể khởi động backend: ${child.__effectstoreSpawnError.message}`);
+            }
+            throw new Error(`Backend đã dừng với mã ${child.__effectstoreExitCode}. Xem logs/backend.log.`);
+        }
         if (await backendHealthCheck(1000)) return { process: child, managed: true, reason: 'started' };
         await new Promise((resolve) => setTimeout(resolve, 300));
     }
@@ -212,13 +254,123 @@ function stopManagedBackend(child, timeoutMs = 5000) {
     });
 }
 
+// ========================================
+// Bundled local MongoDB (see desktop/scripts/fetch-mongod.js)
+// ========================================
+// A dedicated port (not the common 27017 default) so this never collides
+// with a MongoDB the customer may already have installed for something else.
+const BUNDLED_MONGO_PORT = 27117;
+
+function buildLocalMongoUri(dbName = 'effectstore') {
+    return `mongodb://127.0.0.1:${BUNDLED_MONGO_PORT}/${dbName}`;
+}
+
+function resolveMongodPath({ isPackaged, resourcesPath, desktopDirectory }) {
+    return isPackaged
+        ? path.join(resourcesPath, 'mongodb', 'mongod.exe')
+        : path.resolve(desktopDirectory, 'vendor', 'mongodb', 'mongod.exe');
+}
+
+function mongoHealthCheck(timeoutMs = 1000) {
+    return new Promise((resolve) => {
+        const socket = net.connect({ host: '127.0.0.1', port: BUNDLED_MONGO_PORT });
+        const finish = (result) => {
+            socket.removeAllListeners();
+            socket.destroy();
+            resolve(result);
+        };
+        const timer = setTimeout(() => finish(false), timeoutMs);
+        socket.once('connect', () => { clearTimeout(timer); finish(true); });
+        socket.once('error', () => { clearTimeout(timer); finish(false); });
+    });
+}
+
+// Starts (or detects) the bundled local MongoDB so a fresh install works
+// without the customer installing/configuring a database themselves. Never
+// throws — any failure here (missing binary, spawn error, timeout) resolves
+// with uri:null so the caller falls back to whatever MONGODB_URI would have
+// been used before this feature existed (an already-configured install, or
+// the app's existing "standalone mode" degradation), instead of the whole
+// app failing to start over an embedded-database hiccup.
+async function startBundledMongo(options) {
+    const mongodPath = resolveMongodPath(options);
+    if (!fs.existsSync(mongodPath)) {
+        return { process: null, uri: null, reason: 'binary-missing' };
+    }
+
+    if (await mongoHealthCheck()) {
+        // Already listening — e.g. a previous run's mongod survived an
+        // unclean app exit. Reuse it rather than spawning a second instance
+        // that would just fail to bind the same port.
+        return { process: null, uri: buildLocalMongoUri(), reason: 'already-running' };
+    }
+
+    const dataDirectory = path.join(options.userDataPath, 'mongodb-data');
+    const logsDirectory = path.join(options.userDataPath, 'logs');
+    fs.mkdirSync(dataDirectory, { recursive: true });
+    fs.mkdirSync(logsDirectory, { recursive: true });
+    const mongoLogPath = path.join(logsDirectory, 'mongodb.log');
+    rotateLogFile(mongoLogPath);
+    const logStream = fs.createWriteStream(mongoLogPath, { flags: 'a' });
+
+    const child = spawn(mongodPath, [
+        '--dbpath', dataDirectory,
+        '--port', String(BUNDLED_MONGO_PORT),
+        '--bind_ip', '127.0.0.1'
+    ], {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe']
+    });
+    child.__effectstoreExited = false;
+    child.__effectstoreSpawnError = null;
+    if (child.stdout) child.stdout.pipe(logStream);
+    if (child.stderr) child.stderr.pipe(logStream);
+    child.once('exit', (code) => {
+        child.__effectstoreExited = true;
+        child.__effectstoreExitCode = code;
+        logStream.end();
+    });
+    child.on('error', (err) => {
+        child.__effectstoreExited = true;
+        child.__effectstoreSpawnError = err;
+    });
+
+    const deadline = Date.now() + 20000;
+    while (Date.now() < deadline) {
+        if (child.__effectstoreExited) {
+            const reason = child.__effectstoreSpawnError
+                ? child.__effectstoreSpawnError.message
+                : `exit code ${child.__effectstoreExitCode}`;
+            console.error(`⚠️ Bundled MongoDB failed to start (${reason}); falling back to configured MONGODB_URI.`);
+            return { process: null, uri: null, reason: 'start-failed' };
+        }
+        if (await mongoHealthCheck(500)) {
+            return { process: child, uri: buildLocalMongoUri(), reason: 'started' };
+        }
+        await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+    console.error('⚠️ Bundled MongoDB did not become ready in time; falling back to configured MONGODB_URI.');
+    try { child.kill('SIGTERM'); } catch (_err) {}
+    return { process: null, uri: null, reason: 'timeout' };
+}
+
+function stopBundledMongo(child, timeoutMs = 5000) {
+    return stopManagedBackend(child, timeoutMs);
+}
+
 module.exports = {
     backendHealthCheck,
     backendStatus,
     ensureBackendConfig,
+    isLegacyDefaultMongoUri,
     updateMongoUri,
     rotateLogFile,
     resolveBackendPath,
     startManagedBackend,
-    stopManagedBackend
+    stopManagedBackend,
+    buildLocalMongoUri,
+    resolveMongodPath,
+    startBundledMongo,
+    stopBundledMongo,
+    BUNDLED_MONGO_PORT
 };

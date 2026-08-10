@@ -77,6 +77,10 @@
       {
         "from": "../frontend/overlay",
         "to": "frontend/overlay"
+      },
+      {
+        "from": "vendor/mongodb",
+        "to": "mongodb"
       }
     ],
     "win": {

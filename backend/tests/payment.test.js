@@ -24,6 +24,7 @@ assert.strictEqual(effectiveEffectPrice({
 assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_BASIC.amount, 199000);
 assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_PRO.amount, 399000);
 assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_BUSINESS.amount, 399000);
+assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_BUSINESS.purchasable, false);
 
 function middlewareNames(path, method) {
     const layer = paymentRoutes.stack.find((candidate) => candidate.route?.path === path && candidate.route?.methods?.[method]);
@@ -44,7 +45,9 @@ assert.match(orderIdA, /^DH[A-Z0-9]+$/);
 assert.notStrictEqual(orderIdA, orderIdB);
 
 const originalWebhookSecret = process.env.SEPAY_WEBHOOK_SECRET;
-delete process.env.SEPAY_WEBHOOK_SECRET;
+const originalAutoApproval = process.env.PAYMENT_AUTO_APPROVAL_ENABLED;
+process.env.SEPAY_WEBHOOK_SECRET = 'configured-but-must-not-enable-automation';
+process.env.PAYMENT_AUTO_APPROVAL_ENABLED = 'false';
 const webhookLayer = paymentRoutes.stack.find((candidate) =>
     candidate.route?.path === '/sepay-webhook' && candidate.route?.methods?.post
 );
@@ -68,4 +71,6 @@ webhookHandler({ headers: {}, body: {} }, webhookResponse)
     .finally(() => {
         if (originalWebhookSecret === undefined) delete process.env.SEPAY_WEBHOOK_SECRET;
         else process.env.SEPAY_WEBHOOK_SECRET = originalWebhookSecret;
+        if (originalAutoApproval === undefined) delete process.env.PAYMENT_AUTO_APPROVAL_ENABLED;
+        else process.env.PAYMENT_AUTO_APPROVAL_ENABLED = originalAutoApproval;
     });

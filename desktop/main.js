@@ -8,7 +8,7 @@ const { WebSocketServer } = require('ws');
 const AutoLaunch = require('auto-launch');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
-const { startManagedBackend, stopManagedBackend, updateMongoUri, backendStatus, ensureBackendConfig } = require('./backend-manager');
+const { startManagedBackend, stopManagedBackend, updateMongoUri, backendStatus, ensureBackendConfig, startBundledMongo, stopBundledMongo } = require('./backend-manager');
 const { sanitizeDiagnosticText } = require('./diagnostics');
 
 // Soundboard hotkeys are intentional user actions even when the renderer is not focused.
@@ -19,6 +19,7 @@ let tray;
 let localServer;
 let wss;
 let backendProcess = null;
+let mongoProcess = null;
 const PORT = 8080;
 const WS_PORT = 8081;
 
@@ -40,7 +41,7 @@ function getCloudJwtPublicKey() {
     return fs.existsSync(publicKeyPath) ? fs.readFileSync(publicKeyPath, 'utf8').trim() : '';
 }
 
-function getManagedBackendOptions() {
+function getManagedBackendOptions(defaultMongodbUri = '') {
     return {
         isPackaged: app.isPackaged,
         resourcesPath: process.resourcesPath,
@@ -49,6 +50,10 @@ function getManagedBackendOptions() {
         userDataPath: appDataPath,
         legacyDataDirectory: app.isPackaged ? '' : path.resolve(__dirname, '..', 'backend'),
         secretCodec: getSecretCodec(),
+        // Only used the first time this install ever runs (no backend-config.json
+        // yet) — see ensureBackendConfig. An already-configured install keeps
+        // its existing MONGODB_URI untouched.
+        defaultMongodbUri,
         // Central server that accounts/Store/purchases sync through — same
         // URL for every install, not a per-user secret (docs/COMMERCIAL_CLOUD_ROADMAP.md).
         cloudApiUrl: process.env.LIVEFLOW_CLOUD_API_URL || 'https://liveflow-backend-iafw.onrender.com',
@@ -492,6 +497,53 @@ function showNotification(title, body) {
     }
 }
 
+let backendCrashRestartCount = 0;
+let backendCrashWindowStart = 0;
+
+// startManagedBackend() only detects a mid-launch failure. Nothing used to
+// watch the process afterwards, so a backend crash hours into a live stream
+// (unhandled DB error, etc.) left every subsequent API call failing silently
+// until the user restarted the whole app. This watches every managed child
+// and auto-restarts it, capped so a true crash-loop surfaces an error
+// instead of hammering restarts forever.
+function attachBackendCrashMonitor(child) {
+    if (!child) return;
+    child.once('exit', async (code) => {
+        // backendProcess no longer points at this child: an intentional
+        // stop (settings save, app quit) already reassigned/nulled it
+        // before killing, so this exit isn't a crash to recover from.
+        if (backendProcess !== child) return;
+        backendProcess = null;
+        console.error(`⚠️ Backend process exited unexpectedly (code ${code}) while the app was running.`);
+
+        const now = Date.now();
+        if (now - backendCrashWindowStart > 60000) {
+            backendCrashWindowStart = now;
+            backendCrashRestartCount = 0;
+        }
+        backendCrashRestartCount += 1;
+        if (backendCrashRestartCount > 3) {
+            dialog.showErrorBox(
+                'LiveFlow Backend đã dừng nhiều lần',
+                'Backend liên tục gặp sự cố và không thể tự khởi động lại. Vui lòng khởi động lại LiveFlow. Xem logs/backend.log để biết chi tiết.'
+            );
+            return;
+        }
+
+        showNotification('⚠️ LiveFlow Backend gặp sự cố', 'Đang tự động khởi động lại...');
+        try {
+            const backend = await startManagedBackend(getManagedBackendOptions());
+            backendProcess = backend.process;
+            attachBackendCrashMonitor(backendProcess);
+            showNotification('✅ LiveFlow Backend đã khởi động lại', 'Nếu đang live, hãy kiểm tra lại kết nối OBS/TikTok.');
+            if (mainWindow) mainWindow.webContents.send('backend-restarted', {});
+        } catch (error) {
+            console.error('Failed to auto-restart backend after crash:', error);
+            dialog.showErrorBox('Không thể tự khởi động lại LiveFlow Backend', String(error?.message || error));
+        }
+    });
+}
+
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) {
     writeMainProcessError('singleInstanceLock', 'Lock was not acquired; another LiveFlow instance may already be running.');
@@ -507,9 +559,20 @@ if (!hasSingleInstanceLock) {
 
 app.whenReady().then(async () => {
     try {
+        console.log('🚀 Starting bundled MongoDB...');
+        const mongo = await startBundledMongo({
+            isPackaged: app.isPackaged,
+            resourcesPath: process.resourcesPath,
+            desktopDirectory: __dirname,
+            userDataPath: appDataPath
+        });
+        mongoProcess = mongo.process;
+        console.log(`🚀 Bundled MongoDB: ${mongo.reason}${mongo.uri ? '' : ' (falling back to configured MONGODB_URI, if any)'}`);
+
         console.log('🚀 Starting managed backend...');
-        const backend = await startManagedBackend(getManagedBackendOptions());
+        const backend = await startManagedBackend(getManagedBackendOptions(mongo.uri || ''));
         backendProcess = backend.process;
+        attachBackendCrashMonitor(backendProcess);
         console.log('🚀 Managed backend started, waiting for DB connection...');
         const status = await waitForDatabaseConnection(10000);
         console.log('🚀 Backend database connection status:', status);
@@ -536,14 +599,19 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
 
-let managedBackendStopped = false;
+let managedProcessesStopped = false;
 app.on('before-quit', (event) => {
-    if (managedBackendStopped || !backendProcess) return;
+    if (managedProcessesStopped || (!backendProcess && !mongoProcess)) return;
     event.preventDefault();
-    const child = backendProcess;
+    const backendChild = backendProcess;
+    const mongoChild = mongoProcess;
     backendProcess = null;
-    stopManagedBackend(child).finally(() => {
-        managedBackendStopped = true;
+    mongoProcess = null;
+    Promise.all([
+        stopManagedBackend(backendChild),
+        stopBundledMongo(mongoChild)
+    ]).finally(() => {
+        managedProcessesStopped = true;
         app.quit();
     });
 });
@@ -612,6 +680,7 @@ ipcMain.handle('database-config:save', async (_event, mongoUri) => {
         await stopManagedBackend(previous);
         const backend = await startManagedBackend(getManagedBackendOptions());
         backendProcess = backend.process;
+        attachBackendCrashMonitor(backendProcess);
         const status = await waitForDatabaseConnection(12000);
         if (status.database?.connected !== true && previousConfig) {
             const failedBackend = backendProcess;
@@ -620,6 +689,7 @@ ipcMain.handle('database-config:save', async (_event, mongoUri) => {
             fs.writeFileSync(configPath, previousConfig, { mode: 0o600 });
             const restored = await startManagedBackend(getManagedBackendOptions());
             backendProcess = restored.process;
+            attachBackendCrashMonitor(backendProcess);
         }
         return {
             success: status.database?.connected === true,

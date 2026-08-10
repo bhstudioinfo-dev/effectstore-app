@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const EffectRequestSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     name: { type: String, required: true },
     phone: { type: String, required: true },
     description: { type: String, required: true },

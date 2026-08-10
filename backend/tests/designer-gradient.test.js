@@ -180,6 +180,10 @@ assert.ok(!designerSource.includes("score: idx === 0 ? 120 : (idx === 1 ? 80 : 5
 assert.ok(designerSource.includes('const rawPct = total > 0 ? (Number(p.score || 0) / total) * 100 : 0'));
 assert.ok(designerSource.includes('const visualPct = total > 0 ? rawPct : (100 / players.length)'));
 const normalizedDesignerSource = designerSource.replace(/\r\n/g, '\n');
+assert.ok(!designerSource.includes("localStorage.getItem('effectstore_auth_token')"));
+assert.ok(designerSource.includes('localStorage.setItem(this.designerDraftStorageKey, JSON.stringify(payload))'));
+assert.ok(designerSource.includes('await window.app.checkAuth().catch(() => {})'));
+assert.ok(designerSource.includes('Thiết kế đã được giữ an toàn trên máy.'));
 assert.ok(
     normalizedDesignerSource.includes('this.invalidateItemVisual(selected);\n                this.renderCanvas();'),
     'PK score changes that alter the leader must invalidate the cached widget visual'

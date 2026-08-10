@@ -69,12 +69,28 @@
         }
 
         get token() {
-            return (window.app && window.app.authToken) || localStorage.getItem('token') || localStorage.getItem('effectstore_auth_token') || '';
+            // Once the main app exists, only use the session it has actually
+            // verified. Falling back to the retired effectstore_auth_token
+            // key made Designer resurrect an old token after logout/expiry,
+            // while the cached profile still made the UI look signed in.
+            return window.app
+                ? (window.app.authToken || '')
+                : (localStorage.getItem('token') || '');
         }
 
         get lastOpenedLayoutStorageKey() {
             const userId = window.app?.currentUser?._id || window.app?.currentUser?.id || 'current-user';
             return `giftMenuDesignerLastOpenedLayoutId:${userId}`;
+        }
+
+        // Offline/fallback draft of the canvas content, used when no saved
+        // layout can be resolved from the backend. Must be namespaced per
+        // account the same way as lastOpenedLayoutStorageKey — otherwise a
+        // Free account with no designs of its own falls back to loading
+        // whichever account last saved on this PC (e.g. admin's board).
+        get designerDraftStorageKey() {
+            const userId = window.app?.currentUser?._id || window.app?.currentUser?.id || 'current-user';
+            return `giftMenuDesignerLayoutV2:${userId}`;
         }
 
         rememberOpenedLayout(layoutId) {
@@ -2267,13 +2283,6 @@
             const player = item.pkPlayers[index];
             if (!player) return;
 
-            const freeStyleKeys = ['color'];
-            if (this.planKey === 'free' && freeStyleKeys.includes(key)) {
-                this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu đội PK.');
-                this.renderInspector();
-                return;
-            }
-
             player[key] = (key === 'score' || key === 'pointMultiplier' || key === 'animationSpeed' || key === 'auraSpeed' || key === 'auraScale' || key === 'fontSize' || key === 'scoreFontSize' || key === 'headerOffsetX' || key === 'headerOffsetY') ? Number(value) : value;
             this.invalidateItemVisual(item);
             this.renderCanvas();
@@ -2688,15 +2697,6 @@
             const child = item.children[index];
             if (!child) return;
 
-            if (this.planKey === 'free' && ['auraType', 'animationType', 'showTextBg', 'textBgStyle', 'textBgColor', 'textBgGradientFrom', 'textBgGradientTo', 'textColor'].includes(key)) {
-                this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu và dùng hiệu ứng động.');
-                return;
-            }
-            if (this.planKey === 'basic' && ((key === 'animationType' && !['None', 'Pulse', 'Bounce', 'Float'].includes(String(value))) || (key === 'auraType' && !['None', 'Glow'].includes(String(value))))) {
-                this.showUpgrade('menuAdvanced', 'Hiệu ứng chuyển động cao cấp dành cho gói Pro.');
-                return;
-            }
-
             if (key === 'showTextBg') {
                 child[key] = Boolean(value);
             } else if (key === 'iconTextGap') {
@@ -2718,14 +2718,6 @@
         updateSelectedItem(key, value, refreshInspector = true, pushHist = true) {
             const primaryItem = this.findInteractiveItem(this.selectedId);
             if (!primaryItem) return;
-            if (this.planKey === 'free' && ['animationType', 'auraType', 'auraColor', 'showTextBg', 'textBgStyle', 'textBgColor', 'textBgGradientFrom', 'textBgGradientTo', 'textColor', 'iconTextColor'].includes(key)) {
-                this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để đổi màu và dùng hiệu ứng động.');
-                return;
-            }
-            if (this.planKey === 'basic' && ((key === 'animationType' && !['None', 'Pulse', 'Bounce', 'Float'].includes(String(value))) || (key === 'auraType' && !['None', 'Glow'].includes(String(value))))) {
-                this.showUpgrade('menuAdvanced', 'Hiệu ứng chuyển động cao cấp dành cho gói Pro.');
-                return;
-            }
             // A selected child inside an "entered" bundle isn't part of this.items, so
             // it can't go through the normal multi-select machinery — edit it alone.
             const selectedItems = this.items.includes(primaryItem)
@@ -3452,20 +3444,50 @@
                 items: cleanItems,
                 exportedItems
             };
+            // Preserve the user's work before any authenticated/network
+            // operation. If cloud validation is temporarily unavailable or
+            // the session genuinely expired, reopening Designer can recover
+            // this account-scoped draft after login instead of losing it.
+            localStorage.setItem(this.designerDraftStorageKey, JSON.stringify(payload));
+            let savedExportNotice = null;
             try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (this.token) headers.Authorization = `Bearer ${this.token}`;
-                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout`, { method: 'POST', headers, body: JSON.stringify(payload) });
-                const data = await res.json().catch(() => ({}));
+                const postLayout = async () => {
+                    const headers = { 'Content-Type': 'application/json' };
+                    const activeToken = this.token;
+                    if (activeToken) headers.Authorization = `Bearer ${activeToken}`;
+                    const response = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layout`, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify(payload)
+                    });
+                    return { response, data: await response.json().catch(() => ({})) };
+                };
+
+                let { response: res, data } = await postLayout();
+                if (res.status === 401 && window.app && typeof window.app.checkAuth === 'function') {
+                    await window.app.checkAuth().catch(() => {});
+                    if (this.token) ({ response: res, data } = await postLayout());
+                }
                 if (res.ok && data && data.success && data.layout) {
                     this.currentLayoutId = data.layout._id;
                     this.currentLayoutName = data.layout.name;
                     this._templateDraft = false;
                     this.rememberOpenedLayout(this.currentLayoutId);
-                    localStorage.setItem('giftMenuDesignerLayoutV2', JSON.stringify(payload));
+                    savedExportNotice = data.exportNotice || null;
                 } else {
                     if (data && data.upgradeRequired === true) {
                         if (showToast) this.handlePlanLimit(data, 'layouts');
+                        return false;
+                    }
+                    if (res.status === 401) {
+                        // The token this designer session is holding is no
+                        // longer recognized by the server (expired session,
+                        // account changed elsewhere). Surfacing the raw
+                        // backend string here ("Account is unavailable") is
+                        // confusing — force a clean re-login instead.
+                        if (window.app && typeof window.app.showNotification === 'function') {
+                            window.app.showNotification('warning', 'Thiết kế đã được giữ an toàn trên máy. Vui lòng đăng nhập lại để đồng bộ vào thư viện.');
+                        }
                         return false;
                     }
                     throw new Error((data && (data.message || data.error)) || `HTTP ${res.status}`);
@@ -3477,7 +3499,16 @@
                 }
                 return false;
             }
-            if (showToast && window.app && typeof window.app.showNotification === 'function') window.app.showNotification('success', 'Đã lưu layout');
+            if (showToast && window.app && typeof window.app.showNotification === 'function') {
+                if (savedExportNotice) {
+                    window.app.showNotification(
+                        'info',
+                        `Đã lưu thiết kế an toàn ✨ Bạn vẫn có thể chỉnh sửa và xem trước miễn phí. ${savedExportNotice.message} Thiết kế sẽ được giữ nguyên.`
+                    );
+                } else {
+                    window.app.showNotification('success', 'Đã lưu thiết kế vào thư viện.');
+                }
+            }
             await this.loadLayoutsList();
             return true;
         }
@@ -3562,11 +3593,37 @@
                             ...layout,
                             name: this.repairLegacyVietnameseText(layout.name)
                         }));
+                    } else {
+                        this.layouts = [];
                     }
+                } else {
+                    // A failed request (401 after a token change, transient
+                    // 5xx, etc.) must not leave a previous account's library
+                    // on screen — better an empty list than someone else's data.
+                    this.layouts = [];
                 }
             } catch (_e) {
                 this.layouts = [];
             }
+            this.renderMyLibrary();
+        }
+
+        // Called on login/logout/account switch so a previous account's
+        // canvas and "Thư viện của tôi" list never linger for whoever is
+        // signed in next on the same PC — mirrors the per-account reset
+        // already applied to Live Control's control deck/remote session.
+        // Only clears local designer state; never touches saved documents.
+        resetDesignerSession() {
+            this.currentLayoutId = null;
+            this.currentLayoutName = '';
+            this._templateDraft = false;
+            this.items = [];
+            this.layouts = [];
+            this.clearSelection();
+            this.history = [];
+            this.historyIndex = -1;
+            this.renderCanvas();
+            this.renderInspector();
             this.renderMyLibrary();
         }
 
@@ -3581,7 +3638,7 @@
                 let preferredId = localStorage.getItem(this.lastOpenedLayoutStorageKey);
                 if (!preferredId) {
                     try {
-                        const previousSave = JSON.parse(localStorage.getItem('giftMenuDesignerLayoutV2') || 'null');
+                        const previousSave = JSON.parse(localStorage.getItem(this.designerDraftStorageKey) || 'null');
                         preferredId = previousSave?.id || previousSave?._id || null;
                     } catch (_e) { }
                 }
@@ -3604,12 +3661,12 @@
                 } catch (_e) { }
             }
             if (!payload && !loadedFromDb) {
-                try { payload = JSON.parse(localStorage.getItem('giftMenuDesignerLayoutV2') || 'null'); } catch (_e) { payload = null; }
+                try { payload = JSON.parse(localStorage.getItem(this.designerDraftStorageKey) || 'null'); } catch (_e) { payload = null; }
             }
             if (payload?.name) payload.name = this.repairLegacyVietnameseText(payload.name);
             if (!payload) {
                 if (loadedFromDb) {
-                    localStorage.removeItem('giftMenuDesignerLayoutV2');
+                    localStorage.removeItem(this.designerDraftStorageKey);
                 }
                 this.currentLayoutId = null;
                 this.currentLayoutName = '';
@@ -3982,10 +4039,6 @@
                 const layerId = btn.dataset.layerId;
                 const tab = btn.dataset.tab;
                 if (tab === 'gift' || tab === 'layers') {
-                    if (tab === 'layers' && !['pro', 'business', 'studio', 'admin'].includes(this.planKey)) {
-                        this.showUpgrade('menuAdvanced', 'Hệ thống lớp nâng cao dành cho gói Pro.');
-                        return;
-                    }
                     this.inspectorTab = tab;
                     this.renderInspector();
                     return;
@@ -4054,14 +4107,6 @@
                 if (action === 'redo') this.redo();
                 if (action === 'help') {
                     alert('Hướng dẫn thiết kế bảng quà\n\n• Kéo thả để di chuyển\n• Giữ Shift và nhấp chuột để chọn nhiều mục\n• Ctrl + D để nhân bản\n• Ctrl + Z / Ctrl + Y để hoàn tác / làm lại\n• Phím Delete để xóa\n• Giữ Ctrl và cuộn chuột để phóng to, thu nhỏ\n• Giữ phím cách hoặc chuột giữa để di chuyển vùng thiết kế');
-                    return;
-                }
-                if (['layer-toggle-visible', 'layer-toggle-lock', 'layer-up', 'layer-down', 'align-left', 'align-center-x', 'align-right', 'align-top', 'align-center-y', 'align-bottom', 'distribute-x', 'distribute-y'].includes(action) && !['pro', 'business', 'studio', 'admin'].includes(this.planKey)) {
-                    this.showUpgrade('menuAdvanced', 'Hệ thống lớp nâng cao dành cho gói Pro.');
-                    return;
-                }
-                if (['create-stack-group', 'ungroup-stack'].includes(action) && this.planKey === 'free') {
-                    this.showUpgrade('menuAdvanced', 'Nâng cấp Basic để gộp nhiều quà thành một nhóm.');
                     return;
                 }
                 if (action === 'save-new-template') {
@@ -7936,11 +7981,6 @@
             const item = this.findInteractiveItem(this.selectedId);
             if (!item) return;
 
-            if (this.planKey === 'basic' && ((key === 'panelEffect' && !['none', 'breathing'].includes(String(value))) || (key === 'borderEffect' && !['none', 'glow', 'pulse'].includes(String(value))))) {
-                this.showUpgrade('menuAdvanced', 'Tùy chỉnh chuyển động nâng cao dành cho gói Pro.');
-                return;
-            }
-
             if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'backgroundOpacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'contributorAvatarSize', 'iconSize', 'progressSize', 'goalIconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'giftTextGap', 'labelGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerOffsetY', 'pkBarOffsetY', 'versusFontSize', 'bgColorGradientAngle'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
@@ -9139,6 +9179,10 @@
                         textGap: Number(i.textGap || 4) * sy,
                         iconTextSize: Number(i.iconTextSize || 20) * ((sx + sy) / 2)
                     };
+                    if (i.type && i.type !== 'gift') {
+                        itemExport.w = itemExport.width;
+                        itemExport.h = itemExport.height;
+                    }
                     if (i.type === 'gift-stack-group') {
                         const avgScale = (sx + sy) / 2;
                         itemExport.renderScale = avgScale;

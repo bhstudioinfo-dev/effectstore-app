@@ -229,6 +229,14 @@ class TikTokService {
             });
 
             this.tiktokClient.on('gift', async (data) => {
+                // Snapshot once: this handler awaits several times (DB
+                // lookups, effect resolution), and a disconnect/reconnect to
+                // a different account can change this.currentLiveUserId
+                // mid-flight. Using a stale mix of old/new userId across
+                // those awaits could query one account's mappings but queue
+                // playback/log usage under another. Every subsequent line
+                // must use this local snapshot, never this.currentLiveUserId.
+                const liveUserId = this.currentLiveUserId;
                 const normalizedGift = this.normalizeGiftFromEvent(data);
                 if (!normalizedGift) return;
                 data = {
@@ -255,12 +263,21 @@ class TikTokService {
 
                 this.liveStats.gifts += data.repeatCount;
                 let mappings = [];
-                if (this.currentLiveUserId) {
+                if (liveUserId) {
                     mappings = await GiftMapping.find({
-                        userId: this.currentLiveUserId,
+                        userId: liveUserId,
                         giftId: String(data.giftId),
                         isActive: true
                     }).lean();
+                }
+
+                // The live session changed while the mapping lookup above was
+                // in flight (account switch/reconnect) — this gift no longer
+                // belongs to the now-active session, so it must not trigger
+                // playback/logging attributed to either account.
+                if (this.currentLiveUserId !== liveUserId) {
+                    this.broadcast('stats', this.liveStats);
+                    return;
                 }
 
                 const quantity = Number(data.repeatCount || 1);
@@ -292,9 +309,15 @@ class TikTokService {
 
                         let queued = false;
                         const wheelOnlyMapping = mapping.wheelId && (['wheel', 'effect_and_wheel'].includes(mapping.triggerType) || !mapping.effectId);
-                        if (wheelOnlyMapping) {
-                            const wheel = await ChallengeWheel.findOne({ _id: mapping.wheelId, userId: this.currentLiveUserId, isActive: true }).lean();
-                            const resolvedWheel = wheel ? await resolveWheelConfig(this.currentLiveUserId, wheel) : null;
+                        // Reuse the queue's own duplicate-event guard so a gift
+                        // event TikTok replays around a reconnect can't spin
+                        // the same wheel twice — mirrors the dedup that
+                        // effect_id mappings already get via effectQueue.add().
+                        const wheelEventKey = data.eventId ? `wheel-${data.eventId}-${mapping._id}` : null;
+                        const isDuplicateWheelEvent = wheelEventKey && effectQueue.isDuplicateEvent({ eventKey: wheelEventKey });
+                        if (wheelOnlyMapping && !isDuplicateWheelEvent) {
+                            const wheel = await ChallengeWheel.findOne({ _id: mapping.wheelId, userId: liveUserId, isActive: true }).lean();
+                            const resolvedWheel = wheel ? await resolveWheelConfig(liveUserId, wheel) : null;
                             const result = resolvedWheel && chooseWheelSegment(resolvedWheel.segments);
                             const presentation = resolvedWheel ? (resolvedWheel.presentation || {}) : {};
                             if (result && this.broadcast) {
@@ -323,13 +346,13 @@ class TikTokService {
                                 priority: 100,
                                 createdAt: Date.now(),
                                 giftData: data,
-                                userId: this.currentLiveUserId
+                                userId: liveUserId
                             });
                         } else if (mapping.effectId) {
                             // Legacy single effect mapping
                             const effectId = String(mapping.effectId || '');
-                            const resolvedEffect = await resolveEffectForUser(this.currentLiveUserId, effectId);
-                            const duration = await resolveEffectDurationForUser(this.currentLiveUserId, effectId);
+                            const resolvedEffect = await resolveEffectForUser(liveUserId, effectId);
+                            const duration = await resolveEffectDurationForUser(liveUserId, effectId);
                             if (duration) {
                                 queued = await effectQueue.add({
                                     mappingId: mapping._id,
@@ -342,7 +365,7 @@ class TikTokService {
                                     priority: 100,
                                     createdAt: Date.now(),
                                     giftData: data,
-                                    userId: this.currentLiveUserId
+                                    userId: liveUserId
                                 });
                             }
                         }
@@ -354,8 +377,8 @@ class TikTokService {
                                 giftName: data.giftName,
                                 effectId: loggedEffectId,
                                 triggeredAt: new Date(),
-                                sessionId: this.currentLiveUserId,
-                                userId: this.currentLiveUserId,
+                                sessionId: liveUserId,
+                                userId: liveUserId,
                                 userName: data.nickname || data.uniqueId || 'TikTok user',
                                 repeatCount: data.repeatCount
                             }).catch(() => null);
@@ -430,7 +453,12 @@ class TikTokService {
     }
 
     broadcast(event, data) {
-        if (this.broadcastFn) this.broadcastFn(event, data);
+        // Scope to whichever account currently owns the live TikTok session,
+        // so a second logged-in account on the same backend doesn't receive
+        // this session's gift/chat/stats/effect data. When no session is
+        // live, currentLiveUserId is null and delivery falls back to
+        // everyone (unchanged behavior for non-live-session broadcasts).
+        if (this.broadcastFn) this.broadcastFn(event, data, this.currentLiveUserId);
     }
 
     setGoalBoardLayout(layout) {

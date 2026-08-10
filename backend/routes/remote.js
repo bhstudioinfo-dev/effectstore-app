@@ -2,20 +2,12 @@ const express = require('express');
 const router = express.Router();
 const os = require('os');
 const crypto = require('crypto');
-const fs = require('fs');
-const multer = require('multer');
-const {
-    MAX_EFFECT_BYTES,
-    remoteUploadDir,
-    saveRemoteEffect,
-    saveRemoteSound
-} = require('../services/remoteMediaService');
 
-const remoteToken = crypto.randomBytes(24).toString('base64url');
-const upload = multer({
-    dest: remoteUploadDir,
-    limits: { fileSize: MAX_EFFECT_BYTES, files: 1, fields: 4 }
-});
+// Mutable so a session reset (account switch) can rotate it — otherwise a
+// remote phone that scanned a previous account's QR code would keep
+// controlling this deck after that account logs out and a different one
+// logs in on the same PC.
+let remoteToken = crypto.randomBytes(24).toString('base64url');
 
 // Store current control deck state in memory for remote phone UI
 let currentControlDeckState = {
@@ -23,6 +15,7 @@ let currentControlDeckState = {
     sound: { slots: [] }
 };
 let deckRevision = 0;
+let activeRemoteClients = new Map();
 
 function getLocalLanIp() {
     const interfaces = os.networkInterfaces();
@@ -93,6 +86,18 @@ function assignDeckItem(indexValue, deckType, requestedItem) {
     return { item, slot, index, type };
 }
 
+// Invalidate the current remote-control session (token + deck state) so a
+// phone that scanned a previous account's QR code loses access. The desktop
+// app calls this on login/logout so Live Control never carries state across
+// accounts sharing the same PC.
+router.post('/reset-session', requireLoopback, (req, res) => {
+    remoteToken = crypto.randomBytes(24).toString('base64url');
+    currentControlDeckState = { effect: { slots: [] }, sound: { slots: [] } };
+    activeRemoteClients = new Map();
+    deckRevision += 1;
+    res.json({ success: true, revision: deckRevision });
+});
+
 // Get Local LAN IP & QR info
 router.get('/lan-info', requireLoopback, async (_req, res) => {
     try {
@@ -123,8 +128,6 @@ router.post('/sync-deck', requireLoopback, async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
-
-let activeRemoteClients = new Map();
 
 function cleanRemoteClients() {
     const now = Date.now();
@@ -201,38 +204,6 @@ router.post('/assign-slot', requireRemoteToken, async (req, res) => {
         
         res.json({ success: true, message: 'Slot assigned from remote', slot: assigned.slot, revision: deckRevision });
     } catch (error) {
-        res.status(400).json({ success: false, error: error.message });
-    }
-});
-
-router.post('/upload/:deckType', requireRemoteToken, upload.single('media'), async (req, res) => {
-    try {
-        const type = safeDeckType(req.params.deckType);
-        const index = Number(req.body?.index);
-        if (!type || !Number.isInteger(index) || index < 0 || index >= 20 || !req.file) {
-            throw new Error('File hoặc vị trí nút không hợp lệ.');
-        }
-        const item = type === 'effect'
-            ? await saveRemoteEffect(req.file, req.body?.name)
-            : await saveRemoteSound(req.file, req.body?.name);
-        const availableKey = type === 'effect' ? 'availableEffects' : 'availableSounds';
-        currentControlDeckState[availableKey] = [
-            ...(currentControlDeckState[availableKey] || []).filter((candidate) => String(candidate.id) !== String(item.id)),
-            item
-        ];
-        const assigned = assignDeckItem(index, type, item);
-        const broadcastFn = req.app.locals?.broadcastToClients || req.app.get?.('broadcastToClients');
-        if (typeof broadcastFn === 'function') {
-            broadcastFn('control_deck_media_uploaded', {
-                index,
-                deckType: type,
-                item,
-                slot: assigned.slot
-            });
-        }
-        res.json({ success: true, item, slot: assigned.slot, revision: deckRevision });
-    } catch (error) {
-        if (req.file?.path && fs.existsSync(req.file.path)) fs.rmSync(req.file.path, { force: true });
         res.status(400).json({ success: false, error: error.message });
     }
 });

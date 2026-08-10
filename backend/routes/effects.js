@@ -11,9 +11,8 @@ const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
 const { encryptVideo, streamDecryptedVideo } = require('../utils/encrypt-video');
-const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
 const { isValidResourceId } = require('../utils/accessControl');
-const { getUserAvailableEffects, resolveEffectForUser } = require('../services/effectLibraryService');
+const { getUserAvailableEffects, resolveEffectForUser, registerCustomEffectOwnership } = require('../services/effectLibraryService');
 const { issueEffectAccessToken, buildEffectStreamUrl, verifyEffectAccessToken } = require('../services/effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
 const { isAssetStoreConfigured, uploadEncryptedEffect, downloadEncryptedEffect, uploadThumbnail } = require('../services/effectAssetStore');
@@ -137,50 +136,9 @@ router.get('/user/effects', authMiddleware, async (req, res) => {
 router.post('/user/custom-effects/register', authMiddleware, async (req, res) => {
     try {
         const { localId, name, machineId } = req.body || {};
-        const rawDuration = Number(req.body?.duration);
-        if (!Number.isFinite(rawDuration) || rawDuration <= 0) {
-            return res.status(422).json({
-                success: false,
-                warning: 'Custom effect metadata is missing a valid duration.',
-                message: 'Không đọc được thời lượng video. Hiệu ứng chưa được lưu.'
-            });
-        }
-        const duration = Math.max(0.1, Math.min(60, rawDuration));
-        if (!/^custom-[a-zA-Z0-9-]+$/.test(localId || '') || !String(name || '').trim() || !String(machineId || '').trim()) {
-            return res.status(400).json({ success: false, message: 'Thông tin hiệu ứng không hợp lệ.' });
-        }
-        const user = await User.findById(req.userId);
-        if (!user) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản.' });
-        if (!Array.isArray(user.customEffects)) {
-            user.customEffects = [];
-            await User.updateOne({ _id: req.userId }, { $set: { customEffects: [] } });
-        }
-        const existing = user.customEffects.find(item => item && item.localId === localId);
-        if (!existing) {
-            const entitlements = getEntitlements(user);
-            if (!user.isAdmin && Number.isFinite(entitlements.customEffects) && user.customEffects.length >= entitlements.customEffects) {
-                return res.status(403).json(upgradePayload('customEffects', `Bạn đã dùng hết ${entitlements.customEffects} hiệu ứng cá nhân của gói ${entitlements.label}.`, entitlements));
-            }
-            const customEffect = { localId, name: String(name).trim().slice(0, 80), machineId, duration, createdAt: new Date() };
-            const updateResult = await User.updateOne(
-                { _id: req.userId, 'customEffects.localId': { $ne: localId } },
-                { $push: { customEffects: customEffect } }
-            );
-            if (updateResult.modifiedCount > 0) user.customEffects.push(customEffect);
-        } else {
-            await User.updateOne(
-                { _id: req.userId, 'customEffects.localId': localId },
-                {
-                    $set: {
-                        'customEffects.$.name': String(name).trim().slice(0, 80),
-                        'customEffects.$.machineId': machineId,
-                        'customEffects.$.duration': duration
-                    }
-                }
-            );
-        }
-        const freshUser = await User.findById(req.userId).select('customEffects');
-        return res.json({ success: true, count: Array.isArray(freshUser?.customEffects) ? freshUser.customEffects.length : user.customEffects.length });
+        const result = await registerCustomEffectOwnership(req.userId, { localId, name, duration: req.body?.duration, machineId });
+        if (!result.success) return res.status(result.status).json(result.body);
+        return res.json({ success: true, count: result.count });
     } catch (error) {
         console.error('Register custom effect error:', error);
         return res.status(500).json({ success: false, error: error.message });

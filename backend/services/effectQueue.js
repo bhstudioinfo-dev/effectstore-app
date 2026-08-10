@@ -39,7 +39,7 @@ class EffectQueue {
                     duration: item.duration,
                     startedAt: playbackManager.currentStartedAt || Date.now(),
                     giftData: item.giftData || null
-                });
+                }, item.userId || null);
             });
 
             eventBus.on('effect_playback_finished', ({ item, reason }) => {
@@ -54,7 +54,7 @@ class EffectQueue {
                     queueLength: this.queue.length,
                     nextEffectName: this.queue[0]?.effectName || null,
                     giftData: item?.giftData || null
-                });
+                }, item?.userId || null);
             });
 
             eventBus.on('effect_queue_empty', (data) => {
@@ -246,7 +246,7 @@ class EffectQueue {
         eventBus.emit('queue_updated', this.getStatus());
 
         if (item.giftData && this.broadcastFn) {
-            this.broadcastFn('gift', item.giftData);
+            this.broadcastFn('gift', item.giftData, item.userId || null);
         }
 
         try {
@@ -261,7 +261,7 @@ class EffectQueue {
                     effectName: item.effectName,
                     playbackType: item.playbackType,
                     message: error.message || 'Không thể phát hiệu ứng.'
-                });
+                }, item.userId || null);
             }
             playbackManager.failCurrent('playback_error', () => this.process());
         }

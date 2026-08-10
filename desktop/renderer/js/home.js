@@ -46,15 +46,13 @@ function resolvePlanDisplay(user) {
 class EffectStoreApp {
     constructor() {
         let cachedStore = [];
-        let cachedOwned = [];
         try {
             cachedStore = JSON.parse(localStorage.getItem('es_cache_store_effects') || '[]');
-            cachedOwned = JSON.parse(localStorage.getItem('es_cache_owned_effects') || '[]');
         } catch (_e) {}
         this.effects = cachedStore;
         this.storeEffects = cachedStore;
         this.mappingEffects = [];
-        this.ownedEffects = cachedOwned;
+        this.ownedEffects = [];
         this.personalEffects = [];
         this.pendingPersonalEffectFiles = null;
         this.cart = [];
@@ -63,19 +61,24 @@ class EffectStoreApp {
         this.currentUser = null;
         this.authToken = null;
         this.pendingEffects = null;
-        this.pendingPaymentEffects = JSON.parse(localStorage.getItem('es_pending_payments') || '[]');
+        this.pendingPaymentEffects = [];
         this.logsInterval = null;
 
         // TikTok Live variables
         this.ws = null;
         this.WS_URL = 'ws://127.0.0.1:9001';
         this.API_URL = 'http://127.0.0.1:9000';
+        // Public, non-secret central origin. Catalog JSON is requested through
+        // the local backend, but media paths returned by that cloud response
+        // live on the central host rather than on each customer's machine.
+        this.CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com';
         this.selectedGift = null;
         this.selectedEffect = null;
         this.giftMappings = [];
         this.controlDeckTab = 'effect';
         this.controlDeck = this.loadControlDeckState();
         this.controlDeckAudios = [];
+        this.controlDeckSoundQueue = [];
 
         // Cài đặt TTS (Text to Speech)
         this.isTTSGiftEnabled = localStorage.getItem('es_tts_gift_enabled') !== 'false';
@@ -134,6 +137,8 @@ class EffectStoreApp {
         if (status) status.textContent = statusText;
         if (progress) progress.style.width = `${percent}%`;
         if (percentEl) percentEl.textContent = `${percent}%`;
+        const retry = document.getElementById('app-loading-retry');
+        if (retry) retry.style.display = 'none';
     }
 
     updateAppLoadingProgress(statusText, percent) {
@@ -154,41 +159,78 @@ class EffectStoreApp {
         }, 300);
     }
 
-    handleThumbError(img) {
-        if (!img) return;
-        img.style.display = 'none';
-        const container = img.closest('.effect-thumb-container') || img.parentElement;
-        const video = container ? container.querySelector('video') : null;
-        if (video) {
-            video.style.opacity = '1';
+    showBootstrapFailure(message = 'Không thể đồng bộ dữ liệu. Vui lòng kiểm tra mạng và thử lại.') {
+        this.showAppLoadingOverlay(message, 65);
+        const retry = document.getElementById('app-loading-retry');
+        if (retry) retry.style.display = 'block';
+    }
+
+    async retryBootstrap() {
+        const retry = document.getElementById('app-loading-retry');
+        if (retry) retry.disabled = true;
+        try {
+            this.updateAppLoadingProgress('📦 Đang đồng bộ lại dữ liệu tài khoản...', 65);
+            await this.preloadAllAppData({ requireCore: Boolean(this.currentUser && this.authToken) });
+            this.renderEffects();
+            this.renderControlDeck();
+            this.updateAppLoadingProgress('✨ Dữ liệu đã sẵn sàng!', 100);
+            setTimeout(() => this.hideAppLoadingOverlay(), 250);
+        } catch (error) {
+            this.showBootstrapFailure(error.message);
+        } finally {
+            if (retry) retry.disabled = false;
         }
     }
 
-    handlePreviewError(video, fallbackIcon = '🎬') {
-        if (!video) return;
-        video.style.display = 'none';
-        const container = video.closest('.effect-thumb-container') || video.parentElement;
-        if (container && !container.querySelector('.effect-fallback-icon')) {
-            const iconDiv = document.createElement('div');
-            iconDiv.className = 'effect-fallback-icon';
-            iconDiv.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;font-size:64px;color:#94a3b8;';
-            iconDiv.textContent = fallbackIcon;
-            container.appendChild(iconDiv);
+    async verifyCloudCompatibility() {
+        const response = await fetch(`${this.API_URL}/api/cloud/status`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.compatible !== true || data.database?.connected !== true) {
+            throw new Error(data.error || 'Backend cloud chưa sẵn sàng cho phiên bản LiveFlow này.');
         }
+        return true;
     }
 
-    async preloadAllAppData() {
+    accountStorageKey(base, user = this.currentUser) {
+        const userId = String(user?._id || user?.id || user?.email || '').trim();
+        return userId ? `${base}:${userId}` : '';
+    }
+
+    hydrateAccountCaches() {
+        const ownedKey = this.accountStorageKey('es_cache_owned_effects');
+        const pendingKey = this.accountStorageKey('es_pending_payments');
+        try {
+            this.ownedEffects = ownedKey ? JSON.parse(localStorage.getItem(ownedKey) || '[]') : [];
+            this.pendingPaymentEffects = pendingKey ? JSON.parse(localStorage.getItem(pendingKey) || '[]') : [];
+        } catch (_error) {
+            this.ownedEffects = [];
+            this.pendingPaymentEffects = [];
+        }
+        // Retired global keys could expose the previous account's state on a
+        // shared PC. Never migrate ambiguous ownership/payment data.
+        localStorage.removeItem('es_cache_owned_effects');
+        localStorage.removeItem('es_pending_payments');
+    }
+
+    savePendingPaymentEffects() {
+        const key = this.accountStorageKey('es_pending_payments');
+        if (key) localStorage.setItem(key, JSON.stringify(this.pendingPaymentEffects || []));
+    }
+
+    async preloadAllAppData({ requireCore = true } = {}) {
         const isAdminUser = Boolean(
             this.currentUser?.isAdmin ||
             this.currentUser?.role === 'admin' ||
             this.currentUser?.email === 'admin@effectstore.vn' ||
             document.querySelector('.user-card .plan')?.textContent?.trim() === 'ADMIN'
         );
-        const tasks = [
+        const coreTasks = [
+            this.verifyCloudCompatibility(),
             this.loadBanner(),
-            this.loadOwnedEffects(),
             this.loadEffects()
         ];
+        if (this.authToken) coreTasks.push(this.loadOwnedEffects());
+        const tasks = [];
         if (typeof this.loadPersonalEffects === 'function') {
             tasks.push(this.loadPersonalEffects());
         }
@@ -204,11 +246,35 @@ class EffectStoreApp {
         if (typeof this.loadAiAssistantConfig === 'function') {
             tasks.push(this.loadAiAssistantConfig());
         }
+        if (typeof this.loadSettings === 'function') {
+            // Populates #settings-* fields (account info, OBS, TikTok, sound/TTS
+            // prefs) up front so the Settings view never shows a loading flash
+            // (or stale data left in the static HTML) the first time it's opened.
+            tasks.push(this.loadSettings());
+        }
+        if (window.giftMenuDesigner && typeof window.giftMenuDesigner.loadDataIfNeeded === 'function') {
+            // Same idea for the Gift Menu Designer: load its gift library, goal
+            // assets/templates, saved-layouts list and active canvas now, so
+            // switching into "Thiết kế bảng quà" is instant instead of loading
+            // on first visit.
+            tasks.push(window.giftMenuDesigner.loadDataIfNeeded());
+        }
         if (isAdminUser) {
             if (typeof this.loadAdminDashboard === 'function') tasks.push(this.loadAdminDashboard());
             if (typeof this.loadAdminEffectAcquisitions === 'function') tasks.push(this.loadAdminEffectAcquisitions());
         }
-        await Promise.allSettled(tasks);
+        const [coreResults] = await Promise.all([
+            Promise.allSettled(coreTasks),
+            Promise.allSettled(tasks)
+        ]);
+        const failedCore = coreResults.find((result) =>
+            result.status === 'rejected' || result.value === false
+        );
+        if (requireCore && failedCore) {
+            throw failedCore.status === 'rejected'
+                ? failedCore.reason
+                : new Error('Chưa thể tải đủ Cửa hàng và dữ liệu tài khoản. Vui lòng thử lại.');
+        }
         this.renderEffects();
         this.renderControlDeck();
         this.syncControlDeckToRemote();
@@ -230,6 +296,7 @@ class EffectStoreApp {
                 cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
             } catch (_e) {}
             this.currentUser = cachedUser;
+            this.hydrateAccountCaches();
 
             this.updateUserUI();
             this.loadCart();
@@ -252,19 +319,33 @@ class EffectStoreApp {
             this.syncControlDeckHotkeys();
             window.electronAPI?.onControlDeckTrigger?.((slotId) => this.triggerControlDeckSlot(slotId));
 
-            // Instant dismiss splash screen in 200ms for fast launch
-            this.updateAppLoadingProgress('✨ Hệ thống đã sẵn sàng!', 100);
-            setTimeout(() => this.hideAppLoadingOverlay(), 200);
+            // Wait for the backend (which now also cold-starts the bundled
+            // MongoDB first) to actually respond before checking auth —
+            // otherwise checkAuth() can hit its own timeout before the
+            // backend is even listening and wrongly fall back to trusting
+            // an unverified cached session.
+            await this.waitForBackendReady().catch(() => {});
+            this.updateAppLoadingProgress('🔐 Đang xác minh phiên đăng nhập...', 45);
 
             // Validate authentication token first to cleanly purge expired credentials
             await this.checkAuth().catch(() => {});
 
-            // Asynchronous background hydration with verified auth state
-            this.preloadAllAppData().then(() => {
-                this.renderEffects();
-                this.renderControlDeck();
-                this.syncControlDeckToRemote();
-            }).catch(() => {});
+            // Keep the shell covered until the verified account's required
+            // data is hydrated. This prevents blank Store/Designer panels and
+            // prevents one account's cached library flashing for another.
+            this.updateAppLoadingProgress('📦 Đang đồng bộ dữ liệu tài khoản...', 65);
+            if (this.currentUser && this.authToken) {
+                this.hydrateAccountCaches();
+                await this.preloadAllAppData();
+                this.loadCart();
+            } else {
+                await Promise.allSettled([this.loadBanner(), this.loadEffects(), this.loadTrending()]);
+            }
+            this.renderEffects();
+            this.renderControlDeck();
+            this.syncControlDeckToRemote();
+            this.updateAppLoadingProgress('✨ Dữ liệu đã sẵn sàng!', 100);
+            setTimeout(() => this.hideAppLoadingOverlay(), 250);
             
             this.loadAiAssistantConfig();
             this.connectWebSocket();
@@ -275,7 +356,12 @@ class EffectStoreApp {
             this.setupUpdateListeners();
         } catch (err) {
             console.error('Init error:', err);
-            this.hideAppLoadingOverlay();
+            if (this.currentUser && this.authToken) {
+                this.showBootstrapFailure(err.message || 'Không thể đồng bộ dữ liệu tài khoản.');
+            } else {
+                this.hideAppLoadingOverlay();
+                this.openAuthModal();
+            }
         }
     }
 
@@ -372,7 +458,14 @@ class EffectStoreApp {
         }
     }
 
-    async waitForBackendReady(maxRetries = 10, intervalMs = 300) {
+    async waitForBackendReady(maxRetries = 40, intervalMs = 500) {
+        // The managed backend now starts the bundled MongoDB first (see
+        // desktop/backend-manager.js startBundledMongo), which can push a
+        // cold start past checkAuth()'s old fixed 4s timeout — that used to
+        // make checkAuth() treat a perfectly valid session as unreachable
+        // and fall back to trusting an unverified cached token. 40*500ms=20s
+        // comfortably covers a cold start without hanging forever if the
+        // backend is genuinely down.
         for (let i = 0; i < maxRetries; i++) {
             try {
                 const controller = new AbortController();
@@ -380,9 +473,8 @@ class EffectStoreApp {
                 const res = await fetch(this.API_URL + '/api/system/status', { signal: controller.signal });
                 clearTimeout(timeout);
                 if (res.ok) return true;
-            } catch (_e) {
-                await new Promise(r => setTimeout(r, intervalMs));
-            }
+            } catch (_e) { /* fall through to the shared retry delay below */ }
+            await new Promise(r => setTimeout(r, intervalMs));
         }
         return false;
     }
@@ -399,13 +491,28 @@ class EffectStoreApp {
         }
 
         try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 4000);
-            const res = await fetch(this.API_URL + '/api/auth/me', {
-                headers: { 'Authorization': `Bearer ${token}` },
-                signal: controller.signal
-            });
-            clearTimeout(timeout);
+            // A single transient blip (cold-starting backend, brief network
+            // hiccup) used to fall straight through to trusting the cached
+            // user below with zero verification. Retry a couple of times
+            // first so a real 401/valid response wins over a guess whenever
+            // possible.
+            let res = null;
+            let lastError = null;
+            for (let attempt = 0; attempt < 3 && !res; attempt++) {
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 4000);
+                    res = await fetch(this.API_URL + '/api/auth/me', {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeout);
+                } catch (attemptError) {
+                    lastError = attemptError;
+                    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 800));
+                }
+            }
+            if (!res) throw lastError || new Error('auth check failed');
             const data = await res.json().catch(() => ({}));
             if (data.success && data.user) {
                 this.currentUser = data.user;
@@ -437,12 +544,55 @@ class EffectStoreApp {
                 this.authToken = token;
                 this.closeAuthModal();
                 this.updateUserUI();
+                // All 3 attempts above failed to even get a response — trust
+                // the cache for now (don't punish a real user for a brief
+                // backend hiccup) but don't trust it forever. Re-check once
+                // the dust settles; if the backend turns out to have a
+                // definitive answer (account gone, token invalid), correct
+                // course instead of leaving the UI silently "logged in" to a
+                // session that can't actually do anything.
+                this._verifyAuthInBackground(token);
             } else {
                 this.authToken = null;
                 this.currentUser = null;
                 this.updateUserUI();
                 this.openAuthModal();
             }
+        }
+    }
+
+    async _verifyAuthInBackground(token) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(this.API_URL + '/api/auth/me', {
+                headers: { 'Authorization': `Bearer ${token}` },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+            const data = await res.json().catch(() => ({}));
+            if (data.success && data.user) {
+                this.currentUser = data.user;
+                this.authToken = token;
+                this.updateUserUI();
+                return;
+            }
+            // The backend is definitively reachable now and says this session
+            // isn't valid (account gone/deleted, token rejected) — the earlier
+            // cache-trust was wrong. Force a real re-login instead of leaving
+            // the user stuck looking logged in while every real action 401s.
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('user');
+            this.authToken = null;
+            this.currentUser = null;
+            this.updateUserUI();
+            this.openAuthModal();
+            this.showNotification('error', 'Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.');
+        } catch (_e) {
+            // Still unreachable — leave the provisional cache-trust in place;
+            // whatever next calls checkAuth() (app restart, manual retry) will
+            // get another chance to resolve this properly.
         }
     }
 
@@ -868,8 +1018,12 @@ class EffectStoreApp {
                 localStorage.setItem('currentUser', JSON.stringify(data.user));
                 this.currentUser = data.user;
                 this.authToken = data.token;
+                this.hydrateAccountCaches();
                 this.closeAuthModal();
                 this.showAppLoadingOverlay('🔓 Đăng nhập thành công! Đang đồng bộ hệ thống...', 25);
+                await this.resetRemoteControlSession();
+                await this.syncGiftMenuOverlayToActiveAccount();
+                await this.resetGiftMenuDesignerSession();
                 this.updateUserUI();
 
                 this.updateAppLoadingProgress('📦 Đang tải Cửa hàng, Hiệu ứng cá nhân & Trang quản trị...', 65);
@@ -887,7 +1041,11 @@ class EffectStoreApp {
             }
         } catch (e) {
             console.error('Login exception:', e);
-            this.showNotification('error', 'Lỗi kết nối server');
+            if (this.currentUser && this.authToken) {
+                this.showBootstrapFailure(e.message || 'Đăng nhập thành công nhưng chưa thể đồng bộ dữ liệu.');
+            } else {
+                this.showNotification('error', 'Lỗi kết nối server');
+            }
         }
     }
 
@@ -931,13 +1089,30 @@ class EffectStoreApp {
                     this.currentUser = data.user;
                 }
                 this.authToken = data.token;
+                this.hydrateAccountCaches();
                 this.closeAuthModal();
-                this.showNotification('success', 'Đăng ký thành công!');
+                this.showAppLoadingOverlay('🔓 Đăng ký thành công! Đang đồng bộ hệ thống...', 25);
+                await this.resetRemoteControlSession();
+                await this.syncGiftMenuOverlayToActiveAccount();
+                await this.resetGiftMenuDesignerSession();
                 this.updateUserUI();
+                this.updateAppLoadingProgress('📦 Đang tải dữ liệu tài khoản...', 65);
+                await this.preloadAllAppData();
+                this.loadCart();
+                this.updateUI();
+                this.updateAppLoadingProgress('✨ Đã sẵn sàng!', 100);
+                setTimeout(() => this.hideAppLoadingOverlay(), 300);
+                this.showNotification('success', 'Đăng ký thành công!');
             } else {
                 this.showNotification('error', data.error || data.message || 'Đăng ký thất bại');
             }
-        } catch (e) { this.showNotification('error', 'Lỗi kết nối server'); }
+        } catch (e) {
+            if (this.currentUser && this.authToken) {
+                this.showBootstrapFailure(e.message || 'Đăng ký thành công nhưng chưa thể đồng bộ dữ liệu.');
+            } else {
+                this.showNotification('error', 'Lỗi kết nối server');
+            }
+        }
     }
 
     openCustomerProfileEditor() {
@@ -997,10 +1172,14 @@ class EffectStoreApp {
     async logout() {
         try {
             if (this.authToken) {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 3000);
                 await fetch(`${this.API_URL}/api/auth/logout`, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${this.authToken}` }
+                    headers: { 'Authorization': `Bearer ${this.authToken}` },
+                    signal: controller.signal
                 });
+                clearTimeout(timeout);
             }
         } catch (_error) { }
         localStorage.removeItem('token');
@@ -1017,10 +1196,14 @@ class EffectStoreApp {
         this.selectedAdminPaymentId = null;
         this.effects = [];
         this.ownedEffects = [];
+        this.pendingPaymentEffects = [];
+        this.cart = [];
         this.personalEffects = [];
         this.giftMappings = [];
         this.controlDeckSlots = [];
         this.updateAdminBadges(0);
+        await this.resetRemoteControlSession();
+        await this.resetGiftMenuDesignerSession();
         this.updateUserUI();
         this.openAuthModal();
         this.showNotification('info', '👋 Đã đăng xuất thành công!');
@@ -1061,61 +1244,6 @@ class EffectStoreApp {
         if (subtitle) subtitle.textContent = 'BH Studio sẽ tư vấn giải pháp phù hợp cho team và doanh nghiệp của bạn.';
         if (descLabel) descLabel.textContent = 'Nhu cầu vận hành *';
         if (desc) desc.placeholder = 'Số máy, số phòng Live, quy mô team và nhu cầu tích hợp...';
-    }
-
-    startAdminPendingPaymentsPoll() {
-        if (this.adminPollInterval) clearInterval(this.adminPollInterval);
-        
-        const check = async () => {
-            const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
-            if (!isAdmin || !this.authToken) {
-                const banner = document.getElementById('admin-pending-payments-banner');
-                if (banner) banner.style.display = 'none';
-                return;
-            }
-
-            try {
-                const res = await fetch(`${this.API_URL}/api/admin/stats`, {
-                    headers: {
-                        'Authorization': `Bearer ${this.authToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                if (!res.ok) return;
-                const data = await res.json();
-                if (data.success && data.stats) {
-                    const count = data.stats.pendingPayments || 0;
-                    const banner = document.getElementById('admin-pending-payments-banner');
-                    const countSpan = document.getElementById('admin-banner-pending-count');
-                    const buttonCountSpan = document.getElementById('admin-banner-pending-button-count');
-                    
-                    if (count > 0) {
-                        if (banner) {
-                            banner.style.display = 'flex';
-                            if (countSpan) countSpan.textContent = count;
-                            if (buttonCountSpan) buttonCountSpan.textContent = count;
-                        }
-                        
-                        const lastCount = parseInt(localStorage.getItem('es_last_pending_count') || '0');
-                        if (count > lastCount) {
-                            const modal = document.getElementById('admin-alert-modal');
-                            if (modal) {
-                                this.openPendingPaymentsModal();
-                            }
-                        }
-                        localStorage.setItem('es_last_pending_count', count.toString());
-                    } else {
-                        if (banner) banner.style.display = 'none';
-                        localStorage.setItem('es_last_pending_count', '0');
-                    }
-                }
-            } catch (err) {
-                console.error('Error polling admin pending payments:', err);
-            }
-        };
-
-        check();
-        this.adminPollInterval = setInterval(check, 10000);
     }
 
     startSystemStatusPoll() {
@@ -1187,6 +1315,7 @@ class EffectStoreApp {
     async loadBanner() {
         try {
             const res = await fetch(`${this.API_URL}/api/banner`);
+            if (!res.ok) return false;
             const data = await res.json();
 
             const heroBanner = document.querySelector('.hero-banner-new');
@@ -1205,11 +1334,8 @@ class EffectStoreApp {
                 const bannerVersion = encodeURIComponent(
                     String(data.banner.updatedAt || data.banner.filename || data.banner.id || '1')
                 );
-                const primaryUrl = normalizeBannerUrl(this.API_URL, data.banner.url);
-                const fallbackBase = this.API_URL.includes('127.0.0.1')
-                    ? this.API_URL.replace('127.0.0.1', 'localhost')
-                    : this.API_URL.replace('localhost', '127.0.0.1');
-                const fallbackUrl = normalizeBannerUrl(fallbackBase, data.banner.url);
+                const primaryUrl = normalizeBannerUrl(this.CLOUD_API_URL, data.banner.url);
+                const fallbackUrl = normalizeBannerUrl(this.API_URL, data.banner.url);
                 const bannerUrl = `${encodeURI(primaryUrl)}?v=${bannerVersion}`;
                 this.bannerUrl = bannerUrl;
                 try {
@@ -1233,9 +1359,11 @@ class EffectStoreApp {
             } else if (!heroBanner) {
                 console.warn('⚠️ .hero-banner-new not found in DOM');
             }
+            return data.success === true;
 
         } catch (err) {
             console.error('Load banner lỗi:', err);
+            return false;
         }
     }
     async loadEffects() {
@@ -1244,11 +1372,23 @@ class EffectStoreApp {
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
             let response = await fetch(this.API_URL + '/api/effects', { headers });
             if (response.status === 401 && this.authToken) {
-                localStorage.removeItem('token');
-                this.authToken = null;
-                response = await fetch(this.API_URL + '/api/effects');
+                response = await this.retryUnauthorized(
+                    response,
+                    (token) => fetch(this.API_URL + '/api/effects', { headers: { Authorization: `Bearer ${token}` } }),
+                    () => fetch(this.API_URL + '/api/effects')
+                );
             }
-            const data = await response.json();
+            let data = await response.json().catch(() => ({}));
+            if (!response.ok || !Array.isArray(data.effects)) {
+                // The deployed central server may temporarily expose its
+                // public catalog under /trending while /effects is being
+                // updated. Showing that verified subset is better than an
+                // empty storefront and preserves cached full-catalog data.
+                const fallbackResponse = await fetch(this.API_URL + '/api/effects/trending');
+                const fallbackData = await fallbackResponse.json().catch(() => ({}));
+                if (fallbackResponse.ok && Array.isArray(fallbackData.effects)) data = fallbackData;
+                else throw new Error(data.error || 'Không thể tải danh mục sản phẩm.');
+            }
             if (data.success !== false && Array.isArray(data.effects)) {
                 this.storeEffects = data.effects;
                 this.effects = this.storeEffects;
@@ -1263,9 +1403,11 @@ class EffectStoreApp {
                 if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
                 let templateResponse = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
                 if (templateResponse.status === 401 && this.authToken) {
-                    localStorage.removeItem('token');
-                    this.authToken = null;
-                    templateResponse = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`);
+                    templateResponse = await this.retryUnauthorized(
+                        templateResponse,
+                        (token) => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers: { Authorization: `Bearer ${token}` } }),
+                        () => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`)
+                    );
                 }
                 const templateData = await templateResponse.json().catch(() => ({}));
                 if (templateData.success && Array.isArray(templateData.templates)) {
@@ -1280,6 +1422,7 @@ class EffectStoreApp {
                 console.warn('Could not load menu template usage:', templateError);
             }
             if (this.currentView === 'store') this.renderEffects();
+            return true;
         } catch (error) {
             console.error('Error loading effects:', error);
             if (this.effects.length === 0) {
@@ -1293,6 +1436,7 @@ class EffectStoreApp {
                 }
             }
             if (this.currentView === 'store') this.renderEffects();
+            return false;
         }
     }
     async loadTrending() {
@@ -1304,7 +1448,7 @@ class EffectStoreApp {
 
             if (data.success && Array.isArray(data.effects) && data.effects.length > 0) {
                 const safe = (value) => this.adminPaymentText(value == null ? '' : value);
-                const resolveMediaUrl = (value) => !value ? '' : (/^https?:\/\//i.test(value) ? value : `${this.API_URL}${value}`);
+                const resolveMediaUrl = (value) => this.resolveCatalogMediaUrl(value);
                 container.innerHTML = data.effects.map((e, index) => {
                     const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
                     const displayUses = (e.fakeUses && e.fakeUses > 0) ? e.fakeUses : (e.uses || 0);
@@ -1343,7 +1487,7 @@ class EffectStoreApp {
         if (!this.authToken) {
             this.ownedEffects = [];
             if (this.currentView === 'library') this.renderEffects();
-            return;
+            return true;
         }
         try {
             const response = await fetch(this.API_URL + '/api/user/effects', {
@@ -1362,7 +1506,8 @@ class EffectStoreApp {
                     this.ownedEffects = data.effects || [];
                 }
                 try {
-                    localStorage.setItem('es_cache_owned_effects', JSON.stringify(this.ownedEffects));
+                    const ownedKey = this.accountStorageKey('es_cache_owned_effects');
+                    if (ownedKey) localStorage.setItem(ownedKey, JSON.stringify(this.ownedEffects));
                 } catch (_e) {}
 
                 // TỰ ĐỘNG DỌN DẸP: Nếu đã sở hữu thì xóa khỏi danh sách chờ duyệt
@@ -1371,17 +1516,21 @@ class EffectStoreApp {
                 this.pendingPaymentEffects = (this.pendingPaymentEffects || []).filter(id => !ownedIds.includes(id));
 
                 if (this.pendingPaymentEffects.length !== oldPendingCount) {
-                    localStorage.setItem('es_pending_payments', JSON.stringify(this.pendingPaymentEffects));
+                    const pendingKey = this.accountStorageKey('es_pending_payments');
+                    if (pendingKey) localStorage.setItem(pendingKey, JSON.stringify(this.pendingPaymentEffects));
                 }
 
                 await this.loadPersonalEffects();
                 this.renderEffects();
+                return true;
             } else {
                 this.ownedEffects = [];
+                return false;
             }
         } catch (error) {
             console.error('Load owned effects error:', error);
             this.ownedEffects = [];
+            return false;
         }
     } // ✅ Đóng loadOwnedEffects ở đây
 
@@ -1601,11 +1750,23 @@ class EffectStoreApp {
     addOwnedEffect(effect) {
         const owned = { ...effect, purchasedAt: new Date().toISOString(), machineId: this.machineId, useCount: 0 };
         this.ownedEffects.push(owned);
-        localStorage.setItem('es_owned_effects', JSON.stringify(this.ownedEffects));
+        const ownedKey = this.accountStorageKey('es_cache_owned_effects');
+        if (ownedKey) localStorage.setItem(ownedKey, JSON.stringify(this.ownedEffects));
+    }
+
+    async retryUnauthorized(response, authenticatedRequest, anonymousRequest = null) {
+        if (!response || response.status !== 401) return response;
+        await this.checkAuth().catch(() => {});
+        if (this.authToken && typeof authenticatedRequest === 'function') {
+            return authenticatedRequest(this.authToken);
+        }
+        if (typeof anonymousRequest === 'function') return anonymousRequest();
+        return response;
     }
     loadCart() {
         if (this.currentUser) {
-            this.cart = JSON.parse(localStorage.getItem(`es_cart_${this.currentUser.id}`) || '[]');
+            const userId = this.currentUser._id || this.currentUser.id || this.currentUser.email;
+            this.cart = JSON.parse(localStorage.getItem(`es_cart_${userId}`) || '[]');
         } else {
             this.cart = [];
         }
@@ -1613,7 +1774,8 @@ class EffectStoreApp {
     }
     saveCart() {
         if (this.currentUser) {
-            localStorage.setItem(`es_cart_${this.currentUser.id}`, JSON.stringify(this.cart));
+            const userId = this.currentUser._id || this.currentUser.id || this.currentUser.email;
+            localStorage.setItem(`es_cart_${userId}`, JSON.stringify(this.cart));
         }
         this.updateCartUI();
     }
@@ -2300,7 +2462,7 @@ class EffectStoreApp {
             const cartIds = this.cart.map(e => e._id || e.id);
             this.pendingPaymentEffects.push(...cartIds);
             this.pendingPaymentEffects = [...new Set(this.pendingPaymentEffects)];
-            localStorage.setItem('es_pending_payments', JSON.stringify(this.pendingPaymentEffects));
+            this.savePendingPaymentEffects();
 
             // Xóa giỏ hàng
             this.cart = [];
@@ -2366,7 +2528,7 @@ class EffectStoreApp {
     async completePurchase(effectIds, amount) {
         // Xóa khỏi danh sách chờ duyệt
         this.pendingPaymentEffects = this.pendingPaymentEffects.filter(id => !effectIds.includes(id));
-        localStorage.setItem('es_pending_payments', JSON.stringify(this.pendingPaymentEffects));
+        this.savePendingPaymentEffects();
 
         // Thêm vào ownedEffects từ danh sách tổng (vì cart đã bị xóa trước đó)
         effectIds.forEach(id => {
@@ -2450,8 +2612,14 @@ class EffectStoreApp {
         this.showNotification('info', '🎬 Đang kích hoạt effect...');
 
         try {
+            // Personal/custom effects (uploaded from the app or via the
+            // phone Live Control remote) only ever live in personalEffects —
+            // skipping it here meant this fallback could never find a
+            // custom effect's real duration and always showed "Hiệu ứng
+            // chưa có thời lượng hợp lệ" instead of the actual failure.
             const effect = this.ownedEffects.find(e => (e.id || e._id) === effectId) ||
-                this.effects.find(e => (e.id || e._id) === effectId);
+                this.effects.find(e => (e.id || e._id) === effectId) ||
+                this.personalEffects.find(e => (e.id || e._id) === effectId);
 
             if (effect?.isCustom) {
                 this.showModal(`Xem thử: ${effect.name}`, `<div style="display:flex;justify-content:center;min-height:420px;"><video src="${effect.previewUrl}" autoplay controls playsinline style="width:100%;max-height:70vh;object-fit:contain;background:transparent;"></video></div>`);
@@ -2510,7 +2678,8 @@ class EffectStoreApp {
                 const ownedEffect = this.ownedEffects.find(e => (e.id || e._id) === effectId);
                 if (ownedEffect) {
                     ownedEffect.useCount = (ownedEffect.useCount || 0) + 1;
-                    localStorage.setItem('es_owned_effects', JSON.stringify(this.ownedEffects));
+                    const ownedKey = this.accountStorageKey('es_cache_owned_effects');
+                    if (ownedKey) localStorage.setItem(ownedKey, JSON.stringify(this.ownedEffects));
                 }
             } else {
                 this.showNotification('error', '❌ ' + (data.error || data.message));
@@ -2693,7 +2862,7 @@ class EffectStoreApp {
                 const isPending = this.pendingPaymentEffects.includes(effectId);
 
                 let previewHTML = '';
-                const resolveMediaUrl = value => !value ? '' : (/^https?:\/\//i.test(value) ? value : `${this.API_URL}${value}`);
+                const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value);
                 const thumbUrl = effect.thumbUrl ? resolveMediaUrl(effect.thumbUrl) : '';
                 const videoUrl = resolveMediaUrl(effect.previewUrl || effect.fileUrl);
                 const fallbackIcon = effect.icon || '🎬';
@@ -2961,6 +3130,16 @@ class EffectStoreApp {
         }[cat] || cat;
     }
     formatPrice(price) { return new Intl.NumberFormat('vi-VN').format(price) + '₫'; }
+    resolveCatalogMediaUrl(value) {
+        const raw = String(value || '').trim();
+        if (!raw || /^data:|^blob:/i.test(raw)) return raw;
+        if (/^https?:\/\//i.test(raw)) return raw;
+        try {
+            return new URL(raw, this.CLOUD_API_URL).toString();
+        } catch (_error) {
+            return `${this.CLOUD_API_URL}${raw.startsWith('/') ? '' : '/'}${raw}`;
+        }
+    }
     showNotification(type, message) { const n = document.getElementById('notification'); document.getElementById('notification-icon').textContent = type === 'warning' ? '⚠️' : type === 'error' ? '❌' : '✅'; document.getElementById('notification-message').textContent = message; n.className = 'notification show ' + type; setTimeout(() => n.classList.remove('show'), 4000); }
     showModal(title, content) {
         // Đóng cart sidebar nếu đang mở
@@ -2990,9 +3169,7 @@ class EffectStoreApp {
         const hasPurchased = effect.isOwned === true ||
             this.ownedEffects.some(e => String(e.id || e._id) === String(effectId));
         const isOwned = isAdmin || isBusiness || hasPurchased;
-        const videoUrl = effect.previewUrl
-            ? (/^https?:\/\//i.test(effect.previewUrl) ? effect.previewUrl : `${this.API_URL}${effect.previewUrl}`)
-            : '';
+        const videoUrl = this.resolveCatalogMediaUrl(effect.previewUrl);
 
         document.getElementById('detail-name').textContent = `${effect.icon || '🎬'} ${effect.name}`;
         const templateKindSuffix = effect.category === 'menu_template'
@@ -3724,6 +3901,45 @@ class EffectStoreApp {
         this.syncControlDeckToRemote();
     }
 
+    async resetGiftMenuDesignerSession() {
+        // GiftMenuDesigner keeps its own in-memory "Thư viện của tôi" list and
+        // canvas that only ever refresh on an explicit view-switch — logging
+        // out/in as a different account without leaving the Designer view left
+        // the previous account's saved menus visible. Clear local state first
+        // so nothing lingers even if the reload below fails.
+        if (window.giftMenuDesigner && typeof window.giftMenuDesigner.resetDesignerSession === 'function') {
+            try { window.giftMenuDesigner.resetDesignerSession(); } catch (_e) {}
+        }
+        if (window.giftMenuDesigner && typeof window.giftMenuDesigner.loadLayoutsList === 'function') {
+            try { await window.giftMenuDesigner.loadLayoutsList(); } catch (_e) {}
+        }
+    }
+
+    async resetRemoteControlSession() {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            await fetch(`${this.API_URL}/api/remote/reset-session`, {
+                method: 'POST',
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+        } catch (_e) {}
+    }
+
+    async syncGiftMenuOverlayToActiveAccount() {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            await fetch(`${this.API_URL}/api/tiktok/gift-menu-overlay-sync-active`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${this.authToken}` },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+        } catch (_e) {}
+    }
+
     async syncControlDeckToRemote() {
         try {
             const formatThumb = (url) => {
@@ -3989,8 +4205,7 @@ class EffectStoreApp {
             };
         }
         this.lastRemoteDeckRevision = revision;
-        localStorage.setItem('liveflow_control_deck', JSON.stringify(this.controlDeck));
-        this.syncControlDeckHotkeys();
+        this.saveControlDeckState();
         this.renderControlDeck();
     }
 
@@ -4253,30 +4468,48 @@ class EffectStoreApp {
             setTimeout(() => element?.classList.remove('running'), 900);
             return;
         }
-        this.controlDeckAudios = this.controlDeckAudios.filter((audio) => !audio.paused && !audio.ended);
-        if (this.controlDeckAudios.length >= 3) {
-            const oldest = this.controlDeckAudios.shift();
-            oldest.pause();
+        // Any number of sound slots can be clicked — at most 3 play at once;
+        // the rest wait in this.controlDeckSoundQueue and start, in the order
+        // they were clicked, as playing sounds finish and free up a slot.
+        this.controlDeckSoundQueue.push({ slot, element });
+        this._processControlDeckSoundQueue();
+    }
+
+    _processControlDeckSoundQueue() {
+        while (this.controlDeckAudios.length < 3 && this.controlDeckSoundQueue.length > 0) {
+            const { slot, element } = this.controlDeckSoundQueue.shift();
+            this._playControlDeckSound(slot, element);
         }
+    }
+
+    async _playControlDeckSound(slot, element) {
         const audio = new Audio();
         audio.preload = 'auto';
         audio.src = slot.url;
         audio.volume = Math.max(0, Math.min(1, Number.isFinite(Number(slot.volume)) ? Number(slot.volume) : 1));
         this.controlDeckAudios.push(audio);
-        audio.onended = () => { element?.classList.remove('running'); this.controlDeckAudios = this.controlDeckAudios.filter((item) => item !== audio); };
-        audio.onerror = () => { element?.classList.remove('running'); this.showNotification('error', 'Không thể phát file âm thanh này.'); };
+        const release = () => {
+            element?.classList.remove('running');
+            this.controlDeckAudios = this.controlDeckAudios.filter((item) => item !== audio);
+            this._processControlDeckSoundQueue();
+        };
+        audio.onended = release;
+        audio.onerror = () => {
+            this.showNotification('error', 'Không thể phát file âm thanh này.');
+            release();
+        };
         try {
             const mediaResponse = await fetch(slot.url, { method: 'HEAD', cache: 'no-store' });
             if (!mediaResponse.ok) throw new Error(`Không tìm thấy sound đã lưu trên máy (${mediaResponse.status}).`);
             await audio.play();
         } catch (error) {
-            this.controlDeckAudios = this.controlDeckAudios.filter((item) => item !== audio);
-            element?.classList.remove('running');
             this.showNotification('error', error.message || 'Không thể phát sound. Hãy thêm lại file âm thanh.');
+            release();
         }
     }
 
     stopControlDeckSounds() {
+        this.controlDeckSoundQueue = [];
         this.controlDeckAudios.forEach((audio) => { audio.pause(); audio.currentTime = 0; });
         this.controlDeckAudios = [];
         document.querySelectorAll('.lcd-slot.running').forEach((element) => element.classList.remove('running'));
@@ -4286,7 +4519,7 @@ class EffectStoreApp {
         const slot = this.findControlDeckSlot(slotId);
         if (!slot) return;
         slot.volume = Math.max(0, Math.min(100, Number(percent) || 0)) / 100;
-        localStorage.setItem('liveflow_control_deck', JSON.stringify(this.controlDeck));
+        this.saveControlDeckState();
     }
 
     updateControlDeckQueueStatus(status = {}) {
@@ -4304,11 +4537,6 @@ class EffectStoreApp {
                 ? `${(Math.max(0, Number(status.remainingMs) || 0) / 1000).toFixed(1)}s`
                 : (isQueued ? 'Đang chờ' : '');
         }
-    }
-
-    saveControlDeckState() {
-        localStorage.setItem('liveflow_control_deck', JSON.stringify(this.controlDeck));
-        this.syncControlDeckToRemote();
     }
 
     removeControlDeckSlot(slotId) {
@@ -4709,41 +4937,6 @@ class EffectStoreApp {
             this.hideAppLoadingOverlay();
             this.showNotification('error', '❌ Lỗi kết nối máy chủ: ' + e.message);
         }
-    }
-
-    async rejectPayment(paymentId, reason, closeModal = false) {
-        try {
-            this.showAppLoadingOverlay('⏳ Đang xử lý từ chối đơn...', 30);
-            const res = await fetch(`${this.API_URL}/api/payment/admin/reject`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.authToken}`
-                },
-                body: JSON.stringify({ paymentId, reason })
-            });
-            const data = await res.json().catch(() => ({}));
-            this.hideAppLoadingOverlay();
-            if (data.success) {
-                this.showNotification('success', '✅ Đã từ chối đơn thanh toán thành công.');
-                if (closeModal) this.closePendingPaymentsModal();
-                await this.loadAdminDashboard();
-            } else {
-                this.showNotification('error', '❌ ' + (data.message || data.error || 'Không thể từ chối đơn.'));
-            }
-        } catch (e) {
-            this.hideAppLoadingOverlay();
-            this.showNotification('error', '❌ Lỗi kết nối: ' + e.message);
-        }
-    }
-
-    async approvePendingPayment(paymentId) {
-        const payment = (this.adminPendingPayments || []).find((item) => String(item._id) === String(paymentId));
-        const account = payment?.user?.email || payment?.user?.name || payment?.userId || 'Khách hàng';
-        const products = payment?.products?.map((item) => item.name).join(', ') || 'sản phẩm';
-        const amountStr = payment ? this.formatPrice(payment.amount) : '';
-        if (!confirm(`Xác nhận đã nhận ${amountStr} và kích hoạt ${products} cho ${account}?`)) return;
-        await this.approvePayment(paymentId, false);
     }
 
     async confirmPendingPayment(paymentId) {
@@ -5730,100 +5923,6 @@ class EffectStoreApp {
     }
 
 
-    connectWebSocket() {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
-        this.ws = new WebSocket(`${this.WS_URL}?token=${encodeURIComponent(this.authToken || '')}`);
-        this.ws.onopen = () => console.log('✅ WebSocket connected');
-        this.ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                this.handleWebSocketEvent(data);
-            } catch (e) { console.error('Parse error:', e); }
-        };
-        this.ws.onerror = (error) => console.error('WebSocket error:', error);
-        this.ws.onclose = () => setTimeout(() => this.connectWebSocket(), 3000);
-    }
-
-    handleWebSocketEvent(data) {
-        switch (data.event) {
-            case 'stats': this.updateStats(data.data); break;
-            case 'gift': this.handleGift(data.data); break;
-            case 'follow': this.handleFollow(data.data); break;
-            case 'share': this.handleShare(data.data); break;
-            case 'chat': this.handleChat(data.data); break;
-            case 'remote_device_connected':
-                this.handleRemoteDeviceConnected(data.data);
-                break;
-            case 'control_deck_trigger':
-                if (data.data?.action === 'stop_all_sounds') {
-                    this.stopControlDeckSounds();
-                } else if (data.data?.slotId) {
-                    this.triggerControlDeckSlot(data.data.slotId);
-                }
-                break;
-            case 'control_deck_assign':
-                if (data.data?.deckType === 'effect') {
-                    const effect = data.data.item;
-                    if (effect) this.addControlDeckEffectToSlot(effect, Number(data.data.index));
-                } else if (data.data?.deckType === 'sound') {
-                    const sound = data.data.item;
-                    if (sound) {
-                        this.pendingControlDeckIndex = Number(data.data.index);
-                        this.addSoundLibraryItemToDeck(sound);
-                    }
-                }
-                break;
-            case 'control_deck_media_uploaded':
-                this.handleRemoteMediaUploaded(data.data);
-                break;
-            case 'effect_warning':
-                this.showNotification('warning', data.data?.message || 'Hiệu ứng đã bị bỏ qua vì thiếu thời lượng.');
-                break;
-            case 'plan_limit_reached': this.handlePlanLimit(data.data, data.data?.feature); break;
-        }
-    }
-
-    async handleRemoteMediaUploaded(payload = {}) {
-        const index = Number(payload.index);
-        if (!Number.isInteger(index)) return;
-        if (payload.deckType === 'sound' && payload.item) {
-            this.controlDeckSoundLibrary = [
-                ...(this.controlDeckSoundLibrary || []).filter((item) => String(item.id) !== String(payload.item.id)),
-                payload.item
-            ];
-            this.pendingControlDeckIndex = index;
-            this.addSoundLibraryItemToDeck(payload.item);
-            this.showNotification('success', 'Điện thoại đã upload và thêm sound vào Soundboard.');
-            return;
-        }
-        if (payload.deckType === 'effect' && payload.item) {
-            await this.loadPersonalEffects();
-            await this.loadOwnedEffects();
-            const effectId = String(payload.item.id || payload.item._id || '');
-            const effect = (this.personalEffects || []).find((item) => String(item.id || item._id) === effectId) || payload.item;
-            this.addControlDeckEffectToSlot(effect, index);
-            this.showNotification('success', 'Điện thoại đã upload và thêm effect vào Live Control.');
-        }
-    }
-
-    updateStats(stats) {
-        const el = (id) => document.getElementById(id);
-        if (el('stat-gifts')) el('stat-gifts').textContent = stats.gifts || 0;
-        if (el('stat-likes')) el('stat-likes').textContent = stats.likes || 0;
-        if (el('stat-chats')) el('stat-chats').textContent = stats.chats || 0;
-        if (el('stat-viewers')) el('stat-viewers').textContent = stats.viewers || 0;
-
-        const statusEl = document.getElementById('connection-status');
-        if (statusEl) {
-            if (stats.isLive) {
-                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;"></span>Đang live';
-                statusEl.style.background = 'rgba(16,185,129,0.2)';
-            } else {
-                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block;"></span>Chưa kết nối';
-                statusEl.style.background = 'rgba(239,68,68,0.2)';
-            }
-        }
-    }
     async prepareTikTok() {
         const roomId = document.getElementById('room-id')?.value.trim();
         if (!roomId) return this.showNotification('error', 'Vui lòng nhập Room ID!');
@@ -6024,9 +6123,11 @@ class EffectStoreApp {
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
             let res = await fetch(`${this.API_URL}/api/tiktok/available-effects`, { headers });
             if (res.status === 401 && this.authToken) {
-                localStorage.removeItem('token');
-                this.authToken = null;
-                res = await fetch(`${this.API_URL}/api/tiktok/available-effects`);
+                res = await this.retryUnauthorized(
+                    res,
+                    (token) => fetch(`${this.API_URL}/api/tiktok/available-effects`, { headers: { Authorization: `Bearer ${token}` } }),
+                    () => fetch(`${this.API_URL}/api/tiktok/available-effects`)
+                );
             }
             const data = await res.json().catch(() => ({ success: true, effects: this.storeEffects || [] }));
             const displayEffects = (data && data.success !== false && Array.isArray(data.effects))
@@ -6382,9 +6483,11 @@ class EffectStoreApp {
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
             let res = await fetch(`${this.API_URL}/api/tiktok/mappings`, { headers });
             if (res.status === 401 && this.authToken) {
-                localStorage.removeItem('token');
-                this.authToken = null;
-                res = await fetch(`${this.API_URL}/api/tiktok/mappings`);
+                res = await this.retryUnauthorized(
+                    res,
+                    (token) => fetch(`${this.API_URL}/api/tiktok/mappings`, { headers: { Authorization: `Bearer ${token}` } }),
+                    () => fetch(`${this.API_URL}/api/tiktok/mappings`)
+                );
             }
             const data = await res.json().catch(() => ({ success: true, mappings: [] }));
             const list = document.getElementById('mappings-list');
@@ -6670,6 +6773,24 @@ class EffectStoreApp {
             case 'chat': this.handleChat(data.data); break;
             case 'plan_limit_reached': this.handlePlanLimit(data.data, data.data?.feature); break;
             case 'control_deck_trigger': this.handleControlDeckRemoteTrigger(data.data); break;
+            case 'remote_device_connected':
+                this.handleRemoteDeviceConnected(data.data);
+                break;
+            case 'control_deck_assign':
+                if (data.data?.deckType === 'effect') {
+                    const effect = data.data.item;
+                    if (effect) this.addControlDeckEffectToSlot(effect, Number(data.data.index));
+                } else if (data.data?.deckType === 'sound') {
+                    const sound = data.data.item;
+                    if (sound) {
+                        this.pendingControlDeckIndex = Number(data.data.index);
+                        this.addSoundLibraryItemToDeck(sound);
+                    }
+                }
+                break;
+            case 'effect_warning':
+                this.showNotification('warning', data.data?.message || 'Hiệu ứng đã bị bỏ qua vì thiếu thời lượng.');
+                break;
         }
     }
 
@@ -6944,15 +7065,23 @@ class EffectStoreApp {
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
             let res = await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`, { headers });
             if (res.status === 401 && this.authToken) {
-                localStorage.removeItem('token');
-                this.authToken = null;
-                res = await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`);
+                res = await this.retryUnauthorized(
+                    res,
+                    (token) => fetch(`${this.API_URL}/api/tiktok/challenge-wheels`, { headers: { Authorization: `Bearer ${token}` } }),
+                    () => fetch(`${this.API_URL}/api/tiktok/challenge-wheels`)
+                );
             }
             const data = await res.json().catch(() => ({ success: true, wheels: [] }));
             this.challengeWheels = this.labelChallengeWheelCopies(Array.isArray(data.wheels) ? data.wheels : []);
             {
                 let templateRes = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
-                if (templateRes.status === 401) templateRes = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`);
+                if (templateRes.status === 401) {
+                    templateRes = await this.retryUnauthorized(
+                        templateRes,
+                        (token) => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers: { Authorization: `Bearer ${token}` } }),
+                        () => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`)
+                    );
+                }
                 const templateData = await templateRes.json().catch(() => ({}));
                 const templates = Array.isArray(templateData.templates) ? templateData.templates : [];
                 // Chỉ đưa vào Gán hiệu ứng các vòng quay đang có sản phẩm
@@ -7225,9 +7354,11 @@ class EffectStoreApp {
             if (token) headers['Authorization'] = `Bearer ${token}`;
             let res = await fetch(`${this.API_URL}/api/tiktok/ai-config`, { headers });
             if (res.status === 401 && token) {
-                localStorage.removeItem('token');
-                this.authToken = null;
-                res = await fetch(`${this.API_URL}/api/tiktok/ai-config`);
+                res = await this.retryUnauthorized(
+                    res,
+                    (activeToken) => fetch(`${this.API_URL}/api/tiktok/ai-config`, { headers: { Authorization: `Bearer ${activeToken}` } }),
+                    () => fetch(`${this.API_URL}/api/tiktok/ai-config`)
+                );
             }
             const data = await res.json().catch(() => ({}));
             if (data.success && data.config) {
@@ -7485,13 +7616,11 @@ class EffectStoreApp {
                 body: JSON.stringify({ pack })
             });
             if (res.status === 401 && this.authToken) {
-                localStorage.removeItem('token');
-                this.authToken = null;
-                res = await fetch(`${this.API_URL}/api/tiktok/ai-buy-addon`, {
+                res = await this.retryUnauthorized(res, (token) => fetch(`${this.API_URL}/api/tiktok/ai-buy-addon`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ pack })
-                });
+                }));
             }
             const data = await res.json();
             if (data.success) {

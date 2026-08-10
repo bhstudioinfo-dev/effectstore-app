@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const { paths: dataPaths } = require('../config/dataPaths');
+const { normalizePlan } = require('../config/planEntitlements');
 
 const dataDir = dataPaths?.dataRoot || path.resolve(__dirname, '..');
 const CONFIG_FILE = path.join(dataDir, 'uploads', 'ai-assistant-config.json');
@@ -43,7 +44,9 @@ function getCharacterUsage(userOrPlan = 'free', userDoc = null) {
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     
     const user = (typeof userOrPlan === 'object' && userOrPlan !== null) ? userOrPlan : userDoc;
-    const userPlan = (typeof userOrPlan === 'string') ? userOrPlan : (user?.subscription || user?.plan || (user?.isAdmin ? 'admin' : 'free'));
+    const userPlan = user
+        ? normalizePlan(user)
+        : String(typeof userOrPlan === 'string' ? userOrPlan : 'free').toLowerCase();
 
     if (user && user.aiMonthKey !== monthKey) {
         user.aiMonthKey = monthKey;
@@ -87,9 +90,14 @@ function getCharacterUsage(userOrPlan = 'free', userDoc = null) {
 }
 
 async function recordCharacterUsage(count, user = null) {
+    // Per-account usage lives on the User document. The shared config file
+    // is only a fallback for callers that never resolved a real user (e.g.
+    // pre-migration/guest paths) — it must not also be incremented for
+    // real users, or every account's usage would pool into one counter.
     if (user) {
         user.usedCharactersThisMonth = (user.usedCharactersThisMonth || 0) + count;
         if (typeof user.save === 'function') await user.save().catch(() => {});
+        return;
     }
     currentConfig.usedCharactersThisMonth = (currentConfig.usedCharactersThisMonth || 0) + count;
     saveConfig(currentConfig);
@@ -99,10 +107,11 @@ async function addAddonCharacters(addonCount, user = null) {
     if (user) {
         user.addonCharacters = (user.addonCharacters || 0) + addonCount;
         if (typeof user.save === 'function') await user.save().catch(() => {});
+        return getCharacterUsage(user);
     }
     currentConfig.addonCharacters = (currentConfig.addonCharacters || 0) + addonCount;
     saveConfig(currentConfig);
-    return getCharacterUsage(user || 'free');
+    return getCharacterUsage('free');
 }
 
 function loadConfig() {
@@ -290,12 +299,12 @@ async function generateReply(username, comment) {
     return getRandomFallback(persona);
 }
 
-async function processChatMessage({ username, comment, isDonator = false, userPlan = 'free' }) {
+async function processChatMessage({ username, comment, isDonator = false, userPlan = 'free', user = null }) {
     const config = currentConfig;
     if (!config.enabled) return null;
     if (config.donatorOnly && !isDonator) return null;
 
-    const usage = getCharacterUsage(userPlan);
+    const usage = getCharacterUsage(user || userPlan);
 
     const baseCooldownSec = Number(config.cooldownSeconds) || 20;
     // Bumping cooldown to 45s for free users when ElevenLabs quota runs out to protect Gemini usage
@@ -313,8 +322,8 @@ async function processChatMessage({ username, comment, isDonator = false, userPl
 
     // Track character usage
     const charLength = replyText ? replyText.length : 0;
-    recordCharacterUsage(charLength);
-    const updatedUsage = getCharacterUsage(userPlan);
+    recordCharacterUsage(charLength, user);
+    const updatedUsage = getCharacterUsage(user || userPlan);
 
     // Rotate ElevenLabs API Keys only if user still has quota. Fall back to free machine TTS when quota ends!
     const rawElevenKeys = updatedUsage.hasQuota ? (config.elevenLabsApiKey || '') : '';

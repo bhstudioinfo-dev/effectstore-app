@@ -140,6 +140,12 @@ router.get('/status/:orderId', authMiddleware, async (req, res) => {
 
 router.post('/sepay-webhook', async (req, res) => {
     try {
+        // Production policy is manual approval from the in-app Admin account.
+        // Merely setting a webhook secret must never enable automatic grants;
+        // future automation requires this separate, explicit feature flag.
+        if (String(process.env.PAYMENT_AUTO_APPROVAL_ENABLED || '').toLowerCase() !== 'true') {
+            return res.status(503).json({ success: false, error: 'Automatic payment approval is disabled.' });
+        }
         const secret = String(process.env.SEPAY_WEBHOOK_SECRET || '');
         const supplied = String(req.headers['x-webhook-secret'] || req.headers.authorization?.replace(/^Apikey\s+/i, '') || '');
         if (!secret) return res.status(503).json({ success: false, error: 'Webhook is not configured.' });

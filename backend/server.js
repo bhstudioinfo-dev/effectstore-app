@@ -48,6 +48,7 @@ const tiktokService = require('./services/tiktokService');
 startupTrace('TikTok service loaded');
 const effectQueue = require('./services/effectQueue');
 const { runSchemaMigrations, CURRENT_SCHEMA_VERSION } = require('./services/schemaMigrationService');
+const COMMERCIAL_API_VERSION = 2;
 startupTrace('services loaded');
 
 // Routes
@@ -384,13 +385,25 @@ try {
     console.error(`❌ WebSocket startup error on port ${WS_PORT}:`, err.message);
 }
 
-function broadcastToClients(event, data) {
+function broadcastToClients(event, data, targetUserId = null) {
     if (!wss) return;
     const message = JSON.stringify({ event, data });
+    const scopeTo = targetUserId != null ? String(targetUserId) : null;
     clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(message);
+        if (client.readyState !== WebSocket.OPEN) return;
+        if (scopeTo) {
+            const identity = client.identity;
+            // Live-session data (gift/chat/stats/effect playback...) must only
+            // reach the account it belongs to, plus overlay/local surfaces that
+            // render whatever the single active live session currently is —
+            // otherwise a second logged-in account on the same backend would
+            // see another account's live data.
+            const isSameUser = identity?.type === 'user' && String(identity.userId) === scopeTo;
+            const isOverlay = identity?.type === 'overlay';
+            const isLocalDesktop = identity?.type === 'user' && identity.userId === 'local-desktop';
+            if (!isSameUser && !isOverlay && !isLocalDesktop) return;
         }
+        client.send(message);
     });
 }
 
@@ -408,7 +421,13 @@ effectQueue.setBroadcastFn(broadcastToClients);
 const OBSSettings = require('./models/OBSSettings');
 async function initOBSConnection() {
     try {
-        const settings = await OBSSettings.findOne();
+        // No account is logged in yet at boot. Prefer the pre-migration
+        // legacy document (no userId); otherwise fall back to whichever
+        // account's settings were saved most recently as a best-effort guess
+        // — the app reconnects with the logged-in account's own settings as
+        // soon as they open OBS settings or the designer.
+        const settings = (await OBSSettings.findOne({ userId: { $exists: false } }))
+            || (await OBSSettings.findOne().sort({ updatedAt: -1 }));
         if (settings) {
             await obsService.connect(
                 settings.host || process.env.OBS_HOST || '127.0.0.1',
@@ -439,10 +458,12 @@ initOBSConnection();
 const { isCloudProxyEnabled, proxyToCloud } = require('./middleware/cloudProxy');
 if (isCloudProxyEnabled()) {
     app.use('/api/auth', proxyToCloud);
-    app.use('/api/payment', (req, res, next) => {
-        if (req.originalUrl && req.originalUrl.includes('/admin')) return next();
-        return proxyToCloud(req, res);
-    });
+    // Payment is one shared cloud domain end-to-end. Customer order creation,
+    // proof upload/status polling, and Admin list/proof/approve/reject must all
+    // reach the same central Payment collection; otherwise an Admin running
+    // the desktop app would inspect this machine's local MongoDB and never see
+    // orders created by customers on other machines.
+    app.use('/api/payment', proxyToCloud);
     app.get('/api/banner', proxyToCloud);
     app.get('/api/effects', proxyToCloud);
     app.get('/api/effects/trending', proxyToCloud);
@@ -526,13 +547,61 @@ app.use('/api/banner', bannerRoutes);
 app.use('/api/admin/banner', bannerRoutes);
 
 // System Status API
+app.get('/api/cloud/status', async (_req, res) => {
+    const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
+    const desktopManaged = process.env.EFFECTSTORE_DESKTOP_MANAGED === 'true';
+    if (!desktopManaged) {
+        const connected = mongoose.connection.readyState === 1 && databaseSchemaReady;
+        return res.status(connected ? 200 : 503).json({
+            success: connected,
+            compatible: true,
+            commercialApiVersion: COMMERCIAL_API_VERSION,
+            database: { connected }
+        });
+    }
+    if (!cloudApiUrl) {
+        return res.status(503).json({ success: false, compatible: false, error: 'Cloud API URL is unavailable.' });
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    try {
+        const response = await fetch(`${cloudApiUrl}/api/system/status`, { signal: controller.signal });
+        const data = await response.json().catch(() => ({}));
+        const version = Number(data.commercialApiVersion || 0);
+        const compatible = response.ok && data.database?.connected === true && version >= COMMERCIAL_API_VERSION;
+        return res.status(compatible ? 200 : 426).json({
+            success: compatible,
+            compatible,
+            commercialApiVersion: version,
+            requiredCommercialApiVersion: COMMERCIAL_API_VERSION,
+            database: { connected: data.database?.connected === true },
+            error: compatible ? undefined : 'Backend cloud chưa được cập nhật đúng phiên bản dành cho app này.'
+        });
+    } catch (_error) {
+        return res.status(503).json({
+            success: false,
+            compatible: false,
+            retryable: true,
+            error: 'Không thể kết nối backend cloud.'
+        });
+    } finally {
+        clearTimeout(timeout);
+    }
+});
+
 app.get('/api/system/status', async (_req, res) => {
     try {
         const obsSources = await obsService.getFoundationSourceStatus();
         const databaseConnected = mongoose.connection.readyState === 1 && databaseSchemaReady;
         res.status(databaseConnected ? 200 : 503).json({
             success: databaseConnected,
-            database: { connected: databaseConnected },
+            commercialApiVersion: COMMERCIAL_API_VERSION,
+            database: {
+                connected: databaseConnected,
+                host: mongoose.connection.host,
+                port: mongoose.connection.port,
+                name: mongoose.connection.name
+            },
             tiktok: { connected: tiktokService.isConnected() },
             obs: { connected: obsService.isConnected(), sources: obsSources },
             websocket: { active: Boolean(wss), clients: clients.size },

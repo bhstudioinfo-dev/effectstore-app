@@ -21,7 +21,11 @@ temporary files.
 
 Deploy the backend before distributing the matching desktop build. Verify:
 
-- `/api/system/status` returns HTTP 200 with database connected.
+- `/api/system/status` returns HTTP 200 with database connected and
+  `commercialApiVersion: 2`. The desktop intentionally refuses to complete
+  signed-in bootstrap against an older cloud API.
+- On an installed desktop, `/api/cloud/status` returns HTTP 200 with
+  `compatible: true` before packaging is approved.
 - Public trending/catalog responses contain no full media URL for unowned
   effects.
 - `/updates/stable/latest.yml` returns 404 before the first upload, not an
@@ -39,7 +43,10 @@ Deploy the backend before distributing the matching desktop build. Verify:
    `npm run release:windows`
 
 6. Verify the installer Authenticode signature and timestamp.
-7. Install and smoke-test on a clean Windows machine.
+7. Install and smoke-test on a clean Windows machine. The main shell must
+   remain covered until account verification, Store, ownership, banner,
+   mappings, settings and Designer preload finish. A failed required request
+   must show **Thử đồng bộ lại**, never a blank Store.
 8. Test TikTok gift streak, duplicate events, reconnect, mapping quantity,
    queue recovery, and OBS Effect Player completion.
 9. Upload only after the signed build passes:
@@ -64,6 +71,20 @@ Deploy the backend before distributing the matching desktop build. Verify:
   verified backup exists.
 - Record the failed version and prevent it from being uploaded again with the
   same version number.
+
+## Production data boundaries (do not change casually)
+
+- Cloud: accounts, subscriptions, payment approval, Store effects, ownership,
+  banners, Admin-published Gift Menu/Goal Board templates and shared frames.
+- Per-account local database: personal layouts, gift mappings, challenge-wheel
+  instances, OBS settings and local runtime state.
+- Per-machine filesystem: OBS/TikTok media, custom effects, personal uploads,
+  cached drafts and encrypted effect cache.
+- A desktop-managed backend may download/cache commercial templates from the
+  cloud, but must never proxy OBS control, TikTok connections or local file
+  operations to the central server.
+- Ownership/payment caches and carts must be keyed by the authenticated user
+  ID so switching accounts on one PC cannot reveal the previous account's data.
 
 ## Current release-candidate limitation
 

@@ -1,10 +1,12 @@
-function createRateLimiter({ windowMs, max, message }) {
+function createRateLimiter({ windowMs, max, message, keyFn }) {
     const attempts = new Map();
+    const buildKey = typeof keyFn === 'function'
+        ? keyFn
+        : (req) => `${req.ip || req.socket?.remoteAddress || 'unknown'}:${String(req.body?.email || '').trim().toLowerCase()}`;
 
     return (req, res, next) => {
         const now = Date.now();
-        const email = String(req.body?.email || '').trim().toLowerCase();
-        const key = `${req.ip || req.socket?.remoteAddress || 'unknown'}:${email}`;
+        const key = buildKey(req);
         const current = attempts.get(key);
         const entry = !current || current.resetAt <= now
             ? { count: 0, resetAt: now + windowMs }

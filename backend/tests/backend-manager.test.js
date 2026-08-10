@@ -4,6 +4,7 @@ const os = require('os');
 const path = require('path');
 const {
     ensureBackendConfig,
+    isLegacyDefaultMongoUri,
     updateMongoUri,
     rotateLogFile,
     resolveBackendPath
@@ -36,6 +37,16 @@ assert.strictEqual(persisted.MONGODB_URI, undefined);
 assert.notStrictEqual(persisted.secrets.JWT_SECRET, first.JWT_SECRET);
 assert.notStrictEqual(persisted.secrets.INITIAL_SETUP_TOKEN, first.INITIAL_SETUP_TOKEN);
 assert.notStrictEqual(persisted.secrets.MONGODB_URI, first.MONGODB_URI);
+
+assert.strictEqual(isLegacyDefaultMongoUri('mongodb://127.0.0.1:27017/effectstore'), true);
+assert.strictEqual(isLegacyDefaultMongoUri('mongodb://localhost:27017/effectstore'), true);
+assert.strictEqual(isLegacyDefaultMongoUri('mongodb://127.0.0.1:27018/effectstore'), false);
+assert.strictEqual(isLegacyDefaultMongoUri('mongodb+srv://example.invalid/effectstore'), false);
+
+const legacyUserDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'effectstore-manager-legacy-'));
+ensureBackendConfig(legacyUserDataPath, codec);
+const bundledUri = 'mongodb://127.0.0.1:27117/effectstore';
+assert.strictEqual(ensureBackendConfig(legacyUserDataPath, codec, {}, bundledUri).MONGODB_URI, bundledUri);
 
 const atlasUri = 'mongodb+srv://example.invalid/effectstore';
 assert.strictEqual(updateMongoUri(userDataPath, atlasUri, codec).MONGODB_URI, atlasUri);

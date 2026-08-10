@@ -6,7 +6,10 @@ const PLAN_ENTITLEMENTS = Object.freeze({
     }),
     basic: Object.freeze({
         key: 'basic', label: 'Basic', devices: 1, mappings: 30, customEffects: 100,
-        layouts: 10, menuAssets: 20, goalTrackers: 10, commentsPerSession: Infinity,
+        // Basic gets full designer feature access (same as Pro) — the only
+        // thing that distinguishes it from Pro in the designer is how many
+        // saved menu designs it can keep in the library at once.
+        layouts: 2, menuAssets: 20, goalTrackers: 10, commentsPerSession: Infinity,
         ttsPerSession: Infinity, designerLevel: 'basic', mappingAutomation: 'standard'
     }),
     pro: Object.freeze({
@@ -15,8 +18,11 @@ const PLAN_ENTITLEMENTS = Object.freeze({
         commentsPerSession: Infinity, ttsPerSession: Infinity, designerLevel: 'advanced',
         mappingAutomation: 'advanced'
     }),
+    // Legacy account value retained only for existing customers/data migration.
+    // It is NOT the current Pro product and must not be used to infer that Pro
+    // owns paid Store templates or Challenge Wheel products.
     business: Object.freeze({
-        key: 'business', label: 'Pro', devices: 1, mappings: Infinity, customEffects: Infinity,
+        key: 'business', label: 'Business (legacy)', devices: 1, mappings: Infinity, customEffects: Infinity,
         layouts: Infinity, menuAssets: Infinity, goalTrackers: Infinity,
         commentsPerSession: Infinity, ttsPerSession: Infinity, designerLevel: 'advanced',
         mappingAutomation: 'advanced'
@@ -120,12 +126,15 @@ function validateDesignerItems(items, entitlements) {
         return upgradePayload('menuAssets', 'Nâng cấp Basic để tải ảnh/video riêng vào menu.', entitlements);
     }
 
-    if (['lite', 'basic'].includes(entitlements.designerLevel)) {
-        const usesAdvancedLayers = list.some(item => item && (
-            item.locked === true || item.visible === false
-        ));
-        if (usesAdvancedLayers) {
-            return upgradePayload('menuAdvanced', 'Hệ thống lớp nâng cao dành cho gói Pro.', entitlements);
+    if (entitlements.designerLevel === 'lite') {
+        const hiddenLockedItem = list.find(item => item && (item.locked === true || item.visible === false));
+        if (hiddenLockedItem) {
+            const layerName = hiddenLockedItem.name || 'Lớp thiết kế';
+            return upgradePayload(
+                'menuAdvanced',
+                `Lớp "${layerName}" đang dùng tính năng khóa/ẩn lớp — thuộc gói Basic. Nâng cấp để xuất thiết kế này sang OBS.`,
+                entitlements
+            );
         }
     }
 
@@ -146,11 +155,11 @@ function validateDesignerItems(items, entitlements) {
             const widgetName = widgetLabels[advancedTemplateItem.type] || advancedTemplateItem.name || 'Bảng nâng cao';
             return upgradePayload(
                 'templates',
-                `“${widgetName}” là bảng thuộc gói Basic. Bạn vẫn có thể dùng thử và tùy chỉnh trong trình thiết kế; nâng cấp Basic để lưu và xuất bảng này sang OBS.`,
+                `“${widgetName}” là bảng thuộc gói Basic. Bạn vẫn có thể dùng thử và tùy chỉnh trong trình thiết kế; nâng cấp Basic để xuất bảng này sang OBS.`,
                 entitlements
             );
         }
-        const changesColors = list.some(item => {
+        const colorItem = list.find(item => {
             if (!item) return false;
             if (item.type === 'goal-circle') return false;
             if (item.useCustomBg === true || item.useCustomTextColor === true) return true;
@@ -164,14 +173,15 @@ function validateDesignerItems(items, entitlements) {
             if (item.subtitleColor && String(item.subtitleColor).toLowerCase() !== '#cbd5e1') return true;
             return false;
         });
-        if (changesColors) {
+        if (colorItem) {
+            const layerName = colorItem.name || 'Lớp thiết kế';
             return upgradePayload(
                 'menuAdvanced',
-                'Thiết kế đang sử dụng màu sắc hoặc kiểu hiển thị nâng cao. Bạn có thể tiếp tục dùng thử; nâng cấp Basic để lưu và xuất thiết kế này sang OBS.',
+                `Lớp "${layerName}" đang dùng màu sắc hoặc kiểu hiển thị tùy chỉnh — thuộc gói Basic. Nâng cấp để xuất thiết kế này sang OBS.`,
                 entitlements
             );
         }
-        const usesAdvanced = list.some(item => {
+        const advancedItem = list.find(item => {
             if (!item) return false;
             const animation = String(item.animationType || 'None');
             const aura = String(item.auraType || 'None');
@@ -180,28 +190,26 @@ function validateDesignerItems(items, entitlements) {
                 item.borderEffect && item.borderEffect !== 'none' ||
                 item.type === 'gift-stack-group';
         });
-        if (usesAdvanced) {
+        if (advancedItem) {
+            const layerName = advancedItem.name || 'Lớp thiết kế';
+            const animation = String(advancedItem.animationType || 'None');
+            const aura = String(advancedItem.auraType || 'None');
+            const reasons = [];
+            if (animation !== 'None') reasons.push(`hiệu ứng động (${animation})`);
+            if (aura !== 'None') reasons.push(`hào quang (${aura})`);
+            if (advancedItem.panelEffect && advancedItem.panelEffect !== 'none') reasons.push('hiệu ứng nền panel');
+            if (advancedItem.borderEffect && advancedItem.borderEffect !== 'none') reasons.push('hiệu ứng viền');
+            if (advancedItem.showTextBg === true) reasons.push('nền chữ tùy chỉnh');
+            if (advancedItem.type === 'gift-stack-group') reasons.push('nhóm quà xếp chồng');
+            const reasonText = reasons.length ? reasons.join(', ') : 'tính năng nâng cao';
             return upgradePayload(
                 'menuAdvanced',
-                'Thiết kế đang sử dụng hiệu ứng hoặc tính năng nâng cao. Bạn có thể tiếp tục dùng thử; nâng cấp Basic để lưu và xuất thiết kế này sang OBS.',
+                `Lớp "${layerName}" đang dùng ${reasonText} — thuộc gói Basic. Nâng cấp để xuất thiết kế này sang OBS.`,
                 entitlements
             );
         }
     }
 
-    if (entitlements.designerLevel === 'basic') {
-        const basicAnimations = new Set(['None', 'Pulse', 'Bounce', 'Float']);
-        const basicAuras = new Set(['None', 'Glow']);
-        const usesAdvanced = list.some(item => item && (
-            !basicAnimations.has(String(item.animationType || 'None')) ||
-            !basicAuras.has(String(item.auraType || 'None')) ||
-            (item.panelEffect && !['none', 'breathing'].includes(item.panelEffect)) ||
-            (item.borderEffect && !['none', 'glow', 'pulse'].includes(item.borderEffect))
-        ));
-        if (usesAdvanced) {
-            return upgradePayload('menuAdvanced', 'Tính năng chuyển động cao cấp dành cho gói Pro.', entitlements);
-        }
-    }
     return null;
 }
 

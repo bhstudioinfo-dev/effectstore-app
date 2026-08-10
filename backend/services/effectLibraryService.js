@@ -4,6 +4,7 @@ const Effect = require('../models/Effect');
 const User = require('../models/User');
 const { issueEffectAccessToken, buildEffectStreamUrl } = require('./effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
+const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
 
 // The OBS/TikTok Live trigger path checks effect ownership against THIS
 // machine's own local Effect model (it must stay local-only for stream
@@ -212,7 +213,34 @@ async function resolveEffectForUser(userId, effectId) {
     if (id.startsWith('custom-')) {
         let customEffect = (user.customEffects || []).find((item) => toEffectId(item.localId || item._id || item.id) === id);
         if (!customEffect) {
-            customEffect = { localId: id, name: 'Hiệu ứng cá nhân' };
+            // Effect files exist on disk (e.g. uploaded via the phone Live
+            // Control remote, which never had a userId to register ownership
+            // with) but were never added to this user's customEffects. Self-
+            // heal it here from the on-disk metadata.json instead of only
+            // ever returning a name-only stub with no duration — this is
+            // exactly what made "Không đọc được thời lượng..." show up for
+            // an effect that actually had a perfectly valid duration.
+            let healedDuration = null;
+            let healedName = 'Hiệu ứng cá nhân';
+            if (dataPaths?.customEffectsDir) {
+                try {
+                    const metaPath = path.join(dataPaths.customEffectsDir, id, 'metadata.json');
+                    if (fs.existsSync(metaPath)) {
+                        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+                        healedDuration = toDuration(meta?.duration);
+                        if (meta?.name) healedName = String(meta.name);
+                    }
+                } catch (_e) {}
+            }
+            if (healedDuration) {
+                await registerCustomEffectOwnership(userId, {
+                    localId: id,
+                    name: healedName,
+                    duration: healedDuration,
+                    machineId: 'auto-healed'
+                }).catch(() => {});
+            }
+            customEffect = { localId: id, name: healedName, duration: healedDuration || undefined };
         }
         return normalizeCustomEffect(customEffect, user);
     }
@@ -267,11 +295,70 @@ async function resolveEffectDurationForUser(userId, effectId) {
     return toDuration(freshEffect?.duration);
 }
 
+// Registers lightweight custom-effect metadata (name/duration/machineId) onto
+// a user's account. The actual media file always stays local disk-only; this
+// only writes the small record that makes the effect show up as genuinely
+// *owned* everywhere ownership is checked (not just wherever there's a
+// disk-existence fallback). Shared by the desktop app's own upload-register
+// call and the phone Live Control upload path.
+async function registerCustomEffectOwnership(userId, { localId, name, duration, machineId }) {
+    const rawDuration = Number(duration);
+    if (!Number.isFinite(rawDuration) || rawDuration <= 0) {
+        return {
+            success: false, status: 422, body: {
+                success: false,
+                warning: 'Custom effect metadata is missing a valid duration.',
+                message: 'Không đọc được thời lượng video. Hiệu ứng chưa được lưu.'
+            }
+        };
+    }
+    const normalizedDuration = Math.max(0.1, Math.min(60, rawDuration));
+    if (!/^custom-[a-zA-Z0-9-]+$/.test(localId || '') || !String(name || '').trim() || !String(machineId || '').trim()) {
+        return { success: false, status: 400, body: { success: false, message: 'Thông tin hiệu ứng không hợp lệ.' } };
+    }
+    const user = await User.findById(userId);
+    if (!user) return { success: false, status: 404, body: { success: false, message: 'Không tìm thấy tài khoản.' } };
+    if (!Array.isArray(user.customEffects)) {
+        user.customEffects = [];
+        await User.updateOne({ _id: userId }, { $set: { customEffects: [] } });
+    }
+    const existing = user.customEffects.find((item) => item && item.localId === localId);
+    if (!existing) {
+        const entitlements = getEntitlements(user);
+        if (!user.isAdmin && Number.isFinite(entitlements.customEffects) && user.customEffects.length >= entitlements.customEffects) {
+            return {
+                success: false, status: 403,
+                body: upgradePayload('customEffects', `Bạn đã dùng hết ${entitlements.customEffects} hiệu ứng cá nhân của gói ${entitlements.label}.`, entitlements)
+            };
+        }
+        const customEffect = { localId, name: String(name).trim().slice(0, 80), machineId, duration: normalizedDuration, createdAt: new Date() };
+        const updateResult = await User.updateOne(
+            { _id: userId, 'customEffects.localId': { $ne: localId } },
+            { $push: { customEffects: customEffect } }
+        );
+        if (updateResult.modifiedCount > 0) user.customEffects.push(customEffect);
+    } else {
+        await User.updateOne(
+            { _id: userId, 'customEffects.localId': localId },
+            {
+                $set: {
+                    'customEffects.$.name': String(name).trim().slice(0, 80),
+                    'customEffects.$.machineId': machineId,
+                    'customEffects.$.duration': normalizedDuration
+                }
+            }
+        );
+    }
+    const freshUser = await User.findById(userId).select('customEffects');
+    return { success: true, count: Array.isArray(freshUser?.customEffects) ? freshUser.customEffects.length : user.customEffects.length };
+}
+
 module.exports = {
     normalizePurchasedEffect,
     normalizeCustomEffect,
     isCustomEffectMediaAvailable,
     getUserAvailableEffects,
     resolveEffectForUser,
-    resolveEffectDurationForUser
+    resolveEffectDurationForUser,
+    registerCustomEffectOwnership
 };

@@ -33,3 +33,8 @@ dist/
 out/
 build/
 app-builds/
+
+# Bundled MongoDB binary (fetched by desktop/scripts/fetch-mongod.js, not
+# committed — ~64MB and easy to re-download on any machine that builds
+# a release).
+desktop/vendor/

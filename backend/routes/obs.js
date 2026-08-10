@@ -22,9 +22,11 @@ const { paths: dataPaths } = require('../config/dataPaths');
 const { isValidResourceId, ownedResourceFilter } = require('../utils/accessControl');
 const { getEntitlements, validateDesignerItems } = require('../config/planEntitlements');
 
-async function getObsConnectionConfig() {
+async function getObsConnectionConfig(userId) {
     try {
-        const settings = await OBSSettings.findOne();
+        const settings = userId
+            ? (await OBSSettings.findOne({ userId })) || (await OBSSettings.findOne({ userId: { $exists: false } }))
+            : await OBSSettings.findOne({ userId: { $exists: false } });
         if (settings) {
             return {
                 host: settings.host || process.env.OBS_HOST || '127.0.0.1',
@@ -277,7 +279,7 @@ router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
         }
 
         if (!obsService.isConnected()) {
-            const config = await getObsConnectionConfig();
+            const config = await getObsConnectionConfig(req.userId);
             await obsService.connect(config.host, config.port, config.password);
         }
 
@@ -461,7 +463,7 @@ router.post('/repair-sources', authMiddleware, async (req, res) => {
             rememberCloudSessionToken(req.userId, rawToken);
         }
         if (!obsService.isConnected()) {
-            const config = await getObsConnectionConfig();
+            const config = await getObsConnectionConfig(req.userId);
             await obsService.connect(config.host, config.port, config.password);
         }
 

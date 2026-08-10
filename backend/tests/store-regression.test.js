@@ -17,6 +17,17 @@ const mappingBody = homeSource.slice(
 
 assert.ok(homeSource.includes('this.storeEffects = []'));
 assert.ok(homeSource.includes('this._renderGrid(storeGrid, visibleStoreEffects'));
+assert.ok(homeSource.includes("this.CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com'"));
+assert.ok(homeSource.includes('const primaryUrl = normalizeBannerUrl(this.CLOUD_API_URL, data.banner.url)'));
+assert.ok(homeSource.includes('const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value)'));
+assert.ok(homeSource.includes("fetch(this.API_URL + '/api/effects/trending')"));
+assert.ok(!loadEffectsBodyRemovesSession(homeSource));
+assert.ok(homeSource.includes('await this.preloadAllAppData();'));
+assert.ok(homeSource.includes('this.showBootstrapFailure(err.message'));
+assert.ok(homeSource.includes("accountStorageKey('es_cache_owned_effects')"));
+assert.ok(homeSource.includes("accountStorageKey('es_pending_payments')"));
+assert.ok(!homeSource.includes("localStorage.setItem('es_pending_payments'"));
+assert.ok(indexSource.includes('id="app-loading-retry"'));
 assert.ok(!loadOwnedBody.includes('this.effects = data.effects'));
 assert.ok(!mappingBody.includes('this.effects = purchasedEffects'));
 assert.ok(indexSource.includes("filterCategory('all')"));
@@ -25,3 +36,11 @@ assert.ok(indexSource.includes('🛍️ Tất cả'));
 assert.ok(effectsRouteSource.includes("Effect.find({ isActive: true, isTrending: true })"));
 
 console.log('store regression tests passed');
+
+function loadEffectsBodyRemovesSession(source) {
+    const body = source.slice(
+        source.indexOf('async loadEffects()'),
+        source.indexOf('async loadTrending()')
+    );
+    return body.includes("localStorage.removeItem('token')");
+}

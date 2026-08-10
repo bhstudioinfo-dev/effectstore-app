@@ -1489,6 +1489,22 @@
 
     let lastLayoutSignature = '';
     const itemElementCache = new Map();
+    let consecutiveFetchFailures = 0;
+    // At 700ms polling, 5 misses is ~3.5s of sustained downtime — long enough
+    // to rule out a single transient network blip, short enough that closing
+    // the LiveFlow app (which stops this backend) clears the board quickly
+    // instead of leaving the last frame frozen on stream indefinitely.
+    const FETCH_FAILURES_BEFORE_CLEAR = 5;
+
+    function clearOverlayForDisconnect() {
+      const root = document.getElementById('overlay-root');
+      if (root) {
+        itemElementCache.forEach((entry) => entry.el.remove());
+        itemElementCache.clear();
+        root.innerHTML = '';
+      }
+      lastLayoutSignature = '';
+    }
 
     // Builds (or rebuilds) the DOM node for exactly one layout item. Kept
     // separate from render() so render() can reuse an existing node when an
@@ -1828,6 +1844,7 @@
         if (userId) url += `&userId=${userId}`;
         const res = await fetch(url, { cache: 'no-store' });
         const data = await res.json();
+        consecutiveFetchFailures = 0;
         if (!(data && data.success && data.layout)) return;
 
         const layout = data.layout;
@@ -1842,6 +1859,15 @@
         render(layout);
       } catch (err) {
         console.error('Error loading or rendering layout:', err);
+        // fetch() only throws for a network-level failure (e.g. the LiveFlow
+        // backend isn't running because the app was closed) — not for a
+        // normal HTTP error status. Sustained failures mean nobody is
+        // actively managing this overlay anymore, so clear it instead of
+        // leaving the last board frozen on stream.
+        consecutiveFetchFailures += 1;
+        if (consecutiveFetchFailures === FETCH_FAILURES_BEFORE_CLEAR) {
+          clearOverlayForDisconnect();
+        }
       }
     }
 

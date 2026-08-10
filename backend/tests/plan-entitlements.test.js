@@ -17,7 +17,7 @@ assert.strictEqual(free.layouts, 1);
 assert.strictEqual(free.commentsPerSession, 20);
 assert.strictEqual(free.ttsPerSession, 10);
 assert.strictEqual(basic.mappings, 30);
-assert.strictEqual(basic.layouts, 10);
+assert.strictEqual(basic.layouts, 2);
 assert.strictEqual(basic.menuAssets, 20);
 assert.strictEqual(basic.goalTrackers, 10);
 assert.strictEqual(pro.devices, 1);
@@ -26,6 +26,14 @@ assert.strictEqual(expired.key, 'free');
 assert.strictEqual(upgradePayload('mappings', 'x', free).recommendedPlan, 'basic');
 assert.strictEqual(upgradePayload('menuAdvanced', 'x', basic).recommendedPlan, 'pro');
 assert.strictEqual(PLAN_ENTITLEMENTS.studio.devices, Infinity);
+const aiAssistantService = require('../services/aiAssistantService');
+assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'pro' }).baseLimit, 10000);
+assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'business' }).baseLimit, 10000);
+assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'studio' }).baseLimit, 30000);
+assert.strictEqual(aiAssistantService.getCharacterUsage({
+    subscription: 'pro',
+    subscriptionExpiresAt: new Date(Date.now() - 1000)
+}).baseLimit, 1000);
 
 assert.strictEqual(validateDesignerItems([{ type: 'goal-bar', animationType: 'None' }], free), null);
 assert.strictEqual(validateDesignerItems([{ type: 'goal-bar', barColor: '#ff007f', glowColor: 'rgba(255,0,127,0.5)', themeStyle: 'default', titleColor: '#ffffff', subtitleColor: '#cbd5e1' }], free), null);
@@ -36,6 +44,13 @@ assert.strictEqual(validateDesignerItems([
 assert.strictEqual(validateDesignerItems([{ type: 'media-asset', assetUrl: '/uploads/goal-assets/u/a.png' }], free).feature, 'menuAssets');
 assert.strictEqual(validateDesignerItems([{ type: 'gift', auraType: 'Glow' }], free).feature, 'menuAdvanced');
 assert.strictEqual(validateDesignerItems([{ type: 'gift', textColor: '#00ff00' }], free).feature, 'menuAdvanced');
+// Free-plan export blocks must name the offending layer and its specific
+// gated attribute so the upgrade prompt is actionable, not generic.
+const namedAnimationViolation = validateDesignerItems([{ type: 'gift', name: 'Tên Fan', animationType: 'Shake' }], free);
+assert.match(namedAnimationViolation.message, /Tên Fan/);
+assert.match(namedAnimationViolation.message, /Shake/);
+const namedColorViolation = validateDesignerItems([{ type: 'gift', name: 'Khung quà', textColor: '#00ff00' }], free);
+assert.match(namedColorViolation.message, /Khung quà/);
 assert.strictEqual(validateDesignerItems([{ type: 'goal-circle' }], free), null);
 assert.strictEqual(validateDesignerItems([{
     type: 'goal-circle',
@@ -50,7 +65,7 @@ assert.strictEqual(validateDesignerItems([{
 const advancedBoardTrial = validateDesignerItems([{ type: 'boss-bar' }], free);
 assert.strictEqual(advancedBoardTrial.feature, 'templates');
 assert.match(advancedBoardTrial.message, /Thanh đối kháng/);
-assert.match(advancedBoardTrial.message, /lưu và xuất/);
+assert.match(advancedBoardTrial.message, /xuất bảng này sang OBS/);
 assert.strictEqual(validateDesignerItems([{
     type: 'talent-live',
     talentCompetition: { participants: [{}, {}, {}] }
@@ -63,10 +78,12 @@ assert.strictEqual(validateDesignerItems([{
     type: 'talent-live',
     talentCompetition: { participants: [{}, {}, {}, {}] }
 }], basic), null);
-assert.strictEqual(validateDesignerItems([{ type: 'gift', animationType: 'Shake' }], basic).feature, 'menuAdvanced');
+// Basic now gets full designer feature access (same as Pro) — only the
+// saved-layout count (basic.layouts) still distinguishes it from Pro.
+assert.strictEqual(validateDesignerItems([{ type: 'gift', animationType: 'Shake' }], basic), null);
 assert.strictEqual(validateDesignerItems([{ type: 'gift', animationType: 'Pulse', auraType: 'Glow' }], basic), null);
 assert.strictEqual(validateDesignerItems([{ type: 'gift-stack-group', children: [] }], basic), null);
-assert.strictEqual(validateDesignerItems([{ type: 'gift-stack-group', children: [], locked: true }], basic).feature, 'menuAdvanced');
+assert.strictEqual(validateDesignerItems([{ type: 'gift-stack-group', children: [], locked: true }], basic), null);
 assert.strictEqual(validateDesignerItems(Array.from({ length: 11 }, () => ({ type: 'goal-bar' })), basic).feature, 'goalTrackers');
 assert.strictEqual(validateDesignerItems([{ type: 'gift', animationType: 'Shake', auraType: 'Electric Aura' }], pro), null);
 assert.strictEqual(validateMappingAutomation({ effects: [{ effectId: 'a' }] }, free), null);
