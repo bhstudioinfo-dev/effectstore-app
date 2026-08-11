@@ -574,13 +574,18 @@ app.get('/api/cloud/status', async (_req, res) => {
         const data = await response.json().catch(() => ({}));
         const version = Number(data.commercialApiVersion || 0);
         const compatible = response.ok && data.database?.connected === true && version >= COMMERCIAL_API_VERSION;
-        return res.status(compatible ? 200 : 426).json({
-            success: compatible,
-            compatible,
+        const cloudAvailable = response.ok && data.database?.connected === true;
+        return res.status(cloudAvailable ? 200 : 426).json({
+            success: cloudAvailable,
+            compatible: cloudAvailable,
+            cloudUpgradePending: cloudAvailable && !compatible,
             commercialApiVersion: version,
             requiredCommercialApiVersion: COMMERCIAL_API_VERSION,
             database: { connected: data.database?.connected === true },
-            error: compatible ? undefined : 'Backend cloud chưa được cập nhật đúng phiên bản dành cho app này.'
+            warning: cloudAvailable && !compatible
+                ? 'Backend cloud đang cập nhật; các tính năng cloud mới tạm thời chưa sẵn sàng.'
+                : undefined,
+            error: cloudAvailable ? undefined : 'Backend cloud chưa được cập nhật đúng phiên bản dành cho app này.'
         });
     } catch (_error) {
         return res.status(503).json({
