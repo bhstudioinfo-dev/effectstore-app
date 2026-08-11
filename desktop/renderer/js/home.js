@@ -185,7 +185,16 @@ class EffectStoreApp {
     async verifyCloudCompatibility() {
         const response = await fetch(`${this.API_URL}/api/cloud/status`);
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.compatible !== true || data.database?.connected !== true) {
+        const cloudDatabaseConnected = data.database?.connected === true;
+        if (response.status === 426 && cloudDatabaseConnected) {
+            console.warn('Cloud backend is still deploying the required API version.', data);
+            setTimeout(() => this.showNotification(
+                'warning',
+                'Cloud đang cập nhật phiên bản mới. Bạn vẫn có thể dùng các tính năng trên máy; Trợ lý AI sẽ sẵn sàng sau khi cập nhật xong.'
+            ), 300);
+            return true;
+        }
+        if (!response.ok || data.compatible !== true || !cloudDatabaseConnected) {
             throw new Error(data.error || 'Backend cloud chưa sẵn sàng cho phiên bản LiveFlow này.');
         }
         return true;
