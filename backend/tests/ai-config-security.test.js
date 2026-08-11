@@ -12,9 +12,15 @@ const originalElevenKey = process.env.ELEVENLABS_API_KEY;
         process.env.ELEVENLABS_API_KEY = 'server-only-eleven-test-key';
 
         let saves = 0;
+        let updates = 0;
         const user = {
             _id: 'account-1',
             aiAssistantConfig: {},
+            async updateOne(update, options) {
+                updates += 1;
+                assert.deepStrictEqual(update, { $set: { aiAssistantConfig: update.$set.aiAssistantConfig } });
+                assert.strictEqual(options.runValidators, true);
+            },
             async save() { saves += 1; }
         };
         const config = await aiAssistantService.saveConfig({
@@ -25,7 +31,8 @@ const originalElevenKey = process.env.ELEVENLABS_API_KEY;
             elevenLabsApiKey: 'must-not-be-saved'
         }, user);
 
-        assert.strictEqual(saves, 1);
+        assert.strictEqual(updates, 1);
+        assert.strictEqual(saves, 0);
         assert.strictEqual(user.aiAssistantConfig.enabled, true);
         assert.strictEqual(user.aiAssistantConfig.minimumDonatorCoins, 25);
         assert.strictEqual(Object.hasOwn(user.aiAssistantConfig, 'geminiApiKey'), false);

@@ -7849,13 +7849,19 @@ class EffectStoreApp {
                 },
                 body: JSON.stringify(payload)
             });
-            const data = await res.json();
-            if (data.success) {
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success) {
                 this.aiAssistantConfig = data.config || this.aiAssistantConfig;
                 if (data.usage) this.renderAiUsageUI(data.usage);
                 this.showNotification('success', '💾 Đã lưu cấu hình Trợ lý AI!');
+                return true;
             }
-        } catch (_e) {}
+            throw new Error(data.error || `Không thể lưu cấu hình (HTTP ${res.status}).`);
+        } catch (error) {
+            console.error('AI assistant config save error:', error);
+            this.showNotification('error', `❌ ${error.message || 'Không thể lưu cấu hình Trợ lý AI.'}`);
+            return false;
+        }
     }
 
     async testAiAssistantSpeech() {

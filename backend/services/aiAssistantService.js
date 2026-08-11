@@ -181,8 +181,20 @@ async function addAddonCharacters(addonCount, user = null) {
 async function saveConfig(newConfig = {}, user = null) {
     const safeConfig = sanitizeConfig({ ...getRuntimeConfig(user), ...newConfig });
     if (user) {
+        // Persist only the AI settings. Some mirrored/legacy account documents
+        // contain fields that no longer satisfy the current full User schema;
+        // calling document.save() would validate those unrelated fields and
+        // make an otherwise valid settings change fail with HTTP 500.
+        if (typeof user.updateOne === 'function') {
+            await user.updateOne(
+                { $set: { aiAssistantConfig: safeConfig } },
+                { runValidators: true }
+            );
+        } else if (typeof user.save === 'function') {
+            user.aiAssistantConfig = safeConfig;
+            await user.save();
+        }
         user.aiAssistantConfig = safeConfig;
-        if (typeof user.save === 'function') await user.save();
     } else {
         runtimeConfig = { ...runtimeConfig, ...safeConfig };
     }
