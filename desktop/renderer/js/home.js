@@ -249,6 +249,12 @@ class EffectStoreApp {
         if (typeof this.loadMappings === 'function') {
             tasks.push(this.loadMappings());
         }
+        if (typeof this.preloadMappingLibrary === 'function') {
+            // The mapping panel is present in the DOM even while hidden. Load
+            // wheels first, then its effect library, before dismissing the app
+            // loading screen so the panel never opens with an empty column.
+            tasks.push(this.preloadMappingLibrary());
+        }
         if (typeof this.loadSoundLibrary === 'function') {
             tasks.push(this.loadSoundLibrary());
         }
@@ -5757,13 +5763,30 @@ class EffectStoreApp {
     }
 
     // ===== GIFT MAPPING FUNCTIONS =====
-        initGiftMapping() {
+    async preloadMappingLibrary({ force = false } = {}) {
+        if (!force && this._mappingLibraryLoaded) return true;
+        if (!force && this._mappingLibraryPromise) return this._mappingLibraryPromise;
+
+        this._mappingLibraryPromise = (async () => {
+            await this.loadChallengeWheels();
+            await this.loadEffectsForMapping();
+            this._mappingLibraryLoaded = true;
+            return true;
+        })();
+        try {
+            return await this._mappingLibraryPromise;
+        } finally {
+            this._mappingLibraryPromise = null;
+        }
+    }
+
+    initGiftMapping() {
         this.connectWebSocket();
         this.loadGifts();
         this.loadAiAssistantConfig();
-        // Load wheels first so purchased Challenge Wheel products can appear
-        // in the mapping library.
-        this.loadChallengeWheels().then(() => this.loadEffectsForMapping());
+        // Usually already completed by preloadAllAppData; this is a safe
+        // fallback for sessions that entered the view before authentication.
+        this.preloadMappingLibrary();
         this.loadMappings();
         this.startEffectQueueStatusPolling();
         const triggerSelect = document.getElementById('mapping-trigger-type');
