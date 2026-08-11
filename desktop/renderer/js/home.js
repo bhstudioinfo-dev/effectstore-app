@@ -494,7 +494,7 @@ class EffectStoreApp {
         return false;
     }
 
-    async checkAuth() {
+    async checkAuth({ loadDependentData = true } = {}) {
         const token = localStorage.getItem('token');
 
         if (!token) {
@@ -534,7 +534,7 @@ class EffectStoreApp {
                 this.authToken = token;
                 this.closeAuthModal();
                 this.updateUserUI();
-                this.loadAiAssistantConfig();
+                if (loadDependentData) this.loadAiAssistantConfig();
                 if (this.currentView === 'admin' || data.user.isAdmin || data.user.email === 'admin@effectstore.vn') {
                     this.loadAdminDashboard();
                 }
@@ -1771,7 +1771,9 @@ class EffectStoreApp {
 
     async retryUnauthorized(response, authenticatedRequest, anonymousRequest = null) {
         if (!response || response.status !== 401) return response;
-        await this.checkAuth().catch(() => {});
+        // Do not let a dependent request recursively start itself again while
+        // refreshing auth (AI config used to create an unbounded 401 loop).
+        await this.checkAuth({ loadDependentData: false }).catch(() => {});
         if (this.authToken && typeof authenticatedRequest === 'function') {
             return authenticatedRequest(this.authToken);
         }
@@ -7452,6 +7454,16 @@ class EffectStoreApp {
     }
 
     async loadAiAssistantConfig() {
+        if (this._aiConfigLoadPromise) return this._aiConfigLoadPromise;
+        this._aiConfigLoadPromise = this._loadAiAssistantConfigOnce();
+        try {
+            return await this._aiConfigLoadPromise;
+        } finally {
+            this._aiConfigLoadPromise = null;
+        }
+    }
+
+    async _loadAiAssistantConfigOnce() {
         try {
             const token = this.authToken || localStorage.getItem('token') || '';
             const headers = {};
@@ -7465,6 +7477,7 @@ class EffectStoreApp {
                     () => fetch(`${this.API_URL}/api/tiktok/ai-config`)
                 );
             }
+            if (!res.ok) return false;
             const data = await res.json().catch(() => ({}));
             if (data.success && data.config) {
                 const c = data.config;
@@ -7509,7 +7522,10 @@ class EffectStoreApp {
             if (this.currentUser?.isAdmin === true || this.currentUser?.email === 'admin@effectstore.vn') {
                 this.loadSystemAiSecretStatus();
             }
-        } catch (_e) {}
+            return data.success === true;
+        } catch (_e) {
+            return false;
+        }
     }
 
     renderSystemAiSecretStatus(status = {}) {
