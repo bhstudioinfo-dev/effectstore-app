@@ -22,6 +22,9 @@ assert.ok(homeSource.includes('const primaryUrl = normalizeBannerUrl(this.CLOUD_
 assert.ok(homeSource.includes('const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value)'));
 assert.ok(homeSource.includes('const isLocalPlaybackRoute = /^\\/api\\/(?:stream\\/effect\\/|obs\\/effect-player-media\\/)/i.test(raw)'));
 assert.ok(homeSource.includes('const baseUrl = isLocalPlaybackRoute ? this.API_URL : this.CLOUD_API_URL'));
+assert.ok(homeSource.includes('return `system_vi_v2_${text}`'));
+assert.ok(homeSource.includes("localStorage.setItem('es_system_tts_cache_v2_migrated', '1')"));
+assert.ok(!homeSource.includes("const cacheKey = voiceId + '_' + text"));
 assert.ok(homeSource.includes("fetch(this.API_URL + '/api/effects/trending')"));
 assert.ok(!loadEffectsBodyRemovesSession(homeSource));
 assert.ok(homeSource.includes('await this.preloadAllAppData();'));

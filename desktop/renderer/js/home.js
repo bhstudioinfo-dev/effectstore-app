@@ -1862,20 +1862,31 @@ class EffectStoreApp {
         // No-op: voice selection has been dropped. Standard Google TTS is used.
     }
 
+    getSystemTtsCacheKey(text) {
+        // Gift/follow/comment TTS is deliberately independent from the custom
+        // ElevenLabs voice selected for the AI assistant.
+        return `system_vi_v2_${text}`;
+    }
+
+    clearLegacyCustomVoiceTtsCache() {
+        if (localStorage.getItem('es_system_tts_cache_v2_migrated') === '1') return;
+        const legacyKeys = [];
+        for (let index = 0; index < localStorage.length; index += 1) {
+            const key = localStorage.key(index);
+            if (key && key.startsWith('es_voice_cache_') && !key.startsWith('es_voice_cache_system_vi_v2_')) {
+                legacyKeys.push(key);
+            }
+        }
+        legacyKeys.forEach(key => localStorage.removeItem(key));
+        localStorage.setItem('es_system_tts_cache_v2_migrated', '1');
+    }
+
     // ===== TEXT TO SPEECH (TTS) =====
     async speakText(text, isTest = false, usageKind = 'tts') {
         if (!text) return;
 
-        let voiceId = 'pNInz6obpgDQGcFmaJgB';
-        const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input');
-        if (voiceSelect && voiceSelect.value) {
-            voiceId = voiceSelect.value;
-        }
-        if (voiceId === 'custom') {
-            voiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || document.querySelector('.ai-assistant-custom-voice-input')?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
-        }
-
-        const cacheKey = voiceId + '_' + text;
+        this.clearLegacyCustomVoiceTtsCache();
+        const cacheKey = this.getSystemTtsCacheKey(text);
         const persistentAudio = localStorage.getItem('es_voice_cache_' + cacheKey);
 
         // If audio is cached in localStorage, bypass usage limit checks completely (0 Credit deduction!)
@@ -2100,16 +2111,8 @@ class EffectStoreApp {
         this.isProcessingTTS = true;
         const text = this.ttsQueue.shift();
 
-        let voiceId = 'pNInz6obpgDQGcFmaJgB';
-        const voiceSelect = document.querySelector('.ai-assistant-eleven-voice-input');
-        if (voiceSelect && voiceSelect.value) {
-            voiceId = voiceSelect.value;
-        }
-        if (voiceId === 'custom') {
-            voiceId = document.getElementById('admin-eleven-custom-voice')?.value?.trim() || document.querySelector('.ai-assistant-custom-voice-input')?.value?.trim() || 'pNInz6obpgDQGcFmaJgB';
-        }
-
-        const cacheKey = voiceId + '_' + text;
+        this.clearLegacyCustomVoiceTtsCache();
+        const cacheKey = this.getSystemTtsCacheKey(text);
         const persistentAudio = localStorage.getItem('es_voice_cache_' + cacheKey);
 
         if (persistentAudio) {
