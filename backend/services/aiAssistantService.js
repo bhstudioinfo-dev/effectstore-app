@@ -185,8 +185,10 @@ async function saveConfig(newConfig = {}, user = null) {
         // contain fields that no longer satisfy the current full User schema;
         // calling document.save() would validate those unrelated fields and
         // make an otherwise valid settings change fail with HTTP 500.
-        if (typeof user.updateOne === 'function') {
-            await user.updateOne(
+        const UserModel = user.constructor;
+        if (UserModel && typeof UserModel.updateOne === 'function') {
+            await UserModel.updateOne(
+                { _id: user._id },
                 { $set: { aiAssistantConfig: safeConfig } },
                 { runValidators: true }
             );

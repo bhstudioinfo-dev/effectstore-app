@@ -13,16 +13,22 @@ const originalElevenKey = process.env.ELEVENLABS_API_KEY;
 
         let saves = 0;
         let updates = 0;
-        const user = {
-            _id: 'account-1',
-            aiAssistantConfig: {},
-            async updateOne(update, options) {
+        class FakeUser {
+            static async updateOne(filter, update, options) {
                 updates += 1;
+                assert.deepStrictEqual(filter, { _id: 'account-1' });
                 assert.deepStrictEqual(update, { $set: { aiAssistantConfig: update.$set.aiAssistantConfig } });
                 assert.strictEqual(options.runValidators, true);
-            },
+            }
+
+            constructor() {
+                this._id = 'account-1';
+                this.aiAssistantConfig = {};
+            }
+
             async save() { saves += 1; }
-        };
+        }
+        const user = new FakeUser();
         const config = await aiAssistantService.saveConfig({
             enabled: true,
             persona: 'smart',
