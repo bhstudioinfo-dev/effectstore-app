@@ -20,6 +20,8 @@ assert.ok(homeSource.includes('this._renderGrid(storeGrid, visibleStoreEffects')
 assert.ok(homeSource.includes("this.CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com'"));
 assert.ok(homeSource.includes('const primaryUrl = normalizeBannerUrl(this.CLOUD_API_URL, data.banner.url)'));
 assert.ok(homeSource.includes('const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value)'));
+assert.ok(homeSource.includes('const isLocalPlaybackRoute = /^\\/api\\/(?:stream\\/effect\\/|obs\\/effect-player-media\\/)/i.test(raw)'));
+assert.ok(homeSource.includes('const baseUrl = isLocalPlaybackRoute ? this.API_URL : this.CLOUD_API_URL'));
 assert.ok(homeSource.includes("fetch(this.API_URL + '/api/effects/trending')"));
 assert.ok(!loadEffectsBodyRemovesSession(homeSource));
 assert.ok(homeSource.includes('await this.preloadAllAppData();'));

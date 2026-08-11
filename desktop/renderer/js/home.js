@@ -3070,10 +3070,15 @@ class EffectStoreApp {
         const raw = String(value || '').trim();
         if (!raw || /^data:|^blob:/i.test(raw)) return raw;
         if (/^https?:\/\//i.test(raw)) return raw;
+        // Protected playback routes read media from the desktop backend's local
+        // library. Render's ephemeral filesystem does not contain these files,
+        // so resolving them against CLOUD_API_URL produces a 404.
+        const isLocalPlaybackRoute = /^\/api\/(?:stream\/effect\/|obs\/effect-player-media\/)/i.test(raw);
+        const baseUrl = isLocalPlaybackRoute ? this.API_URL : this.CLOUD_API_URL;
         try {
-            return new URL(raw, this.CLOUD_API_URL).toString();
+            return new URL(raw, baseUrl).toString();
         } catch (_error) {
-            return `${this.CLOUD_API_URL}${raw.startsWith('/') ? '' : '/'}${raw}`;
+            return `${String(baseUrl || '').replace(/\/+$/, '')}${raw.startsWith('/') ? '' : '/'}${raw}`;
         }
     }
     showNotification(type, message) { const n = document.getElementById('notification'); document.getElementById('notification-icon').textContent = type === 'warning' ? '⚠️' : type === 'error' ? '❌' : '✅'; document.getElementById('notification-message').textContent = message; n.className = 'notification show ' + type; setTimeout(() => n.classList.remove('show'), 4000); }
