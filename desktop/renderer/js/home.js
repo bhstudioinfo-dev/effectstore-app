@@ -4742,13 +4742,13 @@ class EffectStoreApp {
                     ? payment.products
                     : (payment.effectIds || []).map((id) => ({
                         id: String(id),
-                        name: String(id) === 'SUBSCRIPTION_PRO'
+                        name: String(id) === 'SUBSCRIPTION_BASIC'
                             ? 'Gói Basic · 30 ngày'
-                            : (String(id) === 'SUBSCRIPTION_BUSINESS' ? 'Gói Pro · 30 ngày' : `Sản phẩm ${String(id).slice(-6)}`)
+                            : (['SUBSCRIPTION_PRO', 'SUBSCRIPTION_BUSINESS'].includes(String(id)) ? 'Gói Pro · 30 ngày' : `Sản phẩm ${String(id).slice(-6)}`)
                     }))
             }));
             this.adminPendingPayments = payments
-                .filter((payment) => payment.status === 'pending' || payment.status === 'created')
+                .filter((payment) => payment.status === 'pending' || payment.status === 'processing')
                 .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
             const count = this.adminPendingPayments.length;
             const countEl = document.getElementById('admin-modal-pending-count');
@@ -4838,8 +4838,8 @@ class EffectStoreApp {
                     <option value="">-- Chọn lý do --</option><option>Chưa nhận được tiền</option><option>Sai số tiền</option><option>Biên lai không hợp lệ</option><option>Giao dịch trùng</option><option>Sai nội dung chuyển khoản</option><option value="Lý do khác">Lý do khác</option>
                 </select>
                 <div style="display:flex;gap:10px;">
-                    <button onclick="app.rejectPendingPayment('${payment._id}')" style="flex:1;padding:11px;border-radius:10px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.1);color:#fca5a5;font-weight:800;cursor:pointer;">Từ chối</button>
-                    <button onclick="app.confirmPendingPayment('${payment._id}')" style="flex:2;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-weight:900;cursor:pointer;">Xác nhận thanh toán</button>
+                    <button data-payment-id="${payment._id}" onclick="app.rejectPendingPayment('${payment._id}')" style="flex:1;padding:11px;border-radius:10px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.1);color:#fca5a5;font-weight:800;cursor:pointer;">Từ chối</button>
+                    <button data-payment-id="${payment._id}" onclick="app.confirmPendingPayment('${payment._id}')" style="flex:2;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-weight:900;cursor:pointer;">Xác nhận thanh toán</button>
                 </div>
             </div>
         `;
@@ -4863,6 +4863,15 @@ class EffectStoreApp {
     }
 
     async approvePayment(paymentId, closeModal = false) {
+        this._paymentApprovals = this._paymentApprovals || new Set();
+        if (this._paymentApprovals.has(String(paymentId))) {
+            this.showNotification('info', 'Đơn này đang được xử lý, vui lòng chờ một chút.');
+            return;
+        }
+        this._paymentApprovals.add(String(paymentId));
+        document.querySelectorAll('[data-payment-id]').forEach((button) => {
+            if (button.dataset.paymentId === String(paymentId)) button.disabled = true;
+        });
         try {
             this.showAppLoadingOverlay('⏳ Đang duyệt đơn và kích hoạt dịch vụ...', 30);
             const res = await fetch(`${this.API_URL}/api/payment/admin/approve`, {
@@ -4874,17 +4883,28 @@ class EffectStoreApp {
                 body: JSON.stringify({ paymentId })
             });
             const data = await res.json().catch(() => ({}));
-            this.hideAppLoadingOverlay();
-            if (data.success) {
-                this.showNotification('success', '✅ Đã duyệt đơn và kích hoạt dịch vụ thành công!');
+            if (res.ok && data.success) {
+                if (data.processing) {
+                    this.showNotification('info', 'Đơn đang được máy chủ xử lý. Danh sách sẽ tự cập nhật.');
+                    setTimeout(() => this.loadAdminDashboard(), 1200);
+                    return;
+                }
+                this.showNotification('success', data.duplicate
+                    ? '✅ Đơn này đã được duyệt trước đó; quyền lợi không bị cộng trùng.'
+                    : '✅ Đã duyệt đơn và kích hoạt dịch vụ thành công!');
                 if (closeModal) this.closePendingPaymentsModal();
                 await this.loadAdminDashboard();
             } else {
                 this.showNotification('error', '❌ ' + (data.message || data.error || 'Không thể duyệt đơn.'));
             }
         } catch (e) {
-            this.hideAppLoadingOverlay();
             this.showNotification('error', '❌ Lỗi kết nối máy chủ: ' + e.message);
+        } finally {
+            this.hideAppLoadingOverlay();
+            this._paymentApprovals.delete(String(paymentId));
+            document.querySelectorAll('[data-payment-id]').forEach((button) => {
+                if (button.dataset.paymentId === String(paymentId)) button.disabled = false;
+            });
         }
     }
 
@@ -5116,7 +5136,7 @@ class EffectStoreApp {
             if (paymentsData.success) {
                 const container = document.getElementById('admin-payments-list');
                 if (container) {
-                    const pending = (paymentsData.payments || []).filter(p => p.status === 'pending' || p.status === 'created');
+                    const pending = (paymentsData.payments || []).filter(p => p.status === 'pending' || p.status === 'processing');
                     if (pending.length === 0) {
                         container.innerHTML = '<div class="empty-state">💳 Không có payment chờ</div>';
                     } else {
@@ -5135,7 +5155,7 @@ class EffectStoreApp {
                                     <div style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid rgba(255,255,255,0.08); padding-top:8px;">
                                         <span style="font-size:11px; color:#c4b5fd; font-weight:600;">📦 ${this.adminPaymentText(productName)}</span>
                                         <div style="display:flex; gap:6px;">
-                                            <button onclick="app.approvePendingPayment('${p._id}')" style="background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">✅ Duyệt đơn</button>
+                                            <button data-payment-id="${p._id}" onclick="app.approvePendingPayment('${p._id}')" style="background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">✅ Duyệt đơn</button>
                                             <button onclick="app.openPendingPaymentsModal('${p._id}')" style="background:rgba(59,130,246,0.15); color:#93c5fd; border:1px solid rgba(59,130,246,.3); padding:5px 10px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">👁️ Xem</button>
                                         </div>
                                     </div>
@@ -5215,23 +5235,8 @@ class EffectStoreApp {
     async deleteEffect(effectId) { if (!confirm('⚠️ Xóa effect?')) return; try { const res = await fetch(`${this.API_URL}/api/effects/${effectId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.authToken}` } }); const data = await res.json(); if (data.success) { this.showNotification('success', '✅ Đã xóa'); this.loadAdminDashboard(); this.loadEffects(); } } catch (error) { this.showNotification('error', '❌ ' + error.message); } }
     async approvePendingPayment(paymentId, fromReviewModal = false) {
         if (!fromReviewModal && !confirm('Xác nhận đã nhận được tiền và duyệt đơn nạp này?')) return;
-        try {
-            const res = await fetch(`${this.API_URL}/api/payment/admin/approve`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` },
-                body: JSON.stringify({ paymentId })
-            });
-            const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Không thể duyệt yêu cầu');
-            this.showNotification('success', '✅ Đã duyệt đơn thành công và cộng ký tự / kích hoạt quyền lợi!');
-            if (document.getElementById('admin-alert-modal')?.style.display === 'flex') {
-                await this.openPendingPaymentsModal();
-            }
-            this.loadAdminDashboard();
-            this.loadAiAssistantConfig();
-        } catch (error) {
-            this.showNotification('error', 'Lỗi: ' + error.message);
-        }
+        await this.approvePayment(paymentId, fromReviewModal);
+        this.loadAiAssistantConfig();
     }
 
     async rejectPayment(paymentId, reason = '', fromReviewModal = false) {
@@ -5239,6 +5244,12 @@ class EffectStoreApp {
             await this.openPendingPaymentsModal(paymentId);
             return;
         }
+        this._paymentRejections = this._paymentRejections || new Set();
+        if (this._paymentRejections.has(String(paymentId))) return;
+        this._paymentRejections.add(String(paymentId));
+        document.querySelectorAll('[data-payment-id]').forEach((button) => {
+            if (button.dataset.paymentId === String(paymentId)) button.disabled = true;
+        });
         try {
             const res = await fetch(`${this.API_URL}/api/payment/admin/reject`, {
                 method: 'POST',
@@ -5252,6 +5263,11 @@ class EffectStoreApp {
             this.loadAdminDashboard();
         } catch (error) {
             this.showNotification('error', error.message);
+        } finally {
+            this._paymentRejections.delete(String(paymentId));
+            document.querySelectorAll('[data-payment-id]').forEach((button) => {
+                if (button.dataset.paymentId === String(paymentId)) button.disabled = false;
+            });
         }
     }
 
@@ -5325,7 +5341,7 @@ class EffectStoreApp {
                 });
                 const data = await res.json().catch(() => ({}));
                 if (data.success && Array.isArray(data.payments)) {
-                    const pendingList = data.payments.filter(p => p.status === 'pending' || p.status === 'created');
+                    const pendingList = data.payments.filter(p => p.status === 'pending' || p.status === 'processing');
                     const count = pendingList.length;
                     this.updateAdminBadges(count);
                     

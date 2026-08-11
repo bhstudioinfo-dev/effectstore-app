@@ -18,6 +18,7 @@ try {
     assert(aiRoute.includes("router.post('/speech', authMiddleware"));
     assert(aiRoute.includes('usedCharactersThisMonth: { $lte: usage.totalLimit - reservedCharacters }'));
     assert(server.indexOf("app.use('/api/ai', proxyToCloud)") < server.indexOf("app.use('/api/ai', require('./routes/ai'))"));
+    assert(server.includes("app.post('/api/tiktok/ai-buy-addon', proxyToCloud)"));
     assert(!desktop.includes('xi-api-key'));
     assert(!desktop.includes('geminiApiKey'));
     assert(!desktop.includes('elevenLabsApiKey'));

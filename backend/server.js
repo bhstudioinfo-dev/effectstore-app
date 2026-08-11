@@ -468,6 +468,9 @@ if (isCloudProxyEnabled()) {
     // the desktop app would inspect this machine's local MongoDB and never see
     // orders created by customers on other machines.
     app.use('/api/payment', proxyToCloud);
+    // AI character add-ons create Payment records too, so they must be
+    // created in the same central collection used by Admin approval.
+    app.post('/api/tiktok/ai-buy-addon', proxyToCloud);
     app.get('/api/banner', proxyToCloud);
     app.get('/api/effects', proxyToCloud);
     app.get('/api/effects/trending', proxyToCloud);

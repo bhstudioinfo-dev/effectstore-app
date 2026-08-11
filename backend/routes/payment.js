@@ -8,7 +8,7 @@ const Payment = require('../models/Payment');
 const User = require('../models/User');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const { isValidResourceId } = require('../utils/accessControl');
-const { calculateOrder, claimFreeEffects, approvePayment } = require('../services/paymentService');
+const { calculateOrder, claimFreeEffects, approvePayment, recoverStalePayments } = require('../services/paymentService');
 const { paths: dataPaths } = require('../config/dataPaths');
 
 const proofDirectory = dataPaths.tempDir;
@@ -164,9 +164,10 @@ router.post('/sepay-webhook', async (req, res) => {
         if (!['created', 'pending'].includes(payment.status) || transferAmount < payment.amount) {
             return res.status(409).json({ success: false, error: 'Payment does not match the order.' });
         }
-        const approved = await approvePayment(payment._id, ['created', 'pending']);
-        if (!approved) return res.status(409).json({ success: false, error: 'Payment is already being processed.' });
-        return res.json({ success: true, orderId, status: 'approved' });
+        const approval = await approvePayment(payment._id, ['created', 'pending']);
+        if (approval.outcome === 'processing') return res.status(202).json({ success: true, processing: true, orderId, status: 'processing' });
+        if (approval.outcome !== 'approved') return res.status(409).json({ success: false, error: 'Payment cannot be approved.' });
+        return res.json({ success: true, duplicate: approval.duplicate === true, orderId, status: 'approved' });
     } catch (_error) {
         return res.status(500).json({ success: false, error: 'Webhook processing failed.' });
     }
@@ -174,8 +175,11 @@ router.post('/sepay-webhook', async (req, res) => {
 
 router.get('/admin/payments', authMiddleware, adminMiddleware, async (_req, res) => {
     try {
-        const payments = await Payment.find().sort({ createdAt: -1 }).lean();
-        console.log('API /admin/payments count:', payments.length, 'statuses:', payments.map(p => p.status));
+        await recoverStalePayments();
+        const payments = await Payment.find({ status: { $in: ['pending', 'processing'] } })
+            .sort({ createdAt: -1 })
+            .limit(200)
+            .lean();
         const userIds = [...new Set(payments.map((payment) => String(payment.userId || '')).filter(isValidResourceId))];
         const effectIds = [...new Set(payments.flatMap((payment) => payment.effectIds || [])
             .map(String)
@@ -204,6 +208,7 @@ router.get('/admin/payments', authMiddleware, adminMiddleware, async (_req, res)
             user: usersById.get(String(payment.userId)) || null,
             products: (payment.effectIds || []).map((id) => ({ id: String(id), name: productName(String(id)) }))
         }));
+        res.setHeader('Cache-Control', 'private, no-store');
         return res.json({ success: true, payments: safePayments });
     } catch (_error) {
         return res.status(500).json({ success: false, error: 'Unable to load payments.' });
@@ -222,13 +227,19 @@ router.post('/admin/approve', authMiddleware, adminMiddleware, async (req, res) 
     try {
         const paymentId = req.body?.paymentId;
         if (!isValidResourceId(paymentId)) return res.status(400).json({ success: false, error: 'Invalid payment ID' });
-        const payment = await approvePayment(paymentId, ['created', 'pending']);
-        if (!payment) return res.status(409).json({ success: false, message: 'Payment is not pending or is already being processed.' });
-        await Payment.updateOne(
-            { _id: payment._id },
-            { $set: { reviewedBy: String(req.userId), reviewedAt: new Date() }, $unset: { rejectionReason: 1 } }
-        );
-        return res.json({ success: true, message: 'Payment approved.' });
+        const approval = await approvePayment(paymentId, ['pending'], { reviewedBy: req.userId });
+        if (approval.outcome === 'not_found') return res.status(404).json({ success: false, message: 'Payment order not found.' });
+        if (approval.outcome === 'processing') {
+            return res.status(202).json({ success: true, processing: true, message: 'Payment is already being processed.' });
+        }
+        if (approval.outcome !== 'approved') {
+            return res.status(409).json({ success: false, status: approval.payment?.status, message: 'Payment can no longer be approved.' });
+        }
+        return res.json({
+            success: true,
+            duplicate: approval.duplicate === true,
+            message: approval.duplicate ? 'Payment was already approved.' : 'Payment approved.'
+        });
     } catch (error) {
         console.error('Approve error:', error);
         return res.status(500).json({ success: false, error: error.message || 'Unable to approve payment.' });
@@ -242,11 +253,16 @@ router.post('/admin/reject', authMiddleware, adminMiddleware, async (req, res) =
         const reason = String(req.body?.reason || '').trim();
         if (!reason) return res.status(400).json({ success: false, error: 'Rejection reason is required.' });
         const payment = await Payment.findOneAndUpdate(
-            { _id: paymentId, status: { $in: ['created', 'pending'] } },
+            { _id: paymentId, status: 'pending' },
             { $set: { status: 'rejected', rejectionReason: reason.slice(0, 500), reviewedBy: String(req.userId), reviewedAt: new Date() } },
             { new: true }
         );
-        if (!payment) return res.status(409).json({ success: false, message: 'Payment can no longer be rejected.' });
+        if (!payment) {
+            const existing = await Payment.findById(paymentId).select('status');
+            if (!existing) return res.status(404).json({ success: false, message: 'Payment order not found.' });
+            if (existing.status === 'rejected') return res.json({ success: true, duplicate: true, message: 'Payment was already rejected.' });
+            return res.status(409).json({ success: false, status: existing.status, message: 'Payment can no longer be rejected.' });
+        }
         return res.json({ success: true, message: 'Payment rejected.' });
     } catch (_error) {
         return res.status(500).json({ success: false, error: 'Unable to reject payment.' });

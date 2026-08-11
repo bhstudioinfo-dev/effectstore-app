@@ -2,8 +2,10 @@ const assert = require('assert');
 const {
     SUBSCRIPTION_PRODUCTS,
     normalizeEffectIds,
-    effectiveEffectPrice
+    effectiveEffectPrice,
+    grantPayment
 } = require('../services/paymentService');
+const User = require('../models/User');
 const paymentRoutes = require('../routes/payment');
 
 assert.deepStrictEqual(normalizeEffectIds([' a ', 'a', '', null, 'b']), ['a', 'b']);
@@ -59,9 +61,44 @@ const webhookResponse = {
 };
 
 webhookHandler({ headers: {}, body: {} }, webhookResponse)
-    .then(() => {
+    .then(async () => {
         assert.strictEqual(webhookResponse.statusCode, 503);
         assert.strictEqual(webhookResponse.payload.success, false);
+
+        const originalFindById = User.findById;
+        const fakeUser = {
+            isActive: true,
+            subscription: 'free',
+            subscriptionExpiresAt: null,
+            purchasedEffects: [],
+            processedPaymentIds: [],
+            addonCharacters: 0,
+            totalSpent: 0,
+            saveCount: 0,
+            async save() { this.saveCount += 1; return this; }
+        };
+        User.findById = async () => fakeUser;
+        try {
+            const payment = {
+                _id: '66aa00000000000000000001',
+                userId: '66aa00000000000000000002',
+                effectIds: ['SUBSCRIPTION_PRO', 'AI_ADDON_10K'],
+                amount: 409000
+            };
+            const firstGrant = await grantPayment(payment);
+            const firstExpiry = fakeUser.subscriptionExpiresAt.getTime();
+            const duplicateGrant = await grantPayment(payment);
+            assert.strictEqual(firstGrant.duplicate, false);
+            assert.strictEqual(duplicateGrant.duplicate, true);
+            assert.strictEqual(fakeUser.subscription, 'pro');
+            assert.strictEqual(fakeUser.addonCharacters, 1000);
+            assert.strictEqual(fakeUser.totalSpent, 409000);
+            assert.strictEqual(fakeUser.subscriptionExpiresAt.getTime(), firstExpiry);
+            assert.deepStrictEqual(fakeUser.processedPaymentIds, [payment._id]);
+            assert.strictEqual(fakeUser.saveCount, 1);
+        } finally {
+            User.findById = originalFindById;
+        }
         console.log('payment tests passed');
     })
     .catch((error) => {

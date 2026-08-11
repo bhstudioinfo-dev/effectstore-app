@@ -38,6 +38,7 @@ const UserSchema = new mongoose.Schema({
         createdAt: { type: Date, default: Date.now }
     }],
     totalSpent: { type: Number, default: 0 },
+    processedPaymentIds: { type: [String], default: [] },
     totalUses: { type: Number, default: 0 },
     usedCharactersThisMonth: { type: Number, default: 0 },
     usedSystemVoiceCharactersThisMonth: { type: Number, default: 0 },

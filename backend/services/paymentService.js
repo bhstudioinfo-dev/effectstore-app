@@ -95,6 +95,14 @@ async function claimFreeEffects(effectIds, user) {
 async function grantPayment(payment) {
     const isObjectId = /^[a-fA-F0-9]{24}$/.test(String(payment.userId || ''));
     const user = isObjectId ? await User.findById(payment.userId) : null;
+    if (!user || user.isActive === false) {
+        throw Object.assign(new Error('Payment account is unavailable.'), { status: 409 });
+    }
+    const paymentKey = String(payment._id || payment.orderId || '');
+    user.processedPaymentIds = Array.isArray(user.processedPaymentIds) ? user.processedPaymentIds : [];
+    if (paymentKey && user.processedPaymentIds.includes(paymentKey)) {
+        return { duplicate: true, user };
+    }
     const paidEffectIds = (payment.effectIds || []).filter((itemId) => !SUBSCRIPTION_PRODUCTS[itemId] && !String(itemId).startsWith('AI_ADDON_') && /^[a-fA-F0-9]{24}$/.test(String(itemId)));
     const paidEffects = paidEffectIds.length
         ? await Effect.find({ _id: { $in: paidEffectIds } }).lean()
@@ -108,20 +116,16 @@ async function grantPayment(payment) {
         // skip this check and fall through to aiAssistantService's shared
         // no-user fallback file, silently pooling real character grants into
         // a bucket every account's usage widget can read from.
-        if (!user) continue;
         if (itemId === 'AI_ADDON_10K') {
-            const aiAssistantService = require('./aiAssistantService');
-            aiAssistantService.addAddonCharacters(1000, user);
+            user.addonCharacters = (user.addonCharacters || 0) + 1000;
             continue;
         }
         if (itemId === 'AI_ADDON_50K') {
-            const aiAssistantService = require('./aiAssistantService');
-            aiAssistantService.addAddonCharacters(5500, user);
+            user.addonCharacters = (user.addonCharacters || 0) + 5500;
             continue;
         }
         if (itemId === 'AI_ADDON_100K') {
-            const aiAssistantService = require('./aiAssistantService');
-            aiAssistantService.addAddonCharacters(12000, user);
+            user.addonCharacters = (user.addonCharacters || 0) + 12000;
             continue;
         }
         const subscription = SUBSCRIPTION_PRODUCTS[itemId];
@@ -148,36 +152,74 @@ async function grantPayment(payment) {
         }
     }
 
-    if (user) {
-        user.totalSpent = (user.totalSpent || 0) + Number(payment.amount || 0);
-        await user.save();
-    }
+    user.totalSpent = (user.totalSpent || 0) + Number(payment.amount || 0);
+    if (paymentKey) user.processedPaymentIds.push(paymentKey);
+    await user.save();
+    return { duplicate: false, user };
 }
 
-async function approvePayment(paymentId, allowedStatuses = ['pending']) {
+async function approvePayment(paymentId, allowedStatuses = ['pending'], options = {}) {
+    const Payment = require('../models/Payment');
+    const now = new Date();
+    const staleBefore = new Date(now.getTime() - Math.max(30_000, Number(options.processingTimeoutMs) || 120_000));
     const payment = await require('../models/Payment').findOneAndUpdate(
-        { _id: paymentId, status: { $in: allowedStatuses } },
-        { $set: { status: 'processing' } },
+        {
+            _id: paymentId,
+            $or: [
+                { status: { $in: allowedStatuses } },
+                { status: 'processing', processingStartedAt: { $lte: staleBefore } },
+                { status: 'processing', processingStartedAt: { $exists: false } }
+            ]
+        },
+        { $set: { status: 'processing', processingStartedAt: now } },
         { new: true }
     );
-    if (!payment) return null;
+    if (!payment) {
+        const existing = await Payment.findById(paymentId);
+        if (!existing) return { outcome: 'not_found', payment: null };
+        if (existing.status === 'approved') return { outcome: 'approved', duplicate: true, payment: existing };
+        if (existing.status === 'processing') return { outcome: 'processing', payment: existing };
+        return { outcome: 'conflict', payment: existing };
+    }
 
     try {
-        await grantPayment(payment);
-    } catch (error) {
-        await require('../models/Payment').updateOne(
+        const grant = await grantPayment(payment);
+        const approvedAt = new Date();
+        const reviewFields = {
+            status: 'approved',
+            approvedAt,
+            reviewedAt: approvedAt,
+            ...(options.reviewedBy ? { reviewedBy: String(options.reviewedBy) } : {})
+        };
+        await Payment.updateOne(
             { _id: payment._id, status: 'processing' },
-            { $set: { status: 'pending' } }
+            { $set: reviewFields, $unset: { processingStartedAt: 1, rejectionReason: 1 } }
+        );
+        payment.status = 'approved';
+        return { outcome: 'approved', duplicate: grant.duplicate === true, payment };
+    } catch (error) {
+        await Payment.updateOne(
+            { _id: payment._id, status: 'processing' },
+            { $set: { status: 'pending' }, $unset: { processingStartedAt: 1 } }
         ).catch(() => null);
         throw error;
     }
+}
 
-    await require('../models/Payment').updateOne(
-        { _id: payment._id, status: 'processing' },
-        { $set: { status: 'approved' } }
+async function recoverStalePayments(timeoutMs = 120_000) {
+    const Payment = require('../models/Payment');
+    const staleBefore = new Date(Date.now() - Math.max(30_000, Number(timeoutMs) || 120_000));
+    const result = await Payment.updateMany(
+        {
+            status: 'processing',
+            $or: [
+                { processingStartedAt: { $lte: staleBefore } },
+                { processingStartedAt: { $exists: false } }
+            ]
+        },
+        { $set: { status: 'pending' }, $unset: { processingStartedAt: 1 } }
     );
-    payment.status = 'approved';
-    return payment;
+    return Number(result.modifiedCount || 0);
 }
 
 module.exports = {
@@ -186,5 +228,7 @@ module.exports = {
     effectiveEffectPrice,
     calculateOrder,
     claimFreeEffects,
-    approvePayment
+    approvePayment,
+    grantPayment,
+    recoverStalePayments
 };
