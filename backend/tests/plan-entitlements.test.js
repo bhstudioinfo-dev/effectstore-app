@@ -31,6 +31,7 @@ assert.strictEqual(PLAN_ENTITLEMENTS.studio.devices, Infinity);
 const aiAssistantService = require('../services/aiAssistantService');
 assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'pro' }).baseLimit, 15000);
 assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'business' }).baseLimit, 15000);
+assert.strictEqual(getEntitlements({ subscription: { plan: 'pro' } }).key, 'pro');
 assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'studio' }).baseLimit, 30000);
 assert.strictEqual(aiAssistantService.getCharacterUsage({
     subscription: 'pro',

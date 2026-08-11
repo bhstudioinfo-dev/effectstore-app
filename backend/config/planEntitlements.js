@@ -46,7 +46,12 @@ const PLAN_ENTITLEMENTS = Object.freeze({
 function normalizePlan(user) {
     if (user && (user.isAdmin === true || user.role === 'admin' || user.email === 'admin@effectstore.vn')) return 'admin';
     if (user?.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt).getTime() < Date.now()) return 'free';
-    const key = String(user?.subscription || user?.plan || 'free').toLowerCase();
+    const rawSubscription = user?.subscription || user?.plan || 'free';
+    const key = String(
+        rawSubscription && typeof rawSubscription === 'object'
+            ? (rawSubscription.plan || rawSubscription.key || rawSubscription.name || 'free')
+            : rawSubscription
+    ).toLowerCase();
     if (key === 'basic') return 'basic';
     if (key === 'pro' || key === 'business') return key;
     if (key === 'studio') return 'studio';

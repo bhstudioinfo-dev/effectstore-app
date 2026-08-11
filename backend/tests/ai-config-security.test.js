@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const aiAssistantService = require('../services/aiAssistantService');
+const User = require('../models/User');
 
 const originalGeminiKey = process.env.GEMINI_API_KEY;
 const originalElevenKey = process.env.ELEVENLABS_API_KEY;
@@ -13,22 +14,14 @@ const originalElevenKey = process.env.ELEVENLABS_API_KEY;
 
         let saves = 0;
         let updates = 0;
-        class FakeUser {
-            static async updateOne(filter, update, options) {
-                updates += 1;
-                assert.deepStrictEqual(filter, { _id: 'account-1' });
-                assert.deepStrictEqual(update, { $set: { aiAssistantConfig: update.$set.aiAssistantConfig } });
-                assert.strictEqual(options.runValidators, true);
-            }
-
-            constructor() {
-                this._id = 'account-1';
-                this.aiAssistantConfig = {};
-            }
-
-            async save() { saves += 1; }
-        }
-        const user = new FakeUser();
+        const originalUpdateOne = User.updateOne;
+        User.updateOne = async (filter, update, options) => {
+            updates += 1;
+            assert.deepStrictEqual(filter, { _id: 'account-1' });
+            assert.deepStrictEqual(update, { $set: { aiAssistantConfig: update.$set.aiAssistantConfig } });
+            assert.strictEqual(options.runValidators, true);
+        };
+        const user = { _id: 'account-1', aiAssistantConfig: {}, async save() { saves += 1; } };
         const config = await aiAssistantService.saveConfig({
             enabled: true,
             persona: 'smart',
@@ -47,6 +40,7 @@ const originalElevenKey = process.env.ELEVENLABS_API_KEY;
         assert.strictEqual(Object.hasOwn(config, 'elevenLabsApiKey'), false);
         assert.strictEqual(config.geminiConfigured, true);
         assert.strictEqual(config.elevenLabsConfigured, true);
+        User.updateOne = originalUpdateOne;
 
         const routeSource = fs.readFileSync(path.join(__dirname, '../routes/tiktok.js'), 'utf8');
         const desktopSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/js/home.js'), 'utf8');

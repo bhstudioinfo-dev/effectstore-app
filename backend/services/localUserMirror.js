@@ -14,11 +14,23 @@
 
 const User = require('../models/User');
 
+function normalizeSubscription(value) {
+    if (value && typeof value === 'object') {
+        return String(value.plan || value.key || value.name || 'free').toLowerCase();
+    }
+    return String(value || 'free').toLowerCase();
+}
+
 async function mirrorUserLocally(userPayload) {
     const id = String(userPayload?.id || userPayload?._id || '').trim();
     if (!id || !userPayload?.email) return;
 
     try {
+        const subscription = normalizeSubscription(userPayload.subscription || userPayload.plan);
+        const subscriptionExpiresAt = userPayload.subscriptionExpiresAt
+            || userPayload.subscription?.endDate
+            || userPayload.subscription?.expiresAt
+            || null;
         await User.findByIdAndUpdate(
             id,
             {
@@ -32,8 +44,8 @@ async function mirrorUserLocally(userPayload) {
                     name: userPayload.name || '',
                     phone: userPayload.phone || '',
                     isAdmin: Boolean(userPayload.isAdmin),
-                    subscription: userPayload.subscription || 'free',
-                    subscriptionExpiresAt: userPayload.subscriptionExpiresAt || null,
+                    subscription,
+                    subscriptionExpiresAt,
                     marketingConsent: Boolean(userPayload.marketingConsent),
                     purchasedEffects: Array.isArray(userPayload.purchasedEffects) ? userPayload.purchasedEffects : [],
                     isActive: true
@@ -47,4 +59,4 @@ async function mirrorUserLocally(userPayload) {
     }
 }
 
-module.exports = { mirrorUserLocally };
+module.exports = { mirrorUserLocally, normalizeSubscription };
