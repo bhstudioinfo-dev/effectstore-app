@@ -23,7 +23,10 @@ async function run() {
                 deck: {
                     effect: { visible: 10, slots: [null] },
                     sound: { visible: 10, slots: [] },
-                    availableEffects: [{ id: 'effect-1', name: 'Hoa Hồng', thumbUrl: '/thumb.png' }],
+                    availableEffects: [
+                        { id: 'effect-1', name: 'Hoa Hồng', thumbUrl: '/thumb.png' },
+                        { id: 'wheel-1', name: 'Vòng quay thử thách', type: 'challenge-wheel' }
+                    ],
                     availableSounds: []
                 }
             })
@@ -32,6 +35,18 @@ async function run() {
 
         const unauthorized = await fetch(`${base}/api/remote/deck-state`);
         assert.strictEqual(unauthorized.status, 401);
+
+        const initialState = await fetch(`${base}/api/remote/deck-state`, {
+            headers: { 'x-remote-token': token }
+        }).then((response) => response.json());
+        assert.deepStrictEqual(initialState.deck.availableEffects.map((effect) => effect.id), ['effect-1']);
+
+        const rejectedWheel = await fetch(`${base}/api/remote/assign-slot`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-remote-token': token },
+            body: JSON.stringify({ index: 1, deckType: 'effect', item: { id: 'wheel-1' } })
+        });
+        assert.strictEqual(rejectedWheel.status, 400);
 
         const assignResponse = await fetch(`${base}/api/remote/assign-slot`, {
             method: 'POST',
@@ -64,6 +79,21 @@ async function run() {
         assert.strictEqual(connection.connectedClients, 1);
         assert.strictEqual(connection.deck.effect.slots[0].effectId, 'effect-1');
         assert.strictEqual(connection.revision, assigned.revision);
+
+        const removeResponse = await fetch(`${base}/api/remote/remove-slot`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-remote-token': token },
+            body: JSON.stringify({ slotId: assigned.slot.id, deckType: 'effect' })
+        });
+        const removed = await removeResponse.json();
+        assert.strictEqual(removeResponse.status, 200);
+        assert.strictEqual(removed.success, true);
+        assert.ok(removed.revision > assigned.revision);
+
+        const stateAfterRemove = await fetch(`${base}/api/remote/deck-state`, {
+            headers: { 'x-remote-token': token }
+        }).then((response) => response.json());
+        assert.strictEqual(stateAfterRemove.deck.effect.slots.length, 0);
     } finally {
         await new Promise((resolve) => server.close(resolve));
     }

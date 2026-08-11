@@ -1205,25 +1205,30 @@
                     </div>
                 </div>
 
-                <!-- Admin System AI Key Management Card -->
+                <!-- Admin System AI Security Status Card -->
                 <div style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px; margin-top:24px;">
                     <h3 style="color:#fff; font-size:16px; margin:0 0 6px; display:flex; align-items:center; gap:8px;">
-                        🔑 Quản Lý API Key Hệ Thống AI (Dành Cho Admin)
+                        🔐 Bảo Mật Dịch Vụ AI
                     </h3>
-                    <p style="color:var(--text-muted); font-size:12px; margin:0 0 16px 0;">Cấu hình API Keys cấp hệ thống để cung cấp dịch vụ Trợ lý AI Cà khịa cho tất cả khách hàng.</p>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <p style="color:var(--text-muted); font-size:12px; margin:0 0 16px 0;">API key chỉ được đọc từ biến môi trường trên backend và không bao giờ gửi xuống ứng dụng.</p>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <span id="admin-gemini-status" style="padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.05);color:#94a3b8;font-size:12px;">Gemini: đang kiểm tra</span>
+                        <span id="admin-eleven-status" style="padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.05);color:#94a3b8;font-size:12px;">ElevenLabs: đang kiểm tra</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
                         <div>
-                            <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Mã Khóa Hệ Thống Google AI</label>
-                            <input type="password" id="admin-gemini-key" class="ai-assistant-gemini-key-input upload-form-input" placeholder="AIzaSy..." style="width:100%; font-size:12px; padding:8px 12px;" onchange="app.saveAiAssistantConfig(this)">
+                            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:5px;">Key Gemini mới</label>
+                            <input id="admin-gemini-secret-input" type="password" autocomplete="new-password" class="upload-form-input" placeholder="Để trống nếu không thay đổi" style="width:100%;box-sizing:border-box;">
                         </div>
                         <div>
-                            <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Mã Khóa Hệ Thống Giọng Đọc AI</label>
-                            <input type="password" id="admin-eleven-key" class="ai-assistant-eleven-key-input upload-form-input" placeholder="Khóa hệ thống giọng AI..." style="width:100%; font-size:12px; padding:8px 12px;" onchange="app.saveAiAssistantConfig(this)">
+                            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:5px;">Key ElevenLabs mới</label>
+                            <input id="admin-eleven-secret-input" type="password" autocomplete="new-password" class="upload-form-input" placeholder="Để trống nếu không thay đổi" style="width:100%;box-sizing:border-box;">
                         </div>
                     </div>
-                    <button onclick="app.saveAiAssistantConfig(this)" class="pro-btn" style="padding:10px 20px; background:linear-gradient(135deg,#8b5cf6,#7c3aed); font-size:13px; font-weight:700; cursor:pointer;">
-                        <i class="fas fa-save"></i> Lưu API Key Hệ Thống
-                    </button>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;">
+                        <span style="font-size:10px;color:#94a3b8;">Key hiện tại không thể xem lại. Nhập key mới chỉ khi cần thêm hoặc thay thế.</span>
+                        <button onclick="app.saveSystemAiSecrets()" class="pro-btn" style="padding:9px 16px;white-space:nowrap;cursor:pointer;">🔐 Lưu key an toàn</button>
+                    </div>
                 </div>
             </div>
 
@@ -1444,7 +1449,7 @@
                         <span style="font-size:10px; background:rgba(139,92,246,0.2); color:#a78bfa; padding:2px 8px; border-radius:10px; font-weight:700;">PRO AI</span>
                     </div>
 
-                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px;">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:8px;">
                         <div>
                             <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Tính cách AI</label>
                             <select class="ai-assistant-persona-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
@@ -1479,6 +1484,13 @@
                                 <option value="true">👑 Chỉ Viewer đã Tặng quà (VIP)</option>
                             </select>
                         </div>
+                        <div>
+                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Ngưỡng quà VIP trong phiên</label>
+                            <div style="display:flex;align-items:center;gap:5px;">
+                                <input type="number" class="ai-assistant-min-donator-coins-input" value="10" min="1" step="1" inputmode="numeric" style="width:100%;font-size:10px;padding:3px 7px;height:24px;box-sizing:border-box;background:#181d2a;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;outline:none;" onchange="app.saveAiAssistantConfig(this)">
+                                <span style="font-size:10px;color:#fbbf24;white-space:nowrap;">xu+</span>
+                            </div>
+                        </div>
                     </div>
                     <input type="text" class="ai-assistant-custom-voice-input upload-form-input" placeholder="👉 Dán mã Voice ID tại đây (Ví dụ: AZnzlk1XvdvUeBnXmlld)..." style="display:none; width:100%; font-size:11px; padding:6px 10px; margin-top:6px; border-color:#8b5cf6; box-sizing:border-box;" oninput="app.saveAiAssistantConfig(this)" onchange="app.saveAiAssistantConfig(this)">
 
@@ -1486,7 +1498,8 @@
                     <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(15,23,42,0.6); border:1px solid rgba(139,92,246,0.3); border-radius:10px; padding:10px 14px; margin-top:8px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span style="color:#c4b5fd; font-weight:700; font-size:12px;">📊 Dung lượng AI tháng này:</span>
-                            <span id="ai-usage-meter-text" style="color:#fff; font-weight:800; font-size:12px;">0 / 1,000 ký tự</span>
+                            <span id="ai-usage-meter-text" style="color:#fff; font-weight:800; font-size:12px;">0 / 1,000 ký tự giọng tùy chỉnh</span>
+                            <span id="ai-system-gift-meter-text" style="color:#86efac; font-weight:800; font-size:11px;">🎁 Quà tặng kèm: 0 / 5.000 ký tự giọng hệ thống</span>
                             <span id="ai-usage-plan-badge" style="background:rgba(139,92,246,0.25); color:#ddd6fe; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800; border:1px solid rgba(139,92,246,0.4);">Gói Free</span>
                         </div>
                         <button onclick="app.showBuyAiAddonModal()" style="background:linear-gradient(135deg, #f59e0b, #ec4899); border:none; color:#fff; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:800; cursor:pointer; outline:none; box-shadow:0 4px 12px rgba(245,158,11,0.35); transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
@@ -1495,7 +1508,7 @@
                     </div>
 
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
-                        <span style="font-size:10px; color:#a78bfa;">✨ Hết ký tự AI cao cấp sẽ tự chuyển về Giọng đọc Mặc định Miễn phí. Không lo bị đứt tiếng khi đang live!</span>
+                        <span style="font-size:10px; color:#a78bfa;">✨ Hết ký tự giọng tùy chỉnh sẽ dùng Quà tặng kèm 5.000 ký tự giọng hệ thống. Hết cả hai, bình luận vẫn hiển thị nhưng Trợ lý sẽ tạm ngừng phản hồi.</span>
                         <button onclick="app.testAiAssistantSpeech()" style="background:rgba(139,92,246,0.25); border:1px solid rgba(139,92,246,0.4); color:#c4b5fd; padding:4px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe thử AI Cà Khịa</button>
                     </div>
                 </div>

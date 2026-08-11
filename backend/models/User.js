@@ -40,8 +40,20 @@ const UserSchema = new mongoose.Schema({
     totalSpent: { type: Number, default: 0 },
     totalUses: { type: Number, default: 0 },
     usedCharactersThisMonth: { type: Number, default: 0 },
+    usedSystemVoiceCharactersThisMonth: { type: Number, default: 0 },
     addonCharacters: { type: Number, default: 0 },
     aiMonthKey: { type: String, default: '' },
+    aiAssistantConfig: {
+        enabled: { type: Boolean, default: false },
+        persona: { type: String, enum: ['sassy', 'funny', 'sweet', 'smart'], default: 'sassy' },
+        cooldownSeconds: { type: Number, min: 15, max: 60, default: 20 },
+        donatorOnly: { type: Boolean, default: false },
+        minimumDonatorCoins: { type: Number, min: 1, max: 1000000, default: 10 },
+        elevenLabsVoiceId: { type: String, default: 'pNInz6obpgDQGcFmaJgB' },
+        ttsEngine: { type: String, default: 'elevenlabs' },
+        readSpeed: { type: Number, min: 0.5, max: 2, default: 1 },
+        volume: { type: Number, min: 0, max: 1, default: 1 }
+    },
     isAdmin: { type: Boolean, default: false }, // Added this as I saw it used in DB
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }

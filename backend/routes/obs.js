@@ -288,7 +288,7 @@ router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
         }
 
         // Browsing/activating layouts only changes the editor. Publishing the
-        // file consumed by OBS happens exclusively through "Save & Export".
+        // file consumed by OBS happens exclusively through "Export to OBS".
         const publishedLayout = await GiftMenuLayout.findOne(ownedResourceFilter(
             layoutId,
             req.userId,
@@ -357,7 +357,7 @@ router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
             item = newItems.find((x) => x.sourceName === sourceName);
         } else {
             // OBS CEF can keep the previous document alive even when only the
-            // query string changes. Detach it first so Save & Export always
+            // query string changes. Detach it first so Export to OBS always
             // starts a fresh renderer instead of occasionally showing black.
             await obsService.obs.call('SetInputSettings', {
                 inputName: sourceName,

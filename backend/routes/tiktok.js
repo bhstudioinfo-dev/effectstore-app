@@ -9,11 +9,12 @@ const ChallengeWheel = require('../models/ChallengeWheel');
 const GiftLog = require('../models/GiftLog');
 const GiftConfig = require('../models/GiftConfig');
 const Effect = require('../models/Effect');
-const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
+const { authMiddleware, optionalAuthMiddleware, adminMiddleware } = require('../middleware/auth');
 const GiftMenuLayout = require('../models/GiftMenuLayout');
 const multer = require('multer');
 const { spawn } = require('child_process');
 const { getEntitlements, upgradePayload, validateDesignerItems, validateMappingAutomation, normalizePlan } = require('../config/planEntitlements');
+const { planQuotaLock } = require('../middleware/planQuotaLock');
 const {
     getUserAvailableEffects,
     resolveEffectForUser,
@@ -208,11 +209,13 @@ router.post('/disconnect', authMiddleware, async (req, res) => {
 });
 
 router.post('/usage/tts', authMiddleware, (req, res) => {
-    const { isTest } = req.body;
+    const { isTest, kind } = req.body || {};
     if (isTest) {
         return res.json({ success: true, isTest: true, message: 'Test speech allowed' });
     }
-    const result = tiktokService.consumeTts(req.userId, isTest);
+    const result = kind === 'comment'
+        ? tiktokService.consumeComment(req.userId, isTest)
+        : tiktokService.consumeTts(req.userId, isTest);
     res.status(result.status).json(result.payload);
 });
 
@@ -338,9 +341,9 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
 
 router.post('/challenge-wheels', authMiddleware, async (req, res) => {
     try {
-        const owner = await User.findById(req.userId).select('isAdmin subscription').lean();
+        const owner = await User.findById(req.userId).select('isAdmin subscription subscriptionExpiresAt').lean();
         const sourceTemplateId = req.body.sourceTemplateId && isValidResourceId(req.body.sourceTemplateId) ? req.body.sourceTemplateId : null;
-        if (!sourceTemplateId && owner?.isAdmin !== true && owner?.subscription !== 'business') {
+        if (!sourceTemplateId && owner?.isAdmin !== true && normalizePlan(owner) !== 'business') {
             return res.status(403).json({ success: false, error: 'Vòng quay chỉ được tạo từ sản phẩm Vòng quay thử thách đã mua.' });
         }
         const name = String(req.body.name || '').trim();
@@ -474,7 +477,7 @@ router.post('/challenge-wheels/:id/test', authMiddleware, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/map-gift', authMiddleware, async (req, res) => {
+router.post('/map-gift', authMiddleware, planQuotaLock('mappings'), async (req, res) => {
     try {
         const { id, giftId, effectId, effectName, giftName, giftIcon, effects, playbackMode, minQuantity, maxQuantity, exactQuantity, cooldown, cooldownAction, triggerType, wheelId, audioEnabled, audioVolume } = req.body;
         const userId = req.userId;
@@ -974,18 +977,10 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
 const aiAssistantService = require('../services/aiAssistantService');
 
 // AI Assistant Config API
-router.get('/ai-config', optionalAuthMiddleware, (req, res) => {
+router.get('/ai-config', authMiddleware, (req, res) => {
     try {
-        const config = aiAssistantService.getConfig();
-        // req.user is only absent when the request has no (or an invalid)
-        // auth token — e.g. a race before login finishes. getCharacterUsage
-        // falls back to a shared, no-account counter in that case, which
-        // must never be shown as if it were this viewer's own quota (it
-        // would leak whatever leftover figures live in that shared bucket
-        // onto any account that happens to hit this without a valid token).
-        const usage = req.user
-            ? aiAssistantService.getCharacterUsage(req.user)
-            : { used: 0, baseLimit: 1000, addon: 0, totalLimit: 1000, remaining: 1000, hasQuota: true, monthKey: '' };
+        const config = aiAssistantService.getConfig(req.user);
+        const usage = aiAssistantService.getCharacterUsage(req.user);
         const systemStatus = aiAssistantService.getSystemStatus();
         res.json({ success: true, config, usage, systemStatus });
     } catch (error) {
@@ -993,9 +988,9 @@ router.get('/ai-config', optionalAuthMiddleware, (req, res) => {
     }
 });
 
-router.post('/ai-config', authMiddleware, (req, res) => {
+router.post('/ai-config', authMiddleware, async (req, res) => {
     try {
-        const updated = aiAssistantService.saveConfig(req.body || {});
+        const updated = await aiAssistantService.saveConfig(req.body || {}, req.user);
         const usage = aiAssistantService.getCharacterUsage(req.user || 'free');
         res.json({ success: true, config: updated, usage });
     } catch (error) {
@@ -1003,17 +998,19 @@ router.post('/ai-config', authMiddleware, (req, res) => {
     }
 });
 
-router.post('/save-voice-sample', (req, res) => {
+router.post('/save-voice-sample', authMiddleware, adminMiddleware, (req, res) => {
     try {
         const { voiceId, audioBase64 } = req.body || {};
         if (!voiceId || !audioBase64) return res.status(400).json({ success: false, error: 'Missing params' });
+        const safeVoiceId = String(voiceId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100);
+        if (!safeVoiceId || safeVoiceId !== String(voiceId)) return res.status(400).json({ success: false, error: 'Invalid voice ID' });
         
         const base64Data = audioBase64.replace(/^data:audio\/\w+;base64,/, '');
         const buffer = Buffer.from(base64Data, 'base64');
 
         const filePaths = [
-            path.join(__dirname, '../public/assets/audio/voice-samples', `sample_${voiceId}.mp3`),
-            path.join(__dirname, '../../desktop/renderer/assets/audio/voice-samples', `sample_${voiceId}.mp3`)
+            path.join(__dirname, '../public/assets/audio/voice-samples', `sample_${safeVoiceId}.mp3`),
+            path.join(__dirname, '../../desktop/renderer/assets/audio/voice-samples', `sample_${safeVoiceId}.mp3`)
         ];
 
         filePaths.forEach(fp => {
@@ -1023,7 +1020,7 @@ router.post('/save-voice-sample', (req, res) => {
             } catch (_e) {}
         });
 
-        res.json({ success: true, message: `Sample saved for voice ${voiceId}` });
+        res.json({ success: true, message: `Sample saved for voice ${safeVoiceId}` });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
@@ -1092,7 +1089,8 @@ router.post('/ai-test-speech', authMiddleware, async (req, res) => {
             comment: comment || 'Idol live hay quá!',
             isDonator: true,
             userPlan,
-            user: req.user
+            user: req.user,
+            isTest: true
         });
         res.json({ success: true, event: testEvent });
     } catch (error) {
@@ -1384,7 +1382,7 @@ router.post('/gift-menu-overlay-sync-active', authMiddleware, async (req, res) =
     }
 });
 
-router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
+router.post('/gift-menu-layout', authMiddleware, planQuotaLock('layouts'), async (req, res) => {
     try {
         const payload = req.body || {};
         const requestedLayoutId = payload.id || payload._id;
@@ -1548,28 +1546,30 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
             await layout.save();
         }
 
-        // Sync with Goal Board layout
-        const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
-        const goalBoardLayout = {
-            version: layout.version || 2,
-            savedAt: layout.savedAt || new Date().toISOString(),
-            aspectRatio: layout.aspectRatio || '9:16',
-            canvas: layout.canvasSize ? { width: layout.canvasSize.width, height: layout.canvasSize.height } : { width: 1080, height: 1920 },
-            layers: layout.items || []
-        };
-        try {
-            fs.writeFileSync(goalBoardLayoutPath, JSON.stringify(goalBoardLayout, null, 2), 'utf8');
-        } catch (err) {
-            console.error('Failed to sync goal board layout file:', err);
-        }
-        tiktokService.setGoalBoardLayout(goalBoardLayout);
+        // Drafts are preview-only. Never leak a Free user's trial design into
+        // an already-running OBS/Goal Board overlay before Export to OBS.
+        if (payload.draftOnly !== true) {
+            const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
+            const goalBoardLayout = {
+                version: layout.version || 2,
+                savedAt: layout.savedAt || new Date().toISOString(),
+                aspectRatio: layout.aspectRatio || '9:16',
+                canvas: layout.canvasSize ? { width: layout.canvasSize.width, height: layout.canvasSize.height } : { width: 1080, height: 1920 },
+                layers: layout.items || []
+            };
+            try {
+                fs.writeFileSync(goalBoardLayoutPath, JSON.stringify(goalBoardLayout, null, 2), 'utf8');
+            } catch (err) {
+                console.error('Failed to sync goal board layout file:', err);
+            }
+            tiktokService.setGoalBoardLayout(goalBoardLayout);
 
-        // Broadcast layout update to Goal Board overlays
-        if (req.app.locals.broadcastToClients) {
-            req.app.locals.broadcastToClients('goal_board_layout_update', {
-                type: 'goal_board_layout_update',
-                layout: goalBoardLayout
-            });
+            if (req.app.locals.broadcastToClients) {
+                req.app.locals.broadcastToClients('goal_board_layout_update', {
+                    type: 'goal_board_layout_update',
+                    layout: goalBoardLayout
+                });
+            }
         }
 
         const exportNotice = designerViolation && payload.draftOnly === true
@@ -1584,7 +1584,7 @@ router.post('/gift-menu-layout', authMiddleware, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/gift-menu-layout/create', authMiddleware, async (req, res) => {
+router.post('/gift-menu-layout/create', authMiddleware, planQuotaLock('layouts'), async (req, res) => {
     try {
         const { name } = req.body;
         const user = await User.findById(req.userId);
@@ -1761,7 +1761,7 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-router.post('/gift-menu-templates/:templateId/use', authMiddleware, async (req, res) => {
+router.post('/gift-menu-templates/:templateId/use', authMiddleware, planQuotaLock('layouts'), async (req, res) => {
     try {
         if (!isValidResourceId(req.params.templateId)) {
             return res.status(400).json({ success: false, error: 'Invalid template ID' });
@@ -2050,7 +2050,7 @@ router.get('/goal-board/templates', authMiddleware, async (req, res) => {
             return res.json({ success: true, customTemplates: cloudTemplates.customTemplates });
         }
         const [user, templates] = await Promise.all([
-            User.findById(req.userId).select('isAdmin subscription purchasedEffects'),
+            User.findById(req.userId).select('isAdmin subscription subscriptionExpiresAt purchasedEffects'),
             GiftMenuLayout.find({ isTemplate: true, category: 'goal_board' }).sort({ updatedAt: -1 }).lean()
         ]);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });

@@ -457,6 +457,10 @@ initOBSConnection();
 // this mounts and behavior is unchanged.
 const { isCloudProxyEnabled, proxyToCloud } = require('./middleware/cloudProxy');
 if (isCloudProxyEnabled()) {
+    // AI providers and their encrypted system secrets live only on the
+    // central server. Packaged clients proxy authenticated requests here and
+    // never receive provider credentials.
+    app.use('/api/ai', proxyToCloud);
     app.use('/api/auth', proxyToCloud);
     // Payment is one shared cloud domain end-to-end. Customer order creation,
     // proof upload/status polling, and Admin list/proof/approve/reject must all
@@ -501,6 +505,7 @@ if (isCloudProxyEnabled()) {
 app.use('/api', require('./routes/effects'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/ai', require('./routes/ai'));
 app.use('/api/obs', require('./routes/obs'));
 app.use('/api/tiktok', require('./routes/tiktok'));
 app.use('/api/payment', require('./routes/payment'));

@@ -141,7 +141,9 @@
         }
 
         get goalTrackerLimit() {
-            if (this.planKey === 'free') return 1;
+            // Free users may compose and preview richer boards in the app. The
+            // backend enforces the real plan limit only when exporting to OBS.
+            if (this.planKey === 'free') return Infinity;
             if (this.planKey === 'basic') return 10;
             return Infinity;
         }
@@ -408,7 +410,7 @@
                         <div class="gmd-group">
                             <button class="gmd-btn" data-action="publish-store" style="display:none; background:#10b981; color:#fff; border:none; font-weight:700;"><i class="fas fa-store"></i> Đưa lên Cửa hàng</button>
                             <button class="gmd-btn" data-action="save"><i class="fas fa-save"></i> Lưu</button>
-                            <button class="gmd-btn primary" data-action="save-export"><i class="fas fa-download"></i> Lưu & Xuất</button>
+                            <button class="gmd-btn primary" data-action="save-export"><i class="fas fa-tv"></i> Xuất sang OBS</button>
                         </div>
                     </div>
                     <div class="gmd-layout">
@@ -3546,7 +3548,7 @@
                 if (unpaidTemplateLayer) {
                     window.app?.showNotification?.(
                         'warning',
-                        `Mẫu “${unpaidTemplateLayer.sourceTemplateName || 'bảng mục tiêu'}” cần được mua trước khi Lưu & Xuất sang OBS.`
+                        `Mẫu “${unpaidTemplateLayer.sourceTemplateName || 'bảng mục tiêu'}” cần được mua trước khi xuất sang OBS.`
                     );
                     return;
                 }
@@ -3572,7 +3574,7 @@
                 }
             } catch (e) {
                 if (!e.isPlanLimit && window.app && typeof window.app.showNotification === 'function') {
-                    window.app.showNotification('error', `Lưu & xuất thất bại: ${e.message || 'Lỗi không xác định'}`);
+                    window.app.showNotification('error', `Xuất sang OBS thất bại: ${e.message || 'Lỗi không xác định'}`);
                 }
             }
         }
@@ -5248,7 +5250,7 @@
             });
             const incomingGoals = this.countGoalTrackers(effectiveLayers);
             if (this.countGoalTrackers() + incomingGoals > this.goalTrackerLimit) {
-                this.showUpgrade('goalTrackers', `Gói hiện tại chỉ hỗ trợ ${this.goalTrackerLimit} bảng mục tiêu.`);
+                this.showUpgrade('goalTrackers', `Gói hiện tại chỉ hỗ trợ ${this.goalTrackerLimit} bảng mục tiêu khi xuất OBS.`);
                 return;
             }
 
@@ -7325,7 +7327,7 @@
                                     <div style="display:grid;grid-template-columns:1fr 82px;gap:5px;margin-top:5px;"><button class="gmd-btn" style="height:26px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onclick="window.giftMenuDesigner.triggerTalentAvatarUpload('${selected.id}', ${index})"><i class="fas fa-upload"></i> ${person.avatar ? 'Đổi ảnh đại diện' : 'Tải ảnh đại diện'}</button><input class="gmd-input" type="number" style="height:26px;" value="${Number(person.score) || 0}" title="Tổng điểm" onchange="window.giftMenuDesigner.updateTalentParticipant('${selected.id}', ${index}, 'score', this.value)"></div>
                                 </div>`).join('')}
                         </div>
-                        <button class="gmd-btn" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.addTalentParticipant('${selected.id}')"><i class="fas fa-user-plus"></i> Thêm thí sinh${this.actualPlanKey === 'free' && participants.length >= 3 ? ' · BASIC' : ''}</button>
+                        <button class="gmd-btn" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.addTalentParticipant('${selected.id}')"><i class="fas fa-user-plus"></i> Thêm thí sinh${this.actualPlanKey === 'free' && participants.length >= 3 ? ' · DÙNG THỬ' : ''}</button>
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-wand-magic-sparkles"></i> HIỂN THỊ & HIỆU ỨNG</h4>
@@ -8822,14 +8824,6 @@
         }
 
         addTalentParticipant(itemId) {
-            const current = this.items.find((item) => item.id === itemId);
-            const participantCount = Array.isArray(current?.talentCompetition?.participants)
-                ? current.talentCompetition.participants.length
-                : 0;
-            if (this.actualPlanKey === 'free' && participantCount >= 3) {
-                this.showUpgrade('talentParticipants', 'Gói miễn phí hỗ trợ tối đa 3 thí sinh. Nâng cấp Basic để thêm thí sinh thứ 4 trở đi.');
-                return;
-            }
             this.updateTalentCompetition(itemId, (competition) => {
                 const participants = Array.isArray(competition.participants) ? competition.participants : [];
                 const index = participants.length + 1;

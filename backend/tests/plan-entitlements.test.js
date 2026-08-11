@@ -11,6 +11,7 @@ const free = getEntitlements({ subscription: 'free' });
 const basic = getEntitlements({ subscription: 'basic' });
 const pro = getEntitlements({ subscription: 'pro' });
 const expired = getEntitlements({ subscription: 'business', subscriptionExpiresAt: new Date(Date.now() - 1000) });
+const activeLegacyBusiness = getEntitlements({ subscription: 'business', subscriptionExpiresAt: new Date(Date.now() + 60_000) });
 
 assert.strictEqual(free.mappings, 5);
 assert.strictEqual(free.layouts, 1);
@@ -23,17 +24,33 @@ assert.strictEqual(basic.goalTrackers, 10);
 assert.strictEqual(pro.devices, 1);
 assert.strictEqual(pro.mappings, Infinity);
 assert.strictEqual(expired.key, 'free');
+assert.strictEqual(activeLegacyBusiness.key, 'business');
 assert.strictEqual(upgradePayload('mappings', 'x', free).recommendedPlan, 'basic');
 assert.strictEqual(upgradePayload('menuAdvanced', 'x', basic).recommendedPlan, 'pro');
 assert.strictEqual(PLAN_ENTITLEMENTS.studio.devices, Infinity);
 const aiAssistantService = require('../services/aiAssistantService');
-assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'pro' }).baseLimit, 10000);
-assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'business' }).baseLimit, 10000);
+assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'pro' }).baseLimit, 15000);
+assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'business' }).baseLimit, 15000);
 assert.strictEqual(aiAssistantService.getCharacterUsage({ subscription: 'studio' }).baseLimit, 30000);
 assert.strictEqual(aiAssistantService.getCharacterUsage({
     subscription: 'pro',
     subscriptionExpiresAt: new Date(Date.now() - 1000)
 }).baseLimit, 1000);
+
+const { acquireLock } = require('../middleware/planQuotaLock');
+const lockOrder = [];
+async function exerciseQuotaLock() {
+    const releaseFirst = await acquireLock('user-1:mappings');
+    const second = acquireLock('user-1:mappings').then((release) => {
+        lockOrder.push('second');
+        release();
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepStrictEqual(lockOrder, []);
+    releaseFirst();
+    await second;
+    assert.deepStrictEqual(lockOrder, ['second']);
+}
 
 assert.strictEqual(validateDesignerItems([{ type: 'goal-bar', animationType: 'None' }], free), null);
 assert.strictEqual(validateDesignerItems([{ type: 'goal-bar', barColor: '#ff007f', glowColor: 'rgba(255,0,127,0.5)', themeStyle: 'default', titleColor: '#ffffff', subtitleColor: '#cbd5e1' }], free), null);
@@ -93,12 +110,41 @@ assert.strictEqual(validateMappingAutomation({ cooldown: 5, cooldownAction: 'ign
 assert.strictEqual(validateMappingAutomation({ effects: [{ effectId: 'a' }, { effectId: 'b' }], cooldown: 5 }, pro), null);
 
 const tiktokService = require('../services/tiktokService');
+assert.strictEqual(aiAssistantService.PLAN_LIMITS.free, 1000);
+assert.strictEqual(aiAssistantService.PLAN_LIMITS.basic, 5000);
+assert.strictEqual(aiAssistantService.PLAN_LIMITS.pro, 15000);
+assert.strictEqual(aiAssistantService.PLAN_LIMITS.business, 15000);
+assert.strictEqual(aiAssistantService.PLAN_LIMITS.studio, 30000);
+assert.strictEqual(aiAssistantService.SYSTEM_VOICE_GIFT_LIMIT, 5000);
+const aiFallbackUsage = aiAssistantService.getCharacterUsage({
+    subscription: 'free',
+    aiMonthKey: new Date().toISOString().slice(0, 7),
+    usedCharactersThisMonth: 1000,
+    usedSystemVoiceCharactersThisMonth: 4999,
+    addonCharacters: 0
+});
+assert.strictEqual(aiFallbackUsage.responseMode, 'system_gift');
+assert.strictEqual(aiFallbackUsage.systemVoiceGiftRemaining, 1);
+const aiExhaustedUsage = aiAssistantService.getCharacterUsage({
+    subscription: 'free',
+    aiMonthKey: new Date().toISOString().slice(0, 7),
+    usedCharactersThisMonth: 1000,
+    usedSystemVoiceCharactersThisMonth: 5000,
+    addonCharacters: 0
+});
+assert.strictEqual(aiExhaustedUsage.responseMode, 'exhausted');
+const aiServiceSource = require('fs').readFileSync(require('path').join(__dirname, '../services/aiAssistantService.js'), 'utf8');
+assert(aiServiceSource.includes("hostname: 'api.elevenlabs.io'"));
+assert(aiServiceSource.includes('audioDataUrl'));
+assert(!aiServiceSource.includes('elevenLabsApiKey: activeElevenKey'));
 tiktokService.currentLiveUserId = 'free-user';
 tiktokService.liveEntitlements = free;
 tiktokService.sessionUsage = { comments: 0, tts: 0, commentLimitNotified: false, ttsLimitNotified: false };
-for (let index = 0; index < 20; index++) assert.strictEqual(tiktokService.consumeComment().allowed, true);
-assert.strictEqual(tiktokService.consumeComment().payload.feature, 'comments');
+for (let index = 0; index < 20; index++) assert.strictEqual(tiktokService.consumeComment('free-user').allowed, true);
+assert.strictEqual(tiktokService.consumeComment('free-user').payload.feature, 'comments');
+assert.strictEqual(tiktokService.consumeComment('free-user', true).allowed, true);
+assert.strictEqual(tiktokService.consumeComment('another-user').status, 409);
 for (let index = 0; index < 10; index++) assert.strictEqual(tiktokService.consumeTts('free-user').allowed, true);
 assert.strictEqual(tiktokService.consumeTts('free-user').payload.feature, 'tts');
 
-console.log('plan-entitlements tests passed');
+exerciseQuotaLock().then(() => console.log('plan-entitlements tests passed'));

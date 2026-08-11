@@ -11,6 +11,8 @@ const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
 const { encryptVideo, streamDecryptedVideo } = require('../utils/encrypt-video');
+const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
+const { planQuotaLock } = require('../middleware/planQuotaLock');
 const { isValidResourceId } = require('../utils/accessControl');
 const { getUserAvailableEffects, resolveEffectForUser, registerCustomEffectOwnership } = require('../services/effectLibraryService');
 const { issueEffectAccessToken, buildEffectStreamUrl, verifyEffectAccessToken } = require('../services/effectAccessToken');
@@ -133,7 +135,7 @@ router.get('/user/effects', authMiddleware, async (req, res) => {
 });
 
 // Register only lightweight metadata. Media bytes always remain on the user's computer.
-router.post('/user/custom-effects/register', authMiddleware, async (req, res) => {
+router.post('/user/custom-effects/register', authMiddleware, planQuotaLock('customEffects'), async (req, res) => {
     try {
         const { localId, name, machineId } = req.body || {};
         const result = await registerCustomEffectOwnership(req.userId, { localId, name, duration: req.body?.duration, machineId });

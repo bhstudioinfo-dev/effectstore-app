@@ -29,7 +29,7 @@ const authMiddleware = async (req, res, next) => {
         const token = req.headers.authorization?.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'No token provided' });
         const { decoded, verifiedByCloud } = await resolveUserIdFromToken(token);
-        const user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth addonCharacters aiMonthKey');
+        const user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
         if (!user || user.isActive === false) {
             console.warn(`[authMiddleware] rejected: decoded.userId=${decoded.userId} found=${Boolean(user)} isActive=${user?.isActive}`);
             return res.status(401).json({ error: 'Account is unavailable' });
@@ -68,7 +68,7 @@ const optionalAuthMiddleware = async (req, res, next) => {
             return next();
         }
         const { decoded, verifiedByCloud } = await resolveUserIdFromToken(token);
-        const user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth addonCharacters aiMonthKey');
+        const user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
         if (user && user.isActive !== false) {
             req.userId = decoded.userId;
             req.user = user;

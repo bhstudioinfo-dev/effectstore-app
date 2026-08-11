@@ -116,6 +116,7 @@ class TikTokService {
         this.goalBoardLayout = null;
         this.liveEntitlements = getEntitlements(null);
         this.sessionUsage = { comments: 0, tts: 0, commentLimitNotified: false, ttsLimitNotified: false };
+        this.sessionDonatorCoins = new Map();
     }
 
     init(broadcastFn) {
@@ -125,6 +126,27 @@ class TikTokService {
     normalizeGiftId(value) {
         if (value === undefined || value === null) return '';
         return String(value).trim();
+    }
+
+    getViewerKey(data = {}) {
+        const userDetails = data.userDetails || data.user || {};
+        const value = data.userId || userDetails.userId || data.uniqueId || userDetails.uniqueId || data.nickname || userDetails.nickname;
+        return String(value || '').trim().toLowerCase();
+    }
+
+    recordSessionGift(data = {}) {
+        const key = this.getViewerKey(data);
+        if (!key) return 0;
+        const giftCoins = Math.max(0, Number(data.diamondCount || data.diamond || data.coins || 0));
+        const repeatCount = Math.max(1, Number(data.repeatCount || 1));
+        const total = (this.sessionDonatorCoins.get(key) || 0) + (giftCoins * repeatCount);
+        this.sessionDonatorCoins.set(key, total);
+        return total;
+    }
+
+    getSessionDonatorCoins(data = {}) {
+        const key = this.getViewerKey(data);
+        return key ? Number(this.sessionDonatorCoins.get(key) || 0) : 0;
     }
 
     extractIconUrl(data = {}) {
@@ -208,6 +230,7 @@ class TikTokService {
             this.liveEntitlements = getEntitlements(liveUser);
             if (!preserveSession) {
                 this.sessionUsage = { comments: 0, tts: 0, commentLimitNotified: false, ttsLimitNotified: false };
+                this.sessionDonatorCoins = new Map();
             }
             this.tiktokClient = new TikTokLiveClient({ uniqueId: roomId });
 
@@ -260,6 +283,8 @@ class TikTokService {
                 // repeating. Goal/menu counters already ignore these updates.
                 // Media playback must also wait for the final repeatEnd event.
                 if (this.shouldSkipIntermediateStreak(data)) return;
+
+                this.recordSessionGift(data);
 
                 this.liveStats.gifts += data.repeatCount;
                 let mappings = [];
@@ -395,17 +420,24 @@ class TikTokService {
             this.tiktokClient.on('share', (data) => this.broadcast('share', data));
             this.tiktokClient.on('chat', (data) => {
                 this.liveStats.chats++;
-                const usage = this.consumeComment();
-                if (!usage.allowed) {
-                    if (!this.sessionUsage.commentLimitNotified) {
-                        this.sessionUsage.commentLimitNotified = true;
-                        this.broadcast('plan_limit_reached', usage.payload);
-                    }
-                    this.broadcast('stats', this.liveStats);
-                    return;
-                }
+                // Every comment must continue reaching the app. Plan quotas
+                // apply only when the renderer actually reads one aloud.
                 this.broadcast('chat', data);
                 this.broadcast('stats', this.liveStats);
+                if (this.currentLiveUserId) {
+                    // AI replies are intentionally independent from the system
+                    // voice quotas used by read-comment/name TTS.
+                    User.findById(this.currentLiveUserId).then((liveUser) => {
+                        if (!liveUser) return null;
+                        const aiAssistantService = require('./aiAssistantService');
+                        return aiAssistantService.processChatMessage({
+                            username: data.nickname || data.uniqueId || 'Khán giả',
+                            comment: data.comment || '',
+                            donatedCoins: this.getSessionDonatorCoins(data),
+                            user: liveUser
+                        });
+                    }).catch((error) => console.error('AI assistant chat error:', error.message));
+                }
             });
             this.tiktokClient.on('viewer', (data) => { this.liveStats.viewers = data.count || 0; this.broadcast('stats', this.liveStats); });
             this.tiktokClient.on('error', (err) => console.error('TikTok Error:', err));
@@ -633,7 +665,7 @@ class TikTokService {
                 status: 403,
                 payload: upgradePayload(
                     'tts',
-                    `Bạn đã dùng hết ${limit} lượt đọc tên/TTS trong phiên Live này.`,
+                    `Gói ${this.liveEntitlements.label} đã dùng hết ${limit} lượt đọc tên và lời cảm ơn bằng giọng hệ thống trong phiên này.`,
                     this.liveEntitlements
                 )
             };
@@ -644,21 +676,24 @@ class TikTokService {
         return { allowed: true, status: 200, payload: { success: true, remaining: Number.isFinite(limit) && !isTest ? Math.max(0, limit - this.sessionUsage.tts) : null } };
     }
 
-    consumeComment() {
+    consumeComment(userId, isTest = false) {
+        if (!isTest && (!this.currentLiveUserId || String(userId) !== String(this.currentLiveUserId))) {
+            return { allowed: false, status: 409, payload: { success: false, message: 'Hãy kết nối TikTok Live trước khi đọc bình luận.' } };
+        }
         const limit = this.liveEntitlements.commentsPerSession;
-        if (Number.isFinite(limit) && this.sessionUsage.comments >= limit) {
+        if (!isTest && Number.isFinite(limit) && this.sessionUsage.comments >= limit) {
             return {
                 allowed: false,
                 status: 403,
                 payload: upgradePayload(
                     'comments',
-                    `Bạn đã dùng hết ${limit} bình luận dùng thử trong phiên Live này.`,
+                    `Gói ${this.liveEntitlements.label} đã dùng hết ${limit} lượt đọc bình luận bằng giọng hệ thống trong phiên này. Bình luận vẫn tiếp tục hiển thị bình thường.`,
                     this.liveEntitlements
                 )
             };
         }
-        this.sessionUsage.comments++;
-        return { allowed: true, status: 200, payload: { success: true, remaining: Number.isFinite(limit) ? Math.max(0, limit - this.sessionUsage.comments) : null } };
+        if (!isTest) this.sessionUsage.comments++;
+        return { allowed: true, status: 200, payload: { success: true, remaining: Number.isFinite(limit) && !isTest ? Math.max(0, limit - this.sessionUsage.comments) : null } };
     }
 
     async processGiftMenuGift(giftEvent) {

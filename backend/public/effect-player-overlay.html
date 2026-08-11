@@ -138,9 +138,17 @@
                 }
             }
 
-            function speakAiReply(data) {
+            async function speakAiReply(data) {
                 if (!data || !data.replyText) return;
                 try {
+                    if (data.responseMode === 'custom' && data.audioDataUrl) {
+                        window.speechSynthesis?.cancel();
+                        const audio = new Audio(data.audioDataUrl);
+                        audio.volume = Number(data.volume) || 1.0;
+                        audio.playbackRate = Number(data.readSpeed) || 1.0;
+                        await audio.play();
+                        return;
+                    }
                     if ('speechSynthesis' in window) {
                         window.speechSynthesis.cancel();
                         const utterance = new SpeechSynthesisUtterance(data.replyText);

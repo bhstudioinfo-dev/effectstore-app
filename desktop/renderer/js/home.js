@@ -1854,7 +1854,7 @@ class EffectStoreApp {
     }
 
     // ===== TEXT TO SPEECH (TTS) =====
-    async speakText(text, isTest = false) {
+    async speakText(text, isTest = false, usageKind = 'tts') {
         if (!text) return;
 
         let voiceId = 'pNInz6obpgDQGcFmaJgB';
@@ -1885,7 +1885,7 @@ class EffectStoreApp {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.authToken}`
                 },
-                body: JSON.stringify({ isTest })
+                body: JSON.stringify({ isTest, kind: usageKind === 'comment' ? 'comment' : 'tts' })
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok || !data.success) {
@@ -1896,7 +1896,16 @@ class EffectStoreApp {
                         this.showNotification('error', 'Không thể phát thử giọng đọc.');
                     }
                 } else {
-                    if (!this.handlePlanLimit(data, 'tts') && response.status !== 409) {
+                    if (data?.upgradeRequired === true && ['comments', 'tts'].includes(data.feature)) {
+                        this._systemVoiceLimitNotified = this._systemVoiceLimitNotified || new Set();
+                        if (!this._systemVoiceLimitNotified.has(data.feature)) {
+                            this._systemVoiceLimitNotified.add(data.feature);
+                            const friendlyMessage = data.feature === 'comments'
+                                ? 'Bạn vẫn nhận và xem bình luận bình thường. Gói Free đã dùng hết lượt đọc bình luận bằng giọng hệ thống trong phiên này; Basic sẽ mở đọc không giới hạn.'
+                                : 'Gói Free đã dùng hết lượt đọc tên và lời cảm ơn bằng giọng hệ thống trong phiên này. Basic sẽ mở đọc không giới hạn.';
+                            this.showNotification('info', friendlyMessage);
+                        }
+                    } else if (!this.handlePlanLimit(data, usageKind === 'comment' ? 'comments' : 'tts') && response.status !== 409) {
                         this.showNotification('error', data.message || 'Không thể sử dụng TTS lúc này');
                     }
                 }
@@ -2109,81 +2118,6 @@ class EffectStoreApp {
             }
         }
 
-        // Check if ElevenLabs is configured for high quality Voice playback
-        const rawElevenKeys = (this.aiAssistantConfig && this.aiAssistantConfig.elevenLabsApiKey) || document.getElementById('admin-eleven-key')?.value || '';
-        const elevenKeyList = rawElevenKeys.split(/[,;\n]+/).map(k => k.trim()).filter(Boolean);
-
-        if (elevenKeyList.length > 0 && voiceId !== 'google_female_vi') {
-            const isMaleV3 = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', 'TxGEqnHWrfWFTfGW9XjX'].includes(voiceId);
-            const primaryModel = isMaleV3 ? 'eleven_v3' : 'eleven_multilingual_v2';
-            const primarySettings = isMaleV3 ? { stability: 0.15, similarity_boost: 0.85, style: 0.20, use_speaker_boost: true } : { stability: 0.35, similarity_boost: 0.85 };
-
-            for (const elevenKey of elevenKeyList) {
-                try {
-                    let elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'audio/mpeg',
-                            'Content-Type': 'application/json',
-                            'xi-api-key': elevenKey
-                        },
-                        body: JSON.stringify({
-                            text: text,
-                            model_id: primaryModel,
-                            voice_settings: primarySettings
-                        })
-                    });
-
-                    if (!elevenRes.ok) {
-                        const fallbackModel = isMaleV3 ? 'eleven_multilingual_v2' : 'eleven_flash_v2_5';
-                        const fallbackSettings = { stability: 0.35, similarity_boost: 0.85 };
-                        elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'audio/mpeg',
-                                'Content-Type': 'application/json',
-                                'xi-api-key': elevenKey
-                            },
-                            body: JSON.stringify({
-                                text: text,
-                                model_id: fallbackModel,
-                                voice_settings: fallbackSettings
-                            })
-                        });
-                    }
-
-                    if (elevenRes.ok) {
-                        const blob = await elevenRes.blob();
-                        const reader = new FileReader();
-                        reader.readAsDataURL(blob);
-                        reader.onloadend = () => {
-                            const dataUrl = reader.result;
-                            try {
-                                localStorage.setItem('es_voice_cache_' + cacheKey, dataUrl);
-                            } catch (_e) {}
-
-                            fetch(`${this.API_URL}/api/tiktok/save-voice-sample`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ voiceId, audioBase64: dataUrl })
-                            }).catch(() => {});
-                        };
-                        const audioUrl = URL.createObjectURL(blob);
-                        this.currentAudio = new Audio(audioUrl);
-                        this.currentAudio.volume = this.ttsVolume;
-                        this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
-                        this.currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); this.processTTSQueue(); };
-                        this.currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); this.processTTSQueue(); };
-                        await this.currentAudio.play();
-                        console.log('🗣️ Đang phát ElevenLabs TTS:', text, 'Voice:', voiceId, 'Model:', primaryModel);
-                        return;
-                    }
-                } catch (_keyErr) {}
-            }
-        }
-
         try {
             const googleTTSUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=vi&client=tw-ob`;
 
@@ -2198,13 +2132,6 @@ class EffectStoreApp {
                             localStorage.setItem('es_voice_cache_' + cacheKey, dataUrl);
                         } catch (_e) {}
 
-                        fetch(`${this.API_URL}/api/tiktok/save-voice-sample`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ voiceId, audioBase64: dataUrl })
-                        }).catch(() => {});
                     };
                 }).catch(() => {});
 
@@ -3951,7 +3878,20 @@ class EffectStoreApp {
                 return clean;
             };
 
+            const isRemoteVideoEffect = (effect) => {
+                if (!effect || effect.isWheel || effect.isWidget || effect.isTemplate) return false;
+                const type = String(effect.type || '').toLowerCase();
+                const category = String(effect.category || '').toLowerCase();
+                if (['wheel', 'widget', 'template', 'challenge-wheel', 'menu_template'].includes(type)) return false;
+                if (['wheel', 'widget', 'template', 'challenge-wheel', 'menu_template'].includes(category)) return false;
+                const id = String(effect._id || effect.id || '').toLowerCase();
+                if (id.startsWith('wheel-') || id.startsWith('challenge-') || id.includes('wheel')) return false;
+                const name = String(effect.name || effect.effectName || '').toLowerCase();
+                return !name.includes('vòng quay') && !name.includes('wheel') && !name.includes('thử thách');
+            };
+
             const availableEffects = [...(this.ownedEffects || []), ...(this.mappingEffects || []), ...(this.personalEffects || [])]
+                .filter(isRemoteVideoEffect)
                 .filter((effect, index, items) => items.findIndex((candidate) => String(candidate._id || candidate.id) === String(effect._id || effect.id)) === index)
                 .map(effect => {
                     const id = String(effect._id || effect.id);
@@ -5596,16 +5536,20 @@ class EffectStoreApp {
         const targetPlan = recommendedPlan || (currentPlan === 'free' ? 'basic' : (currentPlan === 'basic' ? 'pro' : 'studio'));
         const targetLabel = targetPlan === 'basic' ? 'Basic' : ((targetPlan === 'pro' || targetPlan === 'business') ? 'Pro' : 'Studio');
         const isBasicOffer = targetPlan === 'basic';
-        this.showModal('Bạn đã dùng hết giới hạn hiện tại', `
+        const designerTrialFeatures = new Set(['templates', 'menuAdvanced', 'goalTrackers', 'talentParticipants', 'export']);
+        const isFreeDesignerTrial = currentPlan === 'free' && designerTrialFeatures.has(feature);
+        const modalTitle = isFreeDesignerTrial ? 'Thiết kế của bạn đã sẵn sàng ✨' : 'Bạn đã dùng hết giới hạn hiện tại';
+        this.showModal(modalTitle, `
             <div style="color:#cbd5e1;font-size:14px;line-height:1.6;">
                 ${message ? `<div style="padding:10px 12px;margin-bottom:14px;border-radius:10px;background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.22);color:#fbbf24;">${this.escapeHtml ? this.escapeHtml(message) : message}</div>` : ''}
-                <div style="color:#fff;font-weight:800;margin-bottom:10px;">Nếu cần thêm, gói ${targetLabel} sẽ giúp bạn mở rộng:</div>
+                ${isFreeDesignerTrial ? '<div style="padding:10px 12px;margin-bottom:14px;border-radius:10px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);color:#a7f3d0;">Bạn vẫn có thể tiếp tục chỉnh sửa, lưu bản nháp và xem thử miễn phí ngay trên ứng dụng. Khi muốn đưa thiết kế này lên OBS, gói Basic sẽ mở khóa cho bạn.</div>' : ''}
+                <div style="color:#fff;font-weight:800;margin-bottom:10px;">${isFreeDesignerTrial ? 'Với Basic, thiết kế này có thể hoạt động trực tiếp trên OBS:' : `Nếu cần thêm, gói ${targetLabel} sẽ giúp bạn mở rộng:`}</div>
                 <div style="display:grid;gap:8px;margin-bottom:18px;">
                     <div>✓ ${primaryBenefit}</div>
                     ${isBasicOffer ? '<div>✓ 30 hiệu ứng gắn quà</div><div>✓ Menu quà tặng chuyên nghiệp</div><div>✓ Không giới hạn bình luận</div><div>✓ Không giới hạn đọc tên/TTS</div><div>✓ Tải ảnh/video riêng vào menu</div>' : '<div>✓ Không giới hạn hiệu ứng và layout</div><div>✓ Hiệu ứng chuyển động cao cấp</div><div>✓ Tùy chỉnh lớp nâng cao</div><div>✓ Tự động hóa livestream nâng cao</div><div>✓ Hỗ trợ ưu tiên</div>'}
                 </div>
-                <button onclick="app.closeModal();app.showPricing();" style="width:100%;padding:13px;border:0;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;font-weight:900;cursor:pointer;box-shadow:0 8px 24px rgba(249,115,22,.28);">XEM GÓI PHÙ HỢP</button>
-                <button onclick="app.closeModal();" style="width:100%;padding:11px;margin-top:8px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:transparent;color:#94a3b8;font-weight:700;cursor:pointer;">Để sau, tiếp tục dùng gói hiện tại</button>
+                <button onclick="app.closeModal();app.showPricing();" style="width:100%;padding:13px;border:0;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;font-weight:900;cursor:pointer;box-shadow:0 8px 24px rgba(249,115,22,.28);">${isFreeDesignerTrial ? 'XEM QUYỀN LỢI BASIC' : 'XEM GÓI PHÙ HỢP'}</button>
+                <button onclick="app.closeModal();" style="width:100%;padding:11px;margin-top:8px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:transparent;color:#94a3b8;font-weight:700;cursor:pointer;">${isFreeDesignerTrial ? 'Tiếp tục chỉnh sửa miễn phí' : 'Để sau, tiếp tục dùng gói hiện tại'}</button>
             </div>
         `);
     }
@@ -5923,6 +5867,106 @@ class EffectStoreApp {
     }
 
 
+    connectWebSocket() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+        this.ws = new WebSocket(`${this.WS_URL}?token=${encodeURIComponent(this.authToken || '')}`);
+        this.ws.onopen = () => console.log('✅ WebSocket connected');
+        this.ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                this.handleWebSocketEvent(data);
+            } catch (e) { console.error('Parse error:', e); }
+        };
+        this.ws.onerror = (error) => console.error('WebSocket error:', error);
+        this.ws.onclose = () => setTimeout(() => this.connectWebSocket(), 3000);
+    }
+
+    handleWebSocketEvent(data) {
+        switch (data.event) {
+            case 'stats': this.updateStats(data.data); break;
+            case 'gift': this.handleGift(data.data); break;
+            case 'follow': this.handleFollow(data.data); break;
+            case 'share': this.handleShare(data.data); break;
+            case 'chat': this.handleChat(data.data); break;
+            case 'remote_device_connected':
+                this.handleRemoteDeviceConnected(data.data);
+                break;
+            case 'control_deck_trigger':
+                if (data.data?.action === 'stop_all_sounds') {
+                    this.stopControlDeckSounds();
+                } else if (data.data?.slotId) {
+                    this.triggerControlDeckSlot(data.data.slotId);
+                }
+                break;
+            case 'control_deck_assign':
+                if (data.data?.deckType === 'effect') {
+                    const effect = data.data.item;
+                    if (effect) this.addControlDeckEffectToSlot(effect, Number(data.data.index));
+                } else if (data.data?.deckType === 'sound') {
+                    const sound = data.data.item;
+                    if (sound) {
+                        this.pendingControlDeckIndex = Number(data.data.index);
+                        this.addSoundLibraryItemToDeck(sound);
+                    }
+                }
+                break;
+            case 'control_deck_media_uploaded':
+                this.handleRemoteMediaUploaded(data.data);
+                break;
+            case 'control_deck_remove':
+                if (data.data?.slotId) this.removeControlDeckSlot(String(data.data.slotId));
+                break;
+            case 'effect_warning':
+                this.showNotification('warning', data.data?.message || 'Hiệu ứng đã bị bỏ qua vì thiếu thời lượng.');
+                break;
+            case 'plan_limit_reached': this.handlePlanLimit(data.data, data.data?.feature); break;
+            case 'ai_quota_exhausted':
+                this.showNotification('info', 'Trợ lý AI đã dùng hết hạn mức phản hồi tháng này. Bình luận vẫn được nhận bình thường; bạn có thể nạp thêm ký tự khi cần.');
+                break;
+        }
+    }
+
+    async handleRemoteMediaUploaded(payload = {}) {
+        const index = Number(payload.index);
+        if (!Number.isInteger(index)) return;
+        if (payload.deckType === 'sound' && payload.item) {
+            this.controlDeckSoundLibrary = [
+                ...(this.controlDeckSoundLibrary || []).filter((item) => String(item.id) !== String(payload.item.id)),
+                payload.item
+            ];
+            this.pendingControlDeckIndex = index;
+            this.addSoundLibraryItemToDeck(payload.item);
+            this.showNotification('success', 'Điện thoại đã upload và thêm sound vào Soundboard.');
+            return;
+        }
+        if (payload.deckType === 'effect' && payload.item) {
+            await this.loadPersonalEffects();
+            await this.loadOwnedEffects();
+            const effectId = String(payload.item.id || payload.item._id || '');
+            const effect = (this.personalEffects || []).find((item) => String(item.id || item._id) === effectId) || payload.item;
+            this.addControlDeckEffectToSlot(effect, index);
+            this.showNotification('success', 'Điện thoại đã upload và thêm effect vào Live Control.');
+        }
+    }
+
+    updateStats(stats) {
+        const el = (id) => document.getElementById(id);
+        if (el('stat-gifts')) el('stat-gifts').textContent = stats.gifts || 0;
+        if (el('stat-likes')) el('stat-likes').textContent = stats.likes || 0;
+        if (el('stat-chats')) el('stat-chats').textContent = stats.chats || 0;
+        if (el('stat-viewers')) el('stat-viewers').textContent = stats.viewers || 0;
+
+        const statusEl = document.getElementById('connection-status');
+        if (statusEl) {
+            if (stats.isLive) {
+                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;"></span>Đang live';
+                statusEl.style.background = 'rgba(16,185,129,0.2)';
+            } else {
+                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block;"></span>Chưa kết nối';
+                statusEl.style.background = 'rgba(239,68,68,0.2)';
+            }
+        }
+    }
     async prepareTikTok() {
         const roomId = document.getElementById('room-id')?.value.trim();
         if (!roomId) return this.showNotification('error', 'Vui lòng nhập Room ID!');
@@ -6772,6 +6816,9 @@ class EffectStoreApp {
             case 'share': this.handleShare(data.data); break;
             case 'chat': this.handleChat(data.data); break;
             case 'plan_limit_reached': this.handlePlanLimit(data.data, data.data?.feature); break;
+            case 'ai_quota_exhausted':
+                this.showNotification('info', 'Trợ lý AI đã dùng hết hạn mức phản hồi tháng này. Bình luận vẫn được nhận bình thường; bạn có thể nạp thêm ký tự khi cần.');
+                break;
             case 'control_deck_trigger': this.handleControlDeckRemoteTrigger(data.data); break;
             case 'remote_device_connected':
                 this.handleRemoteDeviceConnected(data.data);
@@ -6787,6 +6834,12 @@ class EffectStoreApp {
                         this.addSoundLibraryItemToDeck(sound);
                     }
                 }
+                break;
+            case 'control_deck_media_uploaded':
+                this.handleRemoteMediaUploaded(data.data);
+                break;
+            case 'control_deck_remove':
+                if (data.data?.slotId) this.removeControlDeckSlot(String(data.data.slotId));
                 break;
             case 'effect_warning':
                 this.showNotification('warning', data.data?.message || 'Hiệu ứng đã bị bỏ qua vì thiếu thời lượng.');
@@ -6882,7 +6935,7 @@ class EffectStoreApp {
         const donor = this.pendingDonors.get(data.userId);
         if (donor) {
             // Nếu là người vừa donate khủng, đọc comment của họ
-            this.speakText(`${donor.nickname} nhắn là: ${data.comment}`);
+            this.speakText(`${donor.nickname} nhắn là: ${data.comment}`, false, 'comment');
             this.pendingDonors.delete(data.userId); // Chỉ đọc 1 lần duy nhất
         }
     }
@@ -7352,6 +7405,7 @@ class EffectStoreApp {
             const token = this.authToken || localStorage.getItem('token') || '';
             const headers = {};
             if (token) headers['Authorization'] = `Bearer ${token}`;
+            if (!token) return;
             let res = await fetch(`${this.API_URL}/api/tiktok/ai-config`, { headers });
             if (res.status === 401 && token) {
                 res = await this.retryUnauthorized(
@@ -7363,6 +7417,7 @@ class EffectStoreApp {
             const data = await res.json().catch(() => ({}));
             if (data.success && data.config) {
                 const c = data.config;
+                this.aiAssistantConfig = c;
                 const presetVoices = ['21m00Tcm4TlvDq8ikWAM', 'EXAVITQu4vr4xnSDxMaL', 'AZnzlk1XvdvUeBnXmlld', 'pNInz6obpgDQGcFmaJgB', 'ErXwobaYiN019PkySvjV', 'MF3mGyEYCl7XYWbV9V6O'];
                 const savedVoice = c.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB';
 
@@ -7370,8 +7425,7 @@ class EffectStoreApp {
                 document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = c.persona || 'sassy');
                 document.querySelectorAll('.ai-assistant-cooldown-input').forEach(el => el.value = String(c.cooldownSeconds || 20));
                 document.querySelectorAll('.ai-assistant-donator-only-input').forEach(el => el.value = String(c.donatorOnly || false));
-                document.querySelectorAll('.ai-assistant-gemini-key-input').forEach(el => el.value = c.geminiApiKey || '');
-                document.querySelectorAll('.ai-assistant-eleven-key-input').forEach(el => el.value = c.elevenLabsApiKey || '');
+                document.querySelectorAll('.ai-assistant-min-donator-coins-input').forEach(el => el.value = String(c.minimumDonatorCoins || 10));
                 document.querySelectorAll('.ai-assistant-eleven-voice-input').forEach(el => el.value = presetVoices.includes(savedVoice) ? savedVoice : 'custom');
                 document.querySelectorAll('.ai-assistant-custom-voice-input').forEach(el => {
                     if (!presetVoices.includes(savedVoice)) {
@@ -7387,18 +7441,79 @@ class EffectStoreApp {
                 if (document.getElementById('ai-assistant-persona')) document.getElementById('ai-assistant-persona').value = c.persona || 'sassy';
                 if (document.getElementById('ai-assistant-cooldown')) document.getElementById('ai-assistant-cooldown').value = String(c.cooldownSeconds || 20);
                 if (document.getElementById('ai-assistant-donator-only')) document.getElementById('ai-assistant-donator-only').value = String(c.donatorOnly || false);
-                if (document.getElementById('admin-gemini-key')) document.getElementById('admin-gemini-key').value = c.geminiApiKey || '';
-                if (document.getElementById('admin-eleven-key')) document.getElementById('admin-eleven-key').value = c.elevenLabsApiKey || '';
+                const geminiStatus = document.getElementById('admin-gemini-status');
+                const elevenStatus = document.getElementById('admin-eleven-status');
+                if (geminiStatus) {
+                    geminiStatus.textContent = c.geminiConfigured ? '✅ Gemini đã cấu hình' : '⚠️ Gemini chưa cấu hình';
+                    geminiStatus.style.color = c.geminiConfigured ? '#86efac' : '#fbbf24';
+                }
+                if (elevenStatus) {
+                    elevenStatus.textContent = c.elevenLabsConfigured ? '✅ ElevenLabs đã cấu hình' : '⚠️ ElevenLabs chưa cấu hình';
+                    elevenStatus.style.color = c.elevenLabsConfigured ? '#86efac' : '#fbbf24';
+                }
             }
             if (data.success && data.usage) {
                 this.renderAiUsageUI(data.usage);
             }
+            if (this.currentUser?.isAdmin === true || this.currentUser?.email === 'admin@effectstore.vn') {
+                this.loadSystemAiSecretStatus();
+            }
         } catch (_e) {}
+    }
+
+    renderSystemAiSecretStatus(status = {}) {
+        const geminiStatus = document.getElementById('admin-gemini-status');
+        const elevenStatus = document.getElementById('admin-eleven-status');
+        if (geminiStatus) {
+            geminiStatus.textContent = status.gemini?.configured ? '✅ Gemini đã cấu hình' : '⚠️ Gemini chưa cấu hình';
+            geminiStatus.style.color = status.gemini?.configured ? '#86efac' : '#fbbf24';
+        }
+        if (elevenStatus) {
+            elevenStatus.textContent = status.elevenlabs?.configured ? '✅ ElevenLabs đã cấu hình' : '⚠️ ElevenLabs chưa cấu hình';
+            elevenStatus.style.color = status.elevenlabs?.configured ? '#86efac' : '#fbbf24';
+        }
+    }
+
+    async loadSystemAiSecretStatus() {
+        try {
+            const response = await fetch(`${this.API_URL}/api/ai/admin/status`, {
+                headers: { Authorization: `Bearer ${this.authToken}` }
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok && data.success) this.renderSystemAiSecretStatus(data.status);
+        } catch (_error) {}
+    }
+
+    async saveSystemAiSecrets() {
+        const geminiInput = document.getElementById('admin-gemini-secret-input');
+        const elevenInput = document.getElementById('admin-eleven-secret-input');
+        const geminiKey = geminiInput?.value?.trim() || '';
+        const elevenLabsKey = elevenInput?.value?.trim() || '';
+        if (!geminiKey && !elevenLabsKey) {
+            this.showNotification('info', 'Nhập ít nhất một key mới để cập nhật.');
+            return;
+        }
+        try {
+            const response = await fetch(`${this.API_URL}/api/ai/admin/secrets`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${this.authToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ geminiKey, elevenLabsKey })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) throw new Error(data.error || 'Không thể cập nhật key.');
+            if (geminiInput) geminiInput.value = '';
+            if (elevenInput) elevenInput.value = '';
+            this.renderSystemAiSecretStatus(data.status);
+            this.showNotification('success', '🔐 Đã cập nhật API key an toàn trên cloud.');
+        } catch (error) {
+            this.showNotification('error', error.message || 'Không thể cập nhật API key.');
+        }
     }
 
     renderAiUsageUI(usage) {
         if (!usage) return;
         const meterText = document.getElementById('ai-usage-meter-text');
+        const systemGiftMeterText = document.getElementById('ai-system-gift-meter-text');
         const planBadge = document.getElementById('ai-usage-plan-badge');
         const isUserCardAdmin = document.querySelector('.user-card .plan')?.textContent?.trim() === 'ADMIN';
         const isAdmin = Boolean(
@@ -7407,13 +7522,19 @@ class EffectStoreApp {
             usage.totalLimit >= 999000000 ||
             isUserCardAdmin
         );
-        const hasQuota = isAdmin || usage.hasQuota || (usage.remaining > 0);
+        const hasQuota = isAdmin || usage.hasQuota || usage.hasSystemVoiceGift || (usage.remaining > 0) || (usage.systemVoiceGiftRemaining > 0);
 
         if (meterText) {
             if (isAdmin) {
                 meterText.textContent = `${(usage.used || 0).toLocaleString()} ký tự (Không giới hạn ♾️)`;
             } else {
-                meterText.textContent = `${(usage.used || 0).toLocaleString()} / ${(usage.totalLimit || 1000).toLocaleString()} ký tự`;
+                meterText.textContent = `${(usage.used || 0).toLocaleString()} / ${(usage.totalLimit || 1000).toLocaleString()} ký tự giọng tùy chỉnh`;
+            }
+        }
+        if (systemGiftMeterText) {
+            systemGiftMeterText.style.display = isAdmin ? 'none' : '';
+            if (!isAdmin) {
+                systemGiftMeterText.textContent = `🎁 Quà tặng kèm: ${(usage.systemVoiceGiftUsed || 0).toLocaleString()} / ${(usage.systemVoiceGiftLimit || 5000).toLocaleString()} ký tự giọng hệ thống`;
             }
         }
         if (planBadge) {
@@ -7669,9 +7790,7 @@ class EffectStoreApp {
             const persona = (sourceEl && sourceEl.classList.contains('ai-assistant-persona-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-persona-input')?.value || document.getElementById('ai-assistant-persona')?.value || 'sassy');
             const cooldownSeconds = parseInt((sourceEl && sourceEl.classList.contains('ai-assistant-cooldown-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-cooldown-input')?.value || document.getElementById('ai-assistant-cooldown')?.value || '20'), 10);
             const donatorOnly = ((sourceEl && sourceEl.classList.contains('ai-assistant-donator-only-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-donator-only-input')?.value || document.getElementById('ai-assistant-donator-only')?.value)) === 'true';
-            const geminiApiKey = (sourceEl && sourceEl.classList.contains('ai-assistant-gemini-key-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-gemini-key-input')?.value || document.getElementById('admin-gemini-key')?.value || '');
-            const elevenLabsApiKey = (sourceEl && sourceEl.classList.contains('ai-assistant-eleven-key-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-eleven-key-input')?.value || document.getElementById('admin-eleven-key')?.value || '');
-            
+            const minimumDonatorCoins = Math.max(1, parseInt((sourceEl && sourceEl.classList.contains('ai-assistant-min-donator-coins-input')) ? sourceEl.value : (document.querySelector('.ai-assistant-min-donator-coins-input')?.value || '10'), 10) || 10);
             let elevenLabsVoiceId = (sourceEl && sourceEl.classList.contains('ai-assistant-eleven-voice-input')) ? sourceEl.value : this.getActiveVoiceId();
             if (elevenLabsVoiceId === 'custom') {
                 const customInput = Array.from(document.querySelectorAll('.ai-assistant-custom-voice-input')).find(el => el.offsetWidth > 0 && el.offsetHeight > 0) || document.querySelector('.ai-assistant-custom-voice-input');
@@ -7684,18 +7803,14 @@ class EffectStoreApp {
             document.querySelectorAll('.ai-assistant-persona-input').forEach(el => el.value = persona);
             document.querySelectorAll('.ai-assistant-cooldown-input').forEach(el => el.value = String(cooldownSeconds));
             document.querySelectorAll('.ai-assistant-donator-only-input').forEach(el => el.value = String(donatorOnly));
-            document.querySelectorAll('.ai-assistant-gemini-key-input').forEach(el => el.value = geminiApiKey);
-            document.querySelectorAll('.ai-assistant-eleven-key-input').forEach(el => el.value = elevenLabsApiKey);
+            document.querySelectorAll('.ai-assistant-min-donator-coins-input').forEach(el => el.value = String(minimumDonatorCoins));
             document.querySelectorAll('.ai-assistant-eleven-voice-input').forEach(el => el.value = presetVoices.includes(elevenLabsVoiceId) ? elevenLabsVoiceId : 'custom');
 
             if (document.getElementById('ai-assistant-enabled')) document.getElementById('ai-assistant-enabled').checked = enabled;
             if (document.getElementById('ai-assistant-persona')) document.getElementById('ai-assistant-persona').value = persona;
             if (document.getElementById('ai-assistant-cooldown')) document.getElementById('ai-assistant-cooldown').value = String(cooldownSeconds);
             if (document.getElementById('ai-assistant-donator-only')) document.getElementById('ai-assistant-donator-only').value = String(donatorOnly);
-            if (document.getElementById('admin-gemini-key')) document.getElementById('admin-gemini-key').value = geminiApiKey;
-            if (document.getElementById('admin-eleven-key')) document.getElementById('admin-eleven-key').value = elevenLabsApiKey;
-
-            const payload = { enabled, persona, cooldownSeconds, donatorOnly, geminiApiKey, elevenLabsApiKey, elevenLabsVoiceId };
+            const payload = { enabled, persona, cooldownSeconds, donatorOnly, minimumDonatorCoins, elevenLabsVoiceId };
             const res = await fetch(`${this.API_URL}/api/tiktok/ai-config`, {
                 method: 'POST',
                 headers: {
@@ -7706,8 +7821,9 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
+                this.aiAssistantConfig = data.config || this.aiAssistantConfig;
                 if (data.usage) this.renderAiUsageUI(data.usage);
-                this.showNotification('success', '💾 Đã lưu API Key Hệ Thống AI thành công!');
+                this.showNotification('success', '💾 Đã lưu cấu hình Trợ lý AI!');
             }
         } catch (_e) {}
     }

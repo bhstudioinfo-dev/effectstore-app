@@ -133,6 +133,8 @@
         
         .card-name { font-size: 12px; font-weight: 700; color: #f1f5f9; word-break: break-word; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .card-badge { position: absolute; top: 6px; right: 6px; font-size: 9px; font-weight: 800; background: rgba(255, 255, 255, 0.1); padding: 2px 5px; border-radius: 5px; color: #cbd5e1; }
+        .card-remove { position: absolute; top: 6px; left: 6px; z-index: 4; width: 27px; height: 27px; border: 1px solid rgba(248,113,113,.5); border-radius: 50%; background: rgba(127,29,29,.82); color: #fecaca; font-size: 16px; font-weight: 900; display: grid; place-items: center; cursor: pointer; }
+        .card-remove:active { transform: scale(.88); background: #dc2626; color: #fff; }
         
         .status-bar { text-align: center; font-size: 11px; color: #64748b; margin-top: auto; padding: 8px; }
         .toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: rgba(15,23,42,0.95); border: 1px solid rgba(236,72,153,0.4); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 12px; font-weight: 700; z-index: 999; opacity: 0; transition: all 0.2s ease; pointer-events: none; }
@@ -202,6 +204,11 @@
                 </div>
                 <button class="picker-close" onclick="closePickerModal()">✕</button>
             </div>
+            <div id="sound-upload-area" style="padding:0 14px 12px;display:none;grid-template-columns:1fr;gap:8px;">
+                <button id="upload-sound-btn" onclick="chooseRemoteUpload('sound')" style="border:1px solid rgba(56,189,248,.55);background:rgba(2,132,199,.15);color:#bae6fd;border-radius:12px;padding:11px 8px;font-weight:800;">⬆ File âm thanh</button>
+                <input id="remote-sound-file" type="file" accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/aac,.m4a" hidden onchange="uploadRemoteMedia('sound',this)">
+            </div>
+            <div id="upload-status" style="display:none;margin:0 14px 12px;padding:10px;border-radius:10px;background:rgba(59,130,246,.12);color:#bfdbfe;font-size:12px;text-align:center;"></div>
             <div class="picker-grid" id="picker-grid">
                 <!-- Rendered by JS -->
             </div>
@@ -240,6 +247,18 @@
                 return window.location.origin + '/' + clean;
             }
             return clean;
+        }
+
+        function isVideoEffect(effect) {
+            if (!effect || effect.isWheel || effect.isWidget || effect.isTemplate) return false;
+            const type = String(effect.type || '').toLowerCase();
+            const category = String(effect.category || '').toLowerCase();
+            if (['wheel', 'widget', 'template', 'challenge-wheel', 'menu_template'].includes(type)) return false;
+            if (['wheel', 'widget', 'template', 'challenge-wheel', 'menu_template'].includes(category)) return false;
+            const id = String(effect.id || effect._id || '').toLowerCase();
+            if (id.startsWith('wheel-') || id.startsWith('challenge-') || id.includes('wheel')) return false;
+            const name = String(effect.name || effect.effectName || '').toLowerCase();
+            return !name.includes('vòng quay') && !name.includes('wheel') && !name.includes('thử thách');
         }
 
         function showToast(msg) {
@@ -295,6 +314,7 @@
                         const slotId = slot.id || `slot-${i}`;
                         cardsHTML += `
                             <div class="deck-card sound-3d-card active-slot" onclick="triggerSlot('${slotId}', 'sound', this)">
+                                <button class="card-remove" aria-label="Xóa nút" onclick="event.stopPropagation();removeSlot('${escapeHtml(slotId)}','sound')">×</button>
                                 <span class="card-badge">#${i + 1}</span>
                                 <div class="push-btn-3d color-${colorClass}">
                                     <div class="push-btn-3d-core">
@@ -330,6 +350,7 @@
 
                     cardsHTML += `
                         <div class="deck-card active-slot" onclick="triggerSlot('${slotId}', '${type}', this)">
+                            <button class="card-remove" aria-label="Xóa nút" onclick="event.stopPropagation();removeSlot('${escapeHtml(slotId)}','${type}')">×</button>
                             <span class="card-badge">#${i + 1}</span>
                             ${iconHTML}
                             <div class="card-name">${name}</div>
@@ -381,8 +402,13 @@
             const modalTitle = document.getElementById('picker-title');
             const grid = document.getElementById('picker-grid');
             if (modalTitle) modalTitle.textContent = type === 'effect' ? 'Chọn hiệu ứng' : 'Chọn âm thanh Soundboard';
+            document.getElementById('sound-upload-area').style.display = type === 'sound' ? 'grid' : 'none';
+            const uploadStatus = document.getElementById('upload-status');
+            uploadStatus.style.display = 'none';
 
-            const items = type === 'effect' ? (deckState.availableEffects || []) : (deckState.availableSounds || []);
+            const items = type === 'effect'
+                ? (deckState.availableEffects || []).filter(isVideoEffect)
+                : (deckState.availableSounds || []);
 
             if (items.length === 0) {
                 grid.innerHTML = `<div style="grid-column:1/-1; padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Chưa có ${type === 'effect' ? 'hiệu ứng' : 'âm thanh'} khả dụng.<br>Hãy thêm hoặc mua hiệu ứng trên PC trước!</div>`;
@@ -471,6 +497,28 @@
             }
         }
 
+        async function removeSlot(slotId, deckType) {
+            if (!window.confirm('Xóa nút này khỏi LiveControl?')) return;
+            if (navigator.vibrate) navigator.vibrate(35);
+            try {
+                const res = await fetch(remoteApiUrl('/api/remote/remove-slot'), {
+                    method: 'POST',
+                    headers: remoteHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ slotId, deckType })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) throw new Error(data.error || 'Không thể xóa nút.');
+                const state = deckState[deckType] || { slots: [], visible: 10 };
+                state.slots = (state.slots || []).filter(slot => slot && String(slot.id) !== String(slotId));
+                deckState[deckType] = state;
+                renderDeck();
+                showToast('🗑️ Đã xóa nút!');
+            } catch (error) {
+                showToast(`❌ ${error.message}`);
+                setTimeout(fetchDeckState, 500);
+            }
+        }
+
         async function stopAllSounds() {
             if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
             try {
@@ -482,6 +530,52 @@
                 showToast('⏹️ Đã tắt toàn bộ sound!');
             } catch (e) {
                 console.error('Stop all error:', e);
+            }
+        }
+
+        function chooseRemoteUpload(type) {
+            if (type !== 'sound') return;
+            document.getElementById('remote-sound-file')?.click();
+        }
+
+        async function uploadRemoteMedia(type, input) {
+            if (type !== 'sound') return;
+            const file = input?.files?.[0];
+            if (!file) return;
+            const maxBytes = 30 * 1024 * 1024;
+            if (file.size > maxBytes) {
+                showToast('❌ Âm thanh phải dưới 30MB');
+                input.value = '';
+                return;
+            }
+            const status = document.getElementById('upload-status');
+            status.style.display = 'block';
+            status.textContent = 'Đang tải âm thanh lên PC…';
+            const form = new FormData();
+            form.append('media', file);
+            form.append('name', file.name.replace(/\.[^.]+$/, '').slice(0, 80));
+            form.append('index', String(pendingAssignIndex));
+            try {
+                const response = await fetch(remoteApiUrl(`/api/remote/upload/${type}`), {
+                    method: 'POST',
+                    headers: remoteHeaders(),
+                    body: form
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data.success) throw new Error(data.error || 'Upload thất bại.');
+                const state = deckState[type] || { slots: [], visible: 10 };
+                state.slots = [...(state.slots || []).filter(slot => slot && Number(slot.index) !== pendingAssignIndex), data.slot];
+                deckState[type] = state;
+                const key = type === 'effect' ? 'availableEffects' : 'availableSounds';
+                deckState[key] = [...(deckState[key] || []).filter(item => String(item.id) !== String(data.item.id)), data.item];
+                closePickerModal();
+                renderDeck();
+                showToast('✅ Đã upload và thêm sound!');
+            } catch (error) {
+                status.textContent = `❌ ${error.message}`;
+                showToast(`❌ ${error.message}`);
+            } finally {
+                input.value = '';
             }
         }
 
