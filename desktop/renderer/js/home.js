@@ -7896,15 +7896,54 @@ class EffectStoreApp {
             const testSentence = personaSentences[voiceId] || 'Xin chào! Giọng đọc AI đã sẵn sàng phục vụ bạn!';
 
             this.showNotification('success', `🤖 AI (${persona}): "${testSentence}"`);
-            this.speakText(testSentence, true);
+            if (voiceId === 'google_female_vi') {
+                await this.speakText(testSentence, true);
+            } else {
+                await this.playAiAssistantVoicePreview(testSentence, voiceId);
+            }
         } catch (e) {
             this.showNotification('error', '❌ Lỗi: ' + e.message);
         }
     }
 
+    async playAiAssistantVoicePreview(text, voiceId) {
+        const safeVoiceId = String(voiceId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        if (!safeVoiceId) throw new Error('Giọng AI không hợp lệ.');
+
+        const cacheKey = `es_ai_voice_cache_${safeVoiceId}_${text}`;
+        let audioDataUrl = localStorage.getItem(cacheKey);
+        if (!audioDataUrl) {
+            const response = await fetch(`${this.API_URL}/api/ai/speech`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text, voiceId: safeVoiceId })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success || !data.audioDataUrl) {
+                throw new Error(data.error || 'Không thể tạo giọng nghe thử từ ElevenLabs.');
+            }
+            audioDataUrl = data.audioDataUrl;
+            try {
+                localStorage.setItem(cacheKey, audioDataUrl);
+            } catch (_cacheError) {}
+        }
+
+        if (this.currentAudio) {
+            this.currentAudio.pause();
+            this.currentAudio = null;
+        }
+        this.currentAudio = new Audio(audioDataUrl);
+        this.currentAudio.volume = this.ttsVolume;
+        this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
+        await this.currentAudio.play();
+    }
+
     clearVoiceCache() {
         Object.keys(localStorage).forEach(k => {
-            if (k.startsWith('es_voice_cache_')) {
+            if (k.startsWith('es_voice_cache_') || k.startsWith('es_ai_voice_cache_')) {
                 localStorage.removeItem(k);
             }
         });

@@ -49,6 +49,9 @@ const originalElevenKey = process.env.ELEVENLABS_API_KEY;
         assert(!desktopSource.includes('xi-api-key'));
         assert(!desktopSource.includes('admin-gemini-key'));
         assert(!desktopSource.includes('admin-eleven-key'));
+        assert(desktopSource.includes('await this.playAiAssistantVoicePreview(testSentence, voiceId)'));
+        assert(desktopSource.includes('`${this.API_URL}/api/ai/speech`'));
+        assert(desktopSource.includes('es_ai_voice_cache_${safeVoiceId}_${text}'));
 
         console.log('AI config security tests passed');
     } finally {
