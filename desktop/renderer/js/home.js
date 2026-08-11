@@ -1868,24 +1868,18 @@ class EffectStoreApp {
         return `system_vi_v2_${text}`;
     }
 
-    clearLegacyCustomVoiceTtsCache() {
-        if (localStorage.getItem('es_system_tts_cache_v2_migrated') === '1') return;
-        const legacyKeys = [];
-        for (let index = 0; index < localStorage.length; index += 1) {
-            const key = localStorage.key(index);
-            if (key && key.startsWith('es_voice_cache_') && !key.startsWith('es_voice_cache_system_vi_v2_')) {
-                legacyKeys.push(key);
-            }
-        }
-        legacyKeys.forEach(key => localStorage.removeItem(key));
-        localStorage.setItem('es_system_tts_cache_v2_migrated', '1');
+    clearLegacySystemPreviewVoiceCache(text) {
+        // Remove only the two old preview entries that were accidentally saved
+        // under the AI voices. Never touch the AI assistant's other audio/data.
+        ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO'].forEach(voiceId => {
+            localStorage.removeItem(`es_voice_cache_${voiceId}_${text}`);
+        });
     }
 
     // ===== TEXT TO SPEECH (TTS) =====
     async speakText(text, isTest = false, usageKind = 'tts') {
         if (!text) return;
 
-        this.clearLegacyCustomVoiceTtsCache();
         const cacheKey = this.getSystemTtsCacheKey(text);
         const persistentAudio = localStorage.getItem('es_voice_cache_' + cacheKey);
 
@@ -2024,6 +2018,7 @@ class EffectStoreApp {
             .replace(/{quantity}/g, "10")
             .replace(/{coin}/g, "10");
 
+        this.clearLegacySystemPreviewVoiceCache(processedText);
         this.speakText(processedText, true);
     }
 
@@ -2099,6 +2094,7 @@ class EffectStoreApp {
 
         const processedText = templateText.replace(/{username}/g, "Nguyễn Văn A");
 
+        this.clearLegacySystemPreviewVoiceCache(processedText);
         this.speakText(processedText, true);
     }
 
@@ -2111,7 +2107,6 @@ class EffectStoreApp {
         this.isProcessingTTS = true;
         const text = this.ttsQueue.shift();
 
-        this.clearLegacyCustomVoiceTtsCache();
         const cacheKey = this.getSystemTtsCacheKey(text);
         const persistentAudio = localStorage.getItem('es_voice_cache_' + cacheKey);
 

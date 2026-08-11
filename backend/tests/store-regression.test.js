@@ -23,7 +23,9 @@ assert.ok(homeSource.includes('const resolveMediaUrl = value => this.resolveCata
 assert.ok(homeSource.includes('const isLocalPlaybackRoute = /^\\/api\\/(?:stream\\/effect\\/|obs\\/effect-player-media\\/)/i.test(raw)'));
 assert.ok(homeSource.includes('const baseUrl = isLocalPlaybackRoute ? this.API_URL : this.CLOUD_API_URL'));
 assert.ok(homeSource.includes('return `system_vi_v2_${text}`'));
-assert.ok(homeSource.includes("localStorage.setItem('es_system_tts_cache_v2_migrated', '1')"));
+assert.ok(homeSource.includes('clearLegacySystemPreviewVoiceCache(text)'));
+assert.ok(homeSource.includes("['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO'].forEach"));
+assert.ok(!homeSource.includes('clearLegacyCustomVoiceTtsCache'));
 assert.ok(!homeSource.includes("const cacheKey = voiceId + '_' + text"));
 assert.ok(homeSource.includes("fetch(this.API_URL + '/api/effects/trending')"));
 assert.ok(!loadEffectsBodyRemovesSession(homeSource));
