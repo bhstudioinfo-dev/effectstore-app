@@ -8880,11 +8880,6 @@
         getDefaultTemplates() {
             return [
                 {
-                    id: 'tmpl_challenge_wheel', name: '🎡 Vòng quay thử thách', tag: 'Tương tác', category: 'challenge-wheel',
-                    tags: ['wheel', 'challenge', 'donate'], isPremium: false,
-                    layers: [{ id: 'challenge_wheel_widget', name: '🎡 Vòng quay thử thách', type: 'challenge-wheel', x: 90, y: 120, w: 720, h: 760, width: 720, height: 760, zIndex: 1, visible: true, locked: false, title: 'VÒNG QUAY THỬ THÁCH', subtitle: 'Donate đúng quà để kích hoạt', titleFontSize: 34, subtitleFontSize: 18, segments: [{ id: 'challenge-1', label: 'Hát một đoạn', color: '#ef2029', weight: 1 }, { id: 'challenge-2', label: 'Nhảy 10 giây', color: '#1455a0', weight: 1 }, { id: 'challenge-3', label: 'Kể chuyện vui', color: '#f97316', weight: 1 }, { id: 'challenge-4', label: 'Tạo dáng', color: '#facc15', weight: 1 }] }]
-                },
-                {
                     id: 'tmpl_pk_versus_bar',
                     name: '⚔️ Thanh đối kháng / PK',
                     tag: 'Đấu PK',
