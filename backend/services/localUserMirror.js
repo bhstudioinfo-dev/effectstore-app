@@ -23,7 +23,7 @@ function normalizeSubscription(value) {
 
 async function mirrorUserLocally(userPayload) {
     const id = String(userPayload?.id || userPayload?._id || '').trim();
-    if (!id || !userPayload?.email) return;
+    if (!id || !userPayload?.email) return false;
 
     try {
         const subscription = normalizeSubscription(userPayload.subscription || userPayload.plan);
@@ -53,9 +53,10 @@ async function mirrorUserLocally(userPayload) {
             },
             { upsert: true, setDefaultsOnInsert: true, runValidators: false }
         );
-    } catch (_error) {
-        // Best-effort mirror only — local-only routes simply stay stale until
-        // the next successful login/me response if this fails.
+        return true;
+    } catch (error) {
+        console.warn('[local-user-mirror] failed:', error.message);
+        return false;
     }
 }
 

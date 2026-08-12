@@ -341,7 +341,7 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
 
 router.post('/challenge-wheels', authMiddleware, async (req, res) => {
     try {
-        const owner = await User.findById(req.userId).select('isAdmin subscription subscriptionExpiresAt').lean();
+        const owner = req.user || (await User.findById(req.userId).select('isAdmin subscription subscriptionExpiresAt').lean());
         const sourceTemplateId = req.body.sourceTemplateId && isValidResourceId(req.body.sourceTemplateId) ? req.body.sourceTemplateId : null;
         if (!sourceTemplateId && owner?.isAdmin !== true && normalizePlan(owner) !== 'business') {
             return res.status(403).json({ success: false, error: 'Vòng quay chỉ được tạo từ sản phẩm Vòng quay thử thách đã mua.' });
@@ -1248,7 +1248,7 @@ router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
                 })
             });
         }
-        const user = await User.findById(req.userId);
+        const user = req.user || (await User.findById(req.userId));
         const ownedEffectIds = (user && Array.isArray(user.purchasedEffects)) ? user.purchasedEffects.map(pe => pe.effectId?.toString()).filter(Boolean) : [];
         const isAdmin = user ? user.isAdmin === true : false;
         const hasLegacyBundledProducts = user ? user.subscription === 'business' : false;
@@ -1382,6 +1382,24 @@ router.post('/gift-menu-overlay-sync-active', authMiddleware, async (req, res) =
     }
 });
 
+router.post('/gift-menu-overlay-clear', async (_req, res) => {
+    try {
+        const emptyLayout = {
+            version: 2,
+            savedAt: new Date().toISOString(),
+            aspectRatio: '9:16',
+            canvasSize: { width: 720, height: 960 },
+            items: [],
+            exportedItems: [],
+            userId: ''
+        };
+        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(emptyLayout, null, 2), 'utf8');
+        res.json({ success: true, cleared: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 router.post('/gift-menu-layout', authMiddleware, planQuotaLock('layouts'), async (req, res) => {
     try {
         const payload = req.body || {};
@@ -1389,7 +1407,7 @@ router.post('/gift-menu-layout', authMiddleware, planQuotaLock('layouts'), async
         if (requestedLayoutId && !isValidResourceId(requestedLayoutId)) {
             return res.status(400).json({ success: false, error: 'Invalid layout ID' });
         }
-        const user = await User.findById(req.userId);
+        const user = req.user || (await User.findById(req.userId));
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
         const entitlements = getEntitlements(user);
         const isRenameOnly = payload.id && payload.name && !payload.aspectRatio && !payload.items && !payload.exportedItems;
@@ -1587,7 +1605,7 @@ router.post('/gift-menu-layout', authMiddleware, planQuotaLock('layouts'), async
 router.post('/gift-menu-layout/create', authMiddleware, planQuotaLock('layouts'), async (req, res) => {
     try {
         const { name } = req.body;
-        const user = await User.findById(req.userId);
+        const user = req.user || (await User.findById(req.userId));
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
         const entitlements = getEntitlements(user);
         if (Number.isFinite(entitlements.layouts)) {
@@ -1658,7 +1676,7 @@ router.delete('/gift-menu-layout/:layoutId', authMiddleware, async (req, res) =>
 
 router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = req.user || (await User.findById(req.userId));
         const isAdmin = Boolean(user && user.isAdmin === true);
         if (!isAdmin) return res.status(403).json({ success: false, error: 'Unauthorized' });
         const payload = req.body || {};
@@ -1772,7 +1790,7 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, planQuotaLoc
         });
         const template = await GiftMenuLayout.findOne({ _id: req.params.templateId, isTemplate: true });
         if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
-        const user = await User.findById(req.userId);
+        const user = req.user || (await User.findById(req.userId));
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
         const price = Number(template.price) || 0;

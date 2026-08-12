@@ -70,8 +70,18 @@ class OBSService {
         this._lastConfig = { host, port, password };
         try {
             await this.obs.connect(`ws://${host}:${port}`, password);
+            this._isConnected = true;
+            console.log(`✅ OBS WebSocket Connected & Identified (${host}:${port})`);
             return true;
         } catch (err) {
+            if (password && password !== '') {
+                try {
+                    await this.obs.connect(`ws://${host}:${port}`, '');
+                    this._isConnected = true;
+                    console.log(`✅ OBS WebSocket Connected without password (${host}:${port})`);
+                    return true;
+                } catch (_e) {}
+            }
             console.error(`❌ OBS Connection failed (${host}:${port}):`, err.message || 'Check if OBS is running and WebSocket is enabled');
             this._isConnected = false;
             this.startReconnect();
@@ -81,6 +91,21 @@ class OBSService {
 
     async ensureConnected() {
         if (this._isConnected) return true;
+
+        if (!this._lastConfig) {
+            try {
+                const OBSSettings = require('../models/OBSSettings');
+                const settings = (await OBSSettings.findOne({ userId: { $exists: false } }))
+                    || (await OBSSettings.findOne().sort({ updatedAt: -1 }));
+                if (settings) {
+                    this._lastConfig = {
+                        host: settings.host || process.env.OBS_HOST || '127.0.0.1',
+                        port: settings.port || process.env.OBS_PORT || 4455,
+                        password: settings.password || process.env.OBS_PASSWORD || 'obs123'
+                    };
+                }
+            } catch (_e) {}
+        }
 
         const fallbackHost = process.env.OBS_HOST || '127.0.0.1';
         const fallbackPort = process.env.OBS_PORT || 4455;
@@ -121,44 +146,46 @@ class OBSService {
     async ensureEffectPlayerSource() {
         if (!this._isConnected) return false;
 
-        const sceneName = 'EffectStore';
-        const sourceName = 'effect_player';
-        const PORT = process.env.PORT || 9000;
-        const wsToken = encodeURIComponent(getOverlayAccessToken('effect-player'));
-        const sourceUrl = `http://localhost:${PORT}/effect-player-overlay.html?wsToken=${wsToken}`;
-        const { scenes } = await this.obs.call('GetSceneList');
+        try {
+            const sceneName = 'EffectStore';
+            const sourceName = 'effect_player';
+            const PORT = process.env.PORT || 9000;
+            const wsToken = encodeURIComponent(getOverlayAccessToken('effect-player'));
+            const sourceUrl = `http://localhost:${PORT}/effect-player-overlay.html?wsToken=${wsToken}`;
+            const { scenes } = await this.obs.call('GetSceneList');
 
-        if (!scenes.some((scene) => scene.sceneName === sceneName)) {
-            await this.obs.call('CreateScene', { sceneName });
-        }
-
-        const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName });
-        if (sceneItems.some((item) => item.sourceName === sourceName)) {
-            await this.obs.call('SetInputSettings', {
-                inputName: sourceName,
-                inputSettings: { url: sourceUrl, shutdown: false, restart_when_active: false, reroute_audio: true },
-                overlay: true
-            });
-            return true;
-        }
-
-        await this.obs.call('CreateInput', {
-            sceneName,
-            inputName: sourceName,
-            inputKind: 'browser_source',
-            inputSettings: {
-                url: sourceUrl,
-                width: 1080,
-                height: 1920,
-                fps: 30,
-                css: '',
-                shutdown: false,
-                restart_when_active: false,
-                reroute_audio: true
+            if (!scenes.some((scene) => scene.sceneName === sceneName)) {
+                await this.obs.call('CreateScene', { sceneName });
             }
-        });
-        console.log('Prepared future OBS browser source: effect_player');
-        return true;
+
+            const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName });
+            if (sceneItems.some((item) => item.sourceName === sourceName)) {
+                await this.obs.call('SetInputSettings', {
+                    inputName: sourceName,
+                    inputSettings: { url: sourceUrl },
+                    overlay: true
+                }).catch(() => {});
+                return true;
+            }
+
+            await this.obs.call('CreateInput', {
+                sceneName,
+                inputName: sourceName,
+                inputKind: 'browser_source',
+                inputSettings: {
+                    url: sourceUrl,
+                    width: 1080,
+                    height: 1920,
+                    fps: 30,
+                    css: ''
+                }
+            });
+            console.log('Prepared future OBS browser source: effect_player');
+            return true;
+        } catch (error) {
+            console.warn('Unable to prepare effect_player source:', error.message || error);
+            return false;
+        }
     }
 
     async ensureGiftMenuOverlaySourceUrl() {

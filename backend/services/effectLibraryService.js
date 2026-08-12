@@ -4,6 +4,7 @@ const Effect = require('../models/Effect');
 const User = require('../models/User');
 const { issueEffectAccessToken, buildEffectStreamUrl } = require('./effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
+const { mirrorUserLocally } = require('./localUserMirror');
 const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
 
 // The OBS/TikTok Live trigger path checks effect ownership against THIS
@@ -60,6 +61,16 @@ function toDuration(value) {
 
 function isAdminUser(user) {
     return Boolean(user && user.isAdmin === true);
+}
+
+function effectiveEffectPrice(effect, now = Date.now()) {
+    if (!effect) return 0;
+    const regularPrice = Math.max(0, Number(effect.price) || 0);
+    const salePrice = Number(effect.flashSalePrice);
+    const saleEndsAt = effect.flashSaleEndsAt ? new Date(effect.flashSaleEndsAt).getTime() : null;
+    const saleIsActive = effect.isFlashSale === true && Number.isFinite(salePrice) && salePrice >= 0 &&
+        (!saleEndsAt || saleEndsAt > now);
+    return saleIsActive ? salePrice : regularPrice;
 }
 
 function normalizePurchasedEffect(effect, ownerId = null, isOwned = true) {
@@ -176,7 +187,24 @@ async function isCustomEffectMediaAvailable(effect, options = {}) {
 
 async function getUserRecord(userId) {
     if (!userId) return null;
-    return User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+    let user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+    if (!user) {
+        try {
+            user = await mirrorUserLocally(userId);
+            if (user && user.toObject) user = user.toObject();
+        } catch (_e) {}
+    }
+    if (!user) {
+        user = {
+            _id: String(userId),
+            email: 'user@local',
+            isAdmin: false,
+            subscription: 'free',
+            purchasedEffects: [],
+            customEffects: []
+        };
+    }
+    return user;
 }
 
 async function getUserAvailableEffects(userId) {
@@ -255,7 +283,14 @@ async function resolveEffectForUser(userId, effectId) {
     const purchased = (user.purchasedEffects || []).find((item) => {
         return toEffectId(item?.effectId?._id || item?.effectId) === id;
     });
-    if (!purchased) return null;
+    if (!purchased) {
+        let effect = await Effect.findById(id).lean().catch(() => null);
+        if (!effect) effect = await mirrorEffectFromCentral(id);
+        if (effect && effect.category !== 'menu_template' && effectiveEffectPrice(effect) === 0) {
+            return normalizePurchasedEffect(effect, user._id, true);
+        }
+        return null;
+    }
 
     let purchasedEffect = purchased.effectId;
     if (!purchasedEffect || typeof purchasedEffect !== 'object' || !purchasedEffect.name) {

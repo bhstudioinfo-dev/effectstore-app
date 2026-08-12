@@ -3849,16 +3849,19 @@ class EffectStoreApp {
     }
 
     async resetGiftMenuDesignerSession() {
-        // GiftMenuDesigner keeps its own in-memory "Thư viện của tôi" list and
-        // canvas that only ever refresh on an explicit view-switch — logging
-        // out/in as a different account without leaving the Designer view left
-        // the previous account's saved menus visible. Clear local state first
-        // so nothing lingers even if the reload below fails.
         if (window.giftMenuDesigner && typeof window.giftMenuDesigner.resetDesignerSession === 'function') {
             try { window.giftMenuDesigner.resetDesignerSession(); } catch (_e) {}
         }
+        if (!this.currentUser) {
+            try {
+                await fetch(`${this.API_URL}/api/tiktok/gift-menu-overlay-clear`, { method: 'POST' });
+            } catch (_e) {}
+        }
         if (window.giftMenuDesigner && typeof window.giftMenuDesigner.loadLayoutsList === 'function') {
             try { await window.giftMenuDesigner.loadLayoutsList(); } catch (_e) {}
+        }
+        if (window.giftMenuDesigner && typeof window.giftMenuDesigner.syncPendingDraftOnLogin === 'function') {
+            try { await window.giftMenuDesigner.syncPendingDraftOnLogin(); } catch (_e) {}
         }
     }
 
@@ -7080,17 +7083,21 @@ class EffectStoreApp {
         }
 
         // 2. Load OBS Settings from Backend
-        try {
-            const res = await fetch(`${this.API_URL}/api/settings/obs`, {
-                headers: { 'Authorization': `Bearer ${this.authToken}` }
-            });
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('settings-obs-host').value = data.host || 'localhost';
-                document.getElementById('settings-obs-port').value = data.port || 4455;
-                document.getElementById('settings-obs-password').value = data.password || '';
-            }
-        } catch (e) { console.error('Error loading OBS settings:', e); }
+        if (this.authToken) {
+            try {
+                const res = await fetch(`${this.API_URL}/api/settings/obs`, {
+                    headers: { 'Authorization': `Bearer ${this.authToken}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) {
+                        document.getElementById('settings-obs-host').value = data.host || 'localhost';
+                        document.getElementById('settings-obs-port').value = data.port || 4455;
+                        document.getElementById('settings-obs-password').value = data.password || '';
+                    }
+                }
+            } catch (e) { console.error('Error loading OBS settings:', e); }
+        }
 
         // 3. Load TikTok Settings & Preferences from LocalStorage
         const tkUserEl = document.getElementById('settings-tiktok-username');
@@ -7473,8 +7480,7 @@ class EffectStoreApp {
             if (res.status === 401 && token) {
                 res = await this.retryUnauthorized(
                     res,
-                    (activeToken) => fetch(`${this.API_URL}/api/tiktok/ai-config`, { headers: { Authorization: `Bearer ${activeToken}` } }),
-                    () => fetch(`${this.API_URL}/api/tiktok/ai-config`)
+                    (activeToken) => fetch(`${this.API_URL}/api/tiktok/ai-config`, { headers: { Authorization: `Bearer ${activeToken}` } })
                 );
             }
             if (!res.ok) return false;

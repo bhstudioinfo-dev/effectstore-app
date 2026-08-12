@@ -30,7 +30,12 @@ async function verifyUserWithCloud(token) {
             error.code = 'CLOUD_TOKEN_REJECTED';
             throw error;
         }
-        await mirrorUserLocally(user);
+        const mirrored = await mirrorUserLocally(user);
+        if (!mirrored) {
+            const error = new Error('Cloud user could not be mirrored locally.');
+            error.code = 'CLOUD_USER_MIRROR_FAILED';
+            throw error;
+        }
         verifiedTokens.set(key, { userId, expiresAt: Date.now() + CACHE_TTL_MS });
         return userId;
     } catch (error) {

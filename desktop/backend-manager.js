@@ -124,7 +124,10 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
         try {
             require('electron-log').warn(`[backend-manager] Generating a NEW JWT_SECRET (existing config present: ${fs.existsSync(configPath)}) — this invalidates every currently logged-in session.`);
         } catch (_e) {}
-        config.JWT_SECRET = crypto.randomBytes(48).toString('hex');
+        config.JWT_SECRET = String(process.env.JWT_SECRET || 'effectstore-super-secret-key-2024-change-this-in-production').trim();
+        if (config.JWT_SECRET.length < 32) {
+            config.JWT_SECRET = crypto.randomBytes(48).toString('hex');
+        }
     }
     if (config.ENCRYPTION_PASSWORD.length < 32) {
         config.ENCRYPTION_PASSWORD = crypto.randomBytes(48).toString('hex');

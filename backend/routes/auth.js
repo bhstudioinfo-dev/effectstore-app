@@ -277,7 +277,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
 
 router.get('/me', authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = req.user || (await User.findById(req.userId));
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
         if (user.isActive === false) {
             return res.status(403).json({ success: false, message: 'Tài khoản đã bị vô hiệu hóa.' });
@@ -310,7 +310,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 
 router.put('/profile', authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = req.user || (await User.findById(req.userId));
         if (!user || user.isActive === false) return res.status(404).json({ success: false, error: 'Không tìm thấy tài khoản.' });
         await expireSubscriptionIfNeeded(user);
         const name = String(req.body?.name || '').trim().slice(0, 100);

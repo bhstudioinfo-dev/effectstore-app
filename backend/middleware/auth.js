@@ -2,6 +2,7 @@ const { verifyUserToken } = require('../services/userToken');
 const User = require('../models/User');
 const { rememberCloudSessionToken } = require('../services/cloudSessionTokenStore');
 const { verifyUserWithCloud } = require('../services/cloudUserVerifier');
+const { mirrorUserLocally } = require('../services/localUserMirror');
 
 async function resolveUserIdFromToken(token) {
     try {
@@ -29,7 +30,33 @@ const authMiddleware = async (req, res, next) => {
         const token = req.headers.authorization?.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'No token provided' });
         const { decoded, verifiedByCloud } = await resolveUserIdFromToken(token);
-        const user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+        let user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+        if (!user && decoded.userId) {
+            try {
+                const fallbackEmail = decoded.email || `${decoded.userId}@local.user`;
+                await mirrorUserLocally({ id: decoded.userId, email: fallbackEmail, isAdmin: Boolean(decoded.isAdmin) });
+                user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+                if (!user) {
+                    user = await User.create({
+                        _id: decoded.userId,
+                        email: fallbackEmail,
+                        password: 'local-auto-created',
+                        name: decoded.email ? decoded.email.split('@')[0] : 'User',
+                        isAdmin: Boolean(decoded.isAdmin),
+                        isActive: true
+                    }).catch(() => null);
+                }
+            } catch (_e) {}
+        }
+        if (!user && decoded.userId) {
+            user = new User({
+                _id: decoded.userId,
+                email: decoded.email || `${decoded.userId}@local.user`,
+                name: decoded.email ? decoded.email.split('@')[0] : 'User',
+                isAdmin: Boolean(decoded.isAdmin),
+                isActive: true
+            });
+        }
         if (!user || user.isActive === false) {
             console.warn(`[authMiddleware] rejected: decoded.userId=${decoded.userId} found=${Boolean(user)} isActive=${user?.isActive}`);
             return res.status(401).json({ error: 'Account is unavailable' });

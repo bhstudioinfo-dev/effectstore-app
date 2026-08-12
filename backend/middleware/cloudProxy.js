@@ -65,30 +65,32 @@ function proxyToCloud(req, res) {
         .then(async (cloudRes) => {
             clearTimeout(timeout);
             const text = await cloudRes.text();
-            res.status(cloudRes.status);
             const contentType = cloudRes.headers.get('content-type');
-            if (contentType) res.set('content-type', contentType);
-            res.send(text);
 
             // Local-only routes (OBS trigger, TikTok Live) must keep working
             // without a network round-trip, so they check this machine's own
             // User model directly — mirror the account data every time the
             // central server confirms it (login, /me, profile updates...) so
             // a brand-new account or a fresh purchase made elsewhere is never
-            // invisible to those routes. Best-effort, never blocks the
-            // response already sent above.
+            // invisible to those routes. Complete the mirror before returning
+            // an auth response, otherwise the renderer immediately calls
+            // local-only APIs with an account that does not exist locally yet.
             if (cloudRes.ok && contentType && contentType.includes('application/json')) {
                 try {
                     const parsed = JSON.parse(text);
                     const userId = parsed?.user?.id || parsed?.user?._id;
                     if (userId) {
-                        mirrorUserLocally(parsed.user);
+                        await mirrorUserLocally(parsed.user);
                         const responseToken = parsed.token;
                         const requestToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
                         rememberCloudSessionToken(userId, responseToken || requestToken);
                     }
                 } catch (_error) { /* not a mirrorable JSON body */ }
             }
+
+            res.status(cloudRes.status);
+            if (contentType) res.set('content-type', contentType);
+            res.send(text);
             if (cloudRes.ok && req.path === '/logout') {
                 try {
                     const requestToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1];

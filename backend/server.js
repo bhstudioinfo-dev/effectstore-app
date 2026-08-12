@@ -568,7 +568,13 @@ app.get('/api/cloud/status', async (_req, res) => {
         });
     }
     if (!cloudApiUrl) {
-        return res.status(503).json({ success: false, compatible: false, error: 'Cloud API URL is unavailable.' });
+        const connected = mongoose.connection.readyState === 1 && databaseSchemaReady;
+        return res.status(connected ? 200 : 503).json({
+            success: connected,
+            compatible: connected,
+            commercialApiVersion: COMMERCIAL_API_VERSION,
+            database: { connected }
+        });
     }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
@@ -591,11 +597,14 @@ app.get('/api/cloud/status', async (_req, res) => {
             error: cloudAvailable ? undefined : 'Backend cloud chưa được cập nhật đúng phiên bản dành cho app này.'
         });
     } catch (_error) {
-        return res.status(503).json({
-            success: false,
-            compatible: false,
-            retryable: true,
-            error: 'Không thể kết nối backend cloud.'
+        const localConnected = mongoose.connection.readyState === 1 && databaseSchemaReady;
+        return res.status(localConnected ? 200 : 503).json({
+            success: localConnected,
+            compatible: localConnected,
+            offlineMode: true,
+            commercialApiVersion: COMMERCIAL_API_VERSION,
+            database: { connected: localConnected },
+            warning: 'Máy chủ Cloud đang khởi động hoặc tạm thời gián đoạn. Ứng dụng đang hoạt động ở chế độ Offline trên máy.'
         });
     } finally {
         clearTimeout(timeout);
@@ -604,6 +613,9 @@ app.get('/api/cloud/status', async (_req, res) => {
 
 app.get('/api/system/status', async (_req, res) => {
     try {
+        if (!obsService.isConnected()) {
+            obsService.ensureConnected().catch(() => {});
+        }
         const obsSources = await obsService.getFoundationSourceStatus();
         const databaseConnected = mongoose.connection.readyState === 1 && databaseSchemaReady;
         res.status(databaseConnected ? 200 : 503).json({

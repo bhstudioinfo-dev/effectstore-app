@@ -69,13 +69,9 @@
         }
 
         get token() {
-            // Once the main app exists, only use the session it has actually
-            // verified. Falling back to the retired effectstore_auth_token
-            // key made Designer resurrect an old token after logout/expiry,
-            // while the cached profile still made the UI look signed in.
-            return window.app
-                ? (window.app.authToken || '')
-                : (localStorage.getItem('token') || '');
+            const appToken = window.app && window.app.authToken ? window.app.authToken : '';
+            const localToken = localStorage.getItem('token') || '';
+            return appToken || localToken || '';
         }
 
         get lastOpenedLayoutStorageKey() {
@@ -3513,6 +3509,35 @@
             }
             await this.loadLayoutsList();
             return true;
+        }
+
+        async syncPendingDraftOnLogin() {
+            const userId = window.app?.currentUser?._id || window.app?.currentUser?.id;
+            if (!userId || !this.token) return;
+
+            const fallbackKey = 'giftMenuDesignerLayoutV2:current-user';
+            const userDraftKey = `giftMenuDesignerLayoutV2:${userId}`;
+
+            let draftToSync = null;
+            try {
+                const unauthDraft = localStorage.getItem(fallbackKey);
+                if (unauthDraft) {
+                    draftToSync = JSON.parse(unauthDraft);
+                    localStorage.removeItem(fallbackKey);
+                } else {
+                    const userDraft = localStorage.getItem(userDraftKey);
+                    if (userDraft) draftToSync = JSON.parse(userDraft);
+                }
+            } catch (_e) {}
+
+            if (draftToSync && Array.isArray(draftToSync.items) && draftToSync.items.length > 0) {
+                if (!this.items || this.items.length === 0) {
+                    this.items = draftToSync.items;
+                    this.aspectRatio = draftToSync.aspectRatio || '9:16';
+                    this.renderCanvas();
+                }
+                await this.saveLayout(false);
+            }
         }
 
         async exportToOBS() {

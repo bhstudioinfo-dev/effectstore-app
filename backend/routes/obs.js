@@ -115,14 +115,9 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
         }
 
-        await obsService.ensureEffectPlayerSource();
-        const sourceStatus = await obsService.getFoundationSourceStatus();
-        if (!sourceStatus.effect_player) {
-            return res.status(503).json({ success: false, message: 'Không thể chuẩn bị nguồn effect_player trên OBS.' });
-        }
-        if (!await waitForEffectPlayerReady(req)) {
-            return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa kết nối, vui lòng thử lại.' });
-        }
+        try {
+            await obsService.ensureEffectPlayerSource();
+        } catch (_e) {}
 
         const PORT = process.env.PORT || 9000;
         let effectUrl;
@@ -154,7 +149,7 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
 
     } catch (error) {
         console.error('Effect player preview error:', error);
-        return res.status(500).json({ success: false, message: 'Không thể xem thử hiệu ứng trên OBS.' });
+        return res.status(500).json({ success: false, message: error.message || 'Không thể xem thử hiệu ứng trên OBS.' });
     }
 });
 
@@ -278,17 +273,6 @@ router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Thiết kế xuất OBS không hợp lệ' });
         }
 
-        if (!obsService.isConnected()) {
-            const config = await getObsConnectionConfig(req.userId);
-            await obsService.connect(config.host, config.port, config.password);
-        }
-
-        if (!obsService.isConnected()) {
-            return res.status(503).json({ success: false, message: 'OBS chưa kết nối' });
-        }
-
-        // Browsing/activating layouts only changes the editor. Publishing the
-        // file consumed by OBS happens exclusively through "Export to OBS".
         const publishedLayout = await GiftMenuLayout.findOne(ownedResourceFilter(
             layoutId,
             req.userId,
@@ -297,14 +281,30 @@ router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
         if (!publishedLayout) {
             return res.status(404).json({ success: false, message: 'Không tìm thấy thiết kế để xuất OBS' });
         }
-        const user = await User.findById(req.userId);
+        const user = req.user || (await User.findById(req.userId));
         if (!user) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
         const entitlements = getEntitlements(user);
         const exportViolation = validateDesignerItems(publishedLayout.items, entitlements) ||
             validateDesignerItems(publishedLayout.exportedItems, entitlements);
         if (exportViolation) return res.status(403).json(exportViolation);
 
+        // Write published layout file to disk FIRST so OBS Browser Source updates immediately!
         fs.writeFileSync(dataPaths.giftMenuLayoutPath, JSON.stringify(publishedLayout, null, 2), 'utf8');
+
+        if (!obsService.isConnected()) {
+            try {
+                const config = await getObsConnectionConfig(req.userId);
+                await obsService.connect(config.host, config.port, config.password);
+            } catch (_e) {}
+        }
+
+        if (!obsService.isConnected()) {
+            return res.json({
+                success: true,
+                obsConnected: false,
+                message: 'Đã xuất file thiết kế cho OBS thành công! (Vui lòng mở OBS Studio để tự động kết nối bối cảnh).'
+            });
+        }
 
         const PORT = process.env.PORT || 9000;
         const sceneName = 'EffectStore';

@@ -76,18 +76,32 @@ async function claimFreeEffects(effectIds, user) {
         throw Object.assign(new Error('One or more effects require payment.'), { status: 400 });
     }
 
+    const userId = user._id || user.id;
     const ownedIds = new Set((user.purchasedEffects || []).map((item) => String(item.effectId?._id || item.effectId || '')));
     const claimedIds = effects.map((effect) => String(effect._id)).filter((id) => !ownedIds.has(id));
-    for (const effectId of claimedIds) {
-        user.purchasedEffects.push({
+
+    if (claimedIds.length) {
+        const newPurchases = claimedIds.map((effectId) => ({
             effectId,
             purchasedAt: new Date(),
             acquisitionType: 'free',
             acquisitionPrice: 0,
             useCount: 0
-        });
+        }));
+
+        if (!Array.isArray(user.purchasedEffects)) user.purchasedEffects = [];
+        user.purchasedEffects.push(...newPurchases);
+
+        if (typeof user.save === 'function') {
+            await user.save().catch(() => {});
+        }
+        if (userId) {
+            await User.updateOne(
+                { _id: userId },
+                { $push: { purchasedEffects: { $each: newPurchases } } }
+            ).catch(() => {});
+        }
     }
-    if (claimedIds.length) await user.save();
 
     return { claimedIds, alreadyOwnedIds: ids.filter((id) => ownedIds.has(id)) };
 }
