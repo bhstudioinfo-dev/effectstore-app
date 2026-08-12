@@ -113,8 +113,8 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             });
         }
 
-        const rawDuration = (await resolveEffectDurationForUser(req.userId, effectId)) || effect.duration || 5;
-        const durationMs = normalizeDurationMs(rawDuration);
+        const rawDuration = (await resolveEffectDurationForUser(req.userId, effectId)) || effect.duration || 6;
+        const durationMs = Math.max(5000, normalizeDurationMs(rawDuration));
         if (!durationMs) {
             return res.status(422).json({ success: false, message: 'Hiệu ứng chưa có thời lượng hợp lệ.' });
         }

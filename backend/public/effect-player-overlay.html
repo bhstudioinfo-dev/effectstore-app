@@ -128,9 +128,13 @@
                 video.addEventListener('error', () => {
                     if (video === activeVideo) failPlayback('Unable to load effect media');
                 }, { once: true });
-                safetyTimer = window.setTimeout(() => {
-                    if (video === activeVideo) finishPlayback('duration_timeout');
-                }, durationMs);
+                video.addEventListener('playing', () => {
+                    if (video === activeVideo && !safetyTimer) {
+                        safetyTimer = window.setTimeout(() => {
+                            if (video === activeVideo) finishPlayback('duration_timeout');
+                        }, durationMs);
+                    }
+                }, { once: true });
 
                 try {
                     video.currentTime = 0;
