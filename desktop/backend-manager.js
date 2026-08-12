@@ -264,8 +264,8 @@ function stopManagedBackend(child, timeoutMs = 5000) {
 // with a MongoDB the customer may already have installed for something else.
 const BUNDLED_MONGO_PORT = 27117;
 
-function buildLocalMongoUri(dbName = 'effectstore') {
-    return `mongodb://127.0.0.1:${BUNDLED_MONGO_PORT}/${dbName}`;
+function buildLocalMongoUri(dbName = 'effectstore', port = BUNDLED_MONGO_PORT) {
+    return `mongodb://127.0.0.1:${port}/${dbName}`;
 }
 
 function resolveMongodPath({ isPackaged, resourcesPath, desktopDirectory }) {
@@ -274,9 +274,9 @@ function resolveMongodPath({ isPackaged, resourcesPath, desktopDirectory }) {
         : path.resolve(desktopDirectory, 'vendor', 'mongodb', 'mongod.exe');
 }
 
-function mongoHealthCheck(timeoutMs = 1000) {
+function mongoHealthCheck(port = BUNDLED_MONGO_PORT, timeoutMs = 1000) {
     return new Promise((resolve) => {
-        const socket = net.connect({ host: '127.0.0.1', port: BUNDLED_MONGO_PORT });
+        const socket = net.connect({ host: '127.0.0.1', port });
         const finish = (result) => {
             socket.removeAllListeners();
             socket.destroy();
@@ -288,24 +288,22 @@ function mongoHealthCheck(timeoutMs = 1000) {
     });
 }
 
-// Starts (or detects) the bundled local MongoDB so a fresh install works
-// without the customer installing/configuring a database themselves. Never
-// throws — any failure here (missing binary, spawn error, timeout) resolves
-// with uri:null so the caller falls back to whatever MONGODB_URI would have
-// been used before this feature existed (an already-configured install, or
-// the app's existing "standalone mode" degradation), instead of the whole
-// app failing to start over an embedded-database hiccup.
+// Starts (or detects) the local MongoDB so a fresh install works
+// without the customer installing/configuring a database themselves.
 async function startBundledMongo(options) {
+    // Check if user's local MongoDB is running on standard port 27017 first
+    if (await mongoHealthCheck(27017)) {
+        return { process: null, uri: buildLocalMongoUri('effectstore', 27017), reason: 'system-mongo-27017' };
+    }
+
+    if (await mongoHealthCheck(BUNDLED_MONGO_PORT)) {
+        // Already listening on 27117
+        return { process: null, uri: buildLocalMongoUri('effectstore', BUNDLED_MONGO_PORT), reason: 'already-running' };
+    }
+
     const mongodPath = resolveMongodPath(options);
     if (!fs.existsSync(mongodPath)) {
         return { process: null, uri: null, reason: 'binary-missing' };
-    }
-
-    if (await mongoHealthCheck()) {
-        // Already listening — e.g. a previous run's mongod survived an
-        // unclean app exit. Reuse it rather than spawning a second instance
-        // that would just fail to bind the same port.
-        return { process: null, uri: buildLocalMongoUri(), reason: 'already-running' };
     }
 
     const dataDirectory = path.join(options.userDataPath, 'mongodb-data');
