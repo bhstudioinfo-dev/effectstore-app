@@ -86,6 +86,10 @@ function isLegacyDefaultMongoUri(uri) {
     return /^mongodb:\/\/(?:127\.0\.0\.1|localhost):27017\/effectstore\/?(?:\?.*)?$/i.test(String(uri || '').trim());
 }
 
+function isPort27117MongoUri(uri) {
+    return /^mongodb:\/\/(?:127\.0\.0\.1|localhost):27117\/effectstore\/?(?:\?.*)?$/i.test(String(uri || '').trim());
+}
+
 function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {}, defaultMongodbUri = '') {
     const configPath = path.join(userDataPath, 'backend-config.json');
     let stored = {};
@@ -112,15 +116,6 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
         WS_HOST: '0.0.0.0'
     };
     if (config.JWT_SECRET.length < 32) {
-        // A freshly-generated secret here invalidates every previously
-        // issued login token instantly (all logged-in sessions get rejected
-        // with 401 on their very next request) — this should only ever
-        // happen on this machine's first-ever run. If it logs on a run
-        // where a config file already existed, the stored JWT_SECRET failed
-        // to decrypt (see readSecret's swallowed catch above), which is the
-        // real bug to chase, not "token expired". Plain console.warn doesn't
-        // reach any file electron-manages in this (main) process, so this
-        // goes through electron-log to land in logs/main.log.
         try {
             require('electron-log').warn(`[backend-manager] Generating a NEW JWT_SECRET (existing config present: ${fs.existsSync(configPath)}) — this invalidates every currently logged-in session.`);
         } catch (_e) {}
@@ -133,10 +128,9 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
         config.ENCRYPTION_PASSWORD = crypto.randomBytes(48).toString('hex');
     }
     if (config.INITIAL_SETUP_TOKEN.length < 32) config.INITIAL_SETUP_TOKEN = crypto.randomBytes(48).toString('hex');
-    // Prefer the bundled MongoDB on first run. Also migrate only the exact
-    // historical 27017 default left by older installers; custom local URIs
-    // and mongodb+srv/cloud URIs remain untouched.
-    if (!config.MONGODB_URI || (defaultMongodbUri && isLegacyDefaultMongoUri(config.MONGODB_URI))) {
+
+    // Always prefer local 27017 or system Mongo over port 27117
+    if (!config.MONGODB_URI || isPort27117MongoUri(config.MONGODB_URI) || (defaultMongodbUri && isLegacyDefaultMongoUri(config.MONGODB_URI))) {
         config.MONGODB_URI = defaultMongodbUri || 'mongodb://127.0.0.1:27017/effectstore';
     }
 
