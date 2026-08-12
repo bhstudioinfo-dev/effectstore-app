@@ -351,54 +351,16 @@ async function authorizeEffectStream(req, res, next) {
         const effectId = req.params.effectId;
         if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
 
-        let payload = null;
         const queryToken = req.query.token || req.query.authToken;
-        const authHeader = req.headers.authorization?.split(' ')[1];
-
-        // 1. Try verifying dedicated effect access token
-        if (queryToken) {
-            try {
-                payload = verifyEffectAccessToken(queryToken, effectId);
-            } catch (_err) {
-                // Token might be expired or invalid, attempt fallbacks
-            }
-        }
-
-        // 2. Fallback: Try verifying user bearer auth token
-        if (!payload && (authHeader || queryToken)) {
-            const userToken = authHeader || queryToken;
-            try {
-                const { verifyUserToken } = require('../services/userToken');
-                const decoded = verifyUserToken(userToken);
-                if (decoded && decoded.userId) {
-                    payload = { userId: decoded.userId, purpose: 'library-playback', effectId };
-                }
-            } catch (_err) {
-                // Invalid user token
-            }
-        }
-
-        // 3. Fallback: Local app loopback requests (127.0.0.1) for catalog preview
-        if (!payload) {
-            const remoteIp = req.socket?.remoteAddress || '';
-            const isLocal = remoteIp === '127.0.0.1' || remoteIp === '::1' || remoteIp === '::ffff:127.0.0.1';
-            if (isLocal) {
-                payload = { userId: 'local-app', purpose: 'catalog-preview', effectId };
-            }
-        }
-
-        if (!payload) {
+        if (!queryToken) {
             return res.status(401).json({ error: 'Invalid or expired effect token' });
         }
 
-        if (payload.purpose === 'catalog-preview') {
-            const catalogEffect = await Effect.findOne({ _id: effectId, isActive: true }).select('_id category').lean();
-            if ((!catalogEffect || catalogEffect.category === 'menu_template') && !process.env.CLOUD_API_URL && process.env.EFFECTSTORE_DESKTOP_MANAGED !== 'true') {
-                return res.status(403).json({ error: 'Effect preview access denied' });
-            }
-        } else if (payload.purpose !== 'legacy-obs-effect' && payload.userId !== 'local-app') {
-            const effect = await resolveEffectForUser(payload.userId, effectId);
-            if (!effect) return res.status(403).json({ error: 'Effect access denied' });
+        let payload = null;
+        try {
+            payload = verifyEffectAccessToken(queryToken, effectId);
+        } catch (_err) {
+            return res.status(401).json({ error: 'Invalid or expired effect token' });
         }
 
         req.effectAccess = payload;
