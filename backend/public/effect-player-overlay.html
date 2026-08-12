@@ -121,21 +121,14 @@
                 document.getElementById('effect-player-root').appendChild(video);
 
                 video.addEventListener('ended', () => {
-                    if (video === activeVideo) {
-                        finishPlayback('ended');
-                    }
+                    if (video === activeVideo) finishPlayback('ended');
                 }, { once: true });
                 video.addEventListener('error', () => {
                     if (video === activeVideo) failPlayback('Unable to load effect media');
                 }, { once: true });
-                video.addEventListener('playing', () => {
-                    if (video === activeVideo && !safetyTimer) {
-                        const fallbackMs = Math.max((durationMs || 5000) + 5000, 15000);
-                        safetyTimer = window.setTimeout(() => {
-                            if (video === activeVideo) finishPlayback('duration_timeout');
-                        }, fallbackMs);
-                    }
-                }, { once: true });
+                safetyTimer = window.setTimeout(() => {
+                    if (video === activeVideo) finishPlayback('duration_timeout');
+                }, durationMs);
 
                 try {
                     video.currentTime = 0;

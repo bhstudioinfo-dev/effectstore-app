@@ -167,6 +167,11 @@ router.delete('/user/custom-effects/:localId', authMiddleware, async (req, res) 
 // JWT secret, so no separate credential is needed on customer machines).
 async function fetchEncryptedEffectIntoCache(effectId, req) {
     const targetPath = path.join(encryptedEffectsDir, `${effectId}.enc`);
+    // Two near-simultaneous requests for the same not-yet-cached effect (e.g.
+    // a preview click that fires twice) must never let a reader see a
+    // half-written file — download to a private temp path per attempt and
+    // rename into place atomically, so a concurrent writer can never
+    // truncate/corrupt the file another request is about to decrypt.
     const tempPath = `${targetPath}.downloading-${process.pid}-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
     try {
         if (fs.existsSync(targetPath)) return targetPath;
@@ -185,161 +190,108 @@ async function fetchEncryptedEffectIntoCache(effectId, req) {
             fs.renameSync(tempPath, targetPath);
             return targetPath;
         }
-
-        const cloudUrl = String(process.env.CLOUD_API_URL || 'https://liveflow-backend-iafw.onrender.com').replace(/\/+$/, '');
-        const tokenParam = req.query.token ? `?token=${encodeURIComponent(req.query.token)}` : '';
-        const relayUrl = `${cloudUrl}/api/effects/${effectId}/asset${tokenParam}`;
-        const userId = req.userId || req.effectAccess?.userId;
-        const cloudUserToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
-        const headers = {};
-        if (cloudUserToken) headers['authorization'] = `Bearer ${cloudUserToken}`;
-
-        const response = await fetch(relayUrl, { headers });
-        if (!response.ok) return null;
-        const arrayBuffer = await response.arrayBuffer();
-        fs.writeFileSync(tempPath, Buffer.from(arrayBuffer));
-        fs.renameSync(tempPath, targetPath);
-        return targetPath;
+        if (process.env.CLOUD_API_URL && req.query.token) {
+            const relayUrl = `${String(process.env.CLOUD_API_URL).replace(/\/+$/, '')}/api/effects/${effectId}/asset?token=${encodeURIComponent(req.query.token)}`;
+            const response = await fetch(relayUrl);
+            if (!response.ok) return null;
+            const arrayBuffer = await response.arrayBuffer();
+            fs.writeFileSync(tempPath, Buffer.from(arrayBuffer));
+            fs.renameSync(tempPath, targetPath);
+            return targetPath;
+        }
     } catch (_error) {
         try { fs.unlinkSync(tempPath); } catch (_e) { /* nothing to clean up */ }
         return null;
     }
+    return null;
 }
 
 async function relayEffectFromCloud(effectId, req, res) {
-    const DEFAULT_CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com';
-    const cloudApiUrl = String(process.env.CLOUD_API_URL || DEFAULT_CLOUD_API_URL).trim().replace(/\/+$/, '');
+    const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
     if (!cloudApiUrl) return false;
 
-    const userId = req.userId || req.effectAccess?.userId;
-    const cloudUserToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
-
-    const headers = {};
-    if (cloudUserToken) {
-        headers['authorization'] = `Bearer ${cloudUserToken}`;
-    }
-    if (req.headers.range) {
-        headers['range'] = req.headers.range;
-    }
-
-    try {
-        const response = await fetch(`${cloudApiUrl}/api/stream/effect/${encodeURIComponent(effectId)}`, {
-            headers,
-            redirect: 'follow'
+    const queryToken = String(req.query.token || req.query.authToken || '');
+    const queryAlgorithm = queryToken
+        ? require('jsonwebtoken').decode(queryToken, { complete: true })?.header?.alg
+        : null;
+    const cloudEffectToken = queryAlgorithm === 'RS256' ? queryToken : '';
+    const cloudUserToken = getCloudSessionToken(req.effectAccess?.userId);
+    if (!cloudEffectToken && !cloudUserToken) {
+        res.status(401).json({
+            error: 'Cloud session is unavailable. Please sign in again before playing purchased effects.'
         });
-        if (!response.ok || !response.body) {
-            console.warn(`[relayEffectFromCloud] Cloud stream returned status ${response.status} for effect ${effectId}`);
-            return false;
-        }
-
-        res.status(response.status);
-        res.setHeader('Cache-Control', 'private, no-store');
-        res.setHeader('Accept-Ranges', 'bytes');
-        res.setHeader('Content-Type', response.headers.get('content-type') || 'video/webm');
-        const contentLength = response.headers.get('content-length');
-        if (contentLength) res.setHeader('Content-Length', contentLength);
-        const contentRange = response.headers.get('content-range');
-        if (contentRange) res.setHeader('Content-Range', contentRange);
-
-        // Stream to OBS while saving to encryptedEffectsDir for instant future playbacks
-        const cachePath = path.join(encryptedEffectsDir, `cloud_cache_${effectId}.webm`);
-        const tempCachePath = path.join(dataPaths.tempDir, `cloud_cache_${effectId}_${Date.now()}.tmp`);
-        
-        let fileStream = null;
-        if (!req.headers.range && !fs.existsSync(cachePath)) {
-            try { fileStream = fs.createWriteStream(tempCachePath); } catch (_e) {}
-        }
-
-        const nodeStream = Readable.fromWeb(response.body);
-        if (fileStream) {
-            nodeStream.on('data', (chunk) => { fileStream.write(chunk); });
-            nodeStream.on('end', () => {
-                fileStream.end();
-                try { fs.renameSync(tempCachePath, cachePath); } catch (_e) {}
-            });
-            nodeStream.on('error', () => {
-                try { fileStream.destroy(); fs.unlinkSync(tempCachePath); } catch (_e) {}
-            });
-        }
-
-        nodeStream.pipe(res);
         return true;
-    } catch (err) {
-        console.error(`[relayEffectFromCloud] Stream fetch error for effect ${effectId}:`, err.message);
-        return false;
     }
+
+    const tokenQuery = cloudEffectToken ? `?token=${encodeURIComponent(cloudEffectToken)}` : '';
+    const response = await fetch(`${cloudApiUrl}/api/stream/effect/${encodeURIComponent(effectId)}${tokenQuery}`, {
+        headers: cloudUserToken ? { authorization: `Bearer ${cloudUserToken}` } : {},
+        redirect: 'error'
+    });
+    if (!response.ok || !response.body) {
+        const message = response.status === 401 || response.status === 403
+            ? 'Cloud effect access denied. Please sign in again or verify ownership.'
+            : 'Cloud effect stream is temporarily unavailable.';
+        res.status(response.status >= 400 && response.status < 600 ? response.status : 502).json({ error: message });
+        return true;
+    }
+
+    res.status(response.status);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'video/webm');
+    const contentLength = response.headers.get('content-length');
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+    Readable.fromWeb(response.body).pipe(res);
+    return true;
 }
 
+// Stream video (matching old path /api/stream/effect/:effectId)
 async function streamEffectById(req, res) {
     try {
         const effectId = req.params.effectId;
         if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
         const effect = await Effect.findById(effectId);
+        if (!effect) return res.status(404).json({ error: 'Not found' });
 
-        let streamPath = effect?.previewFilePath;
-        
-        // Fallback 1: Try to extract filename from previewUrl or fileUrl
+        let streamPath = effect.previewFilePath;
         if (!streamPath || !fs.existsSync(streamPath)) {
-            const urlToCheck = effect?.previewUrl || effect?.fileUrl;
-            if (urlToCheck) {
-                const fileName = path.basename(urlToCheck.split('?')[0]);
-                const potentialPath = path.join(previewsDir, fileName);
-                if (fs.existsSync(potentialPath)) {
-                    streamPath = potentialPath;
-                }
-            }
-        }
-
-        // Fallback 2: Search by effectId in previews directory
-        if (!streamPath || !fs.existsSync(streamPath)) {
-            if (fs.existsSync(previewsDir)) {
-                const files = fs.readdirSync(previewsDir);
-                const effectFile = files.find(f => f.startsWith(effectId) && f.endsWith('.webm'));
-                if (effectFile) { streamPath = path.join(previewsDir, effectFile); }
-            }
-        }
-
-        // Fallback 3: Try encrypted path or cloud cache path
-        if (!streamPath || !fs.existsSync(streamPath)) {
-            if (effect?.encryptedFilePath) {
+            if (effect.encryptedFilePath) {
                 const migratedEncryptedPath = path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath));
                 streamPath = fs.existsSync(migratedEncryptedPath) ? migratedEncryptedPath : effect.encryptedFilePath;
             }
-            if (!streamPath || !fs.existsSync(streamPath)) {
-                const cachedCloudFile = path.join(encryptedEffectsDir, `cloud_cache_${effectId}.webm`);
-                if (fs.existsSync(cachedCloudFile)) streamPath = cachedCloudFile;
-            }
         }
 
-        // Fallback 4: Fetch encrypted bytes into local cache
+        // Fallback 4: not on this machine at all yet (e.g. an effect the admin
+        // uploaded from a different machine) — fetch the still-encrypted
+        // bytes from the shared store and cache them here, then continue as
+        // if it had been local all along. Never touches unencrypted data.
         if (!streamPath || !fs.existsSync(streamPath)) {
             const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
             if (fetchedPath) streamPath = fetchedPath;
         }
 
-        // Serving from local disk / cache (<10ms instant playback)
-        if (streamPath && fs.existsSync(streamPath)) {
-            if (streamPath.includes('encrypted') || streamPath.endsWith('.enc')) {
-                res.setHeader('Cache-Control', 'private, no-store');
-                return streamDecryptedVideo(streamPath, req, res);
-            } else {
-                const stats = fs.statSync(streamPath);
-                res.setHeader('Cache-Control', 'private, no-store');
-                res.setHeader('Accept-Ranges', 'bytes');
-                res.setHeader('Content-Type', 'video/webm');
-                res.setHeader('Content-Length', stats.size);
-                const stream = fs.createReadStream(streamPath);
-                return stream.pipe(res);
-            }
+        if (!streamPath || !fs.existsSync(streamPath)) {
+            console.error(`❌ Video file NOT FOUND for effect ${effect.name} (${effectId})`);
+            console.error(`   Attempted path: ${streamPath}`);
+            return res.status(404).json({ error: 'Video file not found' });
         }
 
-        // Fallback 5: Stream online from Cloud Server
-        const proxied = await relayEffectFromCloud(effectId, req, res);
-        if (proxied) return;
-
-        console.error(`❌ Video file NOT FOUND for effect (${effectId})`);
-        return res.status(404).json({ error: 'Video file not found' });
+        if (streamPath.includes('encrypted')) {
+            res.setHeader('Cache-Control', 'private, no-store');
+            streamDecryptedVideo(streamPath, req, res);
+        } else {
+            const stats = fs.statSync(streamPath);
+            res.setHeader('Cache-Control', 'private, no-store');
+            res.setHeader('Content-Type', 'video/webm');
+            res.setHeader('Content-Length', stats.size);
+            const stream = fs.createReadStream(streamPath);
+            stream.pipe(res);
+        }
     } catch (error) {
+        // A stream response can already be mid-flight (headers sent, bytes
+        // piping) when decryption hits a bad/partial file and throws —
+        // sending a second response here would crash the whole process
+        // (ERR_HTTP_HEADERS_SENT), taking down live playback for everyone.
         console.error('streamEffectById error:', error.message);
         if (res.headersSent) { res.destroy(); return; }
         res.status(500).json({ error: error.message });
@@ -351,16 +303,54 @@ async function authorizeEffectStream(req, res, next) {
         const effectId = req.params.effectId;
         if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
 
+        let payload = null;
         const queryToken = req.query.token || req.query.authToken;
-        if (!queryToken) {
+        const authHeader = req.headers.authorization?.split(' ')[1];
+
+        // 1. Try verifying dedicated effect access token
+        if (queryToken) {
+            try {
+                payload = verifyEffectAccessToken(queryToken, effectId);
+            } catch (_err) {
+                // Token might be expired or invalid, attempt fallbacks
+            }
+        }
+
+        // 2. Fallback: Try verifying user bearer auth token
+        if (!payload && (authHeader || queryToken)) {
+            const userToken = authHeader || queryToken;
+            try {
+                const { verifyUserToken } = require('../services/userToken');
+                const decoded = verifyUserToken(userToken);
+                if (decoded && decoded.userId) {
+                    payload = { userId: decoded.userId, purpose: 'library-playback', effectId };
+                }
+            } catch (_err) {
+                // Invalid user token
+            }
+        }
+
+        // 3. Fallback: Local app loopback requests (127.0.0.1) for catalog preview
+        if (!payload) {
+            const remoteIp = req.socket?.remoteAddress || '';
+            const isLocal = remoteIp === '127.0.0.1' || remoteIp === '::1' || remoteIp === '::ffff:127.0.0.1';
+            if (isLocal) {
+                payload = { userId: 'local-app', purpose: 'catalog-preview', effectId };
+            }
+        }
+
+        if (!payload) {
             return res.status(401).json({ error: 'Invalid or expired effect token' });
         }
 
-        let payload = null;
-        try {
-            payload = verifyEffectAccessToken(queryToken, effectId);
-        } catch (_err) {
-            return res.status(401).json({ error: 'Invalid or expired effect token' });
+        if (payload.purpose === 'catalog-preview') {
+            const catalogEffect = await Effect.findOne({ _id: effectId, isActive: true }).select('_id category').lean();
+            if (!catalogEffect || catalogEffect.category === 'menu_template') {
+                return res.status(403).json({ error: 'Effect preview access denied' });
+            }
+        } else if (payload.purpose !== 'legacy-obs-effect' && payload.userId !== 'local-app') {
+            const effect = await resolveEffectForUser(payload.userId, effectId);
+            if (!effect) return res.status(403).json({ error: 'Effect access denied' });
         }
 
         req.effectAccess = payload;

@@ -1517,7 +1517,7 @@ class EffectStoreApp {
                     // Admin: thấy tất cả
                     this.ownedEffects = data.effects || []; // admin "sở hữu" tất cả
                 } else {
-                    // Fallback cũ
+                    // Fallback cÅ©
                     this.ownedEffects = data.effects || [];
                 }
                 try {
@@ -1540,16 +1540,12 @@ class EffectStoreApp {
                 return true;
             } else {
                 this.ownedEffects = [];
-                await this.loadPersonalEffects();
-                this.renderEffects();
-                return true;
+                return false;
             }
         } catch (error) {
             console.error('Load owned effects error:', error);
             this.ownedEffects = [];
-            await this.loadPersonalEffects();
-            this.renderEffects();
-            return true;
+            return false;
         }
     } // ✅ Đóng loadOwnedEffects ở đây
 
@@ -2646,19 +2642,6 @@ class EffectStoreApp {
     }
     handlePreviewError(videoEl) {
         if (!videoEl) return;
-        const currentSrc = String(videoEl.src || '');
-        if (currentSrc.includes('/api/s_') && !videoEl.getAttribute('data-fallback-attempted')) {
-            videoEl.setAttribute('data-fallback-attempted', 'true');
-            const card = videoEl.closest('.effect-card');
-            const onclickAttr = card?.querySelector('[onclick*="showEffectDetail"]')?.getAttribute('onclick') || '';
-            const effectId = card?.getAttribute('data-id') || onclickAttr.match(/'([^']+)'/)?.[1];
-            if (effectId) {
-                videoEl.src = this.resolveCatalogMediaUrl(`/api/stream/effect/${effectId}`);
-                videoEl.style.display = 'block';
-                videoEl.load();
-                return;
-            }
-        }
         videoEl.style.display = 'none';
         videoEl.setAttribute('data-error', 'true');
         const parent = videoEl.parentElement;
@@ -3021,7 +3004,9 @@ class EffectStoreApp {
                 if (video) {
                     container.addEventListener('mouseenter', () => {
                         video.currentTime = 0;
-                        video.play().catch(() => {});
+                        video.play().catch(err => {
+                            if (err.name !== 'AbortError') console.error('Video play error:', err);
+                        });
                     });
                     container.addEventListener('mouseleave', () => {
                         video.pause();
@@ -3864,19 +3849,16 @@ class EffectStoreApp {
     }
 
     async resetGiftMenuDesignerSession() {
+        // GiftMenuDesigner keeps its own in-memory "Thư viện của tôi" list and
+        // canvas that only ever refresh on an explicit view-switch — logging
+        // out/in as a different account without leaving the Designer view left
+        // the previous account's saved menus visible. Clear local state first
+        // so nothing lingers even if the reload below fails.
         if (window.giftMenuDesigner && typeof window.giftMenuDesigner.resetDesignerSession === 'function') {
             try { window.giftMenuDesigner.resetDesignerSession(); } catch (_e) {}
         }
-        if (!this.currentUser) {
-            try {
-                await fetch(`${this.API_URL}/api/tiktok/gift-menu-overlay-clear`, { method: 'POST' });
-            } catch (_e) {}
-        }
         if (window.giftMenuDesigner && typeof window.giftMenuDesigner.loadLayoutsList === 'function') {
             try { await window.giftMenuDesigner.loadLayoutsList(); } catch (_e) {}
-        }
-        if (window.giftMenuDesigner && typeof window.giftMenuDesigner.syncPendingDraftOnLogin === 'function') {
-            try { await window.giftMenuDesigner.syncPendingDraftOnLogin(); } catch (_e) {}
         }
     }
 
@@ -7098,21 +7080,17 @@ class EffectStoreApp {
         }
 
         // 2. Load OBS Settings from Backend
-        if (this.authToken) {
-            try {
-                const res = await fetch(`${this.API_URL}/api/settings/obs`, {
-                    headers: { 'Authorization': `Bearer ${this.authToken}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.success) {
-                        document.getElementById('settings-obs-host').value = data.host || 'localhost';
-                        document.getElementById('settings-obs-port').value = data.port || 4455;
-                        document.getElementById('settings-obs-password').value = data.password || '';
-                    }
-                }
-            } catch (e) { console.error('Error loading OBS settings:', e); }
-        }
+        try {
+            const res = await fetch(`${this.API_URL}/api/settings/obs`, {
+                headers: { 'Authorization': `Bearer ${this.authToken}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('settings-obs-host').value = data.host || 'localhost';
+                document.getElementById('settings-obs-port').value = data.port || 4455;
+                document.getElementById('settings-obs-password').value = data.password || '';
+            }
+        } catch (e) { console.error('Error loading OBS settings:', e); }
 
         // 3. Load TikTok Settings & Preferences from LocalStorage
         const tkUserEl = document.getElementById('settings-tiktok-username');
@@ -7495,7 +7473,8 @@ class EffectStoreApp {
             if (res.status === 401 && token) {
                 res = await this.retryUnauthorized(
                     res,
-                    (activeToken) => fetch(`${this.API_URL}/api/tiktok/ai-config`, { headers: { Authorization: `Bearer ${activeToken}` } })
+                    (activeToken) => fetch(`${this.API_URL}/api/tiktok/ai-config`, { headers: { Authorization: `Bearer ${activeToken}` } }),
+                    () => fetch(`${this.API_URL}/api/tiktok/ai-config`)
                 );
             }
             if (!res.ok) return false;

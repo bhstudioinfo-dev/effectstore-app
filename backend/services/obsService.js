@@ -118,7 +118,7 @@ class OBSService {
         this._isConnected = false;
     }
 
-    async ensureEffectPlayerSource(forceRefresh = false) {
+    async ensureEffectPlayerSource() {
         if (!this._isConnected) return false;
 
         const sceneName = 'EffectStore';
@@ -134,20 +134,11 @@ class OBSService {
 
         const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName });
         if (sceneItems.some((item) => item.sourceName === sourceName)) {
-            if (forceRefresh) {
-                await this.obs.call('SetInputSettings', {
-                    inputName: sourceName,
-                    inputSettings: { url: sourceUrl, shutdown: false, restart_when_active: false, reroute_audio: true },
-                    overlay: true
-                }).catch(() => {});
-
-                try {
-                    await this.obs.call('PressInputPropertiesButton', {
-                        inputName: sourceName,
-                        propertyName: 'refreshnocache'
-                    });
-                } catch (_e) {}
-            }
+            await this.obs.call('SetInputSettings', {
+                inputName: sourceName,
+                inputSettings: { url: sourceUrl, shutdown: false, restart_when_active: false, reroute_audio: true },
+                overlay: true
+            });
             return true;
         }
 
@@ -170,7 +161,7 @@ class OBSService {
         return true;
     }
 
-    async ensureGiftMenuOverlaySourceUrl(forceRefresh = true) {
+    async ensureGiftMenuOverlaySourceUrl() {
         if (!this._isConnected) return false;
 
         const PORT = process.env.PORT || 9000;
@@ -184,24 +175,22 @@ class OBSService {
             const sourceName = candidateSources.find((name) => names.has(name));
             if (!sourceName) return false;
 
-            if (forceRefresh) {
-                await this.obs.call('SetInputSettings', {
-                    inputName: sourceName,
-                    inputSettings: {
-                        url: `${sourceUrl}&t=${Date.now()}`,
-                        shutdown: false,
-                        restart_when_active: false
-                    },
-                    overlay: true
-                });
+            await this.obs.call('SetInputSettings', {
+                inputName: sourceName,
+                inputSettings: {
+                    url: `${sourceUrl}&t=${Date.now()}`,
+                    shutdown: false,
+                    restart_when_active: true
+                },
+                overlay: true
+            });
 
-                try {
-                    await this.obs.call('PressInputPropertiesButton', {
-                        inputName: sourceName,
-                        propertyName: 'refreshnocache'
-                    });
-                } catch (_e) {}
-            }
+            try {
+                await this.obs.call('PressInputPropertiesButton', {
+                    inputName: sourceName,
+                    propertyName: 'refreshnocache'
+                });
+            } catch (_e) {}
 
             console.log(`Refreshed OBS browser source URL: ${sourceName} -> gift-menu-overlay.html`);
             return true;
