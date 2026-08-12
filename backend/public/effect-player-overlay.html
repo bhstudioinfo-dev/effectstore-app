@@ -121,7 +121,7 @@
                 document.getElementById('effect-player-root').appendChild(video);
 
                 video.addEventListener('ended', () => {
-                    if (video === activeVideo && request?.playbackType !== 'preview_effect') {
+                    if (video === activeVideo) {
                         finishPlayback('ended');
                     }
                 }, { once: true });
@@ -130,9 +130,10 @@
                 }, { once: true });
                 video.addEventListener('playing', () => {
                     if (video === activeVideo && !safetyTimer) {
+                        const fallbackMs = Math.max((durationMs || 5000) + 5000, 15000);
                         safetyTimer = window.setTimeout(() => {
                             if (video === activeVideo) finishPlayback('duration_timeout');
-                        }, durationMs);
+                        }, fallbackMs);
                     }
                 }, { once: true });
 
