@@ -247,49 +247,43 @@ async function streamEffectById(req, res) {
         const effectId = req.params.effectId;
         if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
 
-        // Stream 100% ONLINE from Cloud Server for all store effects first
-        const proxied = await relayEffectFromCloud(effectId, req, res);
-        if (proxied) return;
-
         const effect = await Effect.findById(effectId);
-        if (!effect) return res.status(404).json({ error: 'Not found' });
-
-        let streamPath = effect.previewFilePath;
+        let streamPath = effect?.previewFilePath;
         if (!streamPath || !fs.existsSync(streamPath)) {
-            if (effect.encryptedFilePath) {
+            if (effect?.encryptedFilePath) {
                 const migratedEncryptedPath = path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath));
                 streamPath = fs.existsSync(migratedEncryptedPath) ? migratedEncryptedPath : effect.encryptedFilePath;
             }
         }
 
-        // Fallback 4: not on this machine at all yet (e.g. an effect the admin
-        // uploaded from a different machine) — fetch the still-encrypted
-        // bytes from the shared store and cache them here, then continue as
-        // if it had been local all along. Never touches unencrypted data.
-        if (!streamPath || !fs.existsSync(streamPath)) {
-            const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
-            if (fetchedPath) streamPath = fetchedPath;
+        // 1. If video file exists on local disk, stream immediately (<10ms instant playback)
+        if (streamPath && fs.existsSync(streamPath)) {
+            if (streamPath.includes('encrypted')) {
+                res.setHeader('Cache-Control', 'private, no-store');
+                return streamDecryptedVideo(streamPath, req, res);
+            } else {
+                const stats = fs.statSync(streamPath);
+                res.setHeader('Cache-Control', 'private, no-store');
+                res.setHeader('Content-Type', 'video/webm');
+                res.setHeader('Content-Length', stats.size);
+                const stream = fs.createReadStream(streamPath);
+                return stream.pipe(res);
+            }
         }
 
-        if (!streamPath || !fs.existsSync(streamPath)) {
-            const proxied = await relayEffectFromCloud(effectId, req, res);
-            if (proxied) return;
-            console.error(`❌ Video file NOT FOUND for effect ${effect.name} (${effectId})`);
-            console.error(`   Attempted path: ${streamPath}`);
-            return res.status(404).json({ error: 'Video file not found' });
+        // 2. Fallback: fetch encrypted bytes from shared asset store into local cache
+        const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
+        if (fetchedPath && fs.existsSync(fetchedPath)) {
+            res.setHeader('Cache-Control', 'private, no-store');
+            return streamDecryptedVideo(fetchedPath, req, res);
         }
 
-        if (streamPath.includes('encrypted')) {
-            res.setHeader('Cache-Control', 'private, no-store');
-            streamDecryptedVideo(streamPath, req, res);
-        } else {
-            const stats = fs.statSync(streamPath);
-            res.setHeader('Cache-Control', 'private, no-store');
-            res.setHeader('Content-Type', 'video/webm');
-            res.setHeader('Content-Length', stats.size);
-            const stream = fs.createReadStream(streamPath);
-            stream.pipe(res);
-        }
+        // 3. Fallback: Stream online from Cloud Server if not available locally
+        const proxied = await relayEffectFromCloud(effectId, req, res);
+        if (proxied) return;
+
+        console.error(`❌ Video file NOT FOUND for effect (${effectId})`);
+        return res.status(404).json({ error: 'Video file not found' });
     } catch (error) {
         // A stream response can already be mid-flight (headers sent, bytes
         // piping) when decryption hits a bad/partial file and throws —
