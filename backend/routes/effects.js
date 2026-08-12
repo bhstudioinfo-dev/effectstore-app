@@ -241,7 +241,32 @@ async function relayEffectFromCloud(effectId, req, res) {
         const contentRange = response.headers.get('content-range');
         if (contentRange) res.setHeader('Content-Range', contentRange);
 
-        Readable.fromWeb(response.body).pipe(res);
+        // Pipe stream to OBS client while caching locally for instant subsequent playbacks
+        const cachePath = path.join(encryptedEffectsDir, `cloud_cache_${effectId}.webm`);
+        const tempCachePath = path.join(dataPaths.tempDir, `cloud_cache_${effectId}_${Date.now()}.tmp`);
+        
+        let fileStream = null;
+        if (!req.headers.range && !fs.existsSync(cachePath)) {
+            try { fileStream = fs.createWriteStream(tempCachePath); } catch (_e) {}
+        }
+
+        const nodeStream = Readable.fromWeb(response.body);
+        if (fileStream) {
+            nodeStream.on('data', (chunk) => {
+                fileStream.write(chunk);
+            });
+            nodeStream.on('end', () => {
+                fileStream.end();
+                try {
+                    fs.renameSync(tempCachePath, cachePath);
+                } catch (_e) {}
+            });
+            nodeStream.on('error', () => {
+                try { fileStream.destroy(); fs.unlinkSync(tempCachePath); } catch (_e) {}
+            });
+        }
+
+        nodeStream.pipe(res);
         return true;
     } catch (err) {
         console.error(`[relayEffectFromCloud] Stream fetch error for effect ${effectId}:`, err.message);
@@ -254,10 +279,6 @@ async function streamEffectById(req, res) {
         const effectId = req.params.effectId;
         if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
 
-        // 1. Stream 100% ONLINE from Cloud Server first
-        const proxied = await relayEffectFromCloud(effectId, req, res);
-        if (proxied) return;
-
         const effect = await Effect.findById(effectId);
         let streamPath = effect?.previewFilePath;
         if (!streamPath || !fs.existsSync(streamPath)) {
@@ -267,6 +288,15 @@ async function streamEffectById(req, res) {
             }
         }
 
+        // Check cached cloud stream on local disk for instant (<10ms) playback
+        if (!streamPath || !fs.existsSync(streamPath)) {
+            const cachedCloudFile = path.join(encryptedEffectsDir, `cloud_cache_${effectId}.webm`);
+            if (fs.existsSync(cachedCloudFile)) {
+                streamPath = cachedCloudFile;
+            }
+        }
+
+        // 1. If video file exists in local cache / disk, serve IMMEDIATELY (<10ms instant playback)
         if (streamPath && fs.existsSync(streamPath)) {
             if (streamPath.includes('encrypted')) {
                 res.setHeader('Cache-Control', 'private, no-store');
@@ -282,24 +312,13 @@ async function streamEffectById(req, res) {
             }
         }
 
-        // 2. Fallback: fetch encrypted bytes from shared asset store into local cache
-        const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
-        if (fetchedPath && fs.existsSync(fetchedPath)) {
-            res.setHeader('Cache-Control', 'private, no-store');
-            return streamDecryptedVideo(fetchedPath, req, res);
-        }
-
-        // 3. Fallback: Stream online from Cloud Server if not available locally
-        const proxiedFallback = await relayEffectFromCloud(effectId, req, res);
-        if (proxiedFallback) return;
+        // 2. Fetch/relay from Cloud Server AND cache to disk for instant subsequent playbacks
+        const proxied = await relayEffectFromCloud(effectId, req, res);
+        if (proxied) return;
 
         console.error(`❌ Video file NOT FOUND for effect (${effectId})`);
         return res.status(404).json({ error: 'Video file not found' });
     } catch (error) {
-        // A stream response can already be mid-flight (headers sent, bytes
-        // piping) when decryption hits a bad/partial file and throws —
-        // sending a second response here would crash the whole process
-        // (ERR_HTTP_HEADERS_SENT), taking down live playback for everyone.
         console.error('streamEffectById error:', error.message);
         if (res.headersSent) { res.destroy(); return; }
         res.status(500).json({ error: error.message });
