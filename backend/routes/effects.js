@@ -167,11 +167,6 @@ router.delete('/user/custom-effects/:localId', authMiddleware, async (req, res) 
 // JWT secret, so no separate credential is needed on customer machines).
 async function fetchEncryptedEffectIntoCache(effectId, req) {
     const targetPath = path.join(encryptedEffectsDir, `${effectId}.enc`);
-    // Two near-simultaneous requests for the same not-yet-cached effect (e.g.
-    // a preview click that fires twice) must never let a reader see a
-    // half-written file — download to a private temp path per attempt and
-    // rename into place atomically, so a concurrent writer can never
-    // truncate/corrupt the file another request is about to decrypt.
     const tempPath = `${targetPath}.downloading-${process.pid}-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
     try {
         if (fs.existsSync(targetPath)) return targetPath;
@@ -190,20 +185,25 @@ async function fetchEncryptedEffectIntoCache(effectId, req) {
             fs.renameSync(tempPath, targetPath);
             return targetPath;
         }
-        if (process.env.CLOUD_API_URL && req.query.token) {
-            const relayUrl = `${String(process.env.CLOUD_API_URL).replace(/\/+$/, '')}/api/effects/${effectId}/asset?token=${encodeURIComponent(req.query.token)}`;
-            const response = await fetch(relayUrl);
-            if (!response.ok) return null;
-            const arrayBuffer = await response.arrayBuffer();
-            fs.writeFileSync(tempPath, Buffer.from(arrayBuffer));
-            fs.renameSync(tempPath, targetPath);
-            return targetPath;
-        }
+
+        const cloudUrl = String(process.env.CLOUD_API_URL || 'https://liveflow-backend-iafw.onrender.com').replace(/\/+$/, '');
+        const tokenParam = req.query.token ? `?token=${encodeURIComponent(req.query.token)}` : '';
+        const relayUrl = `${cloudUrl}/api/effects/${effectId}/asset${tokenParam}`;
+        const userId = req.userId || req.effectAccess?.userId;
+        const cloudUserToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
+        const headers = {};
+        if (cloudUserToken) headers['authorization'] = `Bearer ${cloudUserToken}`;
+
+        const response = await fetch(relayUrl, { headers });
+        if (!response.ok) return null;
+        const arrayBuffer = await response.arrayBuffer();
+        fs.writeFileSync(tempPath, Buffer.from(arrayBuffer));
+        fs.renameSync(tempPath, targetPath);
+        return targetPath;
     } catch (_error) {
         try { fs.unlinkSync(tempPath); } catch (_e) { /* nothing to clean up */ }
         return null;
     }
-    return null;
 }
 
 async function relayEffectFromCloud(effectId, req, res) {
@@ -241,7 +241,7 @@ async function relayEffectFromCloud(effectId, req, res) {
         const contentRange = response.headers.get('content-range');
         if (contentRange) res.setHeader('Content-Range', contentRange);
 
-        // Pipe stream to OBS client while caching locally for instant subsequent playbacks
+        // Stream to OBS while saving to encryptedEffectsDir for instant future playbacks
         const cachePath = path.join(encryptedEffectsDir, `cloud_cache_${effectId}.webm`);
         const tempCachePath = path.join(dataPaths.tempDir, `cloud_cache_${effectId}_${Date.now()}.tmp`);
         
@@ -252,14 +252,10 @@ async function relayEffectFromCloud(effectId, req, res) {
 
         const nodeStream = Readable.fromWeb(response.body);
         if (fileStream) {
-            nodeStream.on('data', (chunk) => {
-                fileStream.write(chunk);
-            });
+            nodeStream.on('data', (chunk) => { fileStream.write(chunk); });
             nodeStream.on('end', () => {
                 fileStream.end();
-                try {
-                    fs.renameSync(tempCachePath, cachePath);
-                } catch (_e) {}
+                try { fs.renameSync(tempCachePath, cachePath); } catch (_e) {}
             });
             nodeStream.on('error', () => {
                 try { fileStream.destroy(); fs.unlinkSync(tempCachePath); } catch (_e) {}
@@ -278,27 +274,52 @@ async function streamEffectById(req, res) {
     try {
         const effectId = req.params.effectId;
         if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
-
         const effect = await Effect.findById(effectId);
+
         let streamPath = effect?.previewFilePath;
+        
+        // Fallback 1: Try to extract filename from previewUrl or fileUrl
+        if (!streamPath || !fs.existsSync(streamPath)) {
+            const urlToCheck = effect?.previewUrl || effect?.fileUrl;
+            if (urlToCheck) {
+                const fileName = path.basename(urlToCheck.split('?')[0]);
+                const potentialPath = path.join(previewsDir, fileName);
+                if (fs.existsSync(potentialPath)) {
+                    streamPath = potentialPath;
+                }
+            }
+        }
+
+        // Fallback 2: Search by effectId in previews directory
+        if (!streamPath || !fs.existsSync(streamPath)) {
+            if (fs.existsSync(previewsDir)) {
+                const files = fs.readdirSync(previewsDir);
+                const effectFile = files.find(f => f.startsWith(effectId) && f.endsWith('.webm'));
+                if (effectFile) { streamPath = path.join(previewsDir, effectFile); }
+            }
+        }
+
+        // Fallback 3: Try encrypted path or cloud cache path
         if (!streamPath || !fs.existsSync(streamPath)) {
             if (effect?.encryptedFilePath) {
                 const migratedEncryptedPath = path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath));
                 streamPath = fs.existsSync(migratedEncryptedPath) ? migratedEncryptedPath : effect.encryptedFilePath;
             }
-        }
-
-        // Check cached cloud stream on local disk for instant (<10ms) playback
-        if (!streamPath || !fs.existsSync(streamPath)) {
-            const cachedCloudFile = path.join(encryptedEffectsDir, `cloud_cache_${effectId}.webm`);
-            if (fs.existsSync(cachedCloudFile)) {
-                streamPath = cachedCloudFile;
+            if (!streamPath || !fs.existsSync(streamPath)) {
+                const cachedCloudFile = path.join(encryptedEffectsDir, `cloud_cache_${effectId}.webm`);
+                if (fs.existsSync(cachedCloudFile)) streamPath = cachedCloudFile;
             }
         }
 
-        // 1. If video file exists in local cache / disk, serve IMMEDIATELY (<10ms instant playback)
+        // Fallback 4: Fetch encrypted bytes into local cache
+        if (!streamPath || !fs.existsSync(streamPath)) {
+            const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
+            if (fetchedPath) streamPath = fetchedPath;
+        }
+
+        // Serving from local disk / cache (<10ms instant playback)
         if (streamPath && fs.existsSync(streamPath)) {
-            if (streamPath.includes('encrypted')) {
+            if (streamPath.includes('encrypted') || streamPath.endsWith('.enc')) {
                 res.setHeader('Cache-Control', 'private, no-store');
                 return streamDecryptedVideo(streamPath, req, res);
             } else {
@@ -312,7 +333,7 @@ async function streamEffectById(req, res) {
             }
         }
 
-        // 2. Fetch/relay from Cloud Server AND cache to disk for instant subsequent playbacks
+        // Fallback 5: Stream online from Cloud Server
         const proxied = await relayEffectFromCloud(effectId, req, res);
         if (proxied) return;
 
