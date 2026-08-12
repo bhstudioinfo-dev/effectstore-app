@@ -614,12 +614,14 @@ app.get('/api/cloud/status', async (_req, res) => {
 app.get('/api/system/status', async (_req, res) => {
     try {
         const obsSources = await obsService.getFoundationSourceStatus();
-        const databaseConnected = mongoose.connection.readyState === 1 && databaseSchemaReady;
-        res.status(databaseConnected ? 200 : 503).json({
-            success: databaseConnected,
+        const databaseConnected = mongoose.connection.readyState === 1;
+        const statusCode = (databaseConnected || mongoose.connection.readyState === 2) ? 200 : 503;
+        res.status(statusCode).json({
+            success: statusCode === 200,
             commercialApiVersion: COMMERCIAL_API_VERSION,
             database: {
                 connected: databaseConnected,
+                ready: databaseConnected && databaseSchemaReady,
                 host: mongoose.connection.host,
                 port: mongoose.connection.port,
                 name: mongoose.connection.name
