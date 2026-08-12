@@ -121,7 +121,9 @@
                 document.getElementById('effect-player-root').appendChild(video);
 
                 video.addEventListener('ended', () => {
-                    if (video === activeVideo) finishPlayback('ended');
+                    if (video === activeVideo && request?.playbackType !== 'preview_effect') {
+                        finishPlayback('ended');
+                    }
                 }, { once: true });
                 video.addEventListener('error', () => {
                     if (video === activeVideo) failPlayback('Unable to load effect media');

@@ -10,14 +10,9 @@ const { authMiddleware } = require('../middleware/auth');
 async function findOrAdoptSettings(userId) {
     let settings = await OBSSettings.findOne({ userId });
     if (settings) return settings;
-    // Pre-existing installs have a single legacy document with no userId.
-    // Adopt it for whichever account touches OBS settings first after this
-    // change, instead of silently discarding the streamer's saved config.
-    const legacy = await OBSSettings.findOne({ userId: { $exists: false } });
-    if (legacy) {
-        legacy.userId = userId;
-        await legacy.save();
-        return legacy;
+    const latest = await OBSSettings.findOne().sort({ updatedAt: -1 });
+    if (latest) {
+        return latest;
     }
     return null;
 }

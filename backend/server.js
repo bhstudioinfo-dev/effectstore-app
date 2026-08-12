@@ -476,12 +476,8 @@ if (isCloudProxyEnabled()) {
     app.get('/api/effects/trending', proxyToCloud);
     app.get('/api/effects/item/:id', proxyToCloud);
     app.get('/api/effects/:id/timeline', proxyToCloud);
-    // "My effects" (owned/purchased list) is a pure read with no local-disk
-    // dependency, same as the catalog reads above — proxy it too, so a
-    // purchase made on one machine shows as owned on every machine's Store
-    // right away. (/user/custom-effects/* stays local-only, unchanged.)
     app.get('/api/user/effects', proxyToCloud);
-    app.use('/api/s_', proxyToCloud);
+    app.use('/api/s_*', proxyToCloud);
     // Effect create/update/delete are writes to the shared catalog too — they
     // must land in the central database, not this machine's own local one,
     // or other machines would never see a newly-uploaded effect. The video
@@ -501,6 +497,10 @@ if (isCloudProxyEnabled()) {
         return proxyToCloud(req, res);
     });
 }
+
+app.get('/', (_req, res) => {
+    res.json({ success: true, service: 'LiveFlow Cloud API Server', status: 'online' });
+});
 
 // ========================================
 // API ROUTES
@@ -613,9 +613,6 @@ app.get('/api/cloud/status', async (_req, res) => {
 
 app.get('/api/system/status', async (_req, res) => {
     try {
-        if (!obsService.isConnected()) {
-            obsService.ensureConnected().catch(() => {});
-        }
         const obsSources = await obsService.getFoundationSourceStatus();
         const databaseConnected = mongoose.connection.readyState === 1 && databaseSchemaReady;
         res.status(databaseConnected ? 200 : 503).json({

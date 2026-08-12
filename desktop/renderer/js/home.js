@@ -1517,7 +1517,7 @@ class EffectStoreApp {
                     // Admin: thấy tất cả
                     this.ownedEffects = data.effects || []; // admin "sở hữu" tất cả
                 } else {
-                    // Fallback cÅ©
+                    // Fallback cũ
                     this.ownedEffects = data.effects || [];
                 }
                 try {
@@ -1540,12 +1540,16 @@ class EffectStoreApp {
                 return true;
             } else {
                 this.ownedEffects = [];
-                return false;
+                await this.loadPersonalEffects();
+                this.renderEffects();
+                return true;
             }
         } catch (error) {
             console.error('Load owned effects error:', error);
             this.ownedEffects = [];
-            return false;
+            await this.loadPersonalEffects();
+            this.renderEffects();
+            return true;
         }
     } // ✅ Đóng loadOwnedEffects ở đây
 
@@ -2642,6 +2646,19 @@ class EffectStoreApp {
     }
     handlePreviewError(videoEl) {
         if (!videoEl) return;
+        const currentSrc = String(videoEl.src || '');
+        if (currentSrc.includes('/api/s_') && !videoEl.getAttribute('data-fallback-attempted')) {
+            videoEl.setAttribute('data-fallback-attempted', 'true');
+            const card = videoEl.closest('.effect-card');
+            const onclickAttr = card?.querySelector('[onclick*="showEffectDetail"]')?.getAttribute('onclick') || '';
+            const effectId = card?.getAttribute('data-id') || onclickAttr.match(/'([^']+)'/)?.[1];
+            if (effectId) {
+                videoEl.src = this.resolveCatalogMediaUrl(`/api/stream/effect/${effectId}`);
+                videoEl.style.display = 'block';
+                videoEl.load();
+                return;
+            }
+        }
         videoEl.style.display = 'none';
         videoEl.setAttribute('data-error', 'true');
         const parent = videoEl.parentElement;
@@ -3004,9 +3021,7 @@ class EffectStoreApp {
                 if (video) {
                     container.addEventListener('mouseenter', () => {
                         video.currentTime = 0;
-                        video.play().catch(err => {
-                            if (err.name !== 'AbortError') console.error('Video play error:', err);
-                        });
+                        video.play().catch(() => {});
                     });
                     container.addEventListener('mouseleave', () => {
                         video.pause();

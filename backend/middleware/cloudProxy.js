@@ -8,7 +8,8 @@
 // Opt-in and zero-risk when unconfigured: if CLOUD_API_URL isn't set, none of
 // this is mounted and every route keeps working exactly as it did before.
 
-const CLOUD_API_URL = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
+const DEFAULT_CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com';
+const CLOUD_API_URL = String(process.env.CLOUD_API_URL || DEFAULT_CLOUD_API_URL).trim().replace(/\/+$/, '');
 const { mirrorUserLocally } = require('../services/localUserMirror');
 const { forgetCloudSessionToken, rememberCloudSessionToken, getCloudSessionToken, getAnyCloudSessionToken } = require('../services/cloudSessionTokenStore');
 const { verifyUserToken } = require('../services/userToken');
@@ -24,7 +25,7 @@ const HOP_BY_HOP_HEADERS = new Set([
     'transfer-encoding', 'upgrade', 'keep-alive'
 ]);
 
-function proxyToCloud(req, res) {
+function proxyToCloud(req, res, next) {
     const target = `${CLOUD_API_URL}${req.originalUrl}`;
     const headers = {};
     for (const [key, value] of Object.entries(req.headers)) {
@@ -42,16 +43,9 @@ function proxyToCloud(req, res) {
     const hasJsonBody = !isBodylessMethod && req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0;
     if (hasJsonBody) headers['content-type'] = 'application/json';
 
-    // A write request whose body wasn't parsed as JSON (e.g. a multipart
-    // effect-file upload — express.json() ignores non-JSON content types and
-    // leaves the raw stream untouched) gets streamed straight through
-    // unchanged, so multer on the central server parses the exact same bytes
-    // the client sent, file included.
     const isRawStreamBody = !isBodylessMethod && !hasJsonBody && !req.readableEnded;
     const body = hasJsonBody ? JSON.stringify(req.body) : (isRawStreamBody ? req : undefined);
 
-    // The free-tier central server can be asleep and take up to ~50s to wake;
-    // give it real room instead of failing a request that would have worked.
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60_000);
 
@@ -64,6 +58,9 @@ function proxyToCloud(req, res) {
     })
         .then(async (cloudRes) => {
             clearTimeout(timeout);
+            if (!cloudRes.ok && typeof next === 'function' && (req.path === '/user/effects' || req.originalUrl.includes('/user/effects'))) {
+                return next();
+            }
             const text = await cloudRes.text();
             const contentType = cloudRes.headers.get('content-type');
 

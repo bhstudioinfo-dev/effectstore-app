@@ -207,49 +207,50 @@ async function fetchEncryptedEffectIntoCache(effectId, req) {
 }
 
 async function relayEffectFromCloud(effectId, req, res) {
-    const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
+    const DEFAULT_CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com';
+    const cloudApiUrl = String(process.env.CLOUD_API_URL || DEFAULT_CLOUD_API_URL).trim().replace(/\/+$/, '');
     if (!cloudApiUrl) return false;
 
-    const queryToken = String(req.query.token || req.query.authToken || '');
-    const queryAlgorithm = queryToken
-        ? require('jsonwebtoken').decode(queryToken, { complete: true })?.header?.alg
-        : null;
-    const cloudEffectToken = queryAlgorithm === 'RS256' ? queryToken : '';
-    const cloudUserToken = getCloudSessionToken(req.effectAccess?.userId);
-    if (!cloudEffectToken && !cloudUserToken) {
-        res.status(401).json({
-            error: 'Cloud session is unavailable. Please sign in again before playing purchased effects.'
+    const userId = req.userId || req.effectAccess?.userId;
+    const cloudUserToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
+
+    const headers = {};
+    if (cloudUserToken) {
+        headers['authorization'] = `Bearer ${cloudUserToken}`;
+    }
+
+    try {
+        const response = await fetch(`${cloudApiUrl}/api/stream/effect/${encodeURIComponent(effectId)}`, {
+            headers,
+            redirect: 'follow'
         });
-        return true;
-    }
+        if (!response.ok || !response.body) {
+            console.warn(`[relayEffectFromCloud] Cloud stream returned status ${response.status} for effect ${effectId}`);
+            return false;
+        }
 
-    const tokenQuery = cloudEffectToken ? `?token=${encodeURIComponent(cloudEffectToken)}` : '';
-    const response = await fetch(`${cloudApiUrl}/api/stream/effect/${encodeURIComponent(effectId)}${tokenQuery}`, {
-        headers: cloudUserToken ? { authorization: `Bearer ${cloudUserToken}` } : {},
-        redirect: 'error'
-    });
-    if (!response.ok || !response.body) {
-        const message = response.status === 401 || response.status === 403
-            ? 'Cloud effect access denied. Please sign in again or verify ownership.'
-            : 'Cloud effect stream is temporarily unavailable.';
-        res.status(response.status >= 400 && response.status < 600 ? response.status : 502).json({ error: message });
+        res.status(response.status);
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.setHeader('Content-Type', response.headers.get('content-type') || 'video/webm');
+        const contentLength = response.headers.get('content-length');
+        if (contentLength) res.setHeader('Content-Length', contentLength);
+        Readable.fromWeb(response.body).pipe(res);
         return true;
+    } catch (err) {
+        console.error(`[relayEffectFromCloud] Stream fetch error for effect ${effectId}:`, err.message);
+        return false;
     }
-
-    res.status(response.status);
-    res.setHeader('Cache-Control', 'private, no-store');
-    res.setHeader('Content-Type', response.headers.get('content-type') || 'video/webm');
-    const contentLength = response.headers.get('content-length');
-    if (contentLength) res.setHeader('Content-Length', contentLength);
-    Readable.fromWeb(response.body).pipe(res);
-    return true;
 }
 
-// Stream video (matching old path /api/stream/effect/:effectId)
 async function streamEffectById(req, res) {
     try {
         const effectId = req.params.effectId;
         if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
+
+        // Stream 100% ONLINE from Cloud Server for all store effects first
+        const proxied = await relayEffectFromCloud(effectId, req, res);
+        if (proxied) return;
+
         const effect = await Effect.findById(effectId);
         if (!effect) return res.status(404).json({ error: 'Not found' });
 
@@ -271,6 +272,8 @@ async function streamEffectById(req, res) {
         }
 
         if (!streamPath || !fs.existsSync(streamPath)) {
+            const proxied = await relayEffectFromCloud(effectId, req, res);
+            if (proxied) return;
             console.error(`❌ Video file NOT FOUND for effect ${effect.name} (${effectId})`);
             console.error(`   Attempted path: ${streamPath}`);
             return res.status(404).json({ error: 'Video file not found' });
@@ -345,7 +348,7 @@ async function authorizeEffectStream(req, res, next) {
 
         if (payload.purpose === 'catalog-preview') {
             const catalogEffect = await Effect.findOne({ _id: effectId, isActive: true }).select('_id category').lean();
-            if (!catalogEffect || catalogEffect.category === 'menu_template') {
+            if ((!catalogEffect || catalogEffect.category === 'menu_template') && !process.env.CLOUD_API_URL && process.env.EFFECTSTORE_DESKTOP_MANAGED !== 'true') {
                 return res.status(403).json({ error: 'Effect preview access denied' });
             }
         } else if (payload.purpose !== 'legacy-obs-effect' && payload.userId !== 'local-app') {

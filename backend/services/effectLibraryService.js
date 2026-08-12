@@ -188,10 +188,25 @@ async function isCustomEffectMediaAvailable(effect, options = {}) {
 async function getUserRecord(userId) {
     if (!userId) return null;
     let user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
-    if (!user) {
+    if (!user || (user.purchasedEffects && user.purchasedEffects.length === 0)) {
         try {
-            user = await mirrorUserLocally(userId);
-            if (user && user.toObject) user = user.toObject();
+            const { getCloudSessionToken, getAnyCloudSessionToken } = require('./cloudSessionTokenStore');
+            const cloudToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
+            const DEFAULT_CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com';
+            const cloudApiUrl = String(process.env.CLOUD_API_URL || DEFAULT_CLOUD_API_URL).trim().replace(/\/+$/, '');
+            if (cloudToken && cloudApiUrl) {
+                const res = await fetch(`${cloudApiUrl}/api/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${cloudToken}` }
+                });
+                if (res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    if (data.success && data.user) {
+                        const { mirrorUserLocally } = require('./localUserMirror');
+                        await mirrorUserLocally(data.user);
+                        user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+                    }
+                }
+            }
         } catch (_e) {}
     }
     if (!user) {

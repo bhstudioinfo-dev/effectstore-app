@@ -13,7 +13,8 @@ const effectQueue = require('../services/effectQueue');
 const {
     resolveEffectForUser,
     resolveEffectDurationForUser,
-    isCustomEffectMediaAvailable
+    isCustomEffectMediaAvailable,
+    mirrorEffectFromCentral
 } = require('../services/effectLibraryService');
 const effectRoutes = require('./effects');
 const { getOverlayAccessToken } = require('../config/networkSecurity');
@@ -24,9 +25,8 @@ const { getEntitlements, validateDesignerItems } = require('../config/planEntitl
 
 async function getObsConnectionConfig(userId) {
     try {
-        const settings = userId
-            ? (await OBSSettings.findOne({ userId })) || (await OBSSettings.findOne({ userId: { $exists: false } }))
-            : await OBSSettings.findOne({ userId: { $exists: false } });
+        const settings = (userId ? await OBSSettings.findOne({ userId }) : null) ||
+            (await OBSSettings.findOne().sort({ updatedAt: -1 }));
         if (settings) {
             return {
                 host: settings.host || process.env.OBS_HOST || '127.0.0.1',
@@ -79,7 +79,11 @@ router.get('/effect-player-media/:effectId', async (req, res) => {
         if (!allowedPurposes.has(payload.purpose) || String(payload.effectId) !== String(req.params.effectId)) {
             return res.status(403).json({ success: false, message: 'Liên kết xem thử không hợp lệ.' });
         }
-        const effect = await resolveEffectForUser(payload.userId, req.params.effectId);
+        let effect = await resolveEffectForUser(payload.userId, req.params.effectId);
+        if (!effect) {
+            effect = (await Effect.findById(req.params.effectId).lean().catch(() => null))
+                || (await mirrorEffectFromCentral(req.params.effectId));
+        }
         if (!effect) return res.status(403).json({ success: false, message: 'Effect access denied.' });
         req.effectAccess = payload;
         return effectRoutes.streamEffectById(req, res);
@@ -93,9 +97,13 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
         const effectId = String(req.body?.effectId || '').trim();
         if (!effectId) return res.status(400).json({ success: false, message: 'Thiếu mã hiệu ứng.' });
 
-        const effect = await resolveEffectForUser(req.userId, effectId);
+        let effect = await resolveEffectForUser(req.userId, effectId);
         if (!effect) {
-            return res.status(403).json({ success: false, message: 'Bạn chưa sở hữu hiệu ứng này.' });
+            effect = (await Effect.findById(effectId).lean().catch(() => null))
+                || (await mirrorEffectFromCentral(effectId));
+        }
+        if (!effect) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy hiệu ứng.' });
         }
         if (effect.isCustom && !await isCustomEffectMediaAvailable(effect)) {
             return res.status(422).json({
@@ -105,8 +113,8 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             });
         }
 
-        const duration = await resolveEffectDurationForUser(req.userId, effectId);
-        const durationMs = normalizeDurationMs(duration);
+        const rawDuration = (await resolveEffectDurationForUser(req.userId, effectId)) || effect.duration || 5;
+        const durationMs = normalizeDurationMs(rawDuration);
         if (!durationMs) {
             return res.status(422).json({ success: false, message: 'Hiệu ứng chưa có thời lượng hợp lệ.' });
         }
@@ -116,7 +124,7 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
         }
 
         try {
-            await obsService.ensureEffectPlayerSource();
+            await obsService.ensureEffectPlayerSource(false);
         } catch (_e) {}
 
         const PORT = process.env.PORT || 9000;
