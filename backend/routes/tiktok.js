@@ -709,13 +709,16 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             });
         }
 
-        if (!obsService.isConnected()) {
-            return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
-        }
-        await obsService.ensureEffectPlayerSource();
-        const sourceStatus = await obsService.getFoundationSourceStatus();
-        if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req)) {
-            return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
+        const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
+        if (!isPlayerReady) {
+            if (!obsService.isConnected()) {
+                return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
+            }
+            await obsService.ensureEffectPlayerSource();
+            const sourceStatus = await obsService.getFoundationSourceStatus();
+            if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req, 1000)) {
+                return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
+            }
         }
 
         let queued = false;
@@ -897,13 +900,16 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
                 message: 'Hiệu ứng chưa có thời lượng hợp lệ. App đã bỏ qua để tránh treo queue.'
             });
         }
-        if (!obsService.isConnected()) {
-            return res.status(503).json({ success: false, triggered: false, message: 'OBS chưa kết nối.' });
-        }
-        await obsService.ensureEffectPlayerSource();
-        const sourceStatus = await obsService.getFoundationSourceStatus();
-        if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req)) {
-            return res.status(503).json({ success: false, triggered: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
+        const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
+        if (!isPlayerReady) {
+            if (!obsService.isConnected()) {
+                return res.status(503).json({ success: false, triggered: false, message: 'OBS chưa kết nối.' });
+            }
+            await obsService.ensureEffectPlayerSource();
+            const sourceStatus = await obsService.getFoundationSourceStatus();
+            if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req, 1000)) {
+                return res.status(503).json({ success: false, triggered: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
+            }
         }
 
         const giftData = {

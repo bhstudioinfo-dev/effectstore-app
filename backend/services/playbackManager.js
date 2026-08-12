@@ -88,24 +88,28 @@ class PlaybackManager {
         }
 
         if (['test_mapping', 'preview_effect', 'live_mapping'].includes(item.playbackType) && item.userId && item.effectId) {
-            const resolvedEffect = await resolveEffectForUser(item.userId, item.effectId);
-            if (!resolvedEffect) {
-                throw new Error('Hiệu ứng không còn thuộc tài khoản hoặc đã bị xóa.');
-            }
+            if (!item.effectUrl || !item.duration) {
+                const resolvedEffect = await resolveEffectForUser(item.userId, item.effectId);
+                if (!resolvedEffect) {
+                    throw new Error('Hiệu ứng không còn thuộc tài khoản hoặc đã bị xóa.');
+                }
 
-            const resolvedDuration = await resolveEffectDurationForUser(item.userId, item.effectId);
-            if (!resolvedDuration) {
-                throw new Error('Hiệu ứng chưa có thời lượng hợp lệ.');
-            }
-            item.duration = resolvedDuration < 100 ? Math.round(resolvedDuration * 1000) : Math.round(resolvedDuration);
-            this.currentEndsAt = this.currentStartedAt + item.duration;
+                const resolvedDuration = await resolveEffectDurationForUser(item.userId, item.effectId);
+                if (!resolvedDuration) {
+                    throw new Error('Hiệu ứng chưa có thời lượng hợp lệ.');
+                }
+                item.duration = resolvedDuration < 100 ? Math.round(resolvedDuration * 1000) : Math.round(resolvedDuration);
+                this.currentEndsAt = this.currentStartedAt + item.duration;
 
-            if (resolvedEffect.isCustom && !await isCustomEffectMediaAvailable(resolvedEffect)) {
-                throw new Error('Không tìm thấy file hiệu ứng cá nhân trên máy này. Hãy thêm lại hiệu ứng.');
-            }
+                if (resolvedEffect.isCustom && !await isCustomEffectMediaAvailable(resolvedEffect)) {
+                    throw new Error('Không tìm thấy file hiệu ứng cá nhân trên máy này. Hãy thêm lại hiệu ứng.');
+                }
 
-            if (!item.effectUrl) {
-                item.effectUrl = this.buildEffectPlayerUrl(item.userId, item.effectId, resolvedEffect);
+                if (!item.effectUrl) {
+                    item.effectUrl = this.buildEffectPlayerUrl(item.userId, item.effectId, resolvedEffect);
+                }
+            } else {
+                this.currentEndsAt = this.currentStartedAt + item.duration;
             }
         }
 
