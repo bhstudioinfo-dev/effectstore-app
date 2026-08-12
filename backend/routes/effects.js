@@ -218,6 +218,9 @@ async function relayEffectFromCloud(effectId, req, res) {
     if (cloudUserToken) {
         headers['authorization'] = `Bearer ${cloudUserToken}`;
     }
+    if (req.headers.range) {
+        headers['range'] = req.headers.range;
+    }
 
     try {
         const response = await fetch(`${cloudApiUrl}/api/stream/effect/${encodeURIComponent(effectId)}`, {
@@ -231,9 +234,13 @@ async function relayEffectFromCloud(effectId, req, res) {
 
         res.status(response.status);
         res.setHeader('Cache-Control', 'private, no-store');
+        res.setHeader('Accept-Ranges', 'bytes');
         res.setHeader('Content-Type', response.headers.get('content-type') || 'video/webm');
         const contentLength = response.headers.get('content-length');
         if (contentLength) res.setHeader('Content-Length', contentLength);
+        const contentRange = response.headers.get('content-range');
+        if (contentRange) res.setHeader('Content-Range', contentRange);
+
         Readable.fromWeb(response.body).pipe(res);
         return true;
     } catch (err) {
@@ -247,6 +254,10 @@ async function streamEffectById(req, res) {
         const effectId = req.params.effectId;
         if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
 
+        // 1. Stream 100% ONLINE from Cloud Server first
+        const proxied = await relayEffectFromCloud(effectId, req, res);
+        if (proxied) return;
+
         const effect = await Effect.findById(effectId);
         let streamPath = effect?.previewFilePath;
         if (!streamPath || !fs.existsSync(streamPath)) {
@@ -256,7 +267,6 @@ async function streamEffectById(req, res) {
             }
         }
 
-        // 1. If video file exists on local disk, stream immediately (<10ms instant playback)
         if (streamPath && fs.existsSync(streamPath)) {
             if (streamPath.includes('encrypted')) {
                 res.setHeader('Cache-Control', 'private, no-store');
@@ -264,6 +274,7 @@ async function streamEffectById(req, res) {
             } else {
                 const stats = fs.statSync(streamPath);
                 res.setHeader('Cache-Control', 'private, no-store');
+                res.setHeader('Accept-Ranges', 'bytes');
                 res.setHeader('Content-Type', 'video/webm');
                 res.setHeader('Content-Length', stats.size);
                 const stream = fs.createReadStream(streamPath);
@@ -279,8 +290,8 @@ async function streamEffectById(req, res) {
         }
 
         // 3. Fallback: Stream online from Cloud Server if not available locally
-        const proxied = await relayEffectFromCloud(effectId, req, res);
-        if (proxied) return;
+        const proxiedFallback = await relayEffectFromCloud(effectId, req, res);
+        if (proxiedFallback) return;
 
         console.error(`❌ Video file NOT FOUND for effect (${effectId})`);
         return res.status(404).json({ error: 'Video file not found' });
