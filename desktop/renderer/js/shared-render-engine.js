@@ -1938,7 +1938,7 @@
         const targetCoins = Number(item.targetCoins) || 1000;
         const currentCoins = Number(item.currentCoins) || 0;
         const percent = Math.min(100, Math.round((currentCoins / targetCoins) * 100));
-        const theme = item.theme || 'glass';
+        const theme = item.theme || 'hu-thuong';
         
         let borderColor = `#38bdf8`;
         let themeIcon = '🏺';

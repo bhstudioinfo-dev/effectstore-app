@@ -422,11 +422,11 @@
                 w: 480, h: 600, width: 480, height: 600,
                 title: 'HŨ QUÀ TẶNG',
                 subtitle: 'Mô phỏng rơi quà vật lý',
-                theme: 'glass',
+                theme: 'hu-thuong',
                 customJarImageUrl: '',
                 targetCoins: 1000,
                 currentCoins: 0,
-                dropItemType: 'coin',
+                dropItemType: 'gift_icon',
                 autoResetOnTarget: true,
                 celebrationSound: 'jackpot',
                 visible: true, locked: false
