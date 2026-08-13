@@ -1932,7 +1932,8 @@
         return `<div class="gmd-challenge-wheel-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(28,ctx.scale)}px;background:linear-gradient(145deg,#0f766e,#082f49);border:3px solid #5eead4;border-radius:${roundPx(34,ctx.scale)}px;color:#fff;text-align:center;box-shadow:0 0 ${roundPx(30,ctx.scale)}px #22d3ee88;overflow:hidden;"><div style="font-size:${font(ctx,item.titleFontSize,34)}px;font-weight:1000;color:#fef08a;text-shadow:0 0 14px #f59e0b;">🎡 ${text(ctx,item.title || 'VÒNG QUAY THỬ THÁCH')}</div><div style="font-size:${font(ctx,item.subtitleFontSize,18)}px;color:#ccfbf1;margin:${roundPx(8,ctx.scale)}px 0;">Donate đúng quà để kích hoạt</div><div style="position:relative;width:78%;aspect-ratio:1;margin:${roundPx(20,ctx.scale)}px auto 0;border:${roundPx(14,ctx.scale)}px solid #f8fafc;border-radius:50%;background:conic-gradient(${gradient});box-shadow:0 0 0 ${roundPx(10,ctx.scale)}px #ef4444,0 0 ${roundPx(28,ctx.scale)}px #fbbf24aa;"><div style="position:absolute;inset:0;display:grid;place-items:center;"><div style="width:26%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:#2563eb;border:${roundPx(8,ctx.scale)}px solid #fbbf24;font-size:${font(ctx,24,24)}px;font-weight:1000;">QUAY</div></div></div></div>`;
     }
 
-    function renderGiftJar(item) {
+    function renderGiftJar(item, ctx = {}) {
+        ctx = ctx || {};
         const title = item.title || 'HŨ QUÀ TẶNG';
         const targetCoins = Number(item.targetCoins) || 1000;
         const currentCoins = Number(item.currentCoins) || 0;

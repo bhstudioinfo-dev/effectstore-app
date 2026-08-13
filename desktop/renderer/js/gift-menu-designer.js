@@ -6691,10 +6691,11 @@
                     testButtonHTML = `
                         <div class="gmd-section" style="border: 1px dashed rgba(56,189,248,0.4); background: rgba(56,189,248,0.06); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
                             <h4 style="color: #38bdf8; margin-bottom: 6px;"><i class="fas fa-flask"></i> CHẠY THỬ / TEST HŨ QUÀ</h4>
-                            <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng thả Xu thử nghiệm để xem mực nước dâng và hiệu ứng nổ Hũ khi đầy.</p>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: #0284c7; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.testGiftJarDrop('${selected.id}', 50)"><i class="fas fa-coins"></i> Gửi 50 Xu Test</button>
-                                <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> Đặt lại về 0</button>
+                            <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng thả các loại Xu/Quà ngẫu nhiên để test dâng Hũ & Nổ Hũ Jackpot.</p>
+                            <button class="gmd-btn primary" style="width: 100%; font-size: 11px; background: linear-gradient(135deg, #0284c7, #8b5cf6); padding: 6px 12px; height: 34px; margin-bottom: 6px;" onclick="window.giftMenuDesigner.testGiftJarRandom('${selected.id}')"><i class="fas fa-dice"></i> 🎲 Gửi quà ngẫu nhiên (10 - 500 Xu)</button>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; height: 28px;" onclick="window.giftMenuDesigner.testGiftJarDrop('${selected.id}', 50)"><i class="fas fa-coins"></i> +50 Xu</button>
+                                <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 28px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> Reset 0</button>
                             </div>
                         </div>
                     `;
@@ -8854,6 +8855,18 @@
                 }
             };
             input.click();
+        }
+
+        testGiftJarRandom(itemId) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+            const coinOpts = [10, 25, 50, 99, 150, 200, 300, 500];
+            const dropOpts = ['coin', 'gift_icon', 'heart', 'star', 'gem'];
+            const randomCoins = coinOpts[Math.floor(Math.random() * coinOpts.length)];
+            const randomDrop = dropOpts[Math.floor(Math.random() * dropOpts.length)];
+            
+            item.dropItemType = randomDrop;
+            this.testGiftJarDrop(itemId, randomCoins);
         }
 
         testGiftJarDrop(itemId, coins = 50) {
