@@ -231,12 +231,22 @@ async function getUserAvailableEffects(userId) {
         const allEffects = await Effect.find({ isActive: true, category: { $ne: 'menu_template' } }).sort({ uses: -1 }).lean().catch(() => []);
         purchased.push(...allEffects.map((effect) => normalizePurchasedEffect(effect, user._id, true)).filter(Boolean));
     } else {
-        purchased.push(
-            ...(user.purchasedEffects || [])
-                .filter((item) => item?.effectId && item.effectId.category !== 'menu_template')
-                .map((item) => normalizePurchasedEffect(item?.effectId, user._id, true))
-                .filter(Boolean)
-        );
+        for (const item of (user.purchasedEffects || [])) {
+            let rawEffect = item?.effectId;
+            let effectIdStr = typeof rawEffect === 'object' && rawEffect !== null
+                ? toEffectId(rawEffect?._id || rawEffect?.id)
+                : toEffectId(rawEffect);
+            if (!effectIdStr) continue;
+
+            if (typeof rawEffect !== 'object' || rawEffect === null || !rawEffect?.name) {
+                rawEffect = await Effect.findById(effectIdStr).lean().catch(() => null)
+                    || await mirrorEffectFromCentral(effectIdStr);
+            }
+            if (rawEffect && rawEffect.category !== 'menu_template') {
+                const norm = normalizePurchasedEffect(rawEffect, user._id, true);
+                if (norm) purchased.push(norm);
+            }
+        }
 
         // Include free / default effects for all users
         const freeEffects = await Effect.find({
