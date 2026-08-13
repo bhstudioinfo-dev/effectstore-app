@@ -253,7 +253,7 @@ async function getUserAvailableEffects(userId) {
         .map((effect) => normalizeCustomEffect(effect, user))
         .filter(Boolean);
 
-    // Auto-discover local custom effects from disk
+    // Auto-discover local custom effects from disk (only if owned by this user or if user is admin)
     if (dataPaths?.customEffectsDir && fs.existsSync(dataPaths.customEffectsDir)) {
         try {
             const dirs = fs.readdirSync(dataPaths.customEffectsDir, { withFileTypes: true });
@@ -265,13 +265,16 @@ async function getUserAvailableEffects(userId) {
                 if (fs.existsSync(metaPath)) {
                     try {
                         const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-                        custom.push(normalizeCustomEffect({
-                            localId: effectId,
-                            name: meta.name || 'Hiệu ứng cá nhân',
-                            duration: meta.duration || 5,
-                            fileUrl: meta.fileUrl || `/uploads/custom-effects/${effectId}/video.webm`,
-                            thumbUrl: meta.thumbUrl || ''
-                        }, user));
+                        const isOwner = meta.userId && String(meta.userId) === String(user._id || user.id);
+                        if (isAdminUser(user) || isOwner) {
+                            custom.push(normalizeCustomEffect({
+                                localId: effectId,
+                                name: meta.name || 'Hiệu ứng cá nhân',
+                                duration: meta.duration || 5,
+                                fileUrl: meta.fileUrl || `/uploads/custom-effects/${effectId}/video.webm`,
+                                thumbUrl: meta.thumbUrl || ''
+                            }, user));
+                        }
                     } catch (_e) {}
                 }
             }

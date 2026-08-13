@@ -117,6 +117,7 @@ async function saveRemoteEffect(uploadedFile, requestedName) {
         const effect = {
             id,
             _id: id,
+            userId: options.userId ? String(options.userId) : null,
             localId: id,
             name: String(requestedName || path.basename(uploadedFile.originalname, ext) || 'Hiệu ứng').trim().slice(0, 80),
             icon: '🎬',
