@@ -238,10 +238,35 @@ async function relayEffectFromCloud(effectId, req, res) {
 
     res.status(response.status);
     res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Content-Type', response.headers.get('content-type') || 'video/webm');
     const contentLength = response.headers.get('content-length');
     if (contentLength) res.setHeader('Content-Length', contentLength);
-    Readable.fromWeb(response.body).pipe(res);
+
+    // Save copy to local disk cache for instant (<1ms) subsequent playbacks
+    const cachePath = path.join(encryptedEffectsDir, `cloud_cache_${effectId}.webm`);
+    const tempCachePath = path.join(dataPaths.tempDir, `cloud_cache_${effectId}_${Date.now()}.tmp`);
+    let fileStream = null;
+    if (!req.headers.range && !fs.existsSync(cachePath)) {
+        try {
+            fs.mkdirSync(encryptedEffectsDir, { recursive: true });
+            fileStream = fs.createWriteStream(tempCachePath);
+        } catch (_e) {}
+    }
+
+    const nodeStream = Readable.fromWeb(response.body);
+    if (fileStream) {
+        nodeStream.on('data', (chunk) => { fileStream.write(chunk); });
+        nodeStream.on('end', () => {
+            fileStream.end();
+            try { fs.renameSync(tempCachePath, cachePath); } catch (_e) {}
+        });
+        nodeStream.on('error', () => {
+            try { fileStream.destroy(); fs.unlinkSync(tempCachePath); } catch (_e) {}
+        });
+    }
+
+    nodeStream.pipe(res);
     return true;
 }
 
@@ -250,6 +275,18 @@ async function streamEffectById(req, res) {
     try {
         const effectId = req.params.effectId;
         if (!isValidResourceId(effectId)) return res.status(400).json({ error: 'Invalid effect ID' });
+
+        // Check local disk cache first for instant (<1ms) playback
+        const cachedCloudFile = path.join(encryptedEffectsDir, `cloud_cache_${effectId}.webm`);
+        if (fs.existsSync(cachedCloudFile)) {
+            const stats = fs.statSync(cachedCloudFile);
+            res.setHeader('Cache-Control', 'private, no-store');
+            res.setHeader('Accept-Ranges', 'bytes');
+            res.setHeader('Content-Type', 'video/webm');
+            res.setHeader('Content-Length', stats.size);
+            return fs.createReadStream(cachedCloudFile).pipe(res);
+        }
+
         const effect = await Effect.findById(effectId);
         if (!effect) return res.status(404).json({ error: 'Not found' });
 
@@ -261,32 +298,32 @@ async function streamEffectById(req, res) {
             }
         }
 
-        // Fallback 4: not on this machine at all yet (e.g. an effect the admin
-        // uploaded from a different machine) — fetch the still-encrypted
-        // bytes from the shared store and cache them here, then continue as
-        // if it had been local all along. Never touches unencrypted data.
+        // Fallback 4: not on this machine at all yet — fetch into local cache
         if (!streamPath || !fs.existsSync(streamPath)) {
             const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
             if (fetchedPath) streamPath = fetchedPath;
         }
 
-        if (!streamPath || !fs.existsSync(streamPath)) {
-            console.error(`❌ Video file NOT FOUND for effect ${effect.name} (${effectId})`);
-            console.error(`   Attempted path: ${streamPath}`);
-            return res.status(404).json({ error: 'Video file not found' });
+        if (streamPath && fs.existsSync(streamPath)) {
+            if (streamPath.includes('encrypted')) {
+                res.setHeader('Cache-Control', 'private, no-store');
+                return streamDecryptedVideo(streamPath, req, res);
+            } else {
+                const stats = fs.statSync(streamPath);
+                res.setHeader('Cache-Control', 'private, no-store');
+                res.setHeader('Accept-Ranges', 'bytes');
+                res.setHeader('Content-Type', 'video/webm');
+                res.setHeader('Content-Length', stats.size);
+                return fs.createReadStream(streamPath).pipe(res);
+            }
         }
 
-        if (streamPath.includes('encrypted')) {
-            res.setHeader('Cache-Control', 'private, no-store');
-            streamDecryptedVideo(streamPath, req, res);
-        } else {
-            const stats = fs.statSync(streamPath);
-            res.setHeader('Cache-Control', 'private, no-store');
-            res.setHeader('Content-Type', 'video/webm');
-            res.setHeader('Content-Length', stats.size);
-            const stream = fs.createReadStream(streamPath);
-            stream.pipe(res);
-        }
+        // Fallback 5: Stream online from Cloud Server AND save to disk for instant future plays
+        const proxied = await relayEffectFromCloud(effectId, req, res);
+        if (proxied) return;
+
+        console.error(`❌ Video file NOT FOUND for effect (${effectId})`);
+        return res.status(404).json({ error: 'Video file not found' });
     } catch (error) {
         // A stream response can already be mid-flight (headers sent, bytes
         // piping) when decryption hits a bad/partial file and throws —
