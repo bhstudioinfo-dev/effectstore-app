@@ -247,50 +247,6 @@ async function getUserAvailableEffects(userId) {
                 if (norm) purchased.push(norm);
             }
         }
-
-        // Include free / default effects for all users
-        const freeEffects = await Effect.find({
-            isActive: true,
-            category: { $ne: 'menu_template' },
-            $or: [{ isFree: true }, { price: 0 }, { isDefault: true }]
-        }).sort({ uses: -1 }).lean().catch(() => []);
-        if (freeEffects.length > 0) {
-            purchased.push(...freeEffects.map((effect) => normalizePurchasedEffect(effect, user._id, true)).filter(Boolean));
-        }
-
-        // If user has no purchased or free query matches, fallback to all catalog effects (and seed from cloud if empty)
-        if (purchased.length === 0) {
-            let fallbackEffects = await Effect.find({ category: { $ne: 'menu_template' } }).lean().catch(() => []);
-            if (fallbackEffects.length === 0) {
-                const cloudApiUrl = String(process.env.CLOUD_API_URL || 'https://liveflow-backend-iafw.onrender.com').trim().replace(/\/+$/, '');
-                try {
-                    const cloudRes = await fetch(`${cloudApiUrl}/api/effects`);
-                    if (cloudRes.ok) {
-                        const cloudData = await cloudRes.json();
-                        if (cloudData?.success && Array.isArray(cloudData.effects)) {
-                            for (const e of cloudData.effects) {
-                                if (e.category === 'menu_template') continue;
-                                await Effect.findByIdAndUpdate(
-                                    e._id || e.id,
-                                    {
-                                        $setOnInsert: { _id: e._id || e.id },
-                                        $set: {
-                                            name: e.name, category: e.category, price: e.price,
-                                            icon: e.icon, isActive: e.isActive !== false,
-                                            duration: e.duration || 5, thumbUrl: e.thumbUrl,
-                                            previewUrl: e.previewUrl, fileUrl: e.fileUrl
-                                        }
-                                    },
-                                    { upsert: true }
-                                ).catch(() => {});
-                            }
-                            fallbackEffects = await Effect.find({ category: { $ne: 'menu_template' } }).lean().catch(() => []);
-                        }
-                    }
-                } catch (_e) {}
-            }
-            purchased.push(...fallbackEffects.map((effect) => normalizePurchasedEffect(effect, user._id, true)).filter(Boolean));
-        }
     }
 
     const custom = (user.customEffects || [])
