@@ -8966,6 +8966,37 @@
         getDefaultTemplates() {
             return [
                 {
+                    id: 'tmpl_interactive_gift_jar',
+                    name: '🏺 Hũ Quà Tặng (Physics Jar)',
+                    tag: 'Hũ Quà',
+                    category: 'gift-jar',
+                    tags: ['jar', 'physics', 'coin', 'drop', 'jackpot'],
+                    isPremium: false,
+                    layers: [
+                        {
+                            id: 'interactive_gift_jar_widget',
+                            name: '🏺 HŨ QUÀ TẶNG',
+                            type: 'gift-jar',
+                            x: 120,
+                            y: 200,
+                            w: 480,
+                            h: 600,
+                            width: 480,
+                            height: 600,
+                            zIndex: 1,
+                            visible: true,
+                            locked: false,
+                            title: 'HŨ QUÀ TẶNG',
+                            theme: 'glass',
+                            targetCoins: 1000,
+                            currentCoins: 350,
+                            dropItemType: 'coin',
+                            autoResetOnTarget: true,
+                            celebrationSound: 'jackpot'
+                        }
+                    ]
+                },
+                {
                     id: 'tmpl_pk_versus_bar',
                     name: '⚔️ Thanh đối kháng / PK',
                     tag: 'Đấu PK',
