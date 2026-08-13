@@ -56,6 +56,7 @@ const authMiddleware = async (req, res, next) => {
                 isAdmin: Boolean(decoded.isAdmin),
                 isActive: true
             });
+            try { await user.save(); } catch (_e) {}
         }
         if (!user || user.isActive === false) {
             console.warn(`[authMiddleware] rejected: decoded.userId=${decoded.userId} found=${Boolean(user)} isActive=${user?.isActive}`);

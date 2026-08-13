@@ -715,9 +715,13 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
         const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
         if (!isPlayerReady) {
             if (!obsService.isConnected()) {
-                return res.status(503).json({ success: false, message: 'OBS chưa kết nối. Vui lòng mở phần mềm OBS Studio rồi thử lại.' });
+                return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
             }
-            await obsService.ensureEffectPlayerSource().catch(() => {});
+            await obsService.ensureEffectPlayerSource();
+            const sourceStatus = await obsService.getFoundationSourceStatus();
+            if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req, 1000)) {
+                return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
+            }
         }
 
         let queued = false;
@@ -905,9 +909,13 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
         const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
         if (!isPlayerReady) {
             if (!obsService.isConnected()) {
-                return res.status(503).json({ success: false, triggered: false, message: 'OBS chưa kết nối. Vui lòng mở phần mềm OBS Studio rồi thử lại.' });
+                return res.status(503).json({ success: false, triggered: false, message: 'OBS chưa kết nối.' });
             }
-            await obsService.ensureEffectPlayerSource().catch(() => {});
+            await obsService.ensureEffectPlayerSource();
+            const sourceStatus = await obsService.getFoundationSourceStatus();
+            if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req, 1000)) {
+                return res.status(503).json({ success: false, triggered: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
+            }
         }
 
         const giftData = {
@@ -1393,7 +1401,12 @@ router.post('/gift-menu-layout', authMiddleware, planQuotaLock('layouts'), async
         if (requestedLayoutId && !isValidResourceId(requestedLayoutId)) {
             return res.status(400).json({ success: false, error: 'Invalid layout ID' });
         }
-        const user = await User.findById(req.userId);
+        let user = req.user || await User.findById(req.userId);
+        if (!user && req.userId) {
+            const { mirrorUserLocally } = require('../services/localUserMirror');
+            await mirrorUserLocally({ id: req.userId, email: `${req.userId}@local.user` });
+            user = await User.findById(req.userId);
+        }
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
         const entitlements = getEntitlements(user);
         const isRenameOnly = payload.id && payload.name && !payload.aspectRatio && !payload.items && !payload.exportedItems;
