@@ -8029,16 +8029,19 @@
                     part3HTML = `
                         <div class="gmd-section">
                             <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorTest()">
-                                <span><i class="fas fa-flask"></i> PHẦN 3: TEST GỬI QUÀ HŨ</span>
+                                <span><i class="fas fa-flask"></i> PHẦN 3: TEST GỬI QUÀ HŨ (MÔ PHỎNG LIVE)</span>
                                 <i class="fas ${isTestExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
                             </h4>
                             <div style="display: ${isTestExpanded ? 'block' : 'none'};">
-                                <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng thả các loại quà TikTok ngẫu nhiên từ đỉnh màn hình xuống Hũ.</p>
-                                <button class="gmd-btn primary" style="width: 100%; font-size: 11px; background: linear-gradient(135deg, #0284c7, #8b5cf6); padding: 6px 12px; height: 34px; margin-bottom: 6px;" onclick="window.giftMenuDesigner.testGiftJarRandom('${selected.id}')"><i class="fas fa-dice"></i> 🎲 Gửi quà ngẫu nhiên từ TikTok</button>
-                                <div style="display: flex; gap: 6px;">
-                                    <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; height: 28px;" onclick="window.giftMenuDesigner.testGiftJarDrop('${selected.id}', 50)"><i class="fas fa-coins"></i> +50 Xu</button>
-                                    <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 28px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> Reset 0</button>
+                                <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng quà rơi từ đỉnh màn hình xuống Hũ theo đúng số xu và kích thước thực tế trên TikTok Live.</p>
+                                <button class="gmd-btn primary" style="width: 100%; font-size: 11px; background: linear-gradient(135deg, #0284c7, #8b5cf6); padding: 6px 12px; height: 34px; margin-bottom: 8px;" onclick="window.giftMenuDesigner.testGiftJarRandom('${selected.id}')"><i class="fas fa-dice"></i> 🎲 Gửi quà ngẫu nhiên (Kích thước & Xu ngẫu nhiên)</button>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'small')">🌹 Quà Nhỏ (1-10 Xu)</button>
+                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'medium')">🎁 Quà Vừa (100-500 Xu)</button>
+                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.3); color: #c084fc; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'large')">🦁 Quà Khủng (1,000+ Xu)</button>
+                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(236,72,153,0.15); border: 1px solid rgba(236,72,153,0.3); color: #f472b6; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'top_donor')">👑 Rơi Huy Hiệu Top 1</button>
                                 </div>
+                                <button class="gmd-btn" style="width: 100%; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 30px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> Reset Hũ về 0 Xu (Làm sạch)</button>
                             </div>
                         </div>
                     `;
