@@ -6065,6 +6065,11 @@
                 return;
             }
 
+            if (selected.type === 'gift-jar') {
+                this.inspectorAdvancedExpanded = true;
+                this.inspectorTestExpanded = true;
+            }
+
             if (selected.type === 'template-bundle' && this.items.includes(selected)) {
                 const childCount = Array.isArray(selected.children) ? selected.children.length : 0;
                 inspector.innerHTML = `
