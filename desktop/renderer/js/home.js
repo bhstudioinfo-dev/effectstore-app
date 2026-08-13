@@ -6210,6 +6210,15 @@ class EffectStoreApp {
             grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:30px;font-size:13px;">🔍 Không tìm thấy quà tặng phù hợp trong phân khúc này</div>';
         }
     }
+    async preloadMappingLibrary() {
+        try {
+            if (typeof this.loadChallengeWheels === 'function') {
+                await this.loadChallengeWheels().catch(() => {});
+            }
+            await this.loadEffectsForMapping();
+        } catch (_e) {}
+    }
+
     async loadEffectsForMapping() {
         try {
             console.log('🎬 Loading mapping effects...');
