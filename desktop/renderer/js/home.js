@@ -5833,7 +5833,10 @@ class EffectStoreApp {
             const status = await res.json();
             this.effectQueueStatus = status;
             this.updateControlDeckQueueStatus(status);
-            const hasLocalTestTimer = this.testMappingTimer && this.testMappingTimer.until > Date.now();
+            const hasLocalTestTimer = Boolean(
+                (this.testMappingTimer && this.testMappingTimer.until > Date.now()) ||
+                this.isTestingFetch
+            );
             if (!this.isEffectQueueBusy() && !hasLocalTestTimer) {
                 this.activeTestMappingId = null;
             }
@@ -5891,12 +5894,10 @@ class EffectStoreApp {
         const buttons = document.querySelectorAll('.btn-test[data-mapping-id]');
         if (!buttons.length) return;
 
-        const localTestBusy = Boolean(
-            (this.testMappingTimer && this.testMappingTimer.until > Date.now()) ||
-            this.activeTestMappingId
-        );
+        const hasTimer = Boolean(this.testMappingTimer && this.testMappingTimer.until > Date.now());
+        const localTestBusy = hasTimer || Boolean(this.activeTestMappingId) || Boolean(this.isTestingFetch);
         const busy = this.isEffectQueueBusy() || localTestBusy;
-        const remainingSeconds = localTestBusy
+        const remainingSeconds = hasTimer
             ? Math.max(0, (this.testMappingTimer.until - Date.now()) / 1000).toFixed(1)
             : Math.max(0, Number(this.effectQueueStatus?.remainingMs || 0) / 1000).toFixed(1);
         const queueLength = Number(this.effectQueueStatus?.queueLength || 0);
@@ -5905,9 +5906,8 @@ class EffectStoreApp {
         buttons.forEach((btn) => {
             const defaultLabel = btn.dataset.defaultLabel || '▶ Test';
             const mappingId = btn.dataset.mappingId;
-            const hasLocalTestTimer = localTestBusy;
             const isActiveTest = (this.activeTestMappingId && mappingId === this.activeTestMappingId)
-                || (hasLocalTestTimer && mappingId === this.testMappingTimer.mappingId);
+                || (hasTimer && mappingId === this.testMappingTimer?.mappingId);
 
             if (isActiveTest) return;
 
@@ -6771,6 +6771,7 @@ class EffectStoreApp {
 
         try {
             this.activeTestMappingId = id;
+            this.isTestingFetch = true;
             btn.disabled = true;
             btn.style.cursor = 'not-allowed';
             btn.style.position = 'relative';
@@ -6795,6 +6796,7 @@ class EffectStoreApp {
                 body: JSON.stringify(testBody)
             });
             const data = await res.json().catch(() => ({}));
+            this.isTestingFetch = false;
 
             if (!res.ok || !data.success) {
                 throw new Error(data.message || data.error || `Dịch vụ ứng dụng gặp lỗi ${res.status}.`);
@@ -6825,6 +6827,7 @@ class EffectStoreApp {
                 if (timeLeft <= 0) {
                     this.activeTestMappingId = null;
                     this.testMappingTimer = null;
+                    this.isTestingFetch = false;
                     btn.disabled = false;
                     btn.innerHTML = originalContent;
                     btn.style.background = '';
@@ -6843,6 +6846,7 @@ class EffectStoreApp {
             this.showNotification('error', 'Lỗi test OBS: ' + e.message);
             this.activeTestMappingId = null;
             this.testMappingTimer = null;
+            this.isTestingFetch = false;
             this.updateMappingTestButtons();
             btn.disabled = false;
             btn.innerHTML = originalContent;
