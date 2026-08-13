@@ -7990,14 +7990,15 @@
 
             // PHẦN 2: TÍNH NĂNG NÂNG CAO
             let part2HTML = '';
+            const isAdvExpanded = this.inspectorAdvancedExpanded !== false;
             if (selected.type === 'gift-stack-group') {
                 part2HTML = `
                     <div class="gmd-section">
                         <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorAdvanced()">
                             <span><i class="fas fa-crown"></i> PHẦN 2: TÍNH NĂNG NÂNG CAO</span>
-                            <i class="fas ${this.inspectorAdvancedExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                            <i class="fas ${isAdvExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
                         </h4>
-                        <div style="display: ${this.inspectorAdvancedExpanded ? 'block' : 'none'};">
+                        <div style="display: ${isAdvExpanded ? 'block' : 'none'};">
                             ${stackChildrenControlsHTML}
                             ${stackAdvancedControlsHTML}
                         </div>
@@ -8008,9 +8009,9 @@
                     <div class="gmd-section">
                         <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorAdvanced()">
                             <span><i class="fas fa-crown"></i> PHẦN 2: TÍNH NĂNG NÂNG CAO</span>
-                            <i class="fas ${this.inspectorAdvancedExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                            <i class="fas ${isAdvExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
                         </h4>
-                        <div style="display: ${this.inspectorAdvancedExpanded ? 'block' : 'none'};">
+                        <div style="display: ${isAdvExpanded ? 'block' : 'none'};">
                             ${specificConfigHTML}
                         </div>
                     </div>
@@ -8019,24 +8020,45 @@
 
             // PHẦN 3: TEST THỬ TRÊN APP
             let part3HTML = '';
-            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'combo'].includes(selected.type)) {
+            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'combo', 'gift-jar'].includes(selected.type)) {
                 const isChallengeWheel = selected.type === 'challenge-wheel';
-                part3HTML = `
-                    <div class="gmd-section">
-                        <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorTest()">
-                            <span><i class="fas ${isChallengeWheel ? 'fa-dharmachakra' : 'fa-flask'}"></i> ${isChallengeWheel ? 'PHẦN 3: TEST QUAY THỬ' : 'PHẦN 3: TEST THỬ TRÊN APP'}</span>
-                            <i class="fas ${this.inspectorTestExpanded !== false ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
-                        </h4>
-                        <div style="display: ${this.inspectorTestExpanded !== false ? 'block' : 'none'};">
-                            <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">${isChallengeWheel ? 'Bấm nút để quay thử ngay trong app. Đây chỉ là mô phỏng, không gửi quà và không kích hoạt OBS.' : 'Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.'}</p>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: ${isChallengeWheel ? 'linear-gradient(135deg,#ef2029,#f59e0b)' : '#8b5cf6'}; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.${isChallengeWheel ? `previewChallengeWheelSpin('${selected.id}')` : `sendSimulatedGift('${selected.id}')`}"><i class="fas ${isChallengeWheel ? 'fa-dharmachakra' : 'fa-play'}"></i> ${isChallengeWheel ? 'Test quay thử' : 'Gửi quà Test'}</button>
-                                ${isChallengeWheel ? `<button class="gmd-btn" style="flex:0 0 42px;font-size:11px;padding:6px;height:32px;" title="Đặt lại vòng quay" onclick="window.giftMenuDesigner.resetChallengeWheelPreview('${selected.id}')"><i class="fas fa-undo"></i></button>` : '<button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem(\'' + selected.id + '\')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>'}
-                                ${isChallengeWheel ? '' : '<button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem(\'' + selected.id + '\')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>'}
+                const isGiftJar = selected.type === 'gift-jar';
+                const isTestExpanded = this.inspectorTestExpanded !== false;
+                
+                if (isGiftJar) {
+                    part3HTML = `
+                        <div class="gmd-section">
+                            <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorTest()">
+                                <span><i class="fas fa-flask"></i> PHẦN 3: TEST GỬI QUÀ HŨ</span>
+                                <i class="fas ${isTestExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                            </h4>
+                            <div style="display: ${isTestExpanded ? 'block' : 'none'};">
+                                <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng thả các loại quà TikTok ngẫu nhiên từ đỉnh màn hình xuống Hũ.</p>
+                                <button class="gmd-btn primary" style="width: 100%; font-size: 11px; background: linear-gradient(135deg, #0284c7, #8b5cf6); padding: 6px 12px; height: 34px; margin-bottom: 6px;" onclick="window.giftMenuDesigner.testGiftJarRandom('${selected.id}')"><i class="fas fa-dice"></i> 🎲 Gửi quà ngẫu nhiên từ TikTok</button>
+                                <div style="display: flex; gap: 6px;">
+                                    <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; height: 28px;" onclick="window.giftMenuDesigner.testGiftJarDrop('${selected.id}', 50)"><i class="fas fa-coins"></i> +50 Xu</button>
+                                    <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 28px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> Reset 0</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                } else {
+                    part3HTML = `
+                        <div class="gmd-section">
+                            <h4 style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;" onclick="window.giftMenuDesigner.toggleInspectorTest()">
+                                <span><i class="fas ${isChallengeWheel ? 'fa-dharmachakra' : 'fa-flask'}"></i> ${isChallengeWheel ? 'PHẦN 3: TEST QUAY THỬ' : 'PHẦN 3: TEST THỬ TRÊN APP'}</span>
+                                <i class="fas ${isTestExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
+                            </h4>
+                            <div style="display: ${isTestExpanded ? 'block' : 'none'};">
+                                <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">${isChallengeWheel ? 'Bấm nút để quay thử ngay trong app. Đây chỉ là mô phỏng, không gửi quà và không kích hoạt OBS.' : 'Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.'}</p>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: ${isChallengeWheel ? 'linear-gradient(135deg,#ef2029,#f59e0b)' : '#8b5cf6'}; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.${isChallengeWheel ? `previewChallengeWheelSpin('${selected.id}')` : `sendSimulatedGift('${selected.id}')`}"><i class="fas ${isChallengeWheel ? 'fa-dharmachakra' : 'fa-play'}"></i> ${isChallengeWheel ? 'Test quay thử' : 'Gửi quà Test'}</button>
+                                    ${isChallengeWheel ? `<button class="gmd-btn" style="flex:0 0 42px;font-size:11px;padding:6px;height:32px;" title="Đặt lại vòng quay" onclick="window.giftMenuDesigner.resetChallengeWheelPreview('${selected.id}')"><i class="fas fa-undo"></i></button>` : '<button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem(\'' + selected.id + '\')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
             }
 
             inspector.innerHTML = `
@@ -8855,6 +8877,21 @@
                 }
             };
             input.click();
+        }
+
+        toggleInspectorSize() {
+            this.inspectorSizeExpanded = this.inspectorSizeExpanded === false ? true : false;
+            this.renderInspector();
+        }
+
+        toggleInspectorAdvanced() {
+            this.inspectorAdvancedExpanded = this.inspectorAdvancedExpanded === false ? true : false;
+            this.renderInspector();
+        }
+
+        toggleInspectorTest() {
+            this.inspectorTestExpanded = this.inspectorTestExpanded === false ? true : false;
+            this.renderInspector();
         }
 
         testGiftJarRandom(itemId) {
