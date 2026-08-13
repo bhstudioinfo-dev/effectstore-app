@@ -267,6 +267,9 @@ class EffectStoreApp {
             // (or stale data left in the static HTML) the first time it's opened.
             tasks.push(this.loadSettings());
         }
+        if (typeof this.getTemplateLayout === 'function') {
+            tasks.push(this.getTemplateLayout('preload'));
+        }
         if (window.giftMenuDesigner && typeof window.giftMenuDesigner.loadDataIfNeeded === 'function') {
             // Same idea for the Gift Menu Designer: load its gift library, goal
             // assets/templates, saved-layouts list and active canvas now, so
