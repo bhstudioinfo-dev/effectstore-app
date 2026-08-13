@@ -6222,6 +6222,22 @@ class EffectStoreApp {
                 await this.loadChallengeWheels().catch(() => {});
             }
             await this.loadEffectsForMapping();
+            this.precacheOwnedEffectsMedia();
+        } catch (_e) {}
+    }
+
+    precacheOwnedEffectsMedia(effects = []) {
+        try {
+            const token = this.authToken || localStorage.getItem('token');
+            if (!token) return;
+            const list = Array.isArray(effects) && effects.length > 0 ? effects : (this.ownedEffects || []);
+            list.forEach(effect => {
+                const effectId = String(effect._id || effect.id || '').trim();
+                if (!effectId || effect.isCustom) return;
+                fetch(`${this.API_URL}/api/stream/effect/${encodeURIComponent(effectId)}?authToken=${encodeURIComponent(token)}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).catch(() => {});
+            });
         } catch (_e) {}
     }
 
@@ -6245,6 +6261,7 @@ class EffectStoreApp {
             const displayEffects = (data && data.success !== false && Array.isArray(data.effects) && data.effects.length > 0)
                 ? [...data.effects]
                 : (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0 ? [...this.ownedEffects] : []);
+            this.precacheOwnedEffectsMedia(displayEffects);
             // Gộp bản sao theo template hoặc nội dung. Các vòng quay cũ có thể
             // chưa có sourceTemplateId nên không được lọc mất khỏi thư viện.
             const seenWheelKeys = new Set();
