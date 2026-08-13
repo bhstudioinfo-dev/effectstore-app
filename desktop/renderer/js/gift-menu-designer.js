@@ -7394,6 +7394,49 @@
                 if (selected.type === 'challenge-wheel') {
                     specificConfigHTML += `<div class="gmd-section"><h4><i class="fas fa-sliders"></i> HÀNH VI VÒNG QUAY</h4><div class="gmd-row"><div class="gmd-field"><label>Thời gian quay (giây)</label><input class="gmd-input" type="number" min="2" max="30" value="${Math.round((selected.durationMs || 6500) / 1000)}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','durationMs',Number(this.value)*1000)"></div><div class="gmd-field"><label>Tự ẩn sau (giây)</label><input class="gmd-input" type="number" min="0" max="60" value="${Math.round((selected.autoHideMs || 7000) / 1000)}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','autoHideMs',Number(this.value)*1000)"></div></div><button class="gmd-btn primary" style="width:100%;margin-top:8px;" onclick="window.giftMenuDesigner.saveChallengeWheel('${selected.id}')"><i class="fas fa-cloud-arrow-up"></i> Lưu cấu hình vòng quay cho Gift Mapping</button></div>`;
                 }
+            } else if (selected.type === 'gift-jar') {
+                specificConfigHTML = `
+                    <div class="gmd-section" style="background:linear-gradient(135deg,rgba(56,189,248,.12),rgba(168,85,247,.08));border-color:rgba(56,189,248,.35);">
+                        <h4><i class="fas fa-circle-info"></i> HŨ QUÀ TẶNG LIVESTREAM</h4>
+                        <div style="font-size:11px;color:#cbd5e1;line-height:1.6;">
+                            <div><b style="color:#38bdf8;">1.</b> Chọn giao diện Hũ sẵn có hoặc nạp ảnh Hũ riêng.</div>
+                            <div><b style="color:#38bdf8;">2.</b> Cài đặt số Xu mục tiêu cho mỗi Hũ.</div>
+                            <div><b style="color:#38bdf8;">3.</b> Khán giả tặng quà trên Live sẽ làm rơi hạt vật lý vào hũ.</div>
+                            <div><b style="color:#38bdf8;">4.</b> Khi Hũ nạp đầy 100%, màn hình sẽ nổ Hũ ăn mừng!</div>
+                        </div>
+                    </div>
+                    <div class="gmd-section">
+                        <h4><i class="fas fa-palette"></i> CẤU HÌNH HŨ QUÀ TẶNG</h4>
+                        <div class="gmd-field"><label>Tiêu đề hũ</label><input class="gmd-input" value="${this.escapeHtml(selected.title || 'HŨ QUÀ TẶNG')}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','title',this.value)"></div>
+                        <div class="gmd-field"><label>Giao diện Hũ (Theme)</label>
+                            <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','theme',this.value)">
+                                <option value="glass" ${(selected.theme || 'glass') === 'glass' ? 'selected' : ''}>Hũ Thủy Tinh (Glass)</option>
+                                <option value="golden" ${selected.theme === 'golden' ? 'selected' : ''}>Hũ Hoàng Gia (Golden)</option>
+                                <option value="chest" ${selected.theme === 'chest' ? 'selected' : ''}>Hũ Rương Kho Báu (Chest)</option>
+                                <option value="diamond" ${selected.theme === 'diamond' ? 'selected' : ''}>Hũ Kim Cương (Diamond)</option>
+                                <option value="custom" ${selected.theme === 'custom' ? 'selected' : ''}>Tải ảnh Hũ riêng của bạn</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field" style="margin-top:8px;">
+                            <button class="gmd-btn primary" style="width:100%;" onclick="window.giftMenuDesigner.uploadCustomJarImage('${selected.id}')"><i class="fas fa-upload"></i> ${selected.customJarImageUrl ? 'Đổi ảnh Hũ riêng' : 'Tải tệp ảnh Hũ riêng (.PNG)'}</button>
+                            ${selected.customJarImageUrl ? `<div style="font-size:10px;color:#34d399;margin-top:4px;word-break:break-all;">✓ Đã nạp ảnh Hũ: ${selected.customJarImageUrl}</div>` : ''}
+                        </div>
+                        <div class="gmd-row" style="margin-top:10px;">
+                            <div class="gmd-field"><label>Mục tiêu (Xu / Hũ)</label><input class="gmd-input" type="number" min="10" max="1000000" value="${selected.targetCoins || 1000}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','targetCoins',Number(this.value))"></div>
+                            <div class="gmd-field"><label>Số Xu hiện tại</label><input class="gmd-input" type="number" min="0" value="${selected.currentCoins || 0}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','currentCoins',Number(this.value))"></div>
+                        </div>
+                        <div class="gmd-field"><label>Loại hạt rơi vật lý</label>
+                            <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','dropItemType',this.value)">
+                                <option value="coin" ${(selected.dropItemType || 'coin') === 'coin' ? 'selected' : ''}>💰 Đồng xu Vàng</option>
+                                <option value="gift_icon" ${selected.dropItemType === 'gift_icon' ? 'selected' : ''}>🌹 Icon Quà TikTok</option>
+                                <option value="heart" ${selected.dropItemType === 'heart' ? 'selected' : ''}>❤️ Trái tim Neon</option>
+                                <option value="star" ${selected.dropItemType === 'star' ? 'selected' : ''}>⭐ Ngôi sao sáng</option>
+                                <option value="gem" ${selected.dropItemType === 'gem' ? 'selected' : ''}>💎 Đá quý Kim Cương</option>
+                            </select>
+                        </div>
+                        <div class="gmd-field gmd-toggle-row"><label>Tự mở nắp & Reset khi đầy Hũ</label><label class="gmd-switch"><input type="checkbox" ${selected.autoResetOnTarget !== false ? 'checked' : ''} onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','autoResetOnTarget',this.checked)"><span></span></label></div>
+                    </div>
+                `;
             } else if (selected.type === 'goal-list') {
                 specificConfigHTML = `
                     <div class="gmd-section">
@@ -8746,6 +8789,49 @@
                     result.classList.add('is-visible');
                 }
             }, duration + 40);
+        }
+
+        updateGiftJarField(itemId, field, value) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+            this.pushHistory('update-gift-jar');
+            item[field] = value;
+            this.renderCanvas();
+            this.updateInspector();
+        }
+
+        async uploadCustomJarImage(itemId) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/png,image/jpeg,image/webp,image/svg+xml';
+            input.onchange = async () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('jarImage', file);
+                try {
+                    const res = await fetch(`${this.apiBase}/api/gift-jar/upload-image`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${this.token}` },
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.success && data.customJarImageUrl) {
+                        item.theme = 'custom';
+                        item.customJarImageUrl = data.customJarImageUrl;
+                        this.renderCanvas();
+                        this.updateInspector();
+                        if (window.app?.showNotification) window.app.showNotification('success', 'Đã nạp ảnh Hũ quà riêng thành công!');
+                    } else {
+                        if (window.app?.showNotification) window.app.showNotification('error', data.error || 'Lỗi nạp ảnh');
+                    }
+                } catch (e) {
+                    if (window.app?.showNotification) window.app.showNotification('error', 'Lỗi kết nối: ' + e.message);
+                }
+            };
+            input.click();
         }
 
         uploadChallengeResultImage(itemId) {

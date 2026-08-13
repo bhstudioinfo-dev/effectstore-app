@@ -1932,6 +1932,52 @@
         return `<div class="gmd-challenge-wheel-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(28,ctx.scale)}px;background:linear-gradient(145deg,#0f766e,#082f49);border:3px solid #5eead4;border-radius:${roundPx(34,ctx.scale)}px;color:#fff;text-align:center;box-shadow:0 0 ${roundPx(30,ctx.scale)}px #22d3ee88;overflow:hidden;"><div style="font-size:${font(ctx,item.titleFontSize,34)}px;font-weight:1000;color:#fef08a;text-shadow:0 0 14px #f59e0b;">🎡 ${text(ctx,item.title || 'VÒNG QUAY THỬ THÁCH')}</div><div style="font-size:${font(ctx,item.subtitleFontSize,18)}px;color:#ccfbf1;margin:${roundPx(8,ctx.scale)}px 0;">Donate đúng quà để kích hoạt</div><div style="position:relative;width:78%;aspect-ratio:1;margin:${roundPx(20,ctx.scale)}px auto 0;border:${roundPx(14,ctx.scale)}px solid #f8fafc;border-radius:50%;background:conic-gradient(${gradient});box-shadow:0 0 0 ${roundPx(10,ctx.scale)}px #ef4444,0 0 ${roundPx(28,ctx.scale)}px #fbbf24aa;"><div style="position:absolute;inset:0;display:grid;place-items:center;"><div style="width:26%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:#2563eb;border:${roundPx(8,ctx.scale)}px solid #fbbf24;font-size:${font(ctx,24,24)}px;font-weight:1000;">QUAY</div></div></div></div>`;
     }
 
+    function renderGiftJar(item) {
+        const title = item.title || 'HŨ QUÀ TẶNG';
+        const targetCoins = Number(item.targetCoins) || 1000;
+        const currentCoins = Number(item.currentCoins) || 0;
+        const percent = Math.min(100, Math.round((currentCoins / targetCoins) * 100));
+        const theme = item.theme || 'glass';
+        
+        let jarSvgBg = `linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)`;
+        let borderColor = `#38bdf8`;
+        let themeIcon = '🏺';
+
+        if (theme === 'golden') {
+            jarSvgBg = `linear-gradient(180deg, rgba(251,191,36,0.2) 0%, rgba(245,158,11,0.1) 100%)`;
+            borderColor = `#fbbf24`;
+            themeIcon = '🏺';
+        } else if (theme === 'chest') {
+            jarSvgBg = `linear-gradient(180deg, rgba(180,83,9,0.3) 0%, rgba(120,53,15,0.2) 100%)`;
+            borderColor = `#f59e0b`;
+            themeIcon = '💎';
+        } else if (theme === 'diamond') {
+            jarSvgBg = `linear-gradient(180deg, rgba(56,189,248,0.25) 0%, rgba(168,85,247,0.15) 100%)`;
+            borderColor = `#c084fc`;
+            themeIcon = '👑';
+        }
+
+        const customImageHtml = item.customJarImageUrl
+            ? `<img src="${item.customJarImageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2;" />`
+            : '';
+
+        return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(20,ctx.scale)}px;background:linear-gradient(145deg,rgba(15,23,42,0.9),rgba(30,41,59,0.9));border:2px solid ${borderColor};border-radius:${roundPx(24,ctx.scale)}px;color:#fff;text-align:center;box-shadow:0 0 ${roundPx(24,ctx.scale)}px ${borderColor}66;overflow:hidden;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;">
+            <div style="font-size:${font(ctx,item.titleFontSize,24)}px;font-weight:900;color:#fef08a;text-shadow:0 0 10px #f59e0b;z-index:3;">${themeIcon} ${text(ctx,title)}</div>
+            <div style="position:relative;width:80%;height:65%;margin:8px 0;border-radius:${roundPx(20,ctx.scale)}px;border:3px dashed ${borderColor}aa;background:${jarSvgBg};display:flex;align-items:flex-end;justify-content:center;overflow:hidden;">
+                ${customImageHtml}
+                <div style="width:100%;height:${percent}%;background:linear-gradient(0deg, #f59e0b, #fbbf24);opacity:0.75;transition:height 0.5s ease;border-radius:0 0 ${roundPx(16,ctx.scale)}px ${roundPx(16,ctx.scale)}px;display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:${font(ctx,18,18)}px;font-weight:900;color:#78350f;text-shadow:0 1px 2px rgba(255,255,255,0.6);">${percent}%</span>
+                </div>
+            </div>
+            <div style="width:90%;z-index:3;">
+                <div style="font-size:${font(ctx,16,16)}px;font-weight:800;color:#38bdf8;margin-bottom:4px;">💰 ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu</div>
+                <div style="width:100%;height:${roundPx(10,ctx.scale)}px;background:rgba(255,255,255,0.15);border-radius:${roundPx(5,ctx.scale)}px;overflow:hidden;">
+                    <div style="width:${percent}%;height:100%;background:linear-gradient(90deg,#38bdf8,#a855f7);border-radius:${roundPx(5,ctx.scale)}px;"></div>
+                </div>
+            </div>
+        </div>`;
+    }
+
     function renderByType(item, options) {
         if (!item) return '';
         const type = item.type || 'gift';
@@ -1950,6 +1996,7 @@
             'talent-live': renderTalentLive,
             'talent-leaderboard': renderTalentLeaderboard,
             'challenge-wheel': renderChallengeWheel,
+            'gift-jar': renderGiftJar,
             'gift-stack-group': renderGiftStackGroup,
             'template-bundle': renderTemplateBundle
         };

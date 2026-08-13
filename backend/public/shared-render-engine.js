@@ -324,8 +324,7 @@
                         const cfg = presetMap[preset] || presetMap.lion;
                         presetIconHTML = `<i class="fas ${cfg.fa}" style="color: #ffffff; font-size: ${players.length === 2 ? roundPx(22, ctx.scale) : roundPx(16, ctx.scale)}px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"></i>`;
                     }
-                    
-                    const bgGlow = (style === 'fire_vs_ice' && players.length === 2) ? (idx === 0 ? '#ef4444' : '#3b82f6') : p.color;
+                              const bgGlow = (style === 'fire_vs_ice' && players.length === 2) ? (idx === 0 ? '#ef4444' : '#3b82f6') : p.color;
                     
                     innerContent = `
                         <div style="width: 100%; height: 100%; border-radius: inherit; background: linear-gradient(135deg, ${bgGlow} 0%, #111 100%); border: 2px solid ${bgGlow}; display: flex; align-items: center; justify-content: center; position: relative;">
@@ -403,7 +402,7 @@
                     const p2Scale = hasLeader ? (p2Leading ? 1.05 : 0.95) : 1;
                     const p1ZIndex = p1Leading ? 10 : 1;
                     const p2ZIndex = p2Leading ? 10 : 1;
-
+ 
                     headersHTML = `
                         <!-- Đội Đỏ (Trái) -->
                         <div style="display: flex; flex: 1; min-width: 0; justify-content: flex-start; transform: translate(${roundPx(p1OffsetX, ctx.scale)}px, ${roundPx(p1OffsetY, ctx.scale)}px) scale(${p1Scale}); transition: transform 0.2s ease, all 0.3s ease; z-index: ${p1ZIndex};">
@@ -446,11 +445,6 @@
                     headersHTML = players.map((p, idx) => {
                         const isLeading = hasLeader && (Number(p.score) || 0) === maxScore;
                         const giftIcon = giftIconFromLibrary(p, ctx.gifts, ctx.apiBase) || '';
-                        // Keep in sync with the desktop preview: this branch only
-                        // renders when players.length !== 2 (the dedicated
-                        // 2-player layout is the `if` branch above), so
-                        // per-team gift icons must stay suppressed here —
-                        // showing them crowds 3+ team PK cards.
                         const giftMedia = giftIcon && players.length === 2
                             ? `<img src="${giftIcon}" style="width: ${roundPx(24, ctx.scale)}px; height: ${roundPx(24, ctx.scale)}px; object-fit: contain; vertical-align: middle;">`
                             : '';
@@ -484,7 +478,7 @@
                         return `
                             <div style="display: flex; flex: 1; min-width: 0; transform: translate(${roundPx(pOffsetX, ctx.scale)}px, ${roundPx(pOffsetY, ctx.scale)}px) scale(${cardScale}); transition: all 0.3s ease; z-index: ${cardZIndex}; overflow: visible; box-sizing: border-box !important;">
                                 <div class="${motionClass}" style="position: relative; display: flex; align-items: center; gap: ${roundPx(8, ctx.scale)}px; flex: 1; min-width: 0; padding: ${isLeading ? `${roundPx(8, ctx.scale)}px ${roundPx(14, ctx.scale)}px` : `${roundPx(6, ctx.scale)}px ${roundPx(12, ctx.scale)}px`}; border-radius: ${roundPx(12, ctx.scale)}px; box-shadow: ${cardShadow}; --anim-speed: ${animSpeed}s; overflow: visible; border: ${isLeading ? 'none' : cardBorder}; --glow-color: ${p.color || '#fbbf24'}; width: 100%; box-sizing: border-box !important;">
-
+                                    
                                     ${isLeading ? `
                                     <!-- Leading Team Gold Sweep Background (No overflow clipping of avatar border) -->
                                     <div style="position: absolute; inset: 0; border-radius: ${roundPx(12, ctx.scale)}px; overflow: hidden; pointer-events: none; z-index: 0; border: ${cardBorder}; box-sizing: border-box !important;">
@@ -503,7 +497,7 @@
                                             <div style="font-weight: 800; font-size: ${pNameSize}px; color: ${nameColorOf(p, p.color)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; line-height: 1.1;">
                                                 ${text(ctx, p.name)}
                                             </div>
-                                            <div style="display: flex; align-items: center; gap: ${roundPx(6, ctx.scale)}px; font-weight: 900; font-size: ${pScoreSize}px; color: ${scoreColorOf(p)}; line-height: 1.1; margin-top: 4px; overflow: hidden; max-width: 100%;">
+                                            <div style="display: flex; align-items: center; gap: ${roundPx(6, ctx.scale)}px; font-weight: 900; font-size: ${pScoreSize}px; color: ${scoreColorOf(p)}; line-height: 1.1; margin-top: ${roundPx(4, ctx.scale)}px; overflow: hidden; max-width: 100%;">
                                                 <span class="gmd-pk-score-text" data-player-index="${idx}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;">${Number(p.score || 0).toLocaleString('vi-VN')}</span>
                                                 ${giftMedia ? `<span style="display: inline-flex; align-items: center; padding: ${roundPx(2, ctx.scale)}px; background: rgba(255,255,255,0.06); border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25)); flex-shrink: 0;">${giftMedia}</span>` : ''}
                                             </div>
@@ -953,10 +947,10 @@
                         animation: gmdLeadingAuraEpic 1.5s ease-in-out infinite !important;
                     }
                     </style>
- 
+
                     ${targetBadgeHTML}
                     ${timerHTML}
- 
+
                     <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; gap: ${roundPx(8, ctx.scale)}px; width: 100%; padding-top:${roundPx(18, ctx.scale)}px; box-sizing:border-box;">
                         
                         <!-- Player Headers -->
@@ -965,9 +959,9 @@
                             ${headersHTML}
                         </div>
                         ` : ''}
- 
+
                         ${pbContainerHTML}
- 
+
                         <!-- Subtitle / Footer -->
                         ${!hideSubtitle ? `
                         <div class="gmd-goal-bar-subtitle" style="font-size: ${subSize}px; color: ${item.useCustomTextColor ? (item.textColor || '#9ca3af') : '#9ca3af'}; text-align: center; font-weight: 600; opacity: 0.9; line-height: 1.2;">${text(ctx, item.subtitleText)}</div>
@@ -1805,30 +1799,183 @@
         const durationSeconds = Math.max(0, Number(raw.durationSeconds) || 180);
         const startedAt = raw.startedAt ? new Date(raw.startedAt).getTime() : 0;
         const elapsed = raw.status === 'running' && startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
-        return { id: raw.id || item.talentCompetitionId || '', title: raw.title || 'CUỘC THI TALENT LIVE', roundLabel: raw.roundLabel || 'VÒNG 1', status: raw.status || 'idle', durationSeconds, remainingSeconds: raw.status === 'running' ? Math.max(0, durationSeconds - elapsed) : Math.max(0, Number(raw.remainingSeconds ?? durationSeconds)), participants, activeTalentId: raw.activeTalentId || participants[0]?.id || '', eventFeed: Array.isArray(raw.eventFeed) ? raw.eventFeed : [], goalAmount: Math.max(0, Number(raw.goalAmount) || 0), donationEffect: raw.donationEffect || 'neon-sweep', showFeed: raw.showFeed !== false, showAvatar: raw.showAvatar !== false, showTop3: raw.showTop3 !== false, maxRanking: Math.max(3, Number(raw.maxRanking) || 8), pointsLabel: raw.pointsLabel || 'điểm' };
+        return {
+            id: raw.id || item.talentCompetitionId || '',
+            title: raw.title || 'CUỘC THI TALENT LIVE',
+            roundLabel: raw.roundLabel || 'VÒNG 1',
+            status: raw.status || 'idle',
+            durationSeconds,
+            remainingSeconds: raw.status === 'running' ? Math.max(0, durationSeconds - elapsed) : Math.max(0, Number(raw.remainingSeconds ?? durationSeconds)),
+            participants,
+            activeTalentId: raw.activeTalentId || participants[0]?.id || '',
+            eventFeed: Array.isArray(raw.eventFeed) ? raw.eventFeed : [],
+            goalAmount: Math.max(0, Number(raw.goalAmount) || 0),
+            donationEffect: raw.donationEffect || 'neon-sweep',
+            showFeed: raw.showFeed !== false,
+            showAvatar: raw.showAvatar !== false,
+            showTop3: raw.showTop3 !== false,
+            maxRanking: Math.max(3, Number(raw.maxRanking) || 8),
+            pointsLabel: raw.pointsLabel || 'điểm'
+        };
     }
-    function talentTime(seconds) { const value = Math.max(0, Math.floor(Number(seconds) || 0)); return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`; }
-    function talentAvatar(person, size, ctx, color) { const name = text(ctx, person.name || 'Talent'); const avatar = assetUrl(person.avatar || '', ctx.apiBase); const initial = safeText(String(person.name || 'T').trim().charAt(0).toUpperCase()); return avatar ? `<img src="${avatar}" alt="${name}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid ${color};box-shadow:0 0 ${roundPx(12, ctx.scale)}px ${color}99;">` : `<div style="width:${size}px;height:${size}px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,${color},#312e81);border:2px solid ${color};box-shadow:0 0 ${roundPx(12, ctx.scale)}px ${color}99;font-size:${Math.max(12, Math.round(size * .42))}px;font-weight:900;color:white;">${initial}</div>`; }
+
+    function talentTime(seconds) {
+        const value = Math.max(0, Math.floor(Number(seconds) || 0));
+        return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+    }
+
+    function talentAvatar(person, size, ctx, color) {
+        const name = text(ctx, person.name || 'Talent');
+        const avatar = assetUrl(person.avatar || '', ctx.apiBase);
+        const initial = safeText(String(person.name || 'T').trim().charAt(0).toUpperCase());
+        return avatar
+            ? `<img src="${avatar}" alt="${name}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid ${color};box-shadow:0 0 ${roundPx(12, ctx.scale)}px ${color}99;">`
+            : `<div style="width:${size}px;height:${size}px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,${color},#312e81);border:2px solid ${color};box-shadow:0 0 ${roundPx(12, ctx.scale)}px ${color}99;font-size:${Math.max(12, Math.round(size * .42))}px;font-weight:900;color:white;">${initial}</div>`;
+    }
+
     function renderTalentLive(item, options) {
-        const ctx = createContext(options); const talent = talentState(item); const active = talent.participants.find((person) => person.id === talent.activeTalentId) || talent.participants[0] || { name: 'Chưa chọn thí sinh', score: 0, roundScore: 0, performance: '' }; const score = Math.max(0, Number(active.roundScore) || 0); const target = talent.goalAmount; const pct = target > 0 ? Math.min(100, Math.round(score / target * 100)) : 0; const primary = item.barColor || '#f43f5e'; const secondary = item.glowColor || '#a855f7'; const feed = talent.eventFeed[0]; const statusText = talent.status === 'running' ? 'ĐANG BIỂU DIỄN' : (talent.status === 'paused' ? 'TẠM DỪNG' : 'CHỜ BẮT ĐẦU');
-        return `<style>@keyframes gmdTalentSweep { from { transform:translateX(-130%); } to { transform:translateX(230%); } } @keyframes gmdTalentPulse { 0%,100% { filter:drop-shadow(0 0 5px ${primary}); } 50% { filter:drop-shadow(0 0 18px ${secondary}); } } @keyframes gmdTalentFire { 0%,100% { filter:drop-shadow(0 0 6px #ef4444) saturate(1.1); } 50% { filter:drop-shadow(0 -4px 20px #f59e0b) saturate(1.8); } } @keyframes gmdTalentElectric { 0%,100% { filter:drop-shadow(0 0 5px #38bdf8); } 25% { filter:drop-shadow(0 0 18px #a5f3fc) brightness(1.35); } 27% { filter:drop-shadow(0 0 5px #38bdf8); } 70% { filter:drop-shadow(0 0 16px #818cf8); } } .gmd-talent-effect-fire { background:linear-gradient(90deg,#991b1b,#ef4444,#f59e0b,#fef08a) !important; animation:gmdTalentFire 1.05s ease-in-out infinite !important; } .gmd-talent-effect-electric { background:linear-gradient(90deg,#1d4ed8,#38bdf8,#e0f2fe,#6366f1) !important; animation:gmdTalentElectric .9s steps(2,end) infinite !important; } .gmd-talent-live-widget,.gmd-talent-ranking-widget { border-width:3px !important; }</style><div class="gmd-talent-live-widget" style="width:100%;height:100%;box-sizing:border-box;position:relative;overflow:hidden;padding:${roundPx(20, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(135deg, rgba(23,13,44,.98), rgba(12,18,45,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}99`)};border-radius:${roundPx(24, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}33, inset 0 1px 0 rgba(255,255,255,.12)`};display:flex;flex-direction:column;gap:${roundPx(12, ctx.scale)}px;color:white;"><div style="display:flex;justify-content:space-between;align-items:center;font-size:${font(ctx, item.headerFontSize, 21)}px;font-weight:900;letter-spacing:.04em;"><span style="color:${primary};text-shadow:0 0 ${roundPx(12, ctx.scale)}px ${primary};">🔴 ${text(ctx, statusText)} <span style="color:#cbd5e1;font-size:.8em;">• ${text(ctx, talent.roundLabel)}</span></span><span class="gmd-talent-time" data-running="${talent.status === 'running'}" data-started-at="${talent.status === 'running' ? new Date(Date.now() - ((talent.durationSeconds - talent.remainingSeconds) * 1000)).toISOString() : ''}" data-duration-secs="${talent.durationSeconds}" style="font-variant-numeric:tabular-nums;padding:${roundPx(5, ctx.scale)}px ${roundPx(10, ctx.scale)}px;border-radius:999px;background:rgba(255,255,255,.08);color:#fef3c7;">${talentTime(talent.remainingSeconds)}</span></div><div style="display:flex;align-items:center;gap:${roundPx(16, ctx.scale)}px;min-height:0;flex:1;">${talent.showAvatar ? talentAvatar(active, roundPx(92, ctx.scale), ctx, primary) : ''}<div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:${roundPx(5, ctx.scale)}px;"><div style="font-size:${font(ctx, item.fontSize, 36)}px;font-weight:1000;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 ${roundPx(14, ctx.scale)}px ${primary};">${text(ctx, active.name || 'Chưa chọn thí sinh')}</div><div style="font-size:${font(ctx, item.subtitleFontSize, 20)}px;color:#ddd6fe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${text(ctx, active.performance || 'Tiết mục đang chờ')}</div><div style="display:flex;justify-content:space-between;align-items:end;margin-top:${roundPx(4, ctx.scale)}px;gap:8px;"><span style="font-size:${font(ctx, item.valueFontSize, 28)}px;color:#fff;font-weight:900;">${score.toLocaleString('vi-VN')} <small style="color:#c4b5fd;font-size:.55em;">${text(ctx, talent.pointsLabel)}</small></span>${target > 0 ? `<span style="font-size:${font(ctx, 18, 18)}px;color:#fce7f3;font-weight:800;">${pct}%</span>` : ''}</div><div style="height:${length(ctx, item.barHeight, 22)}px;border-radius:999px;background:rgba(0,0,0,.45);padding:3px;overflow:hidden;box-shadow:inset 0 1px 4px rgba(0,0,0,.6);"><div class="gmd-talent-live-progress gmd-bar-style-${talent.donationEffect} ${talent.donationEffect === 'fire' ? 'gmd-talent-effect-fire' : (talent.donationEffect === 'electric' ? 'gmd-talent-effect-electric' : '')}" style="height:100%;width:${target > 0 ? pct : 100}%;min-width:${score > 0 ? '3%' : '0'};position:relative;overflow:hidden;border-radius:999px;background:linear-gradient(90deg,${primary},${secondary},#fbbf24);box-shadow:0 0 ${roundPx(16, ctx.scale)}px ${primary};animation:${talent.donationEffect === 'fire' || talent.donationEffect === 'electric' ? 'none' : (talent.status === 'running' ? 'gmdTalentPulse 1.5s ease-in-out infinite' : 'none')};transition:width .45s ease;"><span style="position:absolute;inset:0;width:35%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.8),transparent);animation:gmdTalentSweep 1.4s linear infinite;"></span></div></div></div></div>${talent.showFeed && feed ? `<div style="border-top:1px solid rgba(255,255,255,.1);padding-top:${roundPx(8, ctx.scale)}px;color:#fce7f3;font-size:${font(ctx, item.feedFontSize, 17)}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">💝 <b>${text(ctx, feed.nickname || 'Khán giả')}</b> ủng hộ <b style="color:#fbbf24;">${text(ctx, feed.giftName || 'quà')} +${Number(feed.points || 0).toLocaleString('vi-VN')}</b></div>` : ''}</div>`;
-    }
-    function renderTalentLeaderboardBase(item, options) {
-        const ctx = createContext(options); const talent = talentState(item); const primary = item.barColor || '#fbbf24'; const ranked = [...talent.participants].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0)); const medals = ['🥇', '🥈', '🥉']; const podium = ranked.slice(0, 3); const rows = ranked.slice(3, talent.maxRanking); const podiumOrder = [podium[1], podium[0], podium[2]];
-        return `<div class="gmd-talent-ranking-widget" style="width:100%;height:100%;box-sizing:border-box;overflow:hidden;padding:${roundPx(18, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(155deg, rgba(34,20,52,.98), rgba(9,13,31,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}aa`)};border-radius:${roundPx(26, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}2e`};display:flex;flex-direction:column;color:white;"><div style="text-align:center;font-size:${font(ctx, item.fontSize, 32)}px;font-weight:1000;color:${primary};text-shadow:0 0 ${roundPx(14, ctx.scale)}px ${primary};letter-spacing:.03em;">🏆 ${text(ctx, item.name || talent.title || 'BẢNG XẾP HẠNG TALENT')}</div><div style="text-align:center;color:#c4b5fd;font-size:${font(ctx, item.subtitleFontSize, 16)}px;font-weight:800;margin:${roundPx(3, ctx.scale)}px 0 ${roundPx(10, ctx.scale)}px;">${text(ctx, talent.roundLabel)} • CẬP NHẬT TRỰC TIẾP</div>${talent.showTop3 ? `<div class="gmd-talent-podium" style="display:flex;align-items:end;justify-content:center;gap:${roundPx(8, ctx.scale)}px;min-height:${roundPx(190, ctx.scale)}px;flex-shrink:0;">${podiumOrder.map((person, index) => { if (!person) return '<div style="flex:1;"></div>'; const rank = index === 0 ? 2 : (index === 1 ? 1 : 3); const color = rank === 1 ? '#fbbf24' : (rank === 2 ? '#cbd5e1' : '#d97706'); const height = rank === 1 ? 120 : (rank === 2 ? 92 : 76); return `<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:${roundPx(4, ctx.scale)}px;">${talentAvatar(person, roundPx(rank === 1 ? 58 : 46, ctx.scale), ctx, color)}<div style="font-size:${font(ctx, item.rowFontSize, 17)}px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${text(ctx, person.name || 'Talent')}</div><div style="font-size:${font(ctx, item.valueFontSize, 15)}px;color:${color};font-weight:900;">${Number(person.score || 0).toLocaleString('vi-VN')}</div><div style="width:100%;height:${roundPx(height, ctx.scale)}px;display:flex;align-items:start;justify-content:center;padding-top:${roundPx(7, ctx.scale)}px;box-sizing:border-box;border-radius:${roundPx(12, ctx.scale)}px ${roundPx(12, ctx.scale)}px 0 0;background:linear-gradient(180deg,${color}88,${color}24);border:1px solid ${color}99;box-shadow:0 0 ${roundPx(13, ctx.scale)}px ${color}55;font-size:${font(ctx, 27, 27)}px;">${medals[rank - 1]}</div></div>`; }).join('')}</div>` : ''}<div style="display:flex;flex-direction:column;gap:${roundPx(6, ctx.scale)}px;margin-top:${roundPx(10, ctx.scale)}px;overflow:hidden;flex:1;">${rows.map((person, index) => { const rank = index + 4; const active = person.id === talent.activeTalentId; return `<div style="display:flex;align-items:center;gap:${roundPx(10, ctx.scale)}px;padding:${roundPx(7, ctx.scale)}px ${roundPx(12, ctx.scale)}px;border-radius:${roundPx(11, ctx.scale)}px;background:${active ? `${primary}28` : 'rgba(255,255,255,.045)'};border:1px solid ${active ? `${primary}99` : 'rgba(255,255,255,.07)'};min-height:0;"><span style="width:${roundPx(24, ctx.scale)}px;color:${active ? primary : '#94a3b8'};font-size:${font(ctx, item.rowFontSize, 18)}px;font-weight:1000;">${rank}</span>${talent.showAvatar ? talentAvatar(person, roundPx(28, ctx.scale), ctx, active ? primary : '#64748b') : ''}<span style="flex:1;min-width:0;font-size:${font(ctx, item.rowFontSize, 18)}px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${text(ctx, person.name || 'Talent')}</span><span style="color:${active ? primary : '#e2e8f0'};font-size:${font(ctx, item.valueFontSize, 16)}px;font-weight:900;">${Number(person.score || 0).toLocaleString('vi-VN')}</span></div>`; }).join('')}</div></div>`;
-    }
-    function renderTalentLeaderboard(item, options) {
-        const talent = talentState(item);
-        if (talent.showTop3 !== false) return renderTalentLeaderboardBase(item, options);
         const ctx = createContext(options);
-        const primary = item.barColor || '#fbbf24';
-        const ranked = [...talent.participants].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0)).slice(0, talent.maxRanking);
-        const rows = ranked.map((person, index) => { const active = person.id === talent.activeTalentId; return `<div style="display:flex;align-items:center;gap:${roundPx(8, ctx.scale)}px;padding:${roundPx(6, ctx.scale)}px ${roundPx(10, ctx.scale)}px;border-radius:${roundPx(11, ctx.scale)}px;background:${active ? `${primary}28` : 'rgba(255,255,255,.045)'};border:1px solid ${active ? `${primary}99` : 'rgba(255,255,255,.07)'};box-sizing:border-box;width:100%;"><span style="width:${roundPx(24, ctx.scale)}px;color:${active ? primary : '#94a3b8'};font-size:${font(ctx, item.rowFontSize, 16)}px;font-weight:1000;">${index + 1}</span>${talent.showAvatar ? talentAvatar(person, roundPx(24, ctx.scale), ctx, active ? primary : '#64748b') : ''}<span style="flex:1;min-width:0;font-size:${font(ctx, item.rowFontSize, 16)}px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${text(ctx, person.name || 'Talent')}</span><span style="color:${active ? primary : '#e2e8f0'};font-size:${font(ctx, item.valueFontSize, 16)}px;font-weight:900;">${Number(person.score || 0).toLocaleString('vi-VN')}</span></div>`; }).join('');
-        return `<div class="gmd-talent-ranking-widget" style="width:100%;height:100%;box-sizing:border-box;overflow:hidden;padding:${roundPx(18, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(155deg, rgba(34,20,52,.98), rgba(9,13,31,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}aa`)};border-radius:${roundPx(26, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}2e`};display:flex;flex-direction:column;color:white;"><div style="text-align:center;font-size:${font(ctx, item.fontSize, 32)}px;font-weight:1000;color:${primary};text-shadow:0 0 ${roundPx(14, ctx.scale)}px ${primary};letter-spacing:.03em;">🏆 ${text(ctx, item.name || talent.title || 'BẢNG XẾP HẠNG TALENT')}</div><div style="text-align:center;color:#c4b5fd;font-size:${font(ctx, item.subtitleFontSize, 16)}px;font-weight:800;margin:${roundPx(3, ctx.scale)}px 0 ${roundPx(10, ctx.scale)}px;">${text(ctx, talent.roundLabel)} • CẬP NHẬT TRỰC TIẾP</div><div class="gmd-talent-ranking-list gmd-talent-ranking-list-only" style="display:flex;flex-direction:column;gap:${roundPx(5, ctx.scale)}px;margin:${roundPx(10, ctx.scale)}px auto 0;overflow:hidden;flex:1;width:100%;max-width:760px;">${rows}</div></div>`;
+        const talent = talentState(item);
+        const active = talent.participants.find((person) => person.id === talent.activeTalentId) || talent.participants[0] || { name: 'Chưa chọn thí sinh', score: 0, roundScore: 0, performance: '' };
+        const score = Math.max(0, Number(active.roundScore) || 0);
+        const target = talent.goalAmount;
+        const pct = target > 0 ? Math.min(100, Math.round(score / target * 100)) : 0;
+        const primary = item.barColor || '#f43f5e';
+        const secondary = item.glowColor || '#a855f7';
+        const feed = talent.eventFeed[0];
+        const statusText = talent.status === 'running' ? 'ĐANG BIỂU DIỄN' : (talent.status === 'paused' ? 'TẠM DỪNG' : 'CHỜ BẮT ĐẦU');
+        return `
+            <style>
+                @keyframes gmdTalentSweep { from { transform:translateX(-130%); } to { transform:translateX(230%); } }
+                @keyframes gmdTalentPulse { 0%,100% { filter:drop-shadow(0 0 5px ${primary}); } 50% { filter:drop-shadow(0 0 18px ${secondary}); } }
+                @keyframes gmdTalentFire { 0%,100% { filter:drop-shadow(0 0 6px #ef4444) saturate(1.1); } 50% { filter:drop-shadow(0 -4px 20px #f59e0b) saturate(1.8); } }
+                @keyframes gmdTalentElectric { 0%,100% { filter:drop-shadow(0 0 5px #38bdf8); } 25% { filter:drop-shadow(0 0 18px #a5f3fc) brightness(1.35); } 27% { filter:drop-shadow(0 0 5px #38bdf8); } 70% { filter:drop-shadow(0 0 16px #818cf8); } }
+                .gmd-talent-effect-fire { background:linear-gradient(90deg,#991b1b,#ef4444,#f59e0b,#fef08a) !important; animation:gmdTalentFire 1.05s ease-in-out infinite !important; }
+                .gmd-talent-effect-electric { background:linear-gradient(90deg,#1d4ed8,#38bdf8,#e0f2fe,#6366f1) !important; animation:gmdTalentElectric .9s steps(2,end) infinite !important; }
+                .gmd-talent-live-widget,.gmd-talent-ranking-widget { border-width:3px !important; }
+            </style>
+            <div class="gmd-talent-live-widget" style="width:100%;height:100%;box-sizing:border-box;position:relative;overflow:hidden;padding:${roundPx(20, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(135deg, rgba(23,13,44,.98), rgba(12,18,45,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}99`)};border-radius:${roundPx(24, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}33, inset 0 1px 0 rgba(255,255,255,.12)`};display:flex;flex-direction:column;gap:${roundPx(12, ctx.scale)}px;color:white;">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:${font(ctx, item.headerFontSize, 21)}px;font-weight:900;letter-spacing:.04em;">
+                    <span style="color:${primary};text-shadow:0 0 ${roundPx(12, ctx.scale)}px ${primary};">🔴 ${text(ctx, statusText)} <span style="color:#cbd5e1;font-size:.8em;">• ${text(ctx, talent.roundLabel)}</span></span>
+                    <span class="gmd-talent-time" data-running="${talent.status === 'running'}" data-started-at="${talent.status === 'running' ? new Date(Date.now() - ((talent.durationSeconds - talent.remainingSeconds) * 1000)).toISOString() : ''}" data-duration-secs="${talent.durationSeconds}" style="font-variant-numeric:tabular-nums;padding:${roundPx(5, ctx.scale)}px ${roundPx(10, ctx.scale)}px;border-radius:999px;background:rgba(255,255,255,.08);color:#fef3c7;">${talentTime(talent.remainingSeconds)}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:${roundPx(16, ctx.scale)}px;min-height:0;flex:1;">
+                    ${talent.showAvatar ? talentAvatar(active, roundPx(92, ctx.scale), ctx, primary) : ''}
+                    <div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:${roundPx(5, ctx.scale)}px;">
+                        <div style="font-size:${font(ctx, item.fontSize, 36)}px;font-weight:1000;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 ${roundPx(14, ctx.scale)}px ${primary};">${text(ctx, active.name || 'Chưa chọn thí sinh')}</div>
+                        <div style="font-size:${font(ctx, item.subtitleFontSize, 20)}px;color:#ddd6fe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${text(ctx, active.performance || 'Tiết mục đang chờ')}</div>
+                        <div style="display:flex;justify-content:space-between;align-items:end;margin-top:${roundPx(4, ctx.scale)}px;gap:8px;"><span class="gmd-talent-live-score" style="font-size:${font(ctx, item.valueFontSize, 28)}px;color:#fff;font-weight:900;">${score.toLocaleString('vi-VN')} <small style="color:#c4b5fd;font-size:.55em;">${text(ctx, talent.pointsLabel)}</small></span>${target > 0 ? `<span class="gmd-talent-live-pct" style="font-size:${font(ctx, 18, 18)}px;color:#fce7f3;font-weight:800;">${pct}%</span>` : ''}</div>
+                        <div style="height:${length(ctx, item.barHeight, 22)}px;border-radius:999px;background:rgba(0,0,0,.45);padding:3px;overflow:hidden;box-shadow:inset 0 1px 4px rgba(0,0,0,.6);">
+                            <div class="gmd-talent-live-progress gmd-bar-style-${talent.donationEffect} ${talent.donationEffect === 'fire' ? 'gmd-talent-effect-fire' : (talent.donationEffect === 'electric' ? 'gmd-talent-effect-electric' : '')}" style="height:100%;width:${target > 0 ? pct : 100}%;min-width:${score > 0 ? '3%' : '0'};position:relative;overflow:hidden;border-radius:999px;background:linear-gradient(90deg,${primary},${secondary},#fbbf24);box-shadow:0 0 ${roundPx(16, ctx.scale)}px ${primary};animation:${talent.donationEffect === 'fire' || talent.donationEffect === 'electric' ? 'none' : (talent.status === 'running' ? 'gmdTalentPulse 1.5s ease-in-out infinite' : 'none')};transition:width .45s ease;">
+                                <span style="position:absolute;inset:0;width:35%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.8),transparent);animation:gmdTalentSweep 1.4s linear infinite;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ${talent.showFeed && feed ? `<div style="border-top:1px solid rgba(255,255,255,.1);padding-top:${roundPx(8, ctx.scale)}px;color:#fce7f3;font-size:${font(ctx, item.feedFontSize, 17)}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">💝 <b>${text(ctx, feed.nickname || 'Khán giả')}</b> ủng hộ <b style="color:#fbbf24;">${text(ctx, feed.giftName || 'quà')} +${Number(feed.points || 0).toLocaleString('vi-VN')}</b></div>` : ''}
+            </div>
+        `;
     }
+
+    function renderTalentLeaderboard(item, options) {
+        const ctx = createContext(options);
+        const talent = talentState(item);
+        const primary = item.barColor || '#fbbf24';
+        const ranked = [...talent.participants].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+        const medals = ['🥇', '🥈', '🥉'];
+        const podium = ranked.slice(0, 3);
+        const rows = (talent.showTop3 ? ranked.slice(3) : ranked).slice(0, talent.maxRanking);
+        const listMode = !talent.showTop3;
+        const podiumOrder = [podium[1], podium[0], podium[2]];
+        return `
+            <div class="gmd-talent-ranking-widget" style="width:100%;height:100%;box-sizing:border-box;overflow:hidden;padding:${roundPx(18, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(155deg, rgba(34,20,52,.98), rgba(9,13,31,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}aa`)};border-radius:${roundPx(26, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}2e`};display:flex;flex-direction:column;color:white;">
+                <div style="text-align:center;font-size:${font(ctx, item.fontSize, 32)}px;font-weight:1000;color:${primary};text-shadow:0 0 ${roundPx(14, ctx.scale)}px ${primary};letter-spacing:.03em;">🏆 ${text(ctx, item.name || talent.title || 'BẢNG XẾP HẠNG TALENT')}</div>
+                <div style="text-align:center;color:#c4b5fd;font-size:${font(ctx, item.subtitleFontSize, 16)}px;font-weight:800;margin:${roundPx(3, ctx.scale)}px 0 ${roundPx(10, ctx.scale)}px;">${text(ctx, talent.roundLabel)} • CẬP NHẬT TRỰC TIẾP</div>
+                ${talent.showTop3 ? `<div class="gmd-talent-podium" style="display:flex;align-items:end;justify-content:center;gap:${roundPx(8, ctx.scale)}px;min-height:${roundPx(190, ctx.scale)}px;flex-shrink:0;max-width:680px;width:100%;margin:0 auto;">
+                    ${podiumOrder.map((person, index) => {
+                        if (!person) return '<div style="flex:1;"></div>';
+                        const rank = index === 0 ? 2 : (index === 1 ? 1 : 3);
+                        const color = rank === 1 ? '#fbbf24' : (rank === 2 ? '#cbd5e1' : '#d97706');
+                        const height = rank === 1 ? 120 : (rank === 2 ? 92 : 76);
+                        return `<div style="flex:1;min-width:0;max-width:190px;display:flex;flex-direction:column;align-items:center;gap:${roundPx(4, ctx.scale)}px;">
+                            ${talentAvatar(person, roundPx(rank === 1 ? 58 : 46, ctx.scale), ctx, color)}
+                            <div style="font-size:${font(ctx, item.rowFontSize, 17)}px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${text(ctx, person.name || 'Talent')}</div>
+                            <div style="font-size:${font(ctx, item.valueFontSize, 15)}px;color:${color};font-weight:900;">${Number(person.score || 0).toLocaleString('vi-VN')}</div>
+                            <div style="width:100%;height:${roundPx(height, ctx.scale)}px;display:flex;align-items:start;justify-content:center;padding-top:${roundPx(7, ctx.scale)}px;box-sizing:border-box;border-radius:${roundPx(12, ctx.scale)}px ${roundPx(12, ctx.scale)}px 0 0;background:linear-gradient(180deg,${color}88,${color}24);border:1px solid ${color}99;box-shadow:0 0 ${roundPx(13, ctx.scale)}px ${color}55;font-size:${font(ctx, 27, 27)}px;">${medals[rank - 1]}</div>
+                        </div>`;
+                    }).join('')}
+                </div>` : ''}
+                <div class="gmd-talent-ranking-list ${listMode ? 'gmd-talent-ranking-list-only' : ''}" style="display:flex;flex-direction:column;gap:${roundPx(listMode ? 5 : 6, ctx.scale)}px;margin:${roundPx(listMode ? 10 : 10, ctx.scale)}px auto 0;overflow:hidden;flex:1;width:100%;max-width:${listMode ? '760px' : 'none'};">
+                    ${rows.map((person, index) => {
+                        const rank = listMode ? index + 1 : index + 4;
+                        const active = person.id === talent.activeTalentId;
+                        return `<div style="display:flex;align-items:center;gap:${roundPx(listMode ? 8 : 10, ctx.scale)}px;padding:${roundPx(listMode ? 6 : 7, ctx.scale)}px ${roundPx(listMode ? 10 : 12, ctx.scale)}px;border-radius:${roundPx(11, ctx.scale)}px;background:${active ? `${primary}28` : 'rgba(255,255,255,.045)'};border:1px solid ${active ? `${primary}99` : 'rgba(255,255,255,.07)'};min-height:0;box-shadow:${active ? `0 0 14px ${primary}22` : 'none'};">
+                            <span style="width:${roundPx(24, ctx.scale)}px;color:${active ? primary : '#94a3b8'};font-size:${font(ctx, item.rowFontSize, 18)}px;font-weight:1000;">${rank}</span>
+                            ${talent.showAvatar ? talentAvatar(person, roundPx(listMode ? 24 : 28, ctx.scale), ctx, active ? primary : '#64748b') : ''}
+                            <span style="flex:1;min-width:0;font-size:${font(ctx, item.rowFontSize, listMode ? 16 : 18)}px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${text(ctx, person.name || 'Talent')}</span>
+                            <span style="color:${active ? primary : '#e2e8f0'};font-size:${font(ctx, item.valueFontSize, 16)}px;font-weight:900;">${Number(person.score || 0).toLocaleString('vi-VN')}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+
     function renderChallengeWheel(item, options) {
-        const ctx = createContext(options); const segments = Array.isArray(item.segments) && item.segments.length >= 2 ? item.segments : [{label:'Hát một đoạn',color:'#8b5cf6'},{label:'Nhảy 10 giây',color:'#ec4899'},{label:'Kể chuyện vui',color:'#f59e0b'},{label:'Tạo dáng',color:'#06b6d4'}]; const step = 360 / segments.length; const gradient = segments.map((segment,index)=>`${segment.color || '#8b5cf6'} ${index*step}deg ${(index+1)*step}deg`).join(',');
+        const ctx = createContext(options);
+        const segments = Array.isArray(item.segments) && item.segments.length >= 2 ? item.segments : [
+            { label: 'Hát một đoạn', color: '#8b5cf6' }, { label: 'Nhảy 10 giây', color: '#ec4899' },
+            { label: 'Kể chuyện vui', color: '#f59e0b' }, { label: 'Tạo dáng', color: '#06b6d4' }
+        ];
+        const step = 360 / segments.length;
+        const gradient = segments.map((segment, index) => `${segment.color || '#8b5cf6'} ${index * step}deg ${(index + 1) * step}deg`).join(',');
         return `<div class="gmd-challenge-wheel-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(28,ctx.scale)}px;background:linear-gradient(145deg,#0f766e,#082f49);border:3px solid #5eead4;border-radius:${roundPx(34,ctx.scale)}px;color:#fff;text-align:center;box-shadow:0 0 ${roundPx(30,ctx.scale)}px #22d3ee88;overflow:hidden;"><div style="font-size:${font(ctx,item.titleFontSize,34)}px;font-weight:1000;color:#fef08a;text-shadow:0 0 14px #f59e0b;">🎡 ${text(ctx,item.title || 'VÒNG QUAY THỬ THÁCH')}</div><div style="font-size:${font(ctx,item.subtitleFontSize,18)}px;color:#ccfbf1;margin:${roundPx(8,ctx.scale)}px 0;">Donate đúng quà để kích hoạt</div><div style="position:relative;width:78%;aspect-ratio:1;margin:${roundPx(20,ctx.scale)}px auto 0;border:${roundPx(14,ctx.scale)}px solid #f8fafc;border-radius:50%;background:conic-gradient(${gradient});box-shadow:0 0 0 ${roundPx(10,ctx.scale)}px #ef4444,0 0 ${roundPx(28,ctx.scale)}px #fbbf24aa;"><div style="position:absolute;inset:0;display:grid;place-items:center;"><div style="width:26%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:#2563eb;border:${roundPx(8,ctx.scale)}px solid #fbbf24;font-size:${font(ctx,24,24)}px;font-weight:1000;">QUAY</div></div></div></div>`;
+    }
+
+    function renderGiftJar(item) {
+        const title = item.title || 'HŨ QUÀ TẶNG';
+        const targetCoins = Number(item.targetCoins) || 1000;
+        const currentCoins = Number(item.currentCoins) || 0;
+        const percent = Math.min(100, Math.round((currentCoins / targetCoins) * 100));
+        const theme = item.theme || 'glass';
+        
+        let jarSvgBg = `linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)`;
+        let borderColor = `#38bdf8`;
+        let themeIcon = '🏺';
+
+        if (theme === 'golden') {
+            jarSvgBg = `linear-gradient(180deg, rgba(251,191,36,0.2) 0%, rgba(245,158,11,0.1) 100%)`;
+            borderColor = `#fbbf24`;
+            themeIcon = '🏺';
+        } else if (theme === 'chest') {
+            jarSvgBg = `linear-gradient(180deg, rgba(180,83,9,0.3) 0%, rgba(120,53,15,0.2) 100%)`;
+            borderColor = `#f59e0b`;
+            themeIcon = '💎';
+        } else if (theme === 'diamond') {
+            jarSvgBg = `linear-gradient(180deg, rgba(56,189,248,0.25) 0%, rgba(168,85,247,0.15) 100%)`;
+            borderColor = `#c084fc`;
+            themeIcon = '👑';
+        }
+
+        const customImageHtml = item.customJarImageUrl
+            ? `<img src="${item.customJarImageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2;" />`
+            : '';
+
+        return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(20,ctx.scale)}px;background:linear-gradient(145deg,rgba(15,23,42,0.9),rgba(30,41,59,0.9));border:2px solid ${borderColor};border-radius:${roundPx(24,ctx.scale)}px;color:#fff;text-align:center;box-shadow:0 0 ${roundPx(24,ctx.scale)}px ${borderColor}66;overflow:hidden;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;">
+            <div style="font-size:${font(ctx,item.titleFontSize,24)}px;font-weight:900;color:#fef08a;text-shadow:0 0 10px #f59e0b;z-index:3;">${themeIcon} ${text(ctx,title)}</div>
+            <div style="position:relative;width:80%;height:65%;margin:8px 0;border-radius:${roundPx(20,ctx.scale)}px;border:3px dashed ${borderColor}aa;background:${jarSvgBg};display:flex;align-items:flex-end;justify-content:center;overflow:hidden;">
+                ${customImageHtml}
+                <div style="width:100%;height:${percent}%;background:linear-gradient(0deg, #f59e0b, #fbbf24);opacity:0.75;transition:height 0.5s ease;border-radius:0 0 ${roundPx(16,ctx.scale)}px ${roundPx(16,ctx.scale)}px;display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:${font(ctx,18,18)}px;font-weight:900;color:#78350f;text-shadow:0 1px 2px rgba(255,255,255,0.6);">${percent}%</span>
+                </div>
+            </div>
+            <div style="width:90%;z-index:3;">
+                <div style="font-size:${font(ctx,16,16)}px;font-weight:800;color:#38bdf8;margin-bottom:4px;">💰 ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu</div>
+                <div style="width:100%;height:${roundPx(10,ctx.scale)}px;background:rgba(255,255,255,0.15);border-radius:${roundPx(5,ctx.scale)}px;overflow:hidden;">
+                    <div style="width:${percent}%;height:100%;background:linear-gradient(90deg,#38bdf8,#a855f7);border-radius:${roundPx(5,ctx.scale)}px;"></div>
+                </div>
+            </div>
+        </div>`;
     }
 
     function renderByType(item, options) {
@@ -1849,6 +1996,7 @@
             'talent-live': renderTalentLive,
             'talent-leaderboard': renderTalentLeaderboard,
             'challenge-wheel': renderChallengeWheel,
+            'gift-jar': renderGiftJar,
             'gift-stack-group': renderGiftStackGroup,
             'template-bundle': renderTemplateBundle
         };
@@ -1860,6 +2008,9 @@
         const step = segments.length ? 360 / segments.length : 90;
         const labelFontSize = Number(item.labelFontSize) > 0 ? Number(item.labelFontSize) : Math.max(10, Math.min(18, 90 / Math.max(1, segments.length)));
         const labels = `<div class="gmd-wheel-static-labels">${segments.map((segment, index) => { const angle = index * step + step / 2; const radians = (angle - 90) * Math.PI / 180; const left = 50 + Math.cos(radians) * 29; const top = 50 + Math.sin(radians) * 29; const radial = angle + 90; const readable = radial > 180 && radial < 360 ? radial + 180 : radial; return `<span style="left:${left}%;top:${top}%;width:22%;max-width:22%;white-space:normal;font-size:${labelFontSize}px;line-height:1.02;--label-angle:${readable}deg;">${safeText(segment.label)}</span>`; }).join('')}</div>`;
+        // Re-rendering the designer can reuse the same widget node. Strip any
+        // previously injected label layer before adding the current one so a
+        // refresh never leaves two copies of each challenge text stacked.
         const cleanRendered = rendered.replace(/<div class="gmd-wheel-static-labels">[\s\S]*?<\/div>/g, '');
         const withLabels = cleanRendered.replace('<div style="position:absolute;inset:0;display:grid;place-items:center;">', `${labels}<div style="position:absolute;inset:0;display:grid;place-items:center;">`);
         const finalHtml = withLabels.replace('class="gmd-challenge-wheel-widget"', `class="gmd-challenge-wheel-widget" data-ring-effect="${safeText(item.ringEffect || 'gold')}" data-hide-border="${item.hideBorder ? 'true' : 'false'}" data-hide-bg="${item.hideBg ? 'true' : 'false'}"`).replace('style="', `style="--gmd-wheel-border:${safeText(item.borderColor || '#d6a84f')};--gmd-wheel-text:${safeText(item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff')};--gmd-wheel-bg:${safeText(fadeBackground(item.hideBg ? 'transparent' : (item.useCustomBg ? (item.useCustomBgGradient ? 'linear-gradient(135deg,' + (item.bgColorGradientFrom || item.bgColor || '#0f172a') + ',' + (item.bgColorGradientTo || '#1e1b4b') + ')' : (item.bgColor || '#0f172a')) : 'linear-gradient(145deg,#0f766e,#082f49)'), item))};`);

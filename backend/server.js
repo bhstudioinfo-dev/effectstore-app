@@ -12,7 +12,7 @@ process.on('unhandledRejection', (reason) => {
     console.error('❌ [unhandledRejection] Backend continues running despite:', reason);
 });
 
-try { require('dotenv').config(); } catch (_e) {}
+try { require('dotenv').config(); } catch (_e) { }
 const startupTrace = (label) => {
     if (process.env.EFFECTSTORE_STARTUP_TRACE === 'true') console.log(`[startup] ${label}`);
 };
@@ -143,7 +143,7 @@ app.get('/uploads/thumbs/:filename', async (req, res, next) => {
             try {
                 fs.mkdirSync(dataPaths.thumbsDir, { recursive: true });
                 fs.copyFileSync(legacyPath, localPath);
-            } catch (_e) {}
+            } catch (_e) { }
             return next();
         }
         const { isAssetStoreConfigured, downloadThumbnail } = require('./services/effectAssetStore');
@@ -283,12 +283,12 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/effectsto
         await seedInitialGifts();
         databaseSchemaReady = true;
         console.log(`✅ MongoDB Connected (schema v${CURRENT_SCHEMA_VERSION})`);
-        initOBSConnection().catch(() => {});
+        initOBSConnection().catch(() => { });
     })
     .catch(err => {
         databaseSchemaReady = false;
         console.warn('⚠️  Local MongoDB Connection Warning (App running in standalone mode):', err.message);
-        initOBSConnection().catch(() => {});
+        initOBSConnection().catch(() => { });
     });
 
 // ========================================
@@ -326,7 +326,7 @@ try {
                             info.req.wsIdentity = { type: 'user', userId: String(user._id), isAdmin: user.isAdmin === true };
                             return done(true);
                         }
-                    } catch (_err) {}
+                    } catch (_err) { }
                 }
 
                 const remoteIp = String(info.req.socket?.remoteAddress || '');
@@ -435,7 +435,7 @@ async function initOBSConnection() {
             );
             return;
         }
-    } catch (_e) {}
+    } catch (_e) { }
     await obsService.connect(
         process.env.OBS_HOST || '127.0.0.1',
         process.env.OBS_PORT || 4455,
@@ -615,7 +615,7 @@ app.get('/api/system/status', async (_req, res) => {
         let obsSources = { gift_menu: false, effect_player: false };
         try {
             obsSources = await obsService.getFoundationSourceStatus();
-        } catch (_e) {}
+        } catch (_e) { }
         const databaseConnected = mongoose.connection.readyState === 1;
         return res.json({
             success: true,

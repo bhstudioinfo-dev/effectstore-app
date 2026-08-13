@@ -416,6 +416,25 @@
             renderContract: { family: 'challenge-wheel-widget', previewBranch: 'widget-challenge-wheel', overlayBranch: 'widget-challenge-wheel', supportsRotation: false, supportsResize: true, usesScaledWrapper: true, defaultRefSize: { width: 720, height: 760 } },
             exportContract: { coordinateSource: 'stage-and-logical', scalesPositionFromSafeArea: true, preservesNestedChildren: false }
         },
+        'gift-jar': {
+            type: 'gift-jar',
+            defaults: {
+                w: 480, h: 600, width: 480, height: 600,
+                title: 'HŨ QUÀ TẶNG',
+                subtitle: 'Mô phỏng rơi quà vật lý',
+                theme: 'glass',
+                customJarImageUrl: '',
+                targetCoins: 1000,
+                currentCoins: 0,
+                dropItemType: 'coin',
+                autoResetOnTarget: true,
+                celebrationSound: 'jackpot',
+                visible: true, locked: false
+            },
+            inspectorTabs: ['basic', 'advanced', 'data', 'test', 'layers'],
+            renderContract: { family: 'gift-jar-widget', previewBranch: 'widget-gift-jar', overlayBranch: 'widget-gift-jar', supportsRotation: false, supportsResize: true, usesScaledWrapper: true, defaultRefSize: { width: 480, height: 600 } },
+            exportContract: { coordinateSource: 'stage-and-logical', scalesPositionFromSafeArea: true, preservesNestedChildren: false }
+        },
         'gift-stack-group': {
             type: 'gift-stack-group',
             defaults: {

@@ -2109,6 +2109,80 @@
       }
     }
 
+    function triggerGiftJarDrop(data) {
+      const jarWidgets = document.querySelectorAll('.gmd-gift-jar-widget');
+      if (!jarWidgets || !jarWidgets.length) return;
+      
+      const coins = Number(data.coins) || 10;
+      const currentCoins = Number(data.currentCoins) || 0;
+      const targetCoins = Number(data.targetCoins) || 1000;
+      const percent = Math.min(100, Math.round((currentCoins / targetCoins) * 100));
+
+      jarWidgets.forEach((widget) => {
+        const badge = widget.querySelector('div:last-child > div:first-child');
+        const fillBar = widget.querySelector('div:last-child > div:last-child > div');
+        const innerFill = widget.querySelector('div:nth-child(2) > div:last-child');
+        if (badge) badge.textContent = `💰 ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu`;
+        if (fillBar) fillBar.style.width = `${percent}%`;
+        if (innerFill) {
+          innerFill.style.height = `${percent}%`;
+          const span = innerFill.querySelector('span');
+          if (span) span.textContent = `${percent}%`;
+        }
+
+        const jarContainer = widget.querySelector('div:nth-child(2)');
+        if (jarContainer) {
+          const itemType = data.dropItemType || 'coin';
+          let symbol = '💰';
+          if (itemType === 'gift_icon') symbol = data.giftIcon || '🌹';
+          else if (itemType === 'heart') symbol = '❤️';
+          else if (itemType === 'star') symbol = '⭐';
+          else if (itemType === 'gem') symbol = '💎';
+
+          const particleCount = Math.min(12, Math.max(2, Math.round(coins / 5)));
+          for (let i = 0; i < particleCount; i++) {
+            setTimeout(() => {
+              const particle = document.createElement('div');
+              particle.textContent = symbol;
+              const randomLeft = 15 + Math.random() * 70;
+              particle.style.cssText = `
+                position: absolute; top: -30px; left: ${randomLeft}%;
+                font-size: 22px; z-index: 10; pointer-events: none;
+                transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.6s ease;
+                filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+              `;
+              jarContainer.appendChild(particle);
+
+              requestAnimationFrame(() => {
+                const dropHeight = jarContainer.clientHeight - 40;
+                particle.style.transform = `translateY(${dropHeight}px) rotate(${Math.random() * 360}deg)`;
+              });
+
+              setTimeout(() => {
+                particle.style.opacity = '0';
+                setTimeout(() => particle.remove(), 600);
+              }, 700);
+            }, i * 80);
+          }
+        }
+
+        if (data.reachedTarget) {
+          widget.style.animation = 'gmdJarJackpotPulse 1s ease 3';
+          const celebrateBadge = document.createElement('div');
+          celebrateBadge.innerHTML = `🎉 NỔ HŨ JACKPOT! 🎉<br><span style="font-size:12px;color:#fef08a;">+${coins} Xu từ ${data.nickname || 'Khán giả'}</span>`;
+          celebrateBadge.style.cssText = `
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #ef4444, #f59e0b); color: #fff;
+            padding: 12px 20px; border-radius: 16px; font-weight: 900; font-size: 16px;
+            text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 100;
+            animation: fadeIn 0.3s ease;
+          `;
+          widget.appendChild(celebrateBadge);
+          setTimeout(() => celebrateBadge.remove(), 4000);
+        }
+      });
+    }
+
     function connectGiftMenuPlaybackSocket() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsToken = new URLSearchParams(window.location.search).get('wsToken') || '';
@@ -2135,6 +2209,8 @@
             syncGiftMenuPlaybackVisibility();
           } else if (packet.event === 'challenge_wheel_spin') {
             showChallengeWheel(packet.data || {});
+          } else if (packet.event === 'gift_jar_drop') {
+            triggerGiftJarDrop(packet.data || {});
           } else if (packet.event === 'effect_queue_empty') {
             setGiftMenuPlaybackVisibility(false);
           }
