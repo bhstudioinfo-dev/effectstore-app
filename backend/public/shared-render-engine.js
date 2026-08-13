@@ -1940,22 +1940,18 @@
         const percent = Math.min(100, Math.round((currentCoins / targetCoins) * 100));
         const theme = item.theme || 'glass';
         
-        let jarSvgBg = `linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)`;
         let borderColor = `#38bdf8`;
         let themeIcon = '🏺';
 
-        if (theme === 'golden') {
-            jarSvgBg = `linear-gradient(180deg, rgba(251,191,36,0.2) 0%, rgba(245,158,11,0.1) 100%)`;
+        if (theme === 'golden' || theme === 'hu-nam-cao-cap') {
             borderColor = `#fbbf24`;
-            themeIcon = '🏺';
-        } else if (theme === 'chest') {
-            jarSvgBg = `linear-gradient(180deg, rgba(180,83,9,0.3) 0%, rgba(120,53,15,0.2) 100%)`;
+            themeIcon = '✨';
+        } else if (theme === 'chest' || theme === 'hu-nam-bau') {
             borderColor = `#f59e0b`;
-            themeIcon = '💎';
-        } else if (theme === 'diamond') {
-            jarSvgBg = `linear-gradient(180deg, rgba(56,189,248,0.25) 0%, rgba(168,85,247,0.15) 100%)`;
+            themeIcon = '🍄';
+        } else if (theme === 'diamond' || theme === 'hu-nu-bau') {
             borderColor = `#c084fc`;
-            themeIcon = '👑';
+            themeIcon = '🌸';
         }
 
         let jarImageUrl = item.customJarImageUrl || '';
@@ -1968,40 +1964,41 @@
             jarImageUrl = base.replace(/\/$/, '') + jarImageUrl;
         }
 
-        const customImageHtml = jarImageUrl
-            ? `<img src="${jarImageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;" onerror="this.style.display='none'" />`
-            : '';
-
-        const defaultGlassJarSvg = `<svg viewBox="0 0 200 240" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;">
-            <defs>
-                <linearGradient id="jarGlassGrad_${item.id || 'def'}" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
-                    <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.15"/>
-                    <stop offset="100%" stop-color="#0284c7" stop-opacity="0.25"/>
-                </linearGradient>
-            </defs>
-            <!-- Jar Cap -->
-            <rect x="55" y="10" width="90" height="20" rx="6" fill="#f59e0b" stroke="#78350f" stroke-width="2"/>
-            <rect x="65" y="30" width="70" height="12" rx="4" fill="#fbbf24" stroke="#78350f" stroke-width="1.5"/>
-            <!-- Jar Glass Body -->
-            <path d="M 45 42 C 30 55, 20 80, 20 120 C 20 180, 35 220, 100 220 C 165 220, 180 180, 180 120 C 180 80, 170 55, 155 42 Z" fill="url(#jarGlassGrad_${item.id || 'def'})" stroke="${borderColor}" stroke-width="4"/>
-            <!-- Glass Shine Highlight -->
-            <path d="M 35 60 C 28 80, 28 140, 38 180" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
-        </svg>`;
-
-        return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(16,ctx.scale)}px;background:linear-gradient(145deg,rgba(15,23,42,0.92),rgba(30,41,59,0.92));border:2px solid ${borderColor};border-radius:${roundPx(24,ctx.scale)}px;color:#fff;text-align:center;box-shadow:0 0 ${roundPx(24,ctx.scale)}px ${borderColor}66;overflow:hidden;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;">
-            <div style="font-size:${font(ctx,item.titleFontSize,22)}px;font-weight:900;color:#fef08a;text-shadow:0 0 10px #f59e0b;z-index:5;margin-top:2px;">${themeIcon} ${text(ctx,title)}</div>
-            <div style="position:relative;width:85%;height:68%;margin:4px 0;border-radius:${roundPx(20,ctx.scale)}px;border:2px dashed ${borderColor}66;background:${jarSvgBg};display:flex;align-items:flex-end;justify-content:center;overflow:hidden;">
-                ${defaultGlassJarSvg}
-                ${customImageHtml}
-                <div style="width:100%;height:${percent}%;background:linear-gradient(0deg, #f59e0b, #fbbf24);opacity:0.75;transition:height 0.5s ease;border-radius:0 0 ${roundPx(16,ctx.scale)}px ${roundPx(16,ctx.scale)}px;display:flex;align-items:center;justify-content:center;z-index:3;">
-                    <span style="font-size:${font(ctx,18,18)}px;font-weight:900;color:#78350f;text-shadow:0 1px 2px rgba(255,255,255,0.6);">${percent}%</span>
+        const jarVisualHtml = jarImageUrl
+            ? `<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                <!-- Liquid Fill Level inside PNG Jar Mask -->
+                <div style="position:absolute;inset:0;-webkit-mask-image:url('${jarImageUrl}');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('${jarImageUrl}');mask-size:contain;mask-repeat:no-repeat;mask-position:center;display:flex;align-items:flex-end;z-index:2;">
+                    <div style="width:100%;height:${percent}%;background:linear-gradient(0deg, #f59e0b, #fbbf24);opacity:0.85;transition:height 0.5s ease;box-shadow:0 0 20px #fbbf24;"></div>
                 </div>
+                <!-- Main PNG Jar Image Overlay -->
+                <img src="${jarImageUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 0 15px ${borderColor}88);" />
+               </div>`
+            : `<div style="position:relative;width:100%;height:100%;display:flex;align-items:flex-end;justify-content:center;">
+                <svg viewBox="0 0 200 240" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;">
+                    <defs>
+                        <linearGradient id="jarGlassGrad_${item.id || 'def'}" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
+                            <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.15"/>
+                            <stop offset="100%" stop-color="#0284c7" stop-opacity="0.25"/>
+                        </linearGradient>
+                    </defs>
+                    <rect x="55" y="10" width="90" height="20" rx="6" fill="#f59e0b" stroke="#78350f" stroke-width="2"/>
+                    <rect x="65" y="30" width="70" height="12" rx="4" fill="#fbbf24" stroke="#78350f" stroke-width="1.5"/>
+                    <path d="M 45 42 C 30 55, 20 80, 20 120 C 20 180, 35 220, 100 220 C 165 220, 180 180, 180 120 C 180 80, 170 55, 155 42 Z" fill="url(#jarGlassGrad_${item.id || 'def'})" stroke="${borderColor}" stroke-width="4"/>
+                    <path d="M 35 60 C 28 80, 28 140, 38 180" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+                </svg>
+                <div style="width:70%;height:${percent}%;background:linear-gradient(0deg, #f59e0b, #fbbf24);opacity:0.8;transition:height 0.5s ease;border-radius:0 0 ${roundPx(30,ctx.scale)}px ${roundPx(30,ctx.scale)}px;z-index:2;"></div>
+               </div>`;
+
+        return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(8,ctx.scale)}px;background:transparent;color:#fff;text-align:center;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;">
+            <div style="font-size:${font(ctx,item.titleFontSize,20)}px;font-weight:900;color:#fef08a;text-shadow:0 0 12px #f59e0b, 0 2px 4px rgba(0,0,0,0.8);z-index:5;background:rgba(15,23,42,0.8);padding:4px 14px;border-radius:20px;border:1px solid ${borderColor}aa;">${themeIcon} ${text(ctx,title)}</div>
+            <div style="position:relative;width:92%;height:74%;margin:4px 0;display:flex;align-items:center;justify-content:center;">
+                ${jarVisualHtml}
             </div>
-            <div style="width:90%;z-index:5;margin-bottom:2px;">
-                <div style="font-size:${font(ctx,15,15)}px;font-weight:800;color:#38bdf8;margin-bottom:4px;">💰 ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu</div>
+            <div style="width:95%;z-index:5;background:rgba(15,23,42,0.85);padding:6px 10px;border-radius:14px;border:1px solid ${borderColor}aa;box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+                <div style="font-size:${font(ctx,14,14)}px;font-weight:900;color:#38bdf8;margin-bottom:3px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">💰 ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu (${percent}%)</div>
                 <div style="width:100%;height:${roundPx(10,ctx.scale)}px;background:rgba(255,255,255,0.15);border-radius:${roundPx(5,ctx.scale)}px;overflow:hidden;">
-                    <div style="width:${percent}%;height:100%;background:linear-gradient(90deg,#38bdf8,#a855f7);border-radius:${roundPx(5,ctx.scale)}px;"></div>
+                    <div style="width:${percent}%;height:100%;background:linear-gradient(90deg,#38bdf8,#a855f7);border-radius:${roundPx(5,ctx.scale)}px;box-shadow:0 0 8px #38bdf8;"></div>
                 </div>
             </div>
         </div>`;
