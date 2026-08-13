@@ -280,30 +280,35 @@ router.post('/setup-effect', authMiddleware, async (req, res) => {
 router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
     try {
         const layoutId = req.body?.layoutId;
-        if (!isValidResourceId(layoutId)) {
-            return res.status(400).json({ success: false, message: 'Thiết kế xuất OBS không hợp lệ' });
+        let publishedLayout = null;
+        if (layoutId && isValidResourceId(layoutId)) {
+            publishedLayout = await GiftMenuLayout.findOne(ownedResourceFilter(
+                layoutId,
+                req.userId,
+                { isTemplate: false }
+            ));
         }
-
-        if (!obsService.isConnected()) {
-            const config = await getObsConnectionConfig(req.userId);
-            await obsService.connect(config.host, config.port, config.password);
-        }
-
-        if (!obsService.isConnected()) {
-            return res.status(503).json({ success: false, message: 'OBS chưa kết nối' });
-        }
-
-        // Browsing/activating layouts only changes the editor. Publishing the
-        // file consumed by OBS happens exclusively through "Export to OBS".
-        const publishedLayout = await GiftMenuLayout.findOne(ownedResourceFilter(
-            layoutId,
-            req.userId,
-            { isTemplate: false }
-        ));
         if (!publishedLayout) {
-            return res.status(404).json({ success: false, message: 'Không tìm thấy thiết kế để xuất OBS' });
+            publishedLayout = await GiftMenuLayout.findOne({ userId: req.userId, isActive: true, isTemplate: false })
+                || await GiftMenuLayout.findOne({ userId: req.userId, isTemplate: false });
         }
-        const user = await User.findById(req.userId);
+        if (!publishedLayout) {
+            publishedLayout = await GiftMenuLayout.create({
+                userId: req.userId,
+                name: 'Bảng quà mặc định',
+                items: [],
+                exportedItems: [],
+                isActive: true,
+                isTemplate: false
+            });
+        }
+
+        let user = req.user || await User.findById(req.userId);
+        if (!user && req.userId) {
+            const { mirrorUserLocally } = require('../services/localUserMirror');
+            await mirrorUserLocally({ id: req.userId, email: `${req.userId}@local.user` });
+            user = await User.findById(req.userId);
+        }
         if (!user) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
         const entitlements = getEntitlements(user);
         const exportViolation = validateDesignerItems(publishedLayout.items, entitlements) ||
