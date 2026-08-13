@@ -15,11 +15,20 @@ const { getEntitlements, upgradePayload } = require('../config/planEntitlements'
 // the bare catalog metadata once from the central server and cache it
 // locally — from then on this effect resolves fully offline, same pattern
 // already used for the encrypted video file itself.
+const mirroredEffectsCache = new Map();
+
 async function mirrorEffectFromCentral(effectId) {
+    if (!effectId) return null;
+    if (mirroredEffectsCache.has(effectId)) return mirroredEffectsCache.get(effectId);
     const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
     if (!cloudApiUrl) return null;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 600);
+    timer.unref?.();
+
     try {
-        const response = await fetch(`${cloudApiUrl}/api/effects/item/${effectId}`);
+        const response = await fetch(`${cloudApiUrl}/api/effects/item/${effectId}`, { signal: controller.signal });
         if (!response.ok) return null;
         const data = await response.json();
         if (!data?.success || !data.effect) return null;
@@ -39,9 +48,13 @@ async function mirrorEffectFromCentral(effectId) {
             },
             { upsert: true, setDefaultsOnInsert: true, runValidators: false }
         );
-        return await Effect.findById(effectId).lean().catch(() => null);
+        const doc = await Effect.findById(effectId).lean().catch(() => null);
+        if (doc) mirroredEffectsCache.set(effectId, doc);
+        return doc;
     } catch (_error) {
         return null;
+    } finally {
+        clearTimeout(timer);
     }
 }
 
@@ -188,23 +201,30 @@ async function isCustomEffectMediaAvailable(effect, options = {}) {
 async function getUserRecord(userId) {
     if (!userId) return null;
     let user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
-    if (!user || (user.purchasedEffects && user.purchasedEffects.length === 0)) {
+    if (!user) {
         try {
             const { getCloudSessionToken, getAnyCloudSessionToken } = require('./cloudSessionTokenStore');
             const cloudToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
-            const DEFAULT_CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com';
-            const cloudApiUrl = String(process.env.CLOUD_API_URL || DEFAULT_CLOUD_API_URL).trim().replace(/\/+$/, '');
+            const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
             if (cloudToken && cloudApiUrl) {
-                const res = await fetch(`${cloudApiUrl}/api/auth/me`, {
-                    headers: { 'Authorization': `Bearer ${cloudToken}` }
-                });
-                if (res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    if (data.success && data.user) {
-                        const { mirrorUserLocally } = require('./localUserMirror');
-                        await mirrorUserLocally(data.user);
-                        user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 600);
+                timer.unref?.();
+                try {
+                    const res = await fetch(`${cloudApiUrl}/api/auth/me`, {
+                        headers: { 'Authorization': `Bearer ${cloudToken}` },
+                        signal: controller.signal
+                    });
+                    if (res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        if (data.success && data.user) {
+                            const { mirrorUserLocally } = require('./localUserMirror');
+                            await mirrorUserLocally(data.user);
+                            user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+                        }
                     }
+                } finally {
+                    clearTimeout(timer);
                 }
             }
         } catch (_e) {}
