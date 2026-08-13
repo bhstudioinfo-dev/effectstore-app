@@ -170,6 +170,14 @@ class PlaybackManager {
     handleEffectPlayerEvent(event, data = {}, onFinishedCallback) {
         if (!this.current || !['test_mapping', 'preview_effect', 'live_mapping'].includes(this.current.playbackType)) return false;
         if (!this.pendingPlayerRequestId || data.requestId !== this.pendingPlayerRequestId) return false;
+
+        if (event === 'effect_player_play_started') {
+            this.currentStartedAt = data.startedAt || Date.now();
+            this.currentEndsAt = this.currentStartedAt + (this.current?.duration || 3000);
+            eventBus.emit('effect_playback_started', this.current);
+            return true;
+        }
+
         if (event !== 'effect_player_play_finished' && event !== 'effect_player_play_failed') return false;
 
         const reason = event === 'effect_player_play_finished' ? (data.reason || 'finished') : (data.message || 'failed');

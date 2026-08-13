@@ -126,9 +126,22 @@
                 video.addEventListener('error', () => {
                     if (video === activeVideo) failPlayback('Unable to load effect media');
                 }, { once: true });
-                safetyTimer = window.setTimeout(() => {
-                    if (video === activeVideo) finishPlayback('duration_timeout');
-                }, durationMs);
+                video.addEventListener('playing', () => {
+                    if (video === activeVideo) {
+                        notify('effect_player_play_started', {
+                            requestId: request.requestId,
+                            effectId: request.effectId,
+                            playbackType: request.playbackType,
+                            startedAt: Date.now()
+                        });
+                        if (!safetyTimer) {
+                            const fallbackMs = Math.max((durationMs || 5000) + 5000, 15000);
+                            safetyTimer = window.setTimeout(() => {
+                                if (video === activeVideo) finishPlayback('duration_timeout');
+                            }, fallbackMs);
+                        }
+                    }
+                }, { once: true });
 
                 try {
                     video.currentTime = 0;
