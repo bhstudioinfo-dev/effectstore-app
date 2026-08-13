@@ -733,10 +733,9 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             if (!obsService.isConnected()) {
                 return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
             }
-            await obsService.ensureEffectPlayerSource();
-            const sourceStatus = await obsService.getFoundationSourceStatus();
-            if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req, 1000)) {
-                return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
+            obsService.ensureEffectPlayerSource().catch(() => {});
+            if (!await waitForEffectPlayerReady(req, 150)) {
+                return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS. Vui lòng mở nguồn OBS Browser.' });
             }
         }
 

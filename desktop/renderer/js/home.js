@@ -5891,7 +5891,10 @@ class EffectStoreApp {
         const buttons = document.querySelectorAll('.btn-test[data-mapping-id]');
         if (!buttons.length) return;
 
-        const localTestBusy = this.testMappingTimer && this.testMappingTimer.until > Date.now();
+        const localTestBusy = Boolean(
+            (this.testMappingTimer && this.testMappingTimer.until > Date.now()) ||
+            this.activeTestMappingId
+        );
         const busy = this.isEffectQueueBusy() || localTestBusy;
         const remainingSeconds = localTestBusy
             ? Math.max(0, (this.testMappingTimer.until - Date.now()) / 1000).toFixed(1)
