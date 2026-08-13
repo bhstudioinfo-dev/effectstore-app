@@ -298,12 +298,6 @@ async function streamEffectById(req, res) {
             }
         }
 
-        // Fallback 4: not on this machine at all yet — fetch into local cache
-        if (!streamPath || !fs.existsSync(streamPath)) {
-            const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
-            if (fetchedPath) streamPath = fetchedPath;
-        }
-
         if (streamPath && fs.existsSync(streamPath)) {
             if (streamPath.includes('encrypted')) {
                 res.setHeader('Cache-Control', 'private, no-store');
@@ -318,9 +312,15 @@ async function streamEffectById(req, res) {
             }
         }
 
-        // Fallback 5: Stream online from Cloud Server AND save to disk for instant future plays
+        // Fallback: Stream online from Cloud Server immediately (0ms start delay) and cache to disk
         const proxied = await relayEffectFromCloud(effectId, req, res);
         if (proxied) return;
+
+        const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
+        if (fetchedPath && fs.existsSync(fetchedPath)) {
+            res.setHeader('Cache-Control', 'private, no-store');
+            return streamDecryptedVideo(fetchedPath, req, res);
+        }
 
         console.error(`❌ Video file NOT FOUND for effect (${effectId})`);
         return res.status(404).json({ error: 'Video file not found' });
