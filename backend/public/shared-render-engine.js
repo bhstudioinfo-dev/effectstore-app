@@ -1964,11 +1964,29 @@
             jarImageUrl = base.replace(/\/$/, '') + jarImageUrl;
         }
 
+        const dropType = item.dropItemType || 'heart';
+        let particleEmoji = '❤️';
+        if (dropType === 'coin') particleEmoji = '💰';
+        else if (dropType === 'gift_icon') particleEmoji = '🎁';
+        else if (dropType === 'star') particleEmoji = '⭐';
+        else if (dropType === 'gem') particleEmoji = '💎';
+
+        const maxParticles = 90;
+        const particleCount = Math.min(maxParticles, Math.max(percent > 0 ? 5 : 0, Math.floor((percent / 100) * maxParticles)));
+        
+        const stackedParticlesHtml = Array.from({ length: particleCount }, (_, i) => {
+            const rot = ((i * 47) % 70) - 35;
+            const sz = 16 + (i % 4) * 4;
+            return `<span style="font-size:${font(ctx, sz, sz)}px;transform:rotate(${rot}deg);filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6));display:inline-block;margin:1px;user-select:none;">${particleEmoji}</span>`;
+        }).join('');
+
         const jarVisualHtml = jarImageUrl
             ? `<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                <!-- Liquid Fill Level inside PNG Jar Mask -->
-                <div style="position:absolute;inset:0;-webkit-mask-image:url('${jarImageUrl}');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('${jarImageUrl}');mask-size:contain;mask-repeat:no-repeat;mask-position:center;display:flex;align-items:flex-end;z-index:2;">
-                    <div style="width:100%;height:${percent}%;background:linear-gradient(0deg, #f59e0b, #fbbf24);opacity:0.85;transition:height 0.5s ease;box-shadow:0 0 20px #fbbf24;"></div>
+                <!-- Stacked Physical Particles inside PNG Jar Mask -->
+                <div style="position:absolute;inset:0;-webkit-mask-image:url('${jarImageUrl}');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('${jarImageUrl}');mask-size:contain;mask-repeat:no-repeat;mask-position:center;display:flex;align-items:flex-end;justify-content:center;z-index:2;padding:12% 10%;">
+                    <div style="width:100%;height:${percent}%;display:flex;flex-wrap:wrap-reverse;align-content:flex-start;justify-content:center;overflow:hidden;transition:height 0.4s ease;gap:2px;">
+                        ${stackedParticlesHtml}
+                    </div>
                 </div>
                 <!-- Main PNG Jar Image Overlay -->
                 <img src="${jarImageUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 0 15px ${borderColor}88);" />
@@ -1987,7 +2005,9 @@
                     <path d="M 45 42 C 30 55, 20 80, 20 120 C 20 180, 35 220, 100 220 C 165 220, 180 180, 180 120 C 180 80, 170 55, 155 42 Z" fill="url(#jarGlassGrad_${item.id || 'def'})" stroke="${borderColor}" stroke-width="4"/>
                     <path d="M 35 60 C 28 80, 28 140, 38 180" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
                 </svg>
-                <div style="width:70%;height:${percent}%;background:linear-gradient(0deg, #f59e0b, #fbbf24);opacity:0.8;transition:height 0.5s ease;border-radius:0 0 ${roundPx(30,ctx.scale)}px ${roundPx(30,ctx.scale)}px;z-index:2;"></div>
+                <div style="width:75%;height:${percent}%;display:flex;flex-wrap:wrap-reverse;align-content:flex-start;justify-content:center;overflow:hidden;transition:height 0.4s ease;z-index:2;padding-bottom:15px;">
+                    ${stackedParticlesHtml}
+                </div>
                </div>`;
 
         return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(8,ctx.scale)}px;background:transparent;color:#fff;text-align:center;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;">
