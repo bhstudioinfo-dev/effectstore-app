@@ -96,7 +96,14 @@ const optionalAuthMiddleware = async (req, res, next) => {
             return next();
         }
         const { decoded, verifiedByCloud } = await resolveUserIdFromToken(token);
-        const user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+        let user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+        if (!user && decoded.userId) {
+            try {
+                const fallbackEmail = decoded.email || `${decoded.userId}@local.user`;
+                await mirrorUserLocally({ id: decoded.userId, email: fallbackEmail, isAdmin: Boolean(decoded.isAdmin) });
+                user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+            } catch (_e) {}
+        }
         if (user && user.isActive !== false) {
             req.userId = decoded.userId;
             req.user = user;
@@ -104,6 +111,10 @@ const optionalAuthMiddleware = async (req, res, next) => {
             req.machineId = decoded.machineId || null;
             const algorithm = require('jsonwebtoken').decode(token, { complete: true })?.header?.alg;
             if (algorithm === 'RS256' || verifiedByCloud) rememberCloudSessionToken(decoded.userId, token);
+        } else if (decoded.userId) {
+            req.userId = decoded.userId;
+            req.user = { _id: decoded.userId, email: decoded.email || `${decoded.userId}@local.user`, isAdmin: Boolean(decoded.isAdmin) };
+            req.isAdmin = Boolean(decoded.isAdmin);
         } else {
             req.userId = null;
             req.user = null;

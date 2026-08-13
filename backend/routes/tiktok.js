@@ -262,8 +262,22 @@ router.get('/mappings', optionalAuthMiddleware, async (req, res) => {
 // Available effects for the canonical Gift Mapping picker
 router.get('/available-effects', optionalAuthMiddleware, async (req, res) => {
     try {
-        if (!req.userId) return res.json({ success: true, effects: [] });
-        const effects = await getUserAvailableEffects(req.userId);
+        let effects = req.userId ? await getUserAvailableEffects(req.userId) : [];
+        if (!effects || effects.length === 0) {
+            const Effect = require('../models/Effect');
+            const allStore = await Effect.find({ isActive: true, category: { $ne: 'menu_template' } }).lean().catch(() => []);
+            effects = allStore.map(e => ({
+                id: e._id.toString(),
+                _id: e._id.toString(),
+                name: e.name,
+                fileUrl: e.fileUrl || `/api/stream/effect/${e._id}`,
+                previewUrl: e.previewUrl || `/api/stream/effect/${e._id}`,
+                thumbUrl: e.thumbUrl || '',
+                duration: e.duration || 5,
+                icon: e.icon || '🎬',
+                isOwned: true
+            }));
+        }
         res.json({ success: true, effects });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
