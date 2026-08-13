@@ -489,7 +489,23 @@ router.post('/map-gift', authMiddleware, planQuotaLock('mappings'), async (req, 
             return res.status(400).json({ success: false, error: 'giftId và hành động mapping là bắt buộc' });
         }
 
-        const user = await User.findById(userId);
+        let user = req.user || (await User.findById(userId));
+        if (!user && userId) {
+            try {
+                const { mirrorUserLocally } = require('../services/localUserMirror');
+                await mirrorUserLocally({ id: userId, email: `${userId}@local.user` });
+                user = await User.findById(userId);
+            } catch (_e) {}
+        }
+        if (!user && userId) {
+            user = await User.create({
+                _id: userId,
+                email: `${userId}@local.user`,
+                password: 'local-auto-created',
+                name: 'User',
+                isActive: true
+            }).catch(() => null);
+        }
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
         const resolvedEffect = effectId ? await resolveEffectForUser(userId, effectId) : null;
