@@ -6227,9 +6227,9 @@ class EffectStoreApp {
                 );
             }
             const data = await res.json().catch(() => ({ success: true, effects: this.storeEffects || [] }));
-            const displayEffects = (data && data.success !== false && Array.isArray(data.effects))
+            const displayEffects = (data && data.success !== false && Array.isArray(data.effects) && data.effects.length > 0)
                 ? [...data.effects]
-                : (this.storeEffects || []);
+                : (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0 ? [...this.ownedEffects] : []);
             // Gộp bản sao theo template hoặc nội dung. Các vòng quay cũ có thể
             // chưa có sourceTemplateId nên không được lọc mất khỏi thư viện.
             const seenWheelKeys = new Set();
