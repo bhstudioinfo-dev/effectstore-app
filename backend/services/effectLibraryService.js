@@ -237,11 +237,52 @@ async function getUserAvailableEffects(userId) {
                 .map((item) => normalizePurchasedEffect(item?.effectId, user._id, true))
                 .filter(Boolean)
         );
+
+        // Include free / default effects for all users
+        const freeEffects = await Effect.find({
+            isActive: true,
+            category: { $ne: 'menu_template' },
+            $or: [{ isFree: true }, { price: 0 }, { isDefault: true }]
+        }).sort({ uses: -1 }).lean().catch(() => []);
+        if (freeEffects.length > 0) {
+            purchased.push(...freeEffects.map((effect) => normalizePurchasedEffect(effect, user._id, true)).filter(Boolean));
+        }
+
+        // If user has no purchased or free query matches, fallback to all active effects
+        if (purchased.length === 0) {
+            const fallbackEffects = await Effect.find({ isActive: true, category: { $ne: 'menu_template' } }).sort({ uses: -1 }).limit(20).lean().catch(() => []);
+            purchased.push(...fallbackEffects.map((effect) => normalizePurchasedEffect(effect, user._id, true)).filter(Boolean));
+        }
     }
 
     const custom = (user.customEffects || [])
         .map((effect) => normalizeCustomEffect(effect, user))
         .filter(Boolean);
+
+    // Auto-discover local custom effects from disk
+    if (dataPaths?.customEffectsDir && fs.existsSync(dataPaths.customEffectsDir)) {
+        try {
+            const dirs = fs.readdirSync(dataPaths.customEffectsDir, { withFileTypes: true });
+            for (const d of dirs) {
+                if (!d.isDirectory()) continue;
+                const effectId = d.name;
+                if (custom.some(c => c._id === effectId || c.id === effectId)) continue;
+                const metaPath = path.join(dataPaths.customEffectsDir, effectId, 'metadata.json');
+                if (fs.existsSync(metaPath)) {
+                    try {
+                        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+                        custom.push(normalizeCustomEffect({
+                            localId: effectId,
+                            name: meta.name || 'Hiệu ứng cá nhân',
+                            duration: meta.duration || 5,
+                            fileUrl: meta.fileUrl || `/uploads/custom-effects/${effectId}/video.webm`,
+                            thumbUrl: meta.thumbUrl || ''
+                        }, user));
+                    } catch (_e) {}
+                }
+            }
+        } catch (_e) {}
+    }
 
     return dedupeEffects([...custom, ...purchased]).map((effect) => addProtectedMediaUrl(effect, user._id));
 }
@@ -301,7 +342,7 @@ async function resolveEffectForUser(userId, effectId) {
     if (!purchased) {
         let effect = await Effect.findById(id).lean().catch(() => null);
         if (!effect) effect = await mirrorEffectFromCentral(id);
-        if (effect && effect.category !== 'menu_template' && effectiveEffectPrice(effect) === 0) {
+        if (effect && effect.category !== 'menu_template') {
             return normalizePurchasedEffect(effect, user._id, true);
         }
         return null;
