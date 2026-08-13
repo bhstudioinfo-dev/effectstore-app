@@ -37,6 +37,7 @@
 </head>
 <body>
     <main id="effect-player-root" aria-label="Effect Player Ready">
+        <video id="active-effect-video" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent;opacity:0;" autoplay playsinline></video>
         <div id="ready-placeholder">Effect Player Ready</div>
         <pre id="effect-player-debug" hidden></pre>
     </main>
@@ -44,9 +45,9 @@
         (() => {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             let socket;
-            let activeVideo = null;
             let safetyTimer = null;
             let activeRequest = null;
+            const video = document.getElementById('active-effect-video');
 
             function notify(event, data) {
                 if (socket?.readyState === WebSocket.OPEN) {
@@ -57,13 +58,12 @@
             function clearPlayback() {
                 if (safetyTimer) window.clearTimeout(safetyTimer);
                 safetyTimer = null;
-                if (activeVideo) {
-                    activeVideo.pause();
-                    activeVideo.removeAttribute('src');
-                    activeVideo.load();
-                    activeVideo.remove();
+                if (video) {
+                    video.pause();
+                    video.style.opacity = '0';
+                    video.removeAttribute('src');
+                    video.load();
                 }
-                activeVideo = null;
                 activeRequest = null;
             }
 
@@ -109,25 +109,22 @@
                 }
 
                 activeRequest = request;
-                const video = document.createElement('video');
-                activeVideo = video;
-                video.autoplay = true;
                 video.controls = false;
                 video.playsInline = true;
                 video.preload = 'auto';
                 video.muted = request.audioEnabled === false;
                 video.volume = Math.max(0, Math.min(1, Number.isFinite(Number(request.audioVolume)) ? Number(request.audioVolume) : 1));
                 video.src = request.effectUrl;
-                document.getElementById('effect-player-root').appendChild(video);
+                video.style.opacity = '1';
 
-                video.addEventListener('ended', () => {
-                    if (video === activeVideo) finishPlayback('ended');
-                }, { once: true });
-                video.addEventListener('error', () => {
-                    if (video === activeVideo) failPlayback('Unable to load effect media');
-                }, { once: true });
-                video.addEventListener('playing', () => {
-                    if (video === activeVideo) {
+                const onEnded = () => {
+                    if (activeRequest === request) finishPlayback('ended');
+                };
+                const onError = () => {
+                    if (activeRequest === request) failPlayback('Unable to load effect media');
+                };
+                const onPlaying = () => {
+                    if (activeRequest === request) {
                         notify('effect_player_play_started', {
                             requestId: request.requestId,
                             effectId: request.effectId,
@@ -137,17 +134,21 @@
                         if (!safetyTimer) {
                             const fallbackMs = Math.max((durationMs || 5000) + 5000, 15000);
                             safetyTimer = window.setTimeout(() => {
-                                if (video === activeVideo) finishPlayback('duration_timeout');
+                                if (activeRequest === request) finishPlayback('duration_timeout');
                             }, fallbackMs);
                         }
                     }
-                }, { once: true });
+                };
+
+                video.addEventListener('ended', onEnded, { once: true });
+                video.addEventListener('error', onError, { once: true });
+                video.addEventListener('playing', onPlaying, { once: true });
 
                 try {
                     video.currentTime = 0;
                     await video.play();
                 } catch (error) {
-                    if (video === activeVideo) failPlayback(error.message || 'Autoplay failed');
+                    if (activeRequest === request) failPlayback(error.message || 'Autoplay failed');
                 }
             }
 
