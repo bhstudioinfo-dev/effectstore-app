@@ -134,11 +134,6 @@ class OBSService {
 
         const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName });
         if (sceneItems.some((item) => item.sourceName === sourceName)) {
-            await this.obs.call('SetInputSettings', {
-                inputName: sourceName,
-                inputSettings: { url: sourceUrl, shutdown: false, restart_when_active: false, reroute_audio: true },
-                overlay: true
-            });
             return true;
         }
 

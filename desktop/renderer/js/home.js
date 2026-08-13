@@ -6871,16 +6871,53 @@ class EffectStoreApp {
             btn.style.cursor = 'pointer';
         }
     }
+    showConfirmDialog(title, message, onConfirm) {
+        let modal = document.getElementById('app-confirm-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'app-confirm-modal';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px);
+                display: flex; align-items: center; justify-content: center;
+                z-index: 999999; animation: fadeIn 0.2s ease;
+            `;
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div style="background: #111827; border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.8); text-align: center;">
+                <div style="font-size: 38px; margin-bottom: 12px;">⚠️</div>
+                <h3 style="margin: 0 0 8px 0; color: #fff; font-size: 18px; font-weight: 700;">${title}</h3>
+                <p style="margin: 0 0 20px 0; color: #9ca3af; font-size: 14px; line-height: 1.5;">${message}</p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button id="confirm-modal-cancel" style="flex: 1; padding: 10px 16px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;">Hủy</button>
+                    <button id="confirm-modal-ok" style="flex: 1; padding: 10px 16px; background: #ef4444; border: none; color: #fff; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;">Xóa ngay</button>
+                </div>
+            </div>
+        `;
+        modal.style.display = 'flex';
+
+        document.getElementById('confirm-modal-cancel').onclick = () => {
+            modal.style.display = 'none';
+        };
+        document.getElementById('confirm-modal-ok').onclick = () => {
+            modal.style.display = 'none';
+            if (typeof onConfirm === 'function') onConfirm();
+        };
+    }
+
     async deleteMapping(id) {
-        if (!confirm('Xóa mapping này?')) return;
-        try {
-            await fetch(`${this.API_URL}/api/tiktok/mappings/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${this.authToken}` }
-            });
-            this.showNotification('success', 'Đã xóa mapping');
-            this.loadMappings();
-        } catch (e) { this.showNotification('error', 'Lỗi: ' + e.message); }
+        this.showConfirmDialog('Xác nhận xóa Mapping', 'Bạn có chắc chắn muốn xóa mapping này không?', async () => {
+            try {
+                await fetch(`${this.API_URL}/api/tiktok/mappings/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${this.authToken}` }
+                });
+                this.showNotification('success', 'Đã xóa mapping thành công!');
+                this.loadMappings();
+            } catch (e) { this.showNotification('error', 'Lỗi: ' + e.message); }
+        });
     }
 
     connectWebSocket() {
