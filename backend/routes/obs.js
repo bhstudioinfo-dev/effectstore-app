@@ -93,7 +93,11 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
         const effectId = String(req.body?.effectId || '').trim();
         if (!effectId) return res.status(400).json({ success: false, message: 'Thiếu mã hiệu ứng.' });
 
-        const effect = await resolveEffectForUser(req.userId, effectId);
+        const [effect, duration] = await Promise.all([
+            resolveEffectForUser(req.userId, effectId),
+            resolveEffectDurationForUser(req.userId, effectId)
+        ]);
+
         if (!effect) {
             return res.status(403).json({ success: false, message: 'Bạn chưa sở hữu hiệu ứng này.' });
         }
@@ -105,7 +109,6 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             });
         }
 
-        const duration = await resolveEffectDurationForUser(req.userId, effectId);
         const durationMs = normalizeDurationMs(duration);
         if (!durationMs) {
             return res.status(422).json({ success: false, message: 'Hiệu ứng chưa có thời lượng hợp lệ.' });
