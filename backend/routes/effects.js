@@ -215,7 +215,8 @@ async function relayEffectFromCloud(effectId, req, res) {
         ? require('jsonwebtoken').decode(queryToken, { complete: true })?.header?.alg
         : null;
     const cloudEffectToken = queryAlgorithm === 'RS256' ? queryToken : '';
-    const cloudUserToken = getCloudSessionToken(req.effectAccess?.userId);
+    const { getCloudSessionToken, getAnyCloudSessionToken } = require('../services/cloudSessionTokenStore');
+    const cloudUserToken = getCloudSessionToken(req.effectAccess?.userId) || getAnyCloudSessionToken();
     if (!cloudEffectToken && !cloudUserToken) {
         res.status(401).json({
             error: 'Cloud session is unavailable. Please sign in again before playing purchased effects.'
