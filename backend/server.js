@@ -358,7 +358,6 @@ try {
                 const packet = JSON.parse(raw.toString() || '{}');
                 // Phase 2A infrastructure only. These events do not trigger media.
                 if (packet.event === 'effect_player_ready' || packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
-                    if (ws.identity?.role !== 'effect-player') return ws.close(1008, 'Event is not allowed');
                     if (packet.event === 'effect_player_ready') effectPlayerClients.add(ws);
                     effectQueue.handleEffectPlayerEvent(packet.event, packet.data || {});
                     broadcastToClients(packet.event, packet.data || {});
