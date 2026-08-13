@@ -6767,12 +6767,14 @@ class EffectStoreApp {
         const originalContent = btn.innerHTML;
 
         try {
+            this.activeTestMappingId = id;
             btn.disabled = true;
             btn.style.cursor = 'not-allowed';
             btn.style.position = 'relative';
             btn.style.overflow = 'hidden';
             btn.style.transition = 'none';
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang phát...';
+            this.updateMappingTestButtons();
 
             const token = localStorage.getItem('token');
             const mapping = (this.giftMappings || []).find((entry) => String(entry._id) === String(id));
@@ -6796,8 +6798,6 @@ class EffectStoreApp {
             }
 
             this.showNotification('success', '🎬 Đã chạy thử hiệu ứng trên OBS!');
-
-            this.activeTestMappingId = id;
 
             const resolvedDuration = Number(data.duration) || (wheelOnly ? 6.5 : 0);
             if (!Number.isFinite(resolvedDuration) || resolvedDuration <= 0) {
