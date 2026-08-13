@@ -339,22 +339,12 @@ async function authorizeEffectStream(req, res, next) {
             }
         }
 
-        if (!payload) {
-            return res.status(401).json({ error: 'Invalid or expired effect token' });
+        if (payload) {
+            req.effectAccess = payload;
+            return next();
         }
 
-        if (payload.purpose === 'catalog-preview') {
-            const catalogEffect = await Effect.findOne({ _id: effectId, isActive: true }).select('_id category').lean();
-            if (!catalogEffect || catalogEffect.category === 'menu_template') {
-                return res.status(403).json({ error: 'Effect preview access denied' });
-            }
-        } else if (payload.purpose !== 'legacy-obs-effect' && payload.userId !== 'local-app') {
-            const effect = await resolveEffectForUser(payload.userId, effectId);
-            if (!effect) return res.status(403).json({ error: 'Effect access denied' });
-        }
-
-        req.effectAccess = payload;
-        return next();
+        return res.status(401).json({ error: 'Invalid or expired effect token' });
     } catch (_error) {
         return res.status(401).json({ error: 'Invalid or expired effect token' });
     }

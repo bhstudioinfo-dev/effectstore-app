@@ -688,7 +688,11 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
         }
 
         const effectId = String(mapping.effectId || '');
-        const resolvedEffect = await resolveEffectForUser(req.userId, effectId);
+        const [resolvedEffect, duration] = await Promise.all([
+            resolveEffectForUser(req.userId, effectId),
+            resolveEffectDurationForUser(req.userId, effectId)
+        ]);
+
         if (!resolvedEffect) {
             return res.status(403).json({ success: false, message: 'Hiệu ứng không thuộc tài khoản này hoặc không còn khả dụng.' });
         }
@@ -700,7 +704,6 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             });
         }
 
-        const duration = await resolveEffectDurationForUser(req.userId, effectId);
         if (!duration) {
             return res.status(422).json({
                 success: false,
@@ -878,7 +881,11 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
         if (!mapping) return res.json({ success: false, message: 'No mapping found', triggered: false });
 
         const effectId = String(mapping.effectId || '');
-        const resolvedEffect = await resolveEffectForUser(req.userId, effectId);
+        const [resolvedEffect, duration] = await Promise.all([
+            resolveEffectForUser(req.userId, effectId),
+            resolveEffectDurationForUser(req.userId, effectId)
+        ]);
+
         if (!resolvedEffect) {
             return res.status(403).json({ success: false, message: 'Hiệu ứng không thuộc tài khoản này hoặc không còn khả dụng.', triggered: false });
         }
@@ -891,7 +898,6 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
             });
         }
 
-        const duration = await resolveEffectDurationForUser(req.userId, effectId);
         if (!duration) {
             return res.status(422).json({
                 success: false,
