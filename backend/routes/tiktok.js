@@ -715,13 +715,9 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
         const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
         if (!isPlayerReady) {
             if (!obsService.isConnected()) {
-                return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
+                return res.status(503).json({ success: false, message: 'OBS chưa kết nối. Vui lòng mở phần mềm OBS Studio rồi thử lại.' });
             }
-            await obsService.ensureEffectPlayerSource();
-            const sourceStatus = await obsService.getFoundationSourceStatus();
-            if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req, 1000)) {
-                return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
-            }
+            await obsService.ensureEffectPlayerSource().catch(() => {});
         }
 
         let queued = false;
@@ -909,13 +905,9 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
         const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
         if (!isPlayerReady) {
             if (!obsService.isConnected()) {
-                return res.status(503).json({ success: false, triggered: false, message: 'OBS chưa kết nối.' });
+                return res.status(503).json({ success: false, triggered: false, message: 'OBS chưa kết nối. Vui lòng mở phần mềm OBS Studio rồi thử lại.' });
             }
-            await obsService.ensureEffectPlayerSource();
-            const sourceStatus = await obsService.getFoundationSourceStatus();
-            if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req, 1000)) {
-                return res.status(503).json({ success: false, triggered: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
-            }
+            await obsService.ensureEffectPlayerSource().catch(() => {});
         }
 
         const giftData = {

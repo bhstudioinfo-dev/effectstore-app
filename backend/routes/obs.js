@@ -117,17 +117,9 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
         const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
         if (!isPlayerReady) {
             if (!obsService.isConnected()) {
-                return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
+                return res.status(503).json({ success: false, message: 'OBS chưa kết nối. Vui lòng mở phần mềm OBS Studio rồi thử lại.' });
             }
-
-            await obsService.ensureEffectPlayerSource();
-            const sourceStatus = await obsService.getFoundationSourceStatus();
-            if (!sourceStatus.effect_player) {
-                return res.status(503).json({ success: false, message: 'Không thể chuẩn bị nguồn effect_player trên OBS.' });
-            }
-            if (!await waitForEffectPlayerReady(req, 1000)) {
-                return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa kết nối, vui lòng thử lại.' });
-            }
+            await obsService.ensureEffectPlayerSource().catch(() => {});
         }
 
         const PORT = process.env.PORT || 9000;
