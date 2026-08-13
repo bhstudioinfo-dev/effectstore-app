@@ -1957,8 +1957,13 @@
             themeIcon = '👑';
         }
 
-        const customImageHtml = item.customJarImageUrl
-            ? `<img src="${item.customJarImageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2;" />`
+        let jarImageUrl = item.customJarImageUrl || '';
+        if (['hu-nam-bau', 'hu-nam-cao-cap', 'hu-nu-bau', 'hu-thuong'].includes(theme)) {
+            jarImageUrl = `/uploads/jars/${theme}.png`;
+        }
+
+        const customImageHtml = jarImageUrl
+            ? `<img src="${jarImageUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2;" />`
             : '';
 
         return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(20,ctx.scale)}px;background:linear-gradient(145deg,rgba(15,23,42,0.9),rgba(30,41,59,0.9));border:2px solid ${borderColor};border-radius:${roundPx(24,ctx.scale)}px;color:#fff;text-align:center;box-shadow:0 0 ${roundPx(24,ctx.scale)}px ${borderColor}66;overflow:hidden;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;">

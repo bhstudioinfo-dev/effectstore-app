@@ -75,7 +75,7 @@ router.post('/settings', authMiddleware, async (req, res) => {
             settings = new GiftJarSettings({ userId: req.userId });
         }
 
-        if (theme && ['glass', 'golden', 'chest', 'diamond', 'custom'].includes(theme)) {
+        if (theme && ['glass', 'golden', 'chest', 'diamond', 'custom', 'hu-nam-bau', 'hu-nam-cao-cap', 'hu-nu-bau', 'hu-thuong'].includes(theme)) {
             settings.theme = theme;
         }
         if (typeof customJarImageUrl === 'string') {

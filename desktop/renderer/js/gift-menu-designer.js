@@ -7423,11 +7423,15 @@
                         <div class="gmd-field"><label>Tiêu đề hũ</label><input class="gmd-input" value="${this.escapeHtml(selected.title || 'HŨ QUÀ TẶNG')}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','title',this.value)"></div>
                         <div class="gmd-field"><label>Giao diện Hũ (Theme)</label>
                             <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','theme',this.value)">
+                                <option value="hu-nam-bau" ${selected.theme === 'hu-nam-bau' ? 'selected' : ''}>🍄 Hũ Nấm Bầu (PNG của bạn)</option>
+                                <option value="hu-nam-cao-cap" ${selected.theme === 'hu-nam-cao-cap' ? 'selected' : ''}>✨ Hũ Nấm Cao Cấp (PNG của bạn)</option>
+                                <option value="hu-nu-bau" ${selected.theme === 'hu-nu-bau' ? 'selected' : ''}>🌸 Hũ Nụ Bầu (PNG của bạn)</option>
+                                <option value="hu-thuong" ${selected.theme === 'hu-thuong' ? 'selected' : ''}>🏺 Hũ Thường (PNG của bạn)</option>
                                 <option value="glass" ${(selected.theme || 'glass') === 'glass' ? 'selected' : ''}>Hũ Thủy Tinh (Glass)</option>
                                 <option value="golden" ${selected.theme === 'golden' ? 'selected' : ''}>Hũ Hoàng Gia (Golden)</option>
                                 <option value="chest" ${selected.theme === 'chest' ? 'selected' : ''}>Hũ Rương Kho Báu (Chest)</option>
                                 <option value="diamond" ${selected.theme === 'diamond' ? 'selected' : ''}>Hũ Kim Cương (Diamond)</option>
-                                <option value="custom" ${selected.theme === 'custom' ? 'selected' : ''}>Tải ảnh Hũ riêng của bạn</option>
+                                <option value="custom" ${selected.theme === 'custom' ? 'selected' : ''}>Tải tệp ảnh Hũ khác (.PNG)</option>
                             </select>
                         </div>
                         <div class="gmd-field" style="margin-top:8px;">
