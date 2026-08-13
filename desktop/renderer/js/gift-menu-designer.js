@@ -6681,17 +6681,30 @@
 
 
             let testButtonHTML = '';
-            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'combo'].includes(selected.type)) {
-                testButtonHTML = `
-                    <div class="gmd-section" style="border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
-                        <h4 style="color: #a855f7; margin-bottom: 6px;"><i class="fas fa-flask"></i> CHẠY THỬ / TEST GOAL</h4>
-                        <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.</p>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: #8b5cf6; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.sendSimulatedGift('${selected.id}')"><i class="fas fa-play"></i> Gửi quà Test</button>
-                            <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem('${selected.id}')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>
+            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'combo', 'gift-jar'].includes(selected.type)) {
+                if (selected.type === 'gift-jar') {
+                    testButtonHTML = `
+                        <div class="gmd-section" style="border: 1px dashed rgba(56,189,248,0.4); background: rgba(56,189,248,0.06); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
+                            <h4 style="color: #38bdf8; margin-bottom: 6px;"><i class="fas fa-flask"></i> CHẠY THỬ / TEST HŨ QUÀ</h4>
+                            <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng thả Xu thử nghiệm để xem mực nước dâng và hiệu ứng nổ Hũ khi đầy.</p>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: #0284c7; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.testGiftJarDrop('${selected.id}', 50)"><i class="fas fa-coins"></i> Gửi 50 Xu Test</button>
+                                <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> Đặt lại về 0</button>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                } else {
+                    testButtonHTML = `
+                        <div class="gmd-section" style="border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
+                            <h4 style="color: #a855f7; margin-bottom: 6px;"><i class="fas fa-flask"></i> CHẠY THỬ / TEST GOAL</h4>
+                            <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng chỉ hiển thị trong app để kiểm tra giao diện. OBS chỉ cập nhật khi nhận quà thật từ TikTok Live.</p>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="gmd-btn primary" style="flex: 1; font-size: 11px; background: #8b5cf6; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.sendSimulatedGift('${selected.id}')"><i class="fas fa-play"></i> Gửi quà Test</button>
+                                <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 6px 12px; height: 32px;" onclick="window.giftMenuDesigner.resetGoalBoardItem('${selected.id}')"><i class="fas fa-undo"></i> Đặt lại từ đầu</button>
+                            </div>
+                        </div>
+                    `;
+                }
             }
 
             const makeCompactFontSizeField = (label, key, defaultValue, min = 10, max = 120) => `
@@ -8832,6 +8845,33 @@
                 }
             };
             input.click();
+        }
+
+        testGiftJarDrop(itemId, coins = 50) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+            this.pushHistory('test-gift-jar-drop');
+            const targetCoins = Number(item.targetCoins) || 1000;
+            const currentCoins = (Number(item.currentCoins) || 0) + coins;
+            if (currentCoins >= targetCoins && item.autoResetOnTarget !== false) {
+                item.currentCoins = 0;
+                if (window.app?.showNotification) window.app.showNotification('success', '🎉 NỔ HŨ JACKPOT! Hũ đã tự mở nắp và reset về 0!');
+            } else {
+                item.currentCoins = currentCoins;
+                if (window.app?.showNotification) window.app.showNotification('info', `🧪 Đã thả ${coins} Xu thử nghiệm vào Hũ!`);
+            }
+            this.renderCanvas();
+            this.updateInspector();
+        }
+
+        resetGiftJarCoins(itemId) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+            this.pushHistory('reset-gift-jar');
+            item.currentCoins = 0;
+            this.renderCanvas();
+            this.updateInspector();
+            if (window.app?.showNotification) window.app.showNotification('success', 'Đã đặt lại số Xu của Hũ về 0!');
         }
 
         uploadChallengeResultImage(itemId) {
