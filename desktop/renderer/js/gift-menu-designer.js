@@ -8987,12 +8987,15 @@
             const currentCoins = (Number(item.currentCoins) || 0) + coins;
             const reachedTarget = currentCoins >= targetCoins;
 
-            if (reachedTarget && item.autoResetOnTarget !== false) {
+            if (reachedTarget && item.autoResetOnTarget === true) {
                 item.currentCoins = 0;
-                if (window.app?.showNotification) window.app.showNotification('success', '🎉 NỔ HŨ TRÀN MÀN HÌNH! Hũ đã tràn quà ngập toàn màn hình và tự reset!');
+                if (this.giftJarPhysics) {
+                    this.giftJarPhysics.reset();
+                }
+                if (window.app?.showNotification) window.app.showNotification('success', `🎉 NỔ HŨ TRÀN MÀN HÌNH! Đã đạt mốc ${targetCoins.toLocaleString()} Xu và tự động làm mới Hũ!`);
             } else {
                 item.currentCoins = currentCoins;
-                if (window.app?.showNotification) window.app.showNotification('info', `🧪 Đã thả ${extra.giftName || `${coins} Xu`} từ Live vào Hũ!`);
+                if (window.app?.showNotification) window.app.showNotification('info', `🧪 Đã nhận +${coins.toLocaleString()} Xu (${extra.giftName || 'Quà TikTok'})! Hiện có: ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu`);
             }
             this.renderCanvas();
             this.renderInspector();
