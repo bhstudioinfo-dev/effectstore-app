@@ -429,11 +429,6 @@
             World.add(this.world, body);
             this.items.push(body);
 
-            if (this.items.length > 800) {
-                const oldest = this.items.shift();
-                World.remove(this.world, oldest);
-            }
-
             return body;
         }
 
