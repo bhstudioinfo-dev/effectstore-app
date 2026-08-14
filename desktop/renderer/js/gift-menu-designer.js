@@ -8908,6 +8908,10 @@
                             };
                         }
                         return null;
+                    },
+                    getTargetCoins: () => {
+                        const curItem = item || this.items.find(e => e.type === 'gift-jar');
+                        return curItem ? Number(curItem.targetCoins) || 1000 : 1000;
                     }
                 });
             }

@@ -2,24 +2,24 @@
  * LiveFlow Gift Jar 2D Physics Engine (Powered by Matter.js)
  * Implements real physical bouncing, rolling, stacking, and overflow
  * with FULL 100% sync for all 645+ REAL TikTok Live Gift Icons.
- * Balanced capacity volume scaling: Jar fills up to 100% capacity before overflowing.
+ * Automatic dynamic capacity scaling: Automatically scales icon sizes to fit any capacity (1,000 -> 10,000 -> 1,000,000 Xu).
  */
 (function(window) {
     'use strict';
 
     const POPULAR_TIKTOK_GIFTS = [
-        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 6.5 },
-        { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', radius: 7 },
-        { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', radius: 8.5 },
-        { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', radius: 9 },
-        { id: 'diamond', name: 'Kim cương', coins: 100, file: 'Diamond_16051.png', radius: 10.5 },
-        { id: 'corgi', name: 'Corgi', coins: 299, file: 'Corgi.png', radius: 11.5 },
-        { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', radius: 12.5 },
-        { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', radius: 14 },
-        { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', radius: 15 },
-        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_7610.png', radius: 17 },
-        { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', radius: 18.5 },
-        { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 19.5 }
+        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', baseRadius: 6.5 },
+        { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', baseRadius: 7 },
+        { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', baseRadius: 8.5 },
+        { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', baseRadius: 9 },
+        { id: 'diamond', name: 'Kim cương', coins: 100, file: 'Diamond_16051.png', baseRadius: 10.5 },
+        { id: 'corgi', name: 'Corgi', coins: 299, file: 'Corgi.png', baseRadius: 11.5 },
+        { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', baseRadius: 12.5 },
+        { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', baseRadius: 14 },
+        { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', baseRadius: 15 },
+        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_7610.png', baseRadius: 17 },
+        { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', baseRadius: 18.5 },
+        { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', baseRadius: 19.5 }
     ];
 
     class GiftJarPhysics {
@@ -29,7 +29,8 @@
 
             this.options = Object.assign({
                 gravity: 1.15,
-                getItemRect: null
+                getItemRect: null,
+                getTargetCoins: null
             }, options);
 
             this.items = [];
@@ -46,6 +47,24 @@
             this.initPhysics();
             this.setupWalls();
             this.startLoop();
+        }
+
+        getCapacityScale() {
+            let targetCoins = 1000;
+            if (typeof this.options.getTargetCoins === 'function') {
+                targetCoins = Number(this.options.getTargetCoins()) || 1000;
+            } else {
+                const jarWidget = this.container?.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
+                if (jarWidget) {
+                    const itemEl = jarWidget.closest('.gmd-item');
+                    if (itemEl && itemEl.dataset && itemEl.dataset.targetCoins) {
+                        targetCoins = Number(itemEl.dataset.targetCoins) || 1000;
+                    }
+                }
+            }
+            // Smooth capacity scaling curve: perfectly auto-adjusts size for 500, 1000, 10k, 100k, 1M xu
+            const rawScale = Math.pow(1000 / Math.max(100, targetCoins), 0.20);
+            return Math.max(0.40, Math.min(1.20, rawScale));
         }
 
         getAssetUrl(filename) {
@@ -325,7 +344,7 @@
             World.add(this.world, this.wallBodies);
         }
 
-        spawnGiftBody(type, radius, data = {}) {
+        spawnGiftBody(type, baseRadius, data = {}) {
             const { Bodies, World, Body } = Matter;
             
             this.checkAndSyncWalls();
@@ -337,8 +356,9 @@
             const spawnX = mouthCenterX;
             const spawnY = bounds.top - 15;
 
+            const capScale = this.getCapacityScale();
             const scaleFactor = bounds.width < 600 ? (bounds.width / 720) : 1;
-            const r = Math.max(5.5, Math.round(radius * scaleFactor));
+            const r = Math.max(3.5, Math.round(baseRadius * capScale * scaleFactor));
 
             const restitution = 0.02;
             const friction = 0.45;
@@ -482,19 +502,19 @@
         spawnLiveGift(giftData = {}) {
             const coins = Number(giftData.coins) || 1;
             const repeat = Math.min(15, Number(giftData.repeatCount) || 1);
-            let radius = 6.5;
+            let baseRadius = 6.5;
             let type = 'live_gift';
 
-            if (coins >= 10000) radius = 18.5;
-            else if (coins >= 1000) radius = 14.5;
-            else if (coins >= 300) radius = 12;
-            else if (coins >= 100) radius = 10.5;
-            else if (coins >= 10) radius = 8.5;
-            else radius = 6.5;
+            if (coins >= 10000) baseRadius = 18.5;
+            else if (coins >= 1000) baseRadius = 14.5;
+            else if (coins >= 300) baseRadius = 12;
+            else if (coins >= 100) baseRadius = 10.5;
+            else if (coins >= 10) baseRadius = 8.5;
+            else baseRadius = 6.5;
 
             for (let i = 0; i < repeat; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody(type, radius, {
+                    this.spawnGiftBody(type, baseRadius, {
                         name: giftData.giftName || 'Quà TikTok',
                         imageUrl: giftData.giftIcon || giftData.giftPictureUrl || '',
                         imageKey: giftData.giftId || 'rose'
@@ -532,7 +552,7 @@
                 const count = gift.coins < 10 ? Math.floor(Math.random() * 4) + 2 : 1;
                 for (let i = 0; i < count; i++) {
                     setTimeout(() => {
-                        this.spawnGiftBody(gift.id, gift.radius, {
+                        this.spawnGiftBody(gift.id, gift.baseRadius, {
                             imageKey: gift.id,
                             name: gift.name
                         });
