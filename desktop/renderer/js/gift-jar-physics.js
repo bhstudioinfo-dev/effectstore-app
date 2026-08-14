@@ -6,10 +6,10 @@
  *   2. 🍬 Kẹo ngọt (11 Real High-Res Candy PNGs từ D:\HỦ QUÀ)
  *   3. 💎 Kim cương quý (15 Real High-Res Diamond/Gem PNGs từ D:\HỦ QUÀ\KIM CUONG QUY)
  *   4. ⭐ Ngôi sao sáng (Star)
- * Features 3-layer 3D Sandwich Glass Architecture:
- *   - Lớp 1 (Đáy sau): DOM z-index 1
- *   - Lớp 2 (Quà rơi): Canvas z-index 2 (Canvas ONLY draws gifts, zero duplicate jar layers!)
- *   - Lớp 3 (Mặt trước ngoài cùng làm chuẩn): DOM z-index 3
+ * Features:
+ *   - Drops from the VERY TOP of the 9:16 screen into the jar mouth
+ *   - Full screen overflow and stacking when jar is filled to capacity
+ *   - Smooth dragging without ghost duplicate jars
  */
 (function(window) {
     'use strict';
@@ -70,6 +70,7 @@
 
             this.options = Object.assign({
                 gravity: 1.15,
+                getItemRect: null,
                 getCapacityLevel: null
             }, options);
 
@@ -78,6 +79,8 @@
             this.imageCache = {};
             this.isRunning = false;
             this.animFrameId = null;
+            this.lastWallSig = '';
+            this.prevJarRect = null;
             this.dpr = Math.max(2, (window.devicePixelRatio || 1));
 
             this.preloadAllAssets();
@@ -92,15 +95,18 @@
             if (typeof this.options.getCapacityLevel === 'function') {
                 level = this.options.getCapacityLevel() || 'medium';
             } else {
-                const itemEl = this.container.closest('.gmd-item');
-                if (itemEl && itemEl.dataset && itemEl.dataset.capacityLevel) {
-                    level = itemEl.dataset.capacityLevel || 'medium';
+                const jarWidget = this.container?.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
+                if (jarWidget) {
+                    const itemEl = jarWidget.closest('.gmd-item');
+                    if (itemEl && itemEl.dataset && itemEl.dataset.capacityLevel) {
+                        level = itemEl.dataset.capacityLevel || 'medium';
+                    }
                 }
             }
 
-            if (level === 'small') return 1.15; // Vừa (~25 - 30 món quà)
-            if (level === 'large') return 0.65; // Nhiều (~120 - 150+ món quà)
-            return 0.85; // Trung bình (~60 - 70 món quà - Mặc định)
+            if (level === 'small') return 1.15;
+            if (level === 'large') return 0.65;
+            return 0.85;
         }
 
         getAssetUrl(subfolder, filename) {
@@ -143,17 +149,15 @@
             this.canvas.className = 'gift-jar-physics-canvas';
             this.canvas.style.cssText = `
                 position: absolute;
-                inset: 0;
+                top: 0;
+                left: 0;
                 width: 100%;
                 height: 100%;
                 pointer-events: none;
-                z-index: 2;
+                z-index: 20;
             `;
             this.ctx = this.canvas.getContext('2d', { alpha: true });
-            
-            // Append canvas inside widget (between z-index 1 and z-index 3)
-            const targetParent = this.container.querySelector('.gmd-gift-jar-inner') || this.container;
-            targetParent.appendChild(this.canvas);
+            this.container.appendChild(this.canvas);
             this.resizeCanvas();
 
             this.resizeObserver = new ResizeObserver(() => this.resizeCanvas());
@@ -162,8 +166,8 @@
 
         resizeCanvas() {
             if (!this.canvas || !this.container) return;
-            const w = this.container.offsetWidth || this.container.clientWidth || 360;
-            const h = this.container.offsetHeight || this.container.clientHeight || 480;
+            const w = this.container.offsetWidth || this.container.clientWidth || 720;
+            const h = this.container.offsetHeight || this.container.clientHeight || 960;
 
             this.width = w;
             this.height = h;
@@ -190,19 +194,125 @@
             this.world = this.engine.world;
         }
 
-        getContainedJarBounds() {
-            const w = this.width || 360;
-            const h = this.height || 480;
-            let size = w;
-            if (size > h) size = h;
-            const offX = (w - size) / 2;
-            const offY = (h - size) / 2;
+        getArtboardBounds() {
+            const safeAreaEl = this.container.querySelector('#gmd-safe-area');
+            if (safeAreaEl) {
+                const sw = parseFloat(safeAreaEl.style.width) || 360;
+                const sh = parseFloat(safeAreaEl.style.height) || 640;
+                const w = this.width || 720;
+                const h = this.height || 960;
+                const sx = Math.round((w - sw) / 2);
+                const sy = Math.round((h - sh) / 2);
+                return {
+                    left: sx,
+                    top: sy,
+                    right: sx + sw,
+                    bottom: sy + sh,
+                    width: sw,
+                    height: sh
+                };
+            }
+
+            const w = this.container.offsetWidth || this.container.clientWidth || 1080;
+            const h = this.container.offsetHeight || this.container.clientHeight || 1920;
             return {
-                x: offX,
-                y: offY,
-                w: size,
-                h: size
+                left: 0,
+                top: 0,
+                right: w,
+                bottom: h,
+                width: w,
+                height: h
             };
+        }
+
+        getJarRect() {
+            const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
+            if (jarWidget) {
+                const itemEl = jarWidget.closest('.gmd-item');
+                if (itemEl && itemEl.style.display !== 'none') {
+                    const x = parseFloat(itemEl.style.left);
+                    const y = parseFloat(itemEl.style.top);
+                    const w = parseFloat(itemEl.style.width);
+                    const h = parseFloat(itemEl.style.height);
+                    if (!isNaN(x) && !isNaN(y) && !isNaN(w) && !isNaN(h) && w > 20 && h > 20) {
+                        return { x, y, w, h };
+                    }
+                }
+            }
+
+            if (typeof this.options.getItemRect === 'function') {
+                const r = this.options.getItemRect();
+                if (r && r.w > 0 && r.h > 0) return r;
+            }
+
+            return null;
+        }
+
+        getJarInnerRect() {
+            const r = this.getJarRect();
+            if (!r) return null;
+            let w = r.w;
+            let h = r.w;
+            if (h > r.h) {
+                h = r.h;
+                w = r.h;
+            }
+            const offX = (r.w - w) / 2;
+            const offY = (r.h - h) / 2;
+            return {
+                x: r.x + offX,
+                y: r.y + offY,
+                w: w,
+                h: h
+            };
+        }
+
+        checkAndSyncWalls() {
+            const jar = this.getJarInnerRect();
+            if (!jar) {
+                if (this.wallBodies.length && this.world) {
+                    Matter.World.remove(this.world, this.wallBodies);
+                    this.wallBodies = [];
+                }
+                if (this.items.length) {
+                    this.reset();
+                }
+                this.prevJarRect = null;
+                this.lastWallSig = '';
+                return;
+            }
+
+            const bounds = this.getArtboardBounds();
+            const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
+            
+            if (this.prevJarRect) {
+                const dx = jar.x - this.prevJarRect.x;
+                const dy = jar.y - this.prevJarRect.y;
+
+                if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3) {
+                    for (let i = 0; i < this.items.length; i++) {
+                        const b = this.items[i];
+                        if (b.isInsideJar === true) {
+                            Matter.Sleeping.set(b, false);
+                            Matter.Body.setPosition(b, {
+                                x: b.position.x + dx,
+                                y: b.position.y + dy
+                            });
+                            Matter.Body.setVelocity(b, {
+                                x: dx * 0.35,
+                                y: dy * 0.35
+                            });
+                        }
+                    }
+                }
+            }
+
+            this.prevJarRect = { x: jar.x, y: jar.y, w: jar.w, h: jar.h };
+
+            if (this.lastWallSig !== sig) {
+                this.lastWallSig = sig;
+                this.setupWalls();
+            }
         }
 
         setupWalls() {
@@ -214,7 +324,24 @@
                 this.wallBodies = [];
             }
 
-            const jar = this.getContainedJarBounds();
+            const jar = this.getJarInnerRect();
+            if (!jar) return;
+
+            const bounds = this.getArtboardBounds();
+
+            // 1. Strict 9:16 Screen Boundaries
+            const leftScreen = Bodies.rectangle(bounds.left - 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
+                isStatic: true, friction: 0.1, restitution: 0.1, label: 'screen_left'
+            });
+            const rightScreen = Bodies.rectangle(bounds.right + 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
+                isStatic: true, friction: 0.1, restitution: 0.1, label: 'screen_right'
+            });
+            const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 25, bounds.width + 100, 50, {
+                isStatic: true, friction: 0.3, restitution: 0.15, label: 'floor'
+            });
+            this.wallBodies.push(floor, leftScreen, rightScreen);
+
+            // 2. Sleek Jar Boundaries (Exact inner glass fit, no lateral overflow blockage)
             const jx = jar.x + jar.w / 2;
             const bottomY = jar.y + jar.h * 0.93;
 
@@ -247,23 +374,38 @@
         }
 
         applyHardFloorGuard() {
-            const jar = this.getContainedJarBounds();
+            const jar = this.getJarInnerRect();
+            if (!jar) return;
             const jarFloorY = jar.y + jar.h * 0.93;
             const innerLeft = jar.x + jar.w * 0.18;
             const innerRight = jar.x + jar.w * 0.82;
+            const jarTopY = jar.y + jar.h * 0.18;
 
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
                 const r = b.giftRadius || 11;
 
-                if (b.position.x >= (innerLeft - 10) && b.position.x <= (innerRight + 10)) {
-                    if (b.position.y > jarFloorY - r && b.position.y < jarFloorY + 25) {
-                        Matter.Body.setPosition(b, {
-                            x: b.position.x,
-                            y: jarFloorY - r
-                        });
-                        if (b.velocity.y > 0) {
-                            Matter.Body.setVelocity(b, { x: b.velocity.x * 0.7, y: 0 });
+                if (b.isInsideJar === true) {
+                    const isSpilledOut = (
+                        b.position.y < (jarTopY - 5) && (b.position.x < (innerLeft + 5) || b.position.x > (innerRight - 5))
+                    ) || (
+                        b.position.y >= jarTopY && (b.position.x < (innerLeft - 10) || b.position.x > (innerRight + 10))
+                    );
+
+                    if (isSpilledOut) {
+                        b.isInsideJar = false;
+                        b.friction = 0.08;
+                        b.frictionAir = 0.001;
+                        b.restitution = 0.20;
+                    } else {
+                        if (b.position.y > jarFloorY - r && b.position.y < jarFloorY + 25) {
+                            Matter.Body.setPosition(b, {
+                                x: b.position.x,
+                                y: jarFloorY - r
+                            });
+                            if (b.velocity.y > 0) {
+                                Matter.Body.setVelocity(b, { x: b.velocity.x * 0.7, y: 0 });
+                            }
                         }
                     }
                 }
@@ -273,14 +415,20 @@
         spawnGiftBody(type, baseRadius, data = {}) {
             const { Bodies, World, Body } = Matter;
 
-            const jar = this.getContainedJarBounds();
+            this.checkAndSyncWalls();
+
+            const jar = this.getJarInnerRect();
+            if (!jar) return null;
+
+            const bounds = this.getArtboardBounds();
+
+            // Spawn from the VERY TOP of the 9:16 Livestream screen
             const mouthCenterX = jar.x + jar.w / 2;
-            const spawnX = mouthCenterX + (Math.random() - 0.5) * (jar.w * 0.20);
-            const spawnY = jar.y - 15;
+            const spawnX = mouthCenterX + (Math.random() - 0.5) * (jar.w * 0.15);
+            const spawnY = bounds.top - 20;
 
             const capScale = this.getCapacityScale();
-            const scaleMultiplier = (jar.w / 180) * capScale;
-            const r = Math.max(12, Math.round(baseRadius * scaleMultiplier));
+            const r = Math.max(12, Math.round(baseRadius * (jar.w / 180) * capScale));
 
             const restitution = 0.01;
             const friction = 0.40;
@@ -296,10 +444,11 @@
             body.giftType = type;
             body.giftData = data;
             body.giftRadius = r;
+            body.isInsideJar = true;
 
             Body.setVelocity(body, {
-                x: (Math.random() - 0.5) * 0.4,
-                y: Math.random() * 0.5 + 2.4
+                x: 0,
+                y: Math.random() * 0.5 + 3.0
             });
             Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.01);
 
@@ -561,6 +710,8 @@
                 const delta = Math.min(32, currentTime - lastTime);
                 lastTime = currentTime;
 
+                this.checkAndSyncWalls();
+
                 for (let i = 0; i < this.items.length; i++) {
                     const b = this.items[i];
                     if (Math.abs(b.velocity.x) < 0.04 && Math.abs(b.velocity.y) < 0.04) {
@@ -589,6 +740,12 @@
             ctx.clearRect(0, 0, this.width, this.height);
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
+
+            const jar = this.getJarInnerRect();
+            if (!jar || this.items.length === 0) {
+                ctx.restore();
+                return;
+            }
 
             // Canvas ONLY renders the falling gifts. Zero duplicate jar images!
             for (let i = 0; i < this.items.length; i++) {
