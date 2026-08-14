@@ -7,18 +7,18 @@
     'use strict';
 
     const POPULAR_TIKTOK_GIFTS = [
-        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 15 },
-        { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', radius: 18 },
-        { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', radius: 22 },
-        { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', radius: 24 },
-        { id: 'diamond', name: 'Kim cương', coins: 100, file: 'Diamond_16051.png', radius: 26 },
-        { id: 'corgi', name: 'Corgi', coins: 299, file: 'Corgi.png', radius: 30 },
-        { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', radius: 34 },
-        { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', radius: 40 },
-        { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', radius: 44 },
-        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_7610.png', radius: 48 },
-        { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', radius: 54 },
-        { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 56 }
+        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 14 },
+        { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', radius: 16 },
+        { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', radius: 19 },
+        { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', radius: 21 },
+        { id: 'diamond', name: 'Kim cương', coins: 100, file: 'Diamond_16051.png', radius: 23 },
+        { id: 'corgi', name: 'Corgi', coins: 299, file: 'Corgi.png', radius: 26 },
+        { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', radius: 29 },
+        { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', radius: 34 },
+        { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', radius: 38 },
+        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_7610.png', radius: 42 },
+        { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', radius: 46 },
+        { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 48 }
     ];
 
     class GiftJarPhysics {
@@ -118,6 +118,37 @@
             this.world = this.engine.world;
         }
 
+        getArtboardBounds() {
+            // Check if inside designer stage with #gmd-safe-area
+            const safeAreaEl = this.container.querySelector('#gmd-safe-area');
+            if (safeAreaEl) {
+                const sx = parseFloat(safeAreaEl.style.left) || 180;
+                const sy = parseFloat(safeAreaEl.style.top) || 160;
+                const sw = parseFloat(safeAreaEl.style.width) || 360;
+                const sh = parseFloat(safeAreaEl.style.height) || 640;
+                return {
+                    left: sx,
+                    top: sy,
+                    right: sx + sw,
+                    bottom: sy + sh,
+                    width: sw,
+                    height: sh
+                };
+            }
+
+            // In OBS Overlay
+            const w = this.container.offsetWidth || this.container.clientWidth || 1080;
+            const h = this.container.offsetHeight || this.container.clientHeight || 1920;
+            return {
+                left: 0,
+                top: 0,
+                right: w,
+                bottom: h,
+                width: w,
+                height: h
+            };
+        }
+
         getJarRect() {
             if (typeof this.options.getItemRect === 'function') {
                 const r = this.options.getItemRect();
@@ -131,17 +162,20 @@
                     return {
                         x: parseFloat(itemEl.style.left) || 0,
                         y: parseFloat(itemEl.style.top) || 0,
-                        w: parseFloat(itemEl.style.width) || 480,
-                        h: parseFloat(itemEl.style.height) || 600
+                        w: parseFloat(itemEl.style.width) || 160,
+                        h: parseFloat(itemEl.style.height) || 200
                     };
                 }
             }
 
+            const bounds = this.getArtboardBounds();
+            const defW = bounds.width * 0.45;
+            const defH = bounds.height * 0.35;
             return {
-                x: (this.width - 480) / 2,
-                y: this.height - 750,
-                w: 480,
-                h: 600
+                x: bounds.left + (bounds.width - defW) / 2,
+                y: bounds.bottom - defH - 30,
+                w: defW,
+                h: defH
             };
         }
 
@@ -154,16 +188,21 @@
                 this.wallBodies = [];
             }
 
-            const w = this.width;
-            const h = this.height;
+            const bounds = this.getArtboardBounds();
 
-            // 1. Stage Floor & Outer Boundary
-            const floor = Bodies.rectangle(w / 2, h + 30, w * 2, 60, { isStatic: true, friction: 0.6, label: 'floor' });
-            const leftScreen = Bodies.rectangle(-30, h / 2, 60, h * 2, { isStatic: true, friction: 0.1, label: 'screen_left' });
-            const rightScreen = Bodies.rectangle(w + 30, h / 2, 60, h * 2, { isStatic: true, friction: 0.1, label: 'screen_right' });
+            // 1. Stage Floor & Left/Right Screen Walls STRICTLY at the 9:16 Artboard Boundaries
+            const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 15, bounds.width + 40, 30, {
+                isStatic: true, friction: 0.6, label: 'floor'
+            });
+            const leftScreen = Bodies.rectangle(bounds.left - 15, (bounds.top + bounds.bottom) / 2, 30, bounds.height * 2, {
+                isStatic: true, friction: 0.1, label: 'screen_left'
+            });
+            const rightScreen = Bodies.rectangle(bounds.right + 15, (bounds.top + bounds.bottom) / 2, 30, bounds.height * 2, {
+                isStatic: true, friction: 0.1, label: 'screen_right'
+            });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. Exact Physics Walls of the Glass Jar
+            // 2. Exact Physics Walls of the Glass Jar (matching the DOM element position)
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jy = jar.y + jar.h / 2;
@@ -179,7 +218,7 @@
                 mouthY: jar.y + jh * 0.18
             };
 
-            const wallThickness = 24;
+            const wallThickness = Math.max(14, Math.round(jw * 0.08));
 
             // Jar Bottom Wall
             const bottomY = jar.y + jh * 0.88;
@@ -218,14 +257,21 @@
             
             this.setupWalls();
 
-            const jar = this.jarCenter || { x: this.width / 2, topY: 100 };
-            const spawnX = jar.x + (Math.random() * 20 - 10);
-            const spawnY = Math.max(10, jar.topY - 100 - Math.random() * 40);
+            const jar = this.jarCenter || { x: 360, topY: 300 };
+            const bounds = this.getArtboardBounds();
+
+            // Spawn directly above the jar opening (inside the 9:16 safe frame)
+            const spawnX = jar.x + (Math.random() * 12 - 6);
+            const spawnY = Math.max(bounds.top + 10, jar.topY - 60 - Math.random() * 20);
+
+            // Scale radius proportionally to the artboard width
+            const scaleFactor = bounds.width < 600 ? (bounds.width / 720) : 1;
+            const r = Math.max(8, Math.round(radius * scaleFactor));
 
             const restitution = type === 'rose' ? 0.2 : 0.28;
             const friction = type === 'rose' ? 0.2 : 0.12;
 
-            const body = Bodies.circle(spawnX, spawnY, radius, {
+            const body = Bodies.circle(spawnX, spawnY, r, {
                 restitution,
                 friction,
                 frictionAir: 0.005,
@@ -234,13 +280,13 @@
 
             body.giftType = type;
             body.giftData = data;
-            body.giftRadius = radius;
+            body.giftRadius = r;
 
             Body.setVelocity(body, {
-                x: (Math.random() - 0.5) * 0.5,
-                y: Math.random() * 2 + 3.5
+                x: (Math.random() - 0.5) * 0.2,
+                y: Math.random() * 1.5 + 2.5
             });
-            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.06);
+            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.04);
 
             if (data.imageUrl && !this.imageCache[data.imageUrl]) {
                 this.loadImage(data.imageUrl, data.imageUrl);
@@ -260,7 +306,7 @@
         spawnRose(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('rose', 15, {
+                    this.spawnGiftBody('rose', 14, {
                         imageKey: 'rose',
                         name: 'Hoa hồng'
                     });
@@ -271,7 +317,7 @@
         spawnHeart(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('heart', 18, {
+                    this.spawnGiftBody('heart', 16, {
                         imageKey: 'heart',
                         name: 'Trái tim'
                     });
@@ -280,14 +326,14 @@
         }
 
         spawnDoughnut() {
-            this.spawnGiftBody('doughnut', 22, {
+            this.spawnGiftBody('doughnut', 19, {
                 imageKey: 'doughnut',
                 name: 'Bánh Donut'
             });
         }
 
         spawnCap() {
-            this.spawnGiftBody('cap', 24, {
+            this.spawnGiftBody('cap', 21, {
                 imageKey: 'cap',
                 name: 'Mũ TikTok'
             });
@@ -296,7 +342,7 @@
         spawnDiamond(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('diamond', 26, {
+                    this.spawnGiftBody('diamond', 23, {
                         imageKey: 'diamond',
                         name: 'Kim cương'
                     });
@@ -305,56 +351,56 @@
         }
 
         spawnCorgi() {
-            this.spawnGiftBody('corgi', 30, {
+            this.spawnGiftBody('corgi', 26, {
                 imageKey: 'corgi',
                 name: 'Corgi'
             });
         }
 
         spawnMoneyGun() {
-            this.spawnGiftBody('money_gun', 34, {
+            this.spawnGiftBody('money_gun', 29, {
                 imageKey: 'money_gun',
                 name: 'Súng bắn tiền'
             });
         }
 
         spawnWhale() {
-            this.spawnGiftBody('whale', 40, {
+            this.spawnGiftBody('whale', 34, {
                 imageKey: 'whale',
                 name: 'Cá voi'
             });
         }
 
         spawnGalaxy() {
-            this.spawnGiftBody('galaxy', 44, {
+            this.spawnGiftBody('galaxy', 38, {
                 imageKey: 'galaxy',
                 name: 'Vũ trụ Galaxy'
             });
         }
 
         spawnDragon() {
-            this.spawnGiftBody('dragon', 48, {
+            this.spawnGiftBody('dragon', 42, {
                 imageKey: 'dragon',
                 name: 'Rồng lửa'
             });
         }
 
         spawnLion() {
-            this.spawnGiftBody('lion', 54, {
+            this.spawnGiftBody('lion', 46, {
                 imageKey: 'lion',
                 name: 'Sư tử'
             });
         }
 
         spawnZeus() {
-            this.spawnGiftBody('zeus', 56, {
+            this.spawnGiftBody('zeus', 48, {
                 imageKey: 'zeus',
                 name: 'Thần Zeus'
             });
         }
 
         spawnTopDonorBadge(rank = 1, nickname = 'Top Fan') {
-            this.spawnGiftBody('top_donor', 28, {
+            this.spawnGiftBody('top_donor', 24, {
                 rank: rank || 1,
                 nickname: nickname || 'Top 1'
             });
@@ -363,15 +409,15 @@
         spawnLiveGift(giftData = {}) {
             const coins = Number(giftData.coins) || 1;
             const repeat = Math.min(15, Number(giftData.repeatCount) || 1);
-            let radius = 15;
+            let radius = 14;
             let type = 'live_gift';
 
-            if (coins >= 10000) radius = 54;
-            else if (coins >= 1000) radius = 44;
-            else if (coins >= 300) radius = 34;
-            else if (coins >= 100) radius = 26;
-            else if (coins >= 10) radius = 18;
-            else radius = 15;
+            if (coins >= 10000) radius = 46;
+            else if (coins >= 1000) radius = 38;
+            else if (coins >= 300) radius = 29;
+            else if (coins >= 100) radius = 23;
+            else if (coins >= 10) radius = 16;
+            else radius = 14;
 
             for (let i = 0; i < repeat; i++) {
                 setTimeout(() => {
@@ -451,7 +497,7 @@
                 const b = this.items[i];
                 const { x, y } = b.position;
                 const angle = b.angle;
-                const r = b.giftRadius || 15;
+                const r = b.giftRadius || 14;
                 const type = b.giftType;
                 const data = b.giftData || {};
 
@@ -464,14 +510,14 @@
                     ctx.arc(0, 0, r, 0, Math.PI * 2);
                     ctx.fillStyle = '#f59e0b';
                     ctx.shadowColor = 'rgba(245, 158, 11, 0.8)';
-                    ctx.shadowBlur = 10;
+                    ctx.shadowBlur = 8;
                     ctx.fill();
                     ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 1.5;
                     ctx.stroke();
 
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = `900 10px "Inter", "Segoe UI", sans-serif`;
+                    ctx.font = `900 ${Math.max(8, r * 0.7)}px "Inter", "Segoe UI", sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(`👑 #${data.rank || 1}`, 0, 0);
@@ -479,7 +525,7 @@
                     const img = this.imageCache[data.imageUrl] || this.imageCache[data.imageKey || type];
                     if (img && img.complete && img.naturalWidth > 0) {
                         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                        ctx.shadowBlur = 6;
+                        ctx.shadowBlur = 5;
                         ctx.shadowOffsetY = 2;
                         const size = r * 2.2;
                         ctx.drawImage(img, -size / 2, -size / 2, size, size);
