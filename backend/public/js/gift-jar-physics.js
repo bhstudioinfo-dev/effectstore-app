@@ -279,7 +279,8 @@
             const spawnY = jar.y - 15;
 
             const capScale = this.getCapacityScale();
-            const r = Math.max(7, Math.round(baseRadius * capScale));
+            const scaleMultiplier = (jar.w / 180) * capScale;
+            const r = Math.max(12, Math.round(baseRadius * scaleMultiplier));
 
             const restitution = 0.01;
             const friction = 0.40;
