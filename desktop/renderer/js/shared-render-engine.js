@@ -2011,17 +2011,8 @@
                 </div>
                </div>`;
 
-        return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(8,ctx.scale)}px;background:transparent;color:#fff;text-align:center;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;">
-            <div style="font-size:${font(ctx,item.titleFontSize,20)}px;font-weight:900;color:#fef08a;text-shadow:0 0 12px #f59e0b, 0 2px 4px rgba(0,0,0,0.8);z-index:5;background:rgba(15,23,42,0.8);padding:4px 14px;border-radius:20px;border:1px solid ${borderColor}aa;">${themeIcon} ${text(ctx,title)}</div>
-            <div style="position:relative;width:92%;height:74%;margin:4px 0;display:flex;align-items:center;justify-content:center;">
-                ${jarVisualHtml}
-            </div>
-            <div style="width:95%;z-index:5;background:rgba(15,23,42,0.85);padding:6px 10px;border-radius:14px;border:1px solid ${borderColor}aa;box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-                <div style="font-size:${font(ctx,14,14)}px;font-weight:900;color:#38bdf8;margin-bottom:3px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">💰 ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu (${percent}%)</div>
-                <div style="width:100%;height:${roundPx(10,ctx.scale)}px;background:rgba(255,255,255,0.15);border-radius:${roundPx(5,ctx.scale)}px;overflow:hidden;">
-                    <div style="width:${percent}%;height:100%;background:linear-gradient(90deg,#38bdf8,#a855f7);border-radius:${roundPx(5,ctx.scale)}px;box-shadow:0 0 8px #38bdf8;"></div>
-                </div>
-            </div>
+        return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
+            ${jarVisualHtml}
         </div>`;
     }
 

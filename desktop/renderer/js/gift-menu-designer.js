@@ -8925,40 +8925,38 @@
         }
 
         animateGiftJarCanvasDrop(item, coins, extra = {}) {
-            if (!this.mount) return;
-            const jarEl = this.mount.querySelector(`#gmd-item-${item.id}`) || this.mount.querySelector('.gmd-gift-jar-widget');
+            const jarEl = document.querySelector('.gmd-gift-jar-widget') || (this.mount && this.mount.querySelector('.gmd-gift-jar-widget'));
             if (!jarEl) return;
             const jarRect = jarEl.getBoundingClientRect();
-            const mountRect = this.mount.getBoundingClientRect();
 
-            let pSize = 28;
-            if (coins > 500) pSize = 72;
-            else if (coins > 100) pSize = 48;
-            else if (coins > 10) pSize = 36;
+            let pSize = 32;
+            if (coins > 500) pSize = 76;
+            else if (coins > 100) pSize = 52;
+            else if (coins > 10) pSize = 40;
 
-            const startX = (jarRect.left - mountRect.left) + (jarRect.width * (0.25 + Math.random() * 0.5));
-            const startY = 10;
+            const startX = jarRect.left + (jarRect.width * (0.25 + Math.random() * 0.5));
+            const startY = Math.max(10, jarRect.top - 220);
 
             const particle = document.createElement('div');
             if (extra.rankBadge) {
-                particle.innerHTML = `<div style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;padding:4px 12px;border-radius:14px;font-size:12px;font-weight:900;box-shadow:0 4px 14px rgba(0,0,0,0.6);white-space:nowrap;">${extra.rankBadge} ${extra.giftName || ''}</div>`;
+                particle.innerHTML = `<div style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;padding:6px 14px;border-radius:16px;font-size:13px;font-weight:900;box-shadow:0 4px 16px rgba(0,0,0,0.8);white-space:nowrap;border:1px solid rgba(255,255,255,0.4);">${extra.rankBadge} ${extra.giftName || ''}</div>`;
             } else {
                 const icon = extra.giftIcon || (item.dropItemType === 'coin' ? '💰' : item.dropItemType === 'heart' ? '❤️' : '🌹');
-                particle.innerHTML = `<span style="font-size:${pSize}px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.6));user-select:none;">${icon}</span>`;
+                particle.innerHTML = `<span style="font-size:${pSize}px;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.8));user-select:none;">${icon}</span>`;
             }
 
             particle.style.cssText = `
-                position: absolute;
+                position: fixed;
                 top: ${startY}px;
                 left: ${startX}px;
-                z-index: 9999;
+                z-index: 99999;
                 pointer-events: none;
-                transition: transform 0.75s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+                transition: transform 0.75s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.35s ease;
             `;
-            this.mount.appendChild(particle);
+            document.body.appendChild(particle);
 
             const isOverflow = (Number(item.currentCoins) || 0) >= (Number(item.targetCoins) || 1000);
-            const targetY = (jarRect.top - mountRect.top) + (jarRect.height * (isOverflow ? 0.95 : (0.35 + Math.random() * 0.45)));
+            const targetY = jarRect.top + (jarRect.height * (isOverflow ? 0.95 : (0.35 + Math.random() * 0.45)));
             const targetX = startX + (isOverflow ? (Math.random() * 200 - 100) : (Math.random() * 30 - 15));
 
             requestAnimationFrame(() => {
@@ -8968,7 +8966,7 @@
             setTimeout(() => {
                 particle.style.opacity = '0';
                 setTimeout(() => particle.remove(), 400);
-            }, 900);
+            }, 850);
         }
 
         testGiftJarDrop(itemId, coins = 50, extra = {}) {
@@ -8987,7 +8985,7 @@
                 if (window.app?.showNotification) window.app.showNotification('info', `🧪 Đã thả ${extra.giftName || `${coins} Xu`} từ Live vào Hũ!`);
             }
             this.renderCanvas();
-            this.updateInspector();
+            this.renderInspector();
 
             this.animateGiftJarCanvasDrop(item, coins, extra);
 
@@ -9011,7 +9009,7 @@
             this.pushHistory('reset-gift-jar');
             item.currentCoins = 0;
             this.renderCanvas();
-            this.updateInspector();
+            this.renderInspector();
             if (window.app?.showNotification) window.app.showNotification('success', 'Đã đặt lại số Xu của Hũ về 0!');
         }
 
