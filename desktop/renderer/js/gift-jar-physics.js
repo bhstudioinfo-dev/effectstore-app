@@ -2,7 +2,7 @@
  * LiveFlow Gift Jar 2D Physics Engine (Powered by Matter.js)
  * Implements real physical bouncing, rolling, stacking, and overflow
  * with FULL 100% sync for all 645+ REAL TikTok Live Gift Icons.
- * Features 2x High-DPI Supersampling, strict inside-only drag tracking, and zero suction/magnet effect.
+ * Features 2x High-DPI Supersampling, exact belly-isolated jar dragging, and tight contour walls.
  */
 (function(window) {
     'use strict';
@@ -189,47 +189,26 @@
             };
         }
 
-        updateGiftSpillState() {
-            const jar = this.getJarRect();
-            const innerLeft = jar.x + jar.w * 0.20;
-            const innerRight = jar.x + jar.w * 0.80;
-            const innerTop = jar.y + jar.h * 0.18;
-            const innerBottom = jar.y + jar.h * 0.89;
-
-            for (let i = 0; i < this.items.length; i++) {
-                const b = this.items[i];
-                if (b.isInsideJar === true) {
-                    // Check if it overflowed outside the jar cavity
-                    if (b.position.x < innerLeft || b.position.x > innerRight ||
-                        b.position.y < innerTop || b.position.y > innerBottom) {
-                        b.isInsideJar = false; // Spilled out to the world! Never drag again.
-                    }
-                }
-            }
-        }
-
         checkAndSyncWalls() {
             const jar = this.getJarRect();
             const bounds = this.getArtboardBounds();
             const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
             
-            // STRICT CHECK: ONLY move bodies that are STILL VALIDLY INSIDE the jar cavity
+            // STRICT TRANSLATION: Move ONLY items strictly located inside the hollow glass belly
             if (this.prevJarRect) {
                 const dx = jar.x - this.prevJarRect.x;
                 const dy = jar.y - this.prevJarRect.y;
 
                 if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
                     const prev = this.prevJarRect;
-                    const innerLeft = prev.x + prev.w * 0.20;
-                    const innerRight = prev.x + prev.w * 0.80;
-                    const innerTop = prev.y + prev.h * 0.18;
-                    const innerBottom = prev.y + prev.h * 0.89;
+                    const innerLeft = prev.x + prev.w * 0.22;
+                    const innerRight = prev.x + prev.w * 0.78;
+                    const innerTop = prev.y + prev.h * 0.24;
+                    const innerBottom = prev.y + prev.h * 0.88;
 
                     for (let i = 0; i < this.items.length; i++) {
                         const b = this.items[i];
-                        // ONLY move if it is strictly marked as inside the jar
-                        if (b.isInsideJar === true &&
-                            b.position.x >= innerLeft && b.position.x <= innerRight &&
+                        if (b.position.x >= innerLeft && b.position.x <= innerRight &&
                             b.position.y >= innerTop && b.position.y <= innerBottom) {
                             Matter.Body.setPosition(b, {
                                 x: b.position.x + dx,
@@ -272,7 +251,7 @@
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. Contour-Hugging Tight Jar Physics (Exactly matching hu-thuong.png without outward bulges)
+            // 2. Contour-Hugging Tight Jar Physics (Exactly matching hu-thuong.png)
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jw = jar.w;
@@ -280,7 +259,7 @@
 
             const wallThickness = 12;
 
-            // Tight Jar Bottom Floor (snugly sits at base of jar glass)
+            // Tight Jar Bottom Floor
             const bottomY = jar.y + jh * 0.88;
             const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.58, wallThickness, {
                 isStatic: true, friction: 0.8, restitution: 0.02, label: 'jar_bottom'
@@ -340,7 +319,6 @@
             body.giftType = type;
             body.giftData = data;
             body.giftRadius = r;
-            body.isInsideJar = true; // Born inside jar stream
 
             Body.setVelocity(body, {
                 x: 0,
@@ -539,7 +517,6 @@
                 lastTime = currentTime;
 
                 this.checkAndSyncWalls();
-                this.updateGiftSpillState();
 
                 for (let i = 0; i < this.items.length; i++) {
                     const b = this.items[i];
