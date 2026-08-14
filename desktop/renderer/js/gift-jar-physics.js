@@ -121,6 +121,8 @@
         }
 
         preloadAllAssets() {
+            this.loadImage('hu-thuong-lop-duoi', this.getAssetUrl('jars', 'hu-thuong-lop-duoi.png'));
+            this.loadImage('hu-thuong-lop-tren', this.getAssetUrl('jars', 'hu-thuong-lop-tren.png'));
             POPULAR_TIKTOK_GIFTS.forEach(g => {
                 this.loadImage(g.id, this.getAssetUrl('gift-icons', g.file));
             });
@@ -759,6 +761,20 @@
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
+            const jar = this.getJarRect();
+            const jarWidget = this.container?.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
+            const itemEl = jarWidget?.closest('.gmd-item');
+            const theme = jarWidget?.dataset?.theme || itemEl?.dataset?.theme || 'hu-thuong';
+
+            // 1. LAYER 1: BACK OF THE JAR (Behind inside gifts)
+            if (theme === 'hu-thuong' || !theme) {
+                const backImg = this.imageCache['hu-thuong-lop-duoi'];
+                if (backImg && backImg.complete && backImg.naturalWidth > 0) {
+                    ctx.drawImage(backImg, jar.x, jar.y, jar.w, jar.h);
+                }
+            }
+
+            // 2. LAYER 2: GIFTS
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
                 const x = b.position.x;
@@ -833,6 +849,14 @@
                 }
 
                 ctx.restore();
+            }
+
+            // 3. LAYER 3: FRONT OF THE JAR (Glass reflection & front outline over inside gifts)
+            if (theme === 'hu-thuong' || !theme) {
+                const frontImg = this.imageCache['hu-thuong-lop-tren'];
+                if (frontImg && frontImg.complete && frontImg.naturalWidth > 0) {
+                    ctx.drawImage(frontImg, jar.x, jar.y, jar.w, jar.h);
+                }
             }
 
             ctx.restore();
