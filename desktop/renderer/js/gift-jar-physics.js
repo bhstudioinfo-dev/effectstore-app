@@ -7,7 +7,7 @@
     'use strict';
 
     const POPULAR_TIKTOK_GIFTS = [
-        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 14 },
+        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 15 },
         { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', radius: 18 },
         { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', radius: 22 },
         { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', radius: 24 },
@@ -16,7 +16,7 @@
         { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', radius: 34 },
         { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', radius: 40 },
         { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', radius: 44 },
-        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_13338.png', radius: 48 },
+        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_7610.png', radius: 48 },
         { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', radius: 54 },
         { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 56 }
     ];
@@ -44,9 +44,21 @@
             this.startLoop();
         }
 
+        getAssetUrl(filename) {
+            if (!filename) return '';
+            if (filename.startsWith('http://') || filename.startsWith('https://') || filename.startsWith('data:')) {
+                return filename;
+            }
+            const clean = filename.replace(/^\/+/, '');
+            if (window.location && window.location.protocol === 'file:') {
+                return `assets/gift-icons/${clean.replace(/^assets\/gift-icons\//, '')}`;
+            }
+            return `/assets/gift-icons/${clean.replace(/^assets\/gift-icons\//, '')}`;
+        }
+
         preloadPopularGifts() {
             POPULAR_TIKTOK_GIFTS.forEach(g => {
-                this.loadImage(g.id, `/assets/gift-icons/${g.file}`);
+                this.loadImage(g.id, this.getAssetUrl(g.file));
             });
         }
 
@@ -83,7 +95,6 @@
 
         resizeCanvas() {
             if (!this.canvas || !this.container) return;
-            // The container is the 1080x1920 stage element
             const w = this.container.offsetWidth || this.container.clientWidth || 1080;
             const h = this.container.offsetHeight || this.container.clientHeight || 1920;
 
@@ -146,7 +157,7 @@
             const w = this.width;
             const h = this.height;
 
-            // 1. Stage Floor & Outer Boundary (Confined strictly inside the 9:16 Canvas)
+            // 1. Stage Floor & Outer Boundary
             const floor = Bodies.rectangle(w / 2, h + 30, w * 2, 60, { isStatic: true, friction: 0.6, label: 'floor' });
             const leftScreen = Bodies.rectangle(-30, h / 2, 60, h * 2, { isStatic: true, friction: 0.1, label: 'screen_left' });
             const rightScreen = Bodies.rectangle(w + 30, h / 2, 60, h * 2, { isStatic: true, friction: 0.1, label: 'screen_right' });
@@ -170,7 +181,7 @@
 
             const wallThickness = 24;
 
-            // Jar Bottom Wall (holding gifts at bottom of jar)
+            // Jar Bottom Wall
             const bottomY = jar.y + jh * 0.88;
             const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.68, wallThickness, {
                 isStatic: true, friction: 0.4, restitution: 0.2, label: 'jar_bottom'
@@ -188,12 +199,12 @@
                 isStatic: true, friction: 0.15, restitution: 0.2, label: 'jar_right'
             });
 
-            // Left Funnel Lip (funnels falling gifts right into jar mouth)
+            // Left Funnel Lip
             const lipLeft = Bodies.rectangle(jar.x + jw * 0.24, jar.y + jh * 0.20, jw * 0.26, wallThickness, {
                 isStatic: true, friction: 0.05, angle: -0.55, label: 'jar_lip_left'
             });
 
-            // Right Funnel Lip (funnels falling gifts right into jar mouth)
+            // Right Funnel Lip
             const lipRight = Bodies.rectangle(jar.x + jw * 0.76, jar.y + jh * 0.20, jw * 0.26, wallThickness, {
                 isStatic: true, friction: 0.05, angle: 0.55, label: 'jar_lip_right'
             });
@@ -205,12 +216,9 @@
         spawnGiftBody(type, radius, data = {}) {
             const { Bodies, World, Body } = Matter;
             
-            // Re-sync walls with current jar coordinates before spawning
             this.setupWalls();
 
             const jar = this.jarCenter || { x: this.width / 2, topY: 100 };
-            
-            // Spawn precisely at the center of the jar opening!
             const spawnX = jar.x + (Math.random() * 20 - 10);
             const spawnY = Math.max(10, jar.topY - 100 - Math.random() * 40);
 
@@ -228,14 +236,12 @@
             body.giftData = data;
             body.giftRadius = radius;
 
-            // Direct vertical velocity down into the jar mouth
             Body.setVelocity(body, {
                 x: (Math.random() - 0.5) * 0.5,
                 y: Math.random() * 2 + 3.5
             });
             Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.06);
 
-            // If image URL is provided dynamically from TikTok live, load it
             if (data.imageUrl && !this.imageCache[data.imageUrl]) {
                 this.loadImage(data.imageUrl, data.imageUrl);
             }
@@ -243,7 +249,6 @@
             World.add(this.world, body);
             this.items.push(body);
 
-            // Cap total items to maintain 60 FPS
             if (this.items.length > 320) {
                 const oldest = this.items.shift();
                 World.remove(this.world, oldest);
@@ -255,7 +260,7 @@
         spawnRose(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('rose', 14, {
+                    this.spawnGiftBody('rose', 15, {
                         imageKey: 'rose',
                         name: 'Hoa hồng'
                     });
@@ -272,6 +277,20 @@
                     });
                 }, i * 60);
             }
+        }
+
+        spawnDoughnut() {
+            this.spawnGiftBody('doughnut', 22, {
+                imageKey: 'doughnut',
+                name: 'Bánh Donut'
+            });
+        }
+
+        spawnCap() {
+            this.spawnGiftBody('cap', 24, {
+                imageKey: 'cap',
+                name: 'Mũ TikTok'
+            });
         }
 
         spawnDiamond(count = 1) {
@@ -299,6 +318,13 @@
             });
         }
 
+        spawnWhale() {
+            this.spawnGiftBody('whale', 40, {
+                imageKey: 'whale',
+                name: 'Cá voi'
+            });
+        }
+
         spawnGalaxy() {
             this.spawnGiftBody('galaxy', 44, {
                 imageKey: 'galaxy',
@@ -306,10 +332,24 @@
             });
         }
 
+        spawnDragon() {
+            this.spawnGiftBody('dragon', 48, {
+                imageKey: 'dragon',
+                name: 'Rồng lửa'
+            });
+        }
+
         spawnLion() {
             this.spawnGiftBody('lion', 54, {
                 imageKey: 'lion',
                 name: 'Sư tử'
+            });
+        }
+
+        spawnZeus() {
+            this.spawnGiftBody('zeus', 56, {
+                imageKey: 'zeus',
+                name: 'Thần Zeus'
             });
         }
 
@@ -323,7 +363,7 @@
         spawnLiveGift(giftData = {}) {
             const coins = Number(giftData.coins) || 1;
             const repeat = Math.min(15, Number(giftData.repeatCount) || 1);
-            let radius = 14;
+            let radius = 15;
             let type = 'live_gift';
 
             if (coins >= 10000) radius = 54;
@@ -331,7 +371,7 @@
             else if (coins >= 300) radius = 34;
             else if (coins >= 100) radius = 26;
             else if (coins >= 10) radius = 18;
-            else radius = 14;
+            else radius = 15;
 
             for (let i = 0; i < repeat; i++) {
                 setTimeout(() => {
@@ -346,25 +386,39 @@
 
         spawnRandomGift(tier = 'random') {
             if (tier === 'small') {
-                this.spawnRose(Math.floor(Math.random() * 8) + 4);
+                const smallGifts = ['rose', 'heart'];
+                const key = smallGifts[Math.floor(Math.random() * smallGifts.length)];
+                if (key === 'rose') this.spawnRose(Math.floor(Math.random() * 8) + 4);
+                else this.spawnHeart(Math.floor(Math.random() * 5) + 2);
             } else if (tier === 'medium') {
-                const choice = Math.random();
-                if (choice < 0.4) this.spawnDiamond(2);
-                else if (choice < 0.7) this.spawnCorgi();
+                const mediumGifts = ['diamond', 'corgi', 'money_gun', 'doughnut', 'cap'];
+                const choice = mediumGifts[Math.floor(Math.random() * mediumGifts.length)];
+                if (choice === 'diamond') this.spawnDiamond(2);
+                else if (choice === 'corgi') this.spawnCorgi();
+                else if (choice === 'doughnut') this.spawnDoughnut();
+                else if (choice === 'cap') this.spawnCap();
                 else this.spawnMoneyGun();
             } else if (tier === 'large') {
-                const choice = Math.random();
-                if (choice < 0.5) this.spawnGalaxy();
+                const largeGifts = ['whale', 'galaxy', 'dragon', 'lion', 'zeus'];
+                const choice = largeGifts[Math.floor(Math.random() * largeGifts.length)];
+                if (choice === 'whale') this.spawnWhale();
+                else if (choice === 'galaxy') this.spawnGalaxy();
+                else if (choice === 'dragon') this.spawnDragon();
+                else if (choice === 'zeus') this.spawnZeus();
                 else this.spawnLion();
             } else if (tier === 'top_donor') {
                 this.spawnTopDonorBadge(1, 'Top 1 Supporter');
             } else {
-                const roll = Math.random();
-                if (roll < 0.55) this.spawnRose(Math.floor(Math.random() * 10) + 3);
-                else if (roll < 0.72) this.spawnHeart(2);
-                else if (roll < 0.85) this.spawnDiamond(1);
-                else if (roll < 0.94) this.spawnMoneyGun();
-                else this.spawnLion();
+                const gift = POPULAR_TIKTOK_GIFTS[Math.floor(Math.random() * POPULAR_TIKTOK_GIFTS.length)];
+                const count = gift.coins < 10 ? Math.floor(Math.random() * 6) + 3 : 1;
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => {
+                        this.spawnGiftBody(gift.id, gift.radius, {
+                            imageKey: gift.id,
+                            name: gift.name
+                        });
+                    }, i * 40);
+                }
             }
         }
 
@@ -393,12 +447,11 @@
 
             ctx.clearRect(0, 0, this.width, this.height);
 
-            // Draw each physical gift with its real TikTok image
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
                 const { x, y } = b.position;
                 const angle = b.angle;
-                const r = b.giftRadius || 14;
+                const r = b.giftRadius || 15;
                 const type = b.giftType;
                 const data = b.giftData || {};
 
@@ -407,10 +460,8 @@
                 ctx.rotate(angle);
 
                 if (type === 'top_donor') {
-                    // Avatar Badge with Gold Crown
                     ctx.beginPath();
                     ctx.arc(0, 0, r, 0, Math.PI * 2);
-                    ctx.fillStyle = 'linear-gradient(135deg, #f59e0b, #ef4444)';
                     ctx.fillStyle = '#f59e0b';
                     ctx.shadowColor = 'rgba(245, 158, 11, 0.8)';
                     ctx.shadowBlur = 10;
@@ -433,7 +484,6 @@
                         const size = r * 2.2;
                         ctx.drawImage(img, -size / 2, -size / 2, size, size);
                     } else {
-                        // Fallback emoji while image loads
                         ctx.font = `${r * 2}px sans-serif`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
