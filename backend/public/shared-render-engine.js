@@ -1939,8 +1939,11 @@
         let jarImageUrl = item.customJarImageUrl || '';
         if (!jarImageUrl) {
             const themeKey = ['hu-nam-bau', 'hu-nu-bau', 'hu-thuong'].includes(theme) ? theme : 'hu-thuong';
+            const apiBase = (ctx.apiBase || '').replace(/\/+$/, '');
             if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
                 jarImageUrl = `assets/jars/${themeKey}.png`;
+            } else if (apiBase) {
+                jarImageUrl = `${apiBase}/uploads/jars/${themeKey}.png`;
             } else {
                 jarImageUrl = `/uploads/jars/${themeKey}.png`;
             }
@@ -1948,7 +1951,7 @@
 
         return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
             <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                <img src="${jarImageUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.5));" />
+                <img src="${jarImageUrl}" onerror="this.onerror=null;this.src='assets/jars/${theme || 'hu-thuong'}.png';" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.5));" />
             </div>
         </div>`;
     }

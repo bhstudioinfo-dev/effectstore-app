@@ -9154,6 +9154,9 @@
             if (!item) return;
             this.pushHistory(`update-gift-jar-${field}`);
             item[field] = value;
+            if (field === 'theme') {
+                item.customJarImageUrl = '';
+            }
             if (field === 'capacityLevel' || field === 'targetCoins') {
                 if (this.giftJarPhysics) {
                     this.giftJarPhysics.setupWalls();
