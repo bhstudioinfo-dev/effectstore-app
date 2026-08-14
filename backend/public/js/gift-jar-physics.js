@@ -6,7 +6,8 @@
  *   2. 🍬 Kẹo ngọt (11 Real High-Res Candy PNGs từ D:\HỦ QUÀ)
  *   3. ⭐ Ngôi sao sáng (Star)
  *   4. 💎 Kim cương quý (Diamond)
- * Features 3 capacity presets (Vừa / Trung bình / Nhiều), 28px solid basement, and Hard Floor Guard.
+ * Features 3 capacity presets (Vừa / Trung bình / Nhiều), sleek form-fitting bottom (zero under-jar gaps),
+ * Hard Internal Floor Guard (zero leakage guarantee), and Dynamic Jar Movement physics.
  */
 (function(window) {
     'use strict';
@@ -248,17 +249,17 @@
                 const dx = jar.x - this.prevJarRect.x;
                 const dy = jar.y - this.prevJarRect.y;
 
-                if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
+                if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3) {
                     const prev = this.prevJarRect;
-                    const prevInnerLeft = prev.x + prev.w * 0.20;
-                    const prevInnerRight = prev.x + prev.w * 0.80;
-                    const prevInnerTop = prev.y + prev.h * 0.22;
-                    const prevInnerBottom = prev.y + prev.h * 0.88;
+                    const prevInnerLeft = prev.x + prev.w * 0.16;
+                    const prevInnerRight = prev.x + prev.w * 0.84;
+                    const prevInnerTop = prev.y + prev.h * 0.18;
+                    const prevInnerBottom = prev.y + prev.h * 0.90;
 
-                    const newOuterLeft = jar.x + jar.w * 0.16;
-                    const newOuterRight = jar.x + jar.w * 0.84;
-                    const newOuterTop = jar.y + jar.h * 0.16;
-                    const newOuterBottom = jar.y + jar.h * 0.90;
+                    const newOuterLeft = jar.x + jar.w * 0.14;
+                    const newOuterRight = jar.x + jar.w * 0.86;
+                    const newOuterTop = jar.y + jar.h * 0.14;
+                    const newOuterBottom = jar.y + jar.h * 0.92;
 
                     for (let i = 0; i < this.items.length; i++) {
                         const b = this.items[i];
@@ -270,29 +271,37 @@
                         );
 
                         if (wasInside) {
+                            // 1. Move inside items WITH the jar smoothly and wake them up so they maintain natural volume
+                            Matter.Sleeping.set(b, false);
                             Matter.Body.setPosition(b, {
                                 x: b.position.x + dx,
                                 y: b.position.y + dy
                             });
-                            Matter.Body.setVelocity(b, { x: 0, y: 0 });
+                            // Natural dynamic jiggle instead of zeroing velocity into a squashed lump
+                            Matter.Body.setVelocity(b, {
+                                x: dx * 0.40 + (Math.random() - 0.5) * 0.4,
+                                y: dy * 0.40 + (Math.random() - 0.5) * 0.4
+                            });
                         } else {
+                            // 2. Outside items get physically pushed away and woken up
                             const isCollidingWithNewJar = (
                                 b.position.x >= (newOuterLeft - r) && b.position.x <= (newOuterRight + r) &&
                                 b.position.y >= (newOuterTop - r) && b.position.y <= (newOuterBottom + r)
                             );
 
                             if (isCollidingWithNewJar) {
-                                if (dx > 0.4) {
+                                Matter.Sleeping.set(b, false);
+                                if (dx > 0.3) {
                                     const targetX = newOuterRight + r + 2;
                                     Matter.Body.setPosition(b, { x: Math.max(b.position.x, targetX), y: b.position.y });
                                     Matter.Body.setVelocity(b, { x: Math.max(b.velocity.x, dx * 0.8 + 2.0), y: Math.min(b.velocity.y, -1.0) });
-                                } else if (dx < -0.4) {
+                                } else if (dx < -0.3) {
                                     const targetX = newOuterLeft - r - 2;
                                     Matter.Body.setPosition(b, { x: Math.min(b.position.x, targetX), y: b.position.y });
                                     Matter.Body.setVelocity(b, { x: Math.min(b.velocity.x, dx * 0.8 - 2.0), y: Math.min(b.velocity.y, -1.0) });
                                 }
 
-                                if (dy > 0.4 && b.position.y >= newOuterBottom - 15) {
+                                if (dy > 0.3 && b.position.y >= newOuterBottom - 15) {
                                     const sideDir = b.position.x >= (jar.x + jar.w / 2) ? 1 : -1;
                                     Matter.Body.setPosition(b, { x: b.position.x + sideDir * 4, y: Math.max(b.position.y, newOuterBottom + r + 2) });
                                     Matter.Body.setVelocity(b, { x: sideDir * 3.5, y: dy * 0.6 });
@@ -322,6 +331,7 @@
 
             const bounds = this.getArtboardBounds();
 
+            // 1. Strict 9:16 Screen Boundaries
             const leftScreen = Bodies.rectangle(bounds.left - 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
                 isStatic: true, friction: 0.2, label: 'screen_left'
             });
@@ -333,31 +343,36 @@
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
+            // 2. Sleek Jar Boundaries (Exact fit, zero under-jar ghost barriers)
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jw = jar.w;
             const jh = jar.h;
 
-            const bottomY = jar.y + jh * 0.88 + 25;
-            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.72, 55, {
-                isStatic: true, friction: 0.90, restitution: 0.01, label: 'jar_bottom'
+            // Thin 10px jar bottom glass plate
+            const bottomY = jar.y + jh * 0.88;
+            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.70, 10, {
+                isStatic: true, friction: 0.85, restitution: 0.01, label: 'jar_bottom'
             });
 
+            // Solid Left Glass Wall
             const leftX = jar.x + jw * 0.18;
-            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.54, 20, jh * 0.68, {
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.54, 18, jh * 0.68, {
                 isStatic: true, friction: 0.1, restitution: 0.01, label: 'jar_left'
             });
 
+            // Solid Right Glass Wall
             const rightX = jar.x + jw * 0.82;
-            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.54, 20, jh * 0.68, {
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.54, 18, jh * 0.68, {
                 isStatic: true, friction: 0.1, restitution: 0.01, label: 'jar_right'
             });
 
-            const lipLeft = Bodies.rectangle(jar.x + jw * 0.24, jar.y + jh * 0.20, jw * 0.18, 16, {
+            // Inward Neck Lip Funnel
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.24, jar.y + jh * 0.20, jw * 0.18, 14, {
                 isStatic: true, friction: 0.01, angle: 0.45, label: 'jar_lip_left'
             });
 
-            const lipRight = Bodies.rectangle(jar.x + jw * 0.76, jar.y + jh * 0.20, jw * 0.16, 16, {
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.76, jar.y + jh * 0.20, jw * 0.18, 14, {
                 isStatic: true, friction: 0.01, angle: -0.45, label: 'jar_lip_right'
             });
 
@@ -370,18 +385,20 @@
             const jarFloorY = jar.y + jar.h * 0.88;
             const innerLeft = jar.x + jar.w * 0.18;
             const innerRight = jar.x + jar.w * 0.82;
+            const jarTopY = jar.y + jar.h * 0.18;
 
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
                 const r = b.giftRadius || 11;
-                if (b.position.x >= innerLeft && b.position.x <= innerRight) {
-                    if (b.position.y > jarFloorY - r && b.position.y < jarFloorY + 30) {
+                // Only constrain items that are truly INSIDE the jar cavity
+                if (b.position.x >= innerLeft && b.position.x <= innerRight && b.position.y >= jarTopY) {
+                    if (b.position.y > jarFloorY - r && b.position.y < jarFloorY + 20) {
                         Matter.Body.setPosition(b, {
                             x: b.position.x,
                             y: jarFloorY - r
                         });
                         if (b.velocity.y > 0) {
-                            Matter.Body.setVelocity(b, { x: b.velocity.x * 0.8, y: 0 });
+                            Matter.Body.setVelocity(b, { x: b.velocity.x * 0.7, y: 0 });
                         }
                     }
                 }
