@@ -216,20 +216,20 @@
 
             const jar = this.getContainedJarBounds();
             const jx = jar.x + jar.w / 2;
-            const bottomY = jar.y + jar.h * 0.85;
+            const bottomY = jar.y + jar.h * 0.93;
 
-            // Thin 6px jar bottom glass plate — exactly spans inner glass cavity
-            const jarBottom = Bodies.rectangle(jx, bottomY, jar.w * 0.64, 6, {
+            // Thin 6px jar bottom glass plate — exactly spans bottom glass floor
+            const jarBottom = Bodies.rectangle(jx, bottomY, jar.w * 0.68, 6, {
                 isStatic: true, friction: 0.80, restitution: 0.01, label: 'jar_bottom'
             });
 
             // Solid Left Glass Wall
-            const jarLeft = Bodies.rectangle(jar.x + jar.w * 0.18, jar.y + jar.h * 0.52, 14, jar.h * 0.64, {
+            const jarLeft = Bodies.rectangle(jar.x + jar.w * 0.18, jar.y + jar.h * 0.56, 14, jar.h * 0.72, {
                 isStatic: true, friction: 0.05, restitution: 0.01, label: 'jar_left'
             });
 
             // Solid Right Glass Wall
-            const jarRight = Bodies.rectangle(jar.x + jar.w * 0.82, jar.y + jar.h * 0.52, 14, jar.h * 0.64, {
+            const jarRight = Bodies.rectangle(jar.x + jar.w * 0.82, jar.y + jar.h * 0.56, 14, jar.h * 0.72, {
                 isStatic: true, friction: 0.05, restitution: 0.01, label: 'jar_right'
             });
 
@@ -248,7 +248,7 @@
 
         applyHardFloorGuard() {
             const jar = this.getContainedJarBounds();
-            const jarFloorY = jar.y + jar.h * 0.85;
+            const jarFloorY = jar.y + jar.h * 0.93;
             const innerLeft = jar.x + jar.w * 0.18;
             const innerRight = jar.x + jar.w * 0.82;
 
