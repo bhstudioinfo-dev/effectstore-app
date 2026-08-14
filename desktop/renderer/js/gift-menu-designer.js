@@ -8836,14 +8836,7 @@
             }, duration + 40);
         }
 
-        updateGiftJarField(itemId, field, value) {
-            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
-            if (!item) return;
-            this.pushHistory('update-gift-jar');
-            item[field] = value;
-            this.renderCanvas();
-            this.updateInspector();
-        }
+
 
         uploadCustomJarImage(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
