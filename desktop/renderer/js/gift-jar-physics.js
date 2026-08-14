@@ -2,7 +2,7 @@
  * LiveFlow Gift Jar 2D Physics Engine (Powered by Matter.js)
  * Implements real physical bouncing, rolling, stacking, and overflow
  * with FULL 100% sync for all 645+ REAL TikTok Live Gift Icons.
- * Features 2x High-DPI Supersampling, exact belly-isolated jar dragging, and tight contour walls.
+ * Features 2x High-DPI Supersampling, solid jar pushing (bulldozing outside gifts), and zero suction.
  */
 (function(window) {
     'use strict';
@@ -194,27 +194,65 @@
             const bounds = this.getArtboardBounds();
             const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
             
-            // STRICT TRANSLATION: Move ONLY items strictly located inside the hollow glass belly
             if (this.prevJarRect) {
                 const dx = jar.x - this.prevJarRect.x;
                 const dy = jar.y - this.prevJarRect.y;
 
-                if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
                     const prev = this.prevJarRect;
-                    const innerLeft = prev.x + prev.w * 0.22;
-                    const innerRight = prev.x + prev.w * 0.78;
-                    const innerTop = prev.y + prev.h * 0.24;
-                    const innerBottom = prev.y + prev.h * 0.88;
+                    const prevInnerLeft = prev.x + prev.w * 0.22;
+                    const prevInnerRight = prev.x + prev.w * 0.78;
+                    const prevInnerTop = prev.y + prev.h * 0.24;
+                    const prevInnerBottom = prev.y + prev.h * 0.88;
+
+                    const newOuterLeft = jar.x + jar.w * 0.18;
+                    const newOuterRight = jar.x + jar.w * 0.82;
+                    const newOuterTop = jar.y + jar.h * 0.18;
+                    const newOuterBottom = jar.y + jar.h * 0.90;
 
                     for (let i = 0; i < this.items.length; i++) {
                         const b = this.items[i];
-                        if (b.position.x >= innerLeft && b.position.x <= innerRight &&
-                            b.position.y >= innerTop && b.position.y <= innerBottom) {
+                        const r = b.giftRadius || 12;
+
+                        // 1. Items inside the jar cavity move WITH the jar
+                        const wasInside = (
+                            b.position.x >= prevInnerLeft && b.position.x <= prevInnerRight &&
+                            b.position.y >= prevInnerTop && b.position.y <= prevInnerBottom
+                        );
+
+                        if (wasInside) {
                             Matter.Body.setPosition(b, {
                                 x: b.position.x + dx,
                                 y: b.position.y + dy
                             });
                             Matter.Body.setVelocity(b, { x: 0, y: 0 });
+                        } else {
+                            // 2. Items on the OUTSIDE get physically PUSHED / BULLDOZED away when collided with the moving jar!
+                            const isCollidingWithNewJar = (
+                                b.position.x >= (newOuterLeft - r) && b.position.x <= (newOuterRight + r) &&
+                                b.position.y >= (newOuterTop - r) && b.position.y <= (newOuterBottom + r)
+                            );
+
+                            if (isCollidingWithNewJar) {
+                                if (dx > 0.4) {
+                                    // Jar moving right -> PUSH gifts to the right
+                                    const targetX = newOuterRight + r + 2;
+                                    Matter.Body.setPosition(b, { x: Math.max(b.position.x, targetX), y: b.position.y });
+                                    Matter.Body.setVelocity(b, { x: Math.max(b.velocity.x, dx * 0.8 + 2.0), y: Math.min(b.velocity.y, -1.0) });
+                                } else if (dx < -0.4) {
+                                    // Jar moving left -> PUSH gifts to the left
+                                    const targetX = newOuterLeft - r - 2;
+                                    Matter.Body.setPosition(b, { x: Math.min(b.position.x, targetX), y: b.position.y });
+                                    Matter.Body.setVelocity(b, { x: Math.min(b.velocity.x, dx * 0.8 - 2.0), y: Math.min(b.velocity.y, -1.0) });
+                                }
+
+                                if (dy > 0.4 && b.position.y >= newOuterBottom - 15) {
+                                    // Jar moving down into floor gifts -> push them sideways & down
+                                    const sideDir = b.position.x >= (jar.x + jar.w / 2) ? 1 : -1;
+                                    Matter.Body.setPosition(b, { x: b.position.x + sideDir * 4, y: Math.max(b.position.y, newOuterBottom + r + 2) });
+                                    Matter.Body.setVelocity(b, { x: sideDir * 3.5, y: dy * 0.6 });
+                                }
+                            }
                         }
                     }
                 }
