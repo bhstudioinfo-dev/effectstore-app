@@ -7,7 +7,8 @@
  *   3. 💎 Kim cương quý (15 Real High-Res Diamond/Gem PNGs từ D:\HỦ QUÀ\KIM CUONG QUY)
  *   4. ⭐ Ngôi sao sáng (Star)
  * Features 3 capacity presets (Vừa / Trung bình / Nhiều), sleek form-fitting bottom (zero under-jar gaps),
- * Hard Internal Floor Guard (zero leakage guarantee), and Dynamic Jar Movement physics.
+ * Hard Internal Floor Guard (zero leakage guarantee), strict inside/outside gift separation (zero sucking),
+ * and Dynamic Jar Movement physics.
  */
 (function(window) {
     'use strict';
@@ -264,37 +265,29 @@
                 const dy = jar.y - this.prevJarRect.y;
 
                 if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3) {
-                    const prev = this.prevJarRect;
-                    const prevInnerLeft = prev.x + prev.w * 0.16;
-                    const prevInnerRight = prev.x + prev.w * 0.84;
-                    const prevInnerTop = prev.y + prev.h * 0.18;
-                    const prevInnerBottom = prev.y + prev.h * 0.90;
-
-                    const newOuterLeft = jar.x + jar.w * 0.14;
-                    const newOuterRight = jar.x + jar.w * 0.86;
-                    const newOuterTop = jar.y + jar.h * 0.14;
-                    const newOuterBottom = jar.y + jar.h * 0.92;
+                    const newOuterLeft = jar.x + jar.w * 0.15;
+                    const newOuterRight = jar.x + jar.w * 0.85;
+                    const newOuterTop = jar.y + jar.h * 0.15;
+                    const newOuterBottom = jar.y + jar.h * 0.88;
 
                     for (let i = 0; i < this.items.length; i++) {
                         const b = this.items[i];
                         const r = b.giftRadius || 11;
 
-                        const wasInside = (
-                            b.position.x >= prevInnerLeft && b.position.x <= prevInnerRight &&
-                            b.position.y >= prevInnerTop && b.position.y <= prevInnerBottom
-                        );
-
-                        if (wasInside) {
+                        // 1. STRICT INSIDE ITEMS: ONLY items that are truly INSIDE the jar move with the jar
+                        if (b.isInsideJar === true) {
                             Matter.Sleeping.set(b, false);
                             Matter.Body.setPosition(b, {
                                 x: b.position.x + dx,
                                 y: b.position.y + dy
                             });
                             Matter.Body.setVelocity(b, {
-                                x: dx * 0.40 + (Math.random() - 0.5) * 0.4,
-                                y: dy * 0.40 + (Math.random() - 0.5) * 0.4
+                                x: dx * 0.35 + (Math.random() - 0.5) * 0.3,
+                                y: dy * 0.35 + (Math.random() - 0.5) * 0.3
                             });
                         } else {
+                            // 2. OUTSIDE ITEMS: NEVER sucked into the jar!
+                            // If the moving jar bumps into outside gifts, push them AWAY from the jar outer glass
                             const isCollidingWithNewJar = (
                                 b.position.x >= (newOuterLeft - r) && b.position.x <= (newOuterRight + r) &&
                                 b.position.y >= (newOuterTop - r) && b.position.y <= (newOuterBottom + r)
@@ -303,19 +296,17 @@
                             if (isCollidingWithNewJar) {
                                 Matter.Sleeping.set(b, false);
                                 if (dx > 0.3) {
-                                    const targetX = newOuterRight + r + 2;
-                                    Matter.Body.setPosition(b, { x: Math.max(b.position.x, targetX), y: b.position.y });
-                                    Matter.Body.setVelocity(b, { x: Math.max(b.velocity.x, dx * 0.8 + 2.0), y: Math.min(b.velocity.y, -1.0) });
+                                    Matter.Body.setPosition(b, { x: Math.max(b.position.x, newOuterRight + r + 2), y: b.position.y });
+                                    Matter.Body.setVelocity(b, { x: Math.max(b.velocity.x, dx * 0.8 + 2.0), y: b.velocity.y });
                                 } else if (dx < -0.3) {
-                                    const targetX = newOuterLeft - r - 2;
-                                    Matter.Body.setPosition(b, { x: Math.min(b.position.x, targetX), y: b.position.y });
-                                    Matter.Body.setVelocity(b, { x: Math.min(b.velocity.x, dx * 0.8 - 2.0), y: Math.min(b.velocity.y, -1.0) });
+                                    Matter.Body.setPosition(b, { x: Math.min(b.position.x, newOuterLeft - r - 2), y: b.position.y });
+                                    Matter.Body.setVelocity(b, { x: Math.min(b.velocity.x, dx * 0.8 - 2.0), y: b.velocity.y });
                                 }
 
-                                if (dy > 0.3 && b.position.y >= newOuterBottom - 15) {
+                                if (dy > 0.3 && b.position.y >= newOuterBottom - 10) {
                                     const sideDir = b.position.x >= (jar.x + jar.w / 2) ? 1 : -1;
-                                    Matter.Body.setPosition(b, { x: b.position.x + sideDir * 4, y: Math.max(b.position.y, newOuterBottom + r + 2) });
-                                    Matter.Body.setVelocity(b, { x: sideDir * 3.5, y: dy * 0.6 });
+                                    Matter.Body.setPosition(b, { x: b.position.x + sideDir * 3, y: Math.max(b.position.y, newOuterBottom + r + 2) });
+                                    Matter.Body.setVelocity(b, { x: sideDir * 2.5, y: dy * 0.6 });
                                 }
                             }
                         }
@@ -344,42 +335,46 @@
 
             // 1. Strict 9:16 Screen Boundaries
             const leftScreen = Bodies.rectangle(bounds.left - 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
-                isStatic: true, friction: 0.2, label: 'screen_left'
+                isStatic: true, friction: 0.1, restitution: 0.1, label: 'screen_left'
             });
             const rightScreen = Bodies.rectangle(bounds.right + 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
-                isStatic: true, friction: 0.2, label: 'screen_right'
+                isStatic: true, friction: 0.1, restitution: 0.1, label: 'screen_right'
             });
             const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 25, bounds.width + 100, 50, {
-                isStatic: true, friction: 0.8, restitution: 0.05, label: 'floor'
+                isStatic: true, friction: 0.3, restitution: 0.15, label: 'floor'
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. Sleek Jar Boundaries (Exact fit, zero under-jar ghost barriers)
+            // 2. Sleek Jar Boundaries (Exact inner glass fit, no lateral overflow blockage)
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jw = jar.w;
             const jh = jar.h;
 
-            const bottomY = jar.y + jh * 0.88;
-            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.70, 10, {
-                isStatic: true, friction: 0.85, restitution: 0.01, label: 'jar_bottom'
+            // Thin 6px jar bottom glass plate — exactly spans inner glass cavity
+            const bottomY = jar.y + jh * 0.85;
+            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.64, 6, {
+                isStatic: true, friction: 0.80, restitution: 0.01, label: 'jar_bottom'
             });
 
+            // Solid Left Glass Wall
             const leftX = jar.x + jw * 0.18;
-            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.54, 18, jh * 0.68, {
-                isStatic: true, friction: 0.1, restitution: 0.01, label: 'jar_left'
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.52, 14, jh * 0.64, {
+                isStatic: true, friction: 0.05, restitution: 0.01, label: 'jar_left'
             });
 
+            // Solid Right Glass Wall
             const rightX = jar.x + jw * 0.82;
-            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.54, 18, jh * 0.68, {
-                isStatic: true, friction: 0.1, restitution: 0.01, label: 'jar_right'
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.52, 14, jh * 0.64, {
+                isStatic: true, friction: 0.05, restitution: 0.01, label: 'jar_right'
             });
 
-            const lipLeft = Bodies.rectangle(jar.x + jw * 0.24, jar.y + jh * 0.20, jw * 0.18, 14, {
+            // Inward Neck Lip Funnels
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.24, jar.y + jh * 0.20, jw * 0.16, 12, {
                 isStatic: true, friction: 0.01, angle: 0.45, label: 'jar_lip_left'
             });
 
-            const lipRight = Bodies.rectangle(jar.x + jw * 0.76, jar.y + jh * 0.20, jw * 0.18, 14, {
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.76, jar.y + jh * 0.20, jw * 0.16, 12, {
                 isStatic: true, friction: 0.01, angle: -0.45, label: 'jar_lip_right'
             });
 
@@ -389,7 +384,7 @@
 
         applyHardFloorGuard() {
             const jar = this.getJarRect();
-            const jarFloorY = jar.y + jar.h * 0.88;
+            const jarFloorY = jar.y + jar.h * 0.85;
             const innerLeft = jar.x + jar.w * 0.18;
             const innerRight = jar.x + jar.w * 0.82;
             const jarTopY = jar.y + jar.h * 0.18;
@@ -397,14 +392,41 @@
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
                 const r = b.giftRadius || 11;
-                if (b.position.x >= innerLeft && b.position.x <= innerRight && b.position.y >= jarTopY) {
-                    if (b.position.y > jarFloorY - r && b.position.y < jarFloorY + 20) {
-                        Matter.Body.setPosition(b, {
-                            x: b.position.x,
-                            y: jarFloorY - r
-                        });
-                        if (b.velocity.y > 0) {
-                            Matter.Body.setVelocity(b, { x: b.velocity.x * 0.7, y: 0 });
+
+                // State machine check: Did this item spill/overflow out of the jar?
+                if (b.isInsideJar === true) {
+                    const isSpilledOut = (
+                        b.position.y < (jarTopY - 5) && (b.position.x < (innerLeft + 5) || b.position.x > (innerRight - 5))
+                    ) || (
+                        b.position.y >= jarTopY && (b.position.x < (innerLeft - 10) || b.position.x > (innerRight + 10))
+                    );
+
+                    if (isSpilledOut) {
+                        b.isInsideJar = false;
+                        // Give spilled gift smooth rolling characteristics so it fills the screen & floor
+                        b.friction = 0.08;
+                        b.frictionAir = 0.001;
+                        b.restitution = 0.20;
+                    } else {
+                        // Keep inside item strictly bounded to jar floor
+                        if (b.position.y > jarFloorY - r && b.position.y < jarFloorY + 25) {
+                            Matter.Body.setPosition(b, {
+                                x: b.position.x,
+                                y: jarFloorY - r
+                            });
+                            if (b.velocity.y > 0) {
+                                Matter.Body.setVelocity(b, { x: b.velocity.x * 0.7, y: 0 });
+                            }
+                        }
+                    }
+                } else {
+                    // For outside items lying around: encourage smooth natural dispersion into floor valleys
+                    if (b.position.y > jarFloorY && Math.abs(b.velocity.y) < 0.1 && Math.abs(b.velocity.x) < 0.05) {
+                        const centerX = jar.x + jar.w / 2;
+                        // Gentle inward roll toward open spaces under elevated jars
+                        if (Math.abs(b.position.x - centerX) > 30 && b.position.y > jarFloorY + 10) {
+                            const dir = b.position.x < centerX ? 0.04 : -0.04;
+                            Matter.Body.applyForce(b, b.position, { x: dir * b.mass * 0.001, y: 0 });
                         }
                     }
                 }
@@ -427,7 +449,7 @@
             const r = Math.max(7, Math.round(baseRadius * capScale));
 
             const restitution = 0.01;
-            const friction = 0.50;
+            const friction = 0.40;
 
             const body = Bodies.circle(spawnX, spawnY, r, {
                 restitution,
@@ -440,6 +462,7 @@
             body.giftType = type;
             body.giftData = data;
             body.giftRadius = r;
+            body.isInsideJar = true; // Born to fall into the jar cavity!
 
             Body.setVelocity(body, {
                 x: 0,
@@ -797,7 +820,6 @@
                     ctx.lineWidth = 1.2;
                     ctx.stroke();
                 } else {
-                    // Real Diamond, Candy or TikTok Gift Sprite PNG
                     const img = this.imageCache[data.imageUrl] || this.imageCache[data.imageKey || type];
                     if (img && img.complete && img.naturalWidth > 0) {
                         const size = r * 2.2;
