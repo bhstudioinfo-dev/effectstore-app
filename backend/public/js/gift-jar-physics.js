@@ -202,7 +202,7 @@
 
             const bounds = this.getArtboardBounds();
 
-            // 1. Heavy Stage Floor & Left/Right Screen Walls strictly at 9:16 Artboard Boundaries (60px thick floor)
+            // 1. Heavy Stage Floor & Left/Right Screen Walls (60px thick solid floor)
             const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 30, bounds.width + 200, 60, {
                 isStatic: true, friction: 0.8, restitution: 0.1, label: 'floor'
             });
@@ -214,50 +214,40 @@
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. Exact Physics Walls of the Glass Jar (strictly inside the Jar SVG silhouette)
+            // 2. 100% Sealed Airtight Jar Physics Walls (Matching hu-thuong.png PNG boundary)
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
-            const jy = jar.y + jar.h / 2;
             const jw = jar.w;
             const jh = jar.h;
 
-            this.jarCenter = { 
-                x: jx, 
-                y: jy, 
-                w: jw, 
-                h: jh, 
-                topY: jar.y,
-                mouthY: jar.y + jh * 0.16
-            };
+            const wallThickness = Math.max(16, Math.round(jw * 0.10));
 
-            const wallThickness = Math.max(14, Math.round(jw * 0.08));
-
-            // Jar Bottom Wall
-            const bottomY = jar.y + jh * 0.90;
-            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.78, wallThickness, {
-                isStatic: true, friction: 0.55, restitution: 0.12, label: 'jar_bottom'
+            // Solid Jar Bottom Wall (seamlessly joining with left and right walls)
+            const bottomY = jar.y + jh * 0.94;
+            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.92, wallThickness, {
+                isStatic: true, friction: 0.7, restitution: 0.08, label: 'jar_bottom'
             });
 
-            // Jar Left Wall
-            const leftX = jar.x + jw * 0.13;
-            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.56, wallThickness, jh * 0.64, {
-                isStatic: true, friction: 0.1, restitution: 0.12, label: 'jar_left'
+            // Solid Jar Left Wall
+            const leftX = jar.x + jw * 0.10;
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.58, wallThickness, jh * 0.68, {
+                isStatic: true, friction: 0.1, restitution: 0.08, label: 'jar_left'
             });
 
-            // Jar Right Wall
-            const rightX = jar.x + jw * 0.87;
-            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.56, wallThickness, jh * 0.64, {
-                isStatic: true, friction: 0.1, restitution: 0.12, label: 'jar_right'
+            // Solid Jar Right Wall
+            const rightX = jar.x + jw * 0.90;
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.58, wallThickness, jh * 0.68, {
+                isStatic: true, friction: 0.1, restitution: 0.08, label: 'jar_right'
             });
 
-            // Left Inward Funnel Lip (slanted downward into jar opening: `\`)
-            const lipLeft = Bodies.rectangle(jar.x + jw * 0.20, jar.y + jh * 0.20, jw * 0.30, wallThickness, {
-                isStatic: true, friction: 0.02, angle: 0.50, label: 'jar_lip_left'
+            // Left Inward Mouth Lip (guiding gifts straight down into jar: `\`)
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.18, jar.y + jh * 0.20, jw * 0.32, wallThickness, {
+                isStatic: true, friction: 0.02, angle: 0.48, label: 'jar_lip_left'
             });
 
-            // Right Inward Funnel Lip (slanted downward into jar opening: `/`)
-            const lipRight = Bodies.rectangle(jar.x + jw * 0.80, jar.y + jh * 0.20, jw * 0.30, wallThickness, {
-                isStatic: true, friction: 0.02, angle: -0.50, label: 'jar_lip_right'
+            // Right Inward Mouth Lip (guiding gifts straight down into jar: `/`)
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.82, jar.y + jh * 0.20, jw * 0.32, wallThickness, {
+                isStatic: true, friction: 0.02, angle: -0.48, label: 'jar_lip_right'
             });
 
             this.wallBodies.push(jarBottom, jarLeft, jarRight, lipLeft, lipRight);
@@ -276,20 +266,20 @@
             const mouthCenterX = jar.x + jar.w / 2;
 
             // Spawn at the top edge of the 9:16 frame, EXACTLY above the jar's mouth!
-            const spawnX = mouthCenterX + (Math.random() * 6 - 3);
+            const spawnX = mouthCenterX + (Math.random() * 4 - 2);
             const spawnY = bounds.top - 15 - Math.random() * 15;
 
             const scaleFactor = bounds.width < 600 ? (bounds.width / 720) : 1;
             const r = Math.max(7, Math.round(radius * scaleFactor));
 
-            const restitution = type === 'rose' ? 0.12 : 0.18;
-            const friction = type === 'rose' ? 0.35 : 0.22;
+            const restitution = type === 'rose' ? 0.10 : 0.15;
+            const friction = type === 'rose' ? 0.40 : 0.25;
 
             const body = Bodies.circle(spawnX, spawnY, r, {
                 restitution,
                 friction,
                 frictionAir: 0.003,
-                density: 0.004
+                density: 0.005
             });
 
             body.giftType = type;
@@ -298,10 +288,10 @@
 
             // Straight vertical drop down into the jar mouth
             Body.setVelocity(body, {
-                x: (Math.random() - 0.5) * 0.05,
+                x: (Math.random() - 0.5) * 0.02,
                 y: Math.random() * 1.5 + 4.5
             });
-            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.03);
+            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.02);
 
             if (data.imageUrl && !this.imageCache[data.imageUrl]) {
                 this.loadImage(data.imageUrl, data.imageUrl);

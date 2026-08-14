@@ -1937,41 +1937,19 @@
         const theme = item.theme || 'hu-thuong';
         
         let jarImageUrl = item.customJarImageUrl || '';
-        if (jarImageUrl && jarImageUrl.startsWith('/')) {
-            const base = (ctx && ctx.apiBase) || (window.giftMenuDesigner && window.giftMenuDesigner.apiBase) || '';
-            if (base) {
-                jarImageUrl = base.replace(/\/$/, '') + jarImageUrl;
+        if (!jarImageUrl) {
+            const themeKey = ['hu-nam-bau', 'hu-nam-cao-cap', 'hu-nu-bau', 'hu-thuong'].includes(theme) ? theme : 'hu-thuong';
+            if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+                jarImageUrl = `assets/jars/${themeKey}.png`;
+            } else {
+                jarImageUrl = `/uploads/jars/${themeKey}.png`;
             }
         }
 
-        const jarVisualHtml = jarImageUrl
-            ? `<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                <img src="${jarImageUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 0 15px rgba(56,189,248,0.5));" />
-               </div>`
-            : `<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                <svg viewBox="0 0 200 240" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;filter:drop-shadow(0 6px 16px rgba(0,0,0,0.45));">
-                    <defs>
-                        <linearGradient id="jarGlassGrad_${item.id || 'def'}" x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
-                            <stop offset="40%" stop-color="#e0f2fe" stop-opacity="0.15"/>
-                            <stop offset="80%" stop-color="#bae6fd" stop-opacity="0.25"/>
-                            <stop offset="100%" stop-color="#ffffff" stop-opacity="0.40"/>
-                        </linearGradient>
-                    </defs>
-                    <!-- Cap Rim -->
-                    <rect x="58" y="12" width="84" height="18" rx="6" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
-                    <rect x="68" y="30" width="64" height="10" rx="3" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
-                    <!-- Glass Jar Body (Square Shoulders & Crystal Glass) -->
-                    <path d="M 50 40 C 35 48, 25 65, 25 90 L 25 200 C 25 218, 40 226, 100 226 C 160 226, 175 218, 175 200 L 175 90 C 175 65, 165 48, 150 40 Z" fill="url(#jarGlassGrad_${item.id || 'def'})" stroke="#ffffff" stroke-width="3" opacity="0.95"/>
-                    <!-- Glass Highlight Reflection Strips -->
-                    <path d="M 38 65 L 38 195" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" opacity="0.75"/>
-                    <path d="M 48 70 L 48 185" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.45"/>
-                    <path d="M 162 75 L 162 185" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
-                </svg>
-               </div>`;
-
         return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
-            ${jarVisualHtml}
+            <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                <img src="${jarImageUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.5));" />
+            </div>
         </div>`;
     }
 
