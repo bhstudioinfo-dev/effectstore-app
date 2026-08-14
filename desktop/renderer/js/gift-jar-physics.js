@@ -2,7 +2,7 @@
  * LiveFlow Gift Jar 2D Physics Engine (Powered by Matter.js)
  * Implements real physical bouncing, rolling, stacking, and overflow
  * with FULL 100% sync for all 645+ REAL TikTok Live Gift Icons.
- * Features 2x High-DPI Supersampling, rock-solid zero-tunneling bottom, and clear visible icon sizing.
+ * Features 2x High-DPI Supersampling, gentle capacity-adaptive scaling, and 28px solid basement wall.
  */
 (function(window) {
     'use strict';
@@ -47,6 +47,24 @@
             this.initPhysics();
             this.setupWalls();
             this.startLoop();
+        }
+
+        getCapacityScale() {
+            let targetCoins = 1000;
+            if (typeof this.options.getTargetCoins === 'function') {
+                targetCoins = Number(this.options.getTargetCoins()) || 1000;
+            } else {
+                const jarWidget = this.container?.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
+                if (jarWidget) {
+                    const itemEl = jarWidget.closest('.gmd-item');
+                    if (itemEl && itemEl.dataset && itemEl.dataset.targetCoins) {
+                        targetCoins = Number(itemEl.dataset.targetCoins) || 1000;
+                    }
+                }
+            }
+            // Controlled gentle scaling: 1k -> 1.0, 10k -> 0.76, 100k -> 0.60
+            const rawScale = Math.pow(1000 / Math.max(200, targetCoins), 0.12);
+            return Math.max(0.60, Math.min(1.18, rawScale));
         }
 
         getAssetUrl(filename) {
@@ -323,7 +341,7 @@
             World.add(this.world, this.wallBodies);
         }
 
-        spawnGiftBody(type, radius, data = {}) {
+        spawnGiftBody(type, baseRadius, data = {}) {
             const { Bodies, World, Body } = Matter;
             
             this.checkAndSyncWalls();
@@ -335,7 +353,8 @@
             const spawnX = mouthCenterX;
             const spawnY = bounds.top - 15;
 
-            const r = Math.max(9, radius);
+            const capScale = this.getCapacityScale();
+            const r = Math.max(7, Math.round(baseRadius * capScale));
 
             const restitution = 0.01;
             const friction = 0.50;
@@ -479,19 +498,19 @@
         spawnLiveGift(giftData = {}) {
             const coins = Number(giftData.coins) || 1;
             const repeat = Math.min(15, Number(giftData.repeatCount) || 1);
-            let radius = 11;
+            let baseRadius = 11;
             let type = 'live_gift';
 
-            if (coins >= 10000) radius = 26;
-            else if (coins >= 1000) radius = 22;
-            else if (coins >= 300) radius = 18;
-            else if (coins >= 100) radius = 16;
-            else if (coins >= 10) radius = 13;
-            else radius = 11;
+            if (coins >= 10000) baseRadius = 26;
+            else if (coins >= 1000) baseRadius = 22;
+            else if (coins >= 300) baseRadius = 18;
+            else if (coins >= 100) baseRadius = 16;
+            else if (coins >= 10) baseRadius = 13;
+            else baseRadius = 11;
 
             for (let i = 0; i < repeat; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody(type, radius, {
+                    this.spawnGiftBody(type, baseRadius, {
                         name: giftData.giftName || 'Quà TikTok',
                         imageUrl: giftData.giftIcon || giftData.giftPictureUrl || '',
                         imageKey: giftData.giftId || 'rose'
