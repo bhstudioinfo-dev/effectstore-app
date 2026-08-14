@@ -8886,6 +8886,17 @@
             this.renderInspector();
         }
 
+        ensureGiftJarPhysics() {
+            if (this.giftJarPhysics) return this.giftJarPhysics;
+            if (typeof window.GiftJarPhysics === 'function') {
+                const canvasContainer = this.mount?.querySelector('.gmd-canvas-viewport') || this.mount?.querySelector('.gmd-canvas-area') || this.mount;
+                if (canvasContainer) {
+                    this.giftJarPhysics = new window.GiftJarPhysics(canvasContainer, { autoResize: true });
+                }
+            }
+            return this.giftJarPhysics;
+        }
+
         testGiftJarRandom(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
@@ -8898,6 +8909,23 @@
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
 
+            const physics = this.ensureGiftJarPhysics();
+            if (physics) {
+                if (tier === 'small') {
+                    physics.spawnRose(null, 12);
+                } else if (tier === 'medium') {
+                    if (Math.random() < 0.5) physics.spawnDiamond(null, 2);
+                    else physics.spawnPurpleOrb(null);
+                } else if (tier === 'large') {
+                    if (Math.random() < 0.5) physics.spawnTiktokWhale(null);
+                    else physics.spawnLion(null);
+                } else if (tier === 'top_donor') {
+                    physics.spawnTopDonorBadge(1, 'Top 1 Supporter');
+                } else {
+                    physics.spawnRandomGift('random');
+                }
+            }
+
             let coins = 10;
             let giftName = '🌹 Hoa hồng TikTok';
             let giftIcon = '🌹';
@@ -8909,11 +8937,11 @@
                 giftIcon = '🌹';
             } else if (tier === 'medium') {
                 coins = Math.floor(Math.random() * 400) + 100;
-                giftName = '🎁 Súng bắn tiền';
-                giftIcon = '🎁';
+                giftName = '🎁 Quà Vừa (Đá quý / Quả cầu)';
+                giftIcon = '💎';
             } else if (tier === 'large') {
                 coins = Math.floor(Math.random() * 2000) + 1000;
-                giftName = '🦁 Sư tử Vũ trụ';
+                giftName = '🦁 Sư tử / Cá voi TikTok';
                 giftIcon = '🦁';
             } else if (tier === 'top_donor') {
                 coins = 500;
@@ -8925,48 +8953,7 @@
         }
 
         animateGiftJarCanvasDrop(item, coins, extra = {}) {
-            const jarEl = document.querySelector('.gmd-gift-jar-widget') || (this.mount && this.mount.querySelector('.gmd-gift-jar-widget'));
-            if (!jarEl) return;
-            const jarRect = jarEl.getBoundingClientRect();
-
-            let pSize = 32;
-            if (coins > 500) pSize = 76;
-            else if (coins > 100) pSize = 52;
-            else if (coins > 10) pSize = 40;
-
-            const startX = jarRect.left + (jarRect.width * (0.25 + Math.random() * 0.5));
-            const startY = Math.max(10, jarRect.top - 220);
-
-            const particle = document.createElement('div');
-            if (extra.rankBadge) {
-                particle.innerHTML = `<div style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;padding:6px 14px;border-radius:16px;font-size:13px;font-weight:900;box-shadow:0 4px 16px rgba(0,0,0,0.8);white-space:nowrap;border:1px solid rgba(255,255,255,0.4);">${extra.rankBadge} ${extra.giftName || ''}</div>`;
-            } else {
-                const icon = extra.giftIcon || (item.dropItemType === 'coin' ? '💰' : item.dropItemType === 'heart' ? '❤️' : '🌹');
-                particle.innerHTML = `<span style="font-size:${pSize}px;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.8));user-select:none;">${icon}</span>`;
-            }
-
-            particle.style.cssText = `
-                position: fixed;
-                top: ${startY}px;
-                left: ${startX}px;
-                z-index: 99999;
-                pointer-events: none;
-                transition: transform 0.75s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.35s ease;
-            `;
-            document.body.appendChild(particle);
-
-            const isOverflow = (Number(item.currentCoins) || 0) >= (Number(item.targetCoins) || 1000);
-            const targetY = jarRect.top + (jarRect.height * (isOverflow ? 0.95 : (0.35 + Math.random() * 0.45)));
-            const targetX = startX + (isOverflow ? (Math.random() * 200 - 100) : (Math.random() * 30 - 15));
-
-            requestAnimationFrame(() => {
-                particle.style.transform = `translate(${targetX - startX}px, ${targetY - startY}px) rotate(${Math.random() * 360}deg)`;
-            });
-
-            setTimeout(() => {
-                particle.style.opacity = '0';
-                setTimeout(() => particle.remove(), 400);
-            }, 850);
+            // Handled with 2D Rigid-Body Physics in GiftJarPhysics
         }
 
         testGiftJarDrop(itemId, coins = 50, extra = {}) {
@@ -8987,8 +8974,6 @@
             this.renderCanvas();
             this.renderInspector();
 
-            this.animateGiftJarCanvasDrop(item, coins, extra);
-
             if (this.socket && this.socket.connected) {
                 this.socket.emit('gift_jar_drop', {
                     coins,
@@ -9008,6 +8993,9 @@
             if (!item) return;
             this.pushHistory('reset-gift-jar');
             item.currentCoins = 0;
+            if (this.giftJarPhysics) {
+                this.giftJarPhysics.reset();
+            }
             this.renderCanvas();
             this.renderInspector();
             if (window.app?.showNotification) window.app.showNotification('success', 'Đã đặt lại số Xu của Hũ về 0!');

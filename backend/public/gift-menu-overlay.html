@@ -44,6 +44,8 @@
 
   </style>
   <link rel="stylesheet" href="/gift-menu-renderer.css?v=13" />
+  <script src="/js/matter.min.js"></script>
+  <script src="/js/gift-jar-physics.js"></script>
   <script src="/shared-render-engine.js?v=1.0.15"></script>
   <style id="gmd-inline-renderer">
 #gift-menu-designer-view {
@@ -2109,81 +2111,34 @@
       }
     }
 
+    let overlayGiftJarPhysics = null;
+    function ensureOverlayGiftJarPhysics() {
+      if (overlayGiftJarPhysics) return overlayGiftJarPhysics;
+      if (typeof window.GiftJarPhysics === 'function') {
+        const root = document.getElementById('overlay-root') || document.body;
+        overlayGiftJarPhysics = new window.GiftJarPhysics(root, { autoResize: true });
+      }
+      return overlayGiftJarPhysics;
+    }
+
     function triggerGiftJarDrop(data) {
-      const jarWidgets = document.querySelectorAll('.gmd-gift-jar-widget');
-      if (!jarWidgets || !jarWidgets.length) return;
-      
+      const physics = ensureOverlayGiftJarPhysics();
       const coins = Number(data.coins) || 10;
-      const currentCoins = Number(data.currentCoins) || 0;
-      const targetCoins = Number(data.targetCoins) || 1000;
-      const percent = Math.min(100, Math.round((currentCoins / targetCoins) * 100));
-
-      // Size scale based on coin value
-      let pSize = 24;
-      if (coins > 500) pSize = 72;
-      else if (coins > 100) pSize = 48;
-      else if (coins > 10) pSize = 34;
-
-      jarWidgets.forEach((widget) => {
-        const badge = widget.querySelector('div:last-child > div:first-child');
-        const fillBar = widget.querySelector('div:last-child > div:last-child > div');
-        const innerFill = widget.querySelector('div:nth-child(2) > div:first-child > div');
-        if (badge) badge.textContent = `💰 ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu (${percent}%)`;
-        if (fillBar) fillBar.style.width = `${percent}%`;
-        if (innerFill) innerFill.style.height = `${percent}%`;
-
-        // Animate Drop from top of screen to jar
-        const jarRect = widget.getBoundingClientRect();
-        const startX = jarRect.left + (jarRect.width * (0.2 + Math.random() * 0.6));
-        const dropParticle = document.createElement('div');
-        
-        if (data.giftIcon || data.giftUrl) {
-          dropParticle.innerHTML = `<img src="${data.giftIcon || data.giftUrl}" style="width:${pSize}px;height:${pSize}px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6));" />`;
-        } else if (data.rankBadge) {
-          dropParticle.innerHTML = `<div style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;padding:4px 10px;border-radius:14px;font-size:12px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,0.6);white-space:nowrap;">${data.rankBadge} ${data.nickname || ''}</div>`;
+      
+      if (physics) {
+        if (data.rankBadge) {
+          physics.spawnTopDonorBadge(1, data.nickname || 'Top 1 Supporter');
+        } else if (coins > 500) {
+          physics.spawnLion();
+        } else if (coins > 100) {
+          if (Math.random() < 0.5) physics.spawnTiktokWhale();
+          else physics.spawnPurpleOrb();
+        } else if (coins > 10) {
+          physics.spawnDiamond(null, 2);
         } else {
-          const itemType = data.dropItemType || 'gift_icon';
-          let symbol = '🎁';
-          if (itemType === 'coin') symbol = '💰';
-          else if (itemType === 'heart') symbol = '❤️';
-          else if (itemType === 'star') symbol = '⭐';
-          else if (itemType === 'gem') symbol = '💎';
-          dropParticle.innerHTML = `<span style="font-size:${pSize}px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6));">${symbol}</span>`;
+          physics.spawnRose(null, Math.min(15, Math.max(4, coins)));
         }
-
-        dropParticle.style.cssText = `
-          position: fixed; top: -80px; left: ${startX}px;
-          z-index: 9999; pointer-events: none;
-          transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease;
-        `;
-        document.body.appendChild(dropParticle);
-
-        requestAnimationFrame(() => {
-          const targetY = jarRect.top + (jarRect.height * (percent >= 100 ? (1.0 + Math.random() * 0.4) : (0.2 + Math.random() * 0.5)));
-          const targetX = startX + (percent >= 100 ? (Math.random() * 300 - 150) : 0);
-          dropParticle.style.transform = `translate(${targetX - startX}px, ${targetY + 80}px) rotate(${Math.random() * 360}deg)`;
-        });
-
-        setTimeout(() => {
-          dropParticle.style.opacity = '0';
-          setTimeout(() => dropParticle.remove(), 500);
-        }, 1200);
-
-        if (data.reachedTarget) {
-          widget.style.animation = 'gmdJarJackpotPulse 1s ease 3';
-          const celebrateBadge = document.createElement('div');
-          celebrateBadge.innerHTML = `🎉 NỔ HŨ TRÀN MÀN HÌNH! 🎉<br><span style="font-size:12px;color:#fef08a;">+${coins} Xu từ ${data.nickname || 'Khán giả'}</span>`;
-          celebrateBadge.style.cssText = `
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #ef4444, #f59e0b); color: #fff;
-            padding: 12px 20px; border-radius: 16px; font-weight: 900; font-size: 16px;
-            text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 100;
-            animation: fadeIn 0.3s ease;
-          `;
-          widget.appendChild(celebrateBadge);
-          setTimeout(() => celebrateBadge.remove(), 4000);
-        }
-      });
+      }
     }
 
     function connectGiftMenuPlaybackSocket() {
