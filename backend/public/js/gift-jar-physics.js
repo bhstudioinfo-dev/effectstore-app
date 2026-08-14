@@ -2,7 +2,7 @@
  * LiveFlow Gift Jar 2D Physics Engine (Powered by Matter.js)
  * Implements real physical bouncing, rolling, stacking, and overflow
  * with FULL 100% sync for all 645+ REAL TikTok Live Gift Icons.
- * Features 2x High-DPI Supersampling, thick anti-tunneling walls, and zero-leak bottom.
+ * Features 2x High-DPI Supersampling, tight contour-hugging jar physics, and strict 9:16 boundaries.
  */
 (function(window) {
     'use strict';
@@ -201,10 +201,10 @@
 
                 if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
                     const prev = this.prevJarRect;
-                    const innerLeft = prev.x + prev.w * 0.12;
-                    const innerRight = prev.x + prev.w * 0.88;
+                    const innerLeft = prev.x + prev.w * 0.20;
+                    const innerRight = prev.x + prev.w * 0.80;
                     const innerTop = prev.y + prev.h * 0.16;
-                    const innerBottom = prev.y + prev.h * 0.86;
+                    const innerBottom = prev.y + prev.h * 0.90;
 
                     for (let i = 0; i < this.items.length; i++) {
                         const b = this.items[i];
@@ -246,44 +246,44 @@
             const rightScreen = Bodies.rectangle(bounds.right + 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
                 isStatic: true, friction: 0.2, label: 'screen_right'
             });
-            const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 30, bounds.width + 100, 60, {
+            const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 25, bounds.width + 100, 50, {
                 isStatic: true, friction: 0.8, restitution: 0.05, label: 'floor'
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. Thick, Solid, Impenetrable Anti-Tunneling Jar Walls (100% Sealed)
+            // 2. Contour-Hugging Tight Jar Physics (Exactly matching hu-thuong.png without outward bulges)
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jw = jar.w;
             const jh = jar.h;
 
-            const wallThickness = Math.max(28, Math.round(jw * 0.14));
+            const wallThickness = 12;
 
-            // Heavy Solid Bottom Wall (40px thick basement, 100% immune to speed tunneling)
-            const bottomY = jar.y + jh * 0.86 + 15;
-            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.86, 40, {
+            // Tight Jar Bottom Floor (snugly sits at base of jar glass)
+            const bottomY = jar.y + jh * 0.88;
+            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.58, wallThickness, {
                 isStatic: true, friction: 0.8, restitution: 0.02, label: 'jar_bottom'
             });
 
-            // Solid Left Wall
-            const leftX = jar.x + jw * 0.12;
-            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.52, wallThickness, jh * 0.68, {
+            // Tight Left Glass Wall
+            const leftX = jar.x + jw * 0.21;
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.54, wallThickness, jh * 0.66, {
                 isStatic: true, friction: 0.1, restitution: 0.02, label: 'jar_left'
             });
 
-            // Solid Right Wall
-            const rightX = jar.x + jw * 0.88;
-            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.52, wallThickness, jh * 0.68, {
+            // Tight Right Glass Wall
+            const rightX = jar.x + jw * 0.79;
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.54, wallThickness, jh * 0.66, {
                 isStatic: true, friction: 0.1, restitution: 0.02, label: 'jar_right'
             });
 
-            // Inward Funnel Guide Lips: Direct 100% of drops into jar center
-            const lipLeft = Bodies.rectangle(jar.x + jw * 0.20, jar.y + jh * 0.18, jw * 0.32, wallThickness, {
-                isStatic: true, friction: 0.01, angle: 0.52, label: 'jar_lip_left'
+            // Tight Inward Neck Funnel (guiding 100% of drops into jar center)
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.26, jar.y + jh * 0.20, jw * 0.16, wallThickness, {
+                isStatic: true, friction: 0.01, angle: 0.45, label: 'jar_lip_left'
             });
 
-            const lipRight = Bodies.rectangle(jar.x + jw * 0.80, jar.y + jh * 0.18, jw * 0.32, wallThickness, {
-                isStatic: true, friction: 0.01, angle: -0.52, label: 'jar_lip_right'
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.74, jar.y + jh * 0.20, jw * 0.16, wallThickness, {
+                isStatic: true, friction: 0.01, angle: -0.45, label: 'jar_lip_right'
             });
 
             this.wallBodies.push(jarBottom, jarLeft, jarRight, lipLeft, lipRight);
@@ -320,7 +320,6 @@
             body.giftData = data;
             body.giftRadius = r;
 
-            // Controlled drop velocity to eliminate physics tunneling
             Body.setVelocity(body, {
                 x: 0,
                 y: Math.random() * 0.5 + 2.5
