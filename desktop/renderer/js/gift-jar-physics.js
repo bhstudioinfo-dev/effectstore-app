@@ -3,7 +3,7 @@
  * Implements real physical bouncing, rolling, stacking, and overflow
  * with FULL 100% sync for:
  *   1. 🌹 Quà TikTok Live (645+ Real TikTok Gifts)
- *   2. 🍬 Kẹo ngọt (Candy)
+ *   2. 🍬 Kẹo ngọt (11 Real High-Res Candy PNGs từ D:\HỦ QUÀ)
  *   3. ⭐ Ngôi sao sáng (Star)
  *   4. 💎 Kim cương quý (Diamond)
  * Features 3 capacity presets (Vừa / Trung bình / Nhiều), 28px solid basement, and Hard Floor Guard.
@@ -26,21 +26,27 @@
         { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 27 }
     ];
 
-    const CANDY_COLORS = [
-        { primary: '#ef4444', secondary: '#ffffff', accent: '#dc2626' }, // Red peppermint
-        { primary: '#ec4899', secondary: '#fbcfe8', accent: '#db2777' }, // Pink sweet
-        { primary: '#3b82f6', secondary: '#93c5fd', accent: '#2563eb' }, // Blue berry
-        { primary: '#8b5cf6', secondary: '#ddd6fe', accent: '#7c3aed' }, // Purple grape
-        { primary: '#10b981', secondary: '#a7f3d0', accent: '#059669' }, // Green apple
-        { primary: '#f59e0b', secondary: '#fde68a', accent: '#d97706' }  // Orange candy
+    // 11 Real Candy PNG Icons (Copied from D:\HỦ QUÀ)
+    const REAL_CANDY_GIFTS = [
+        { id: 'candy_1', name: 'Kẹo Dẻo Nho Tím', coins: 1, file: 'keo 1.png', radius: 11, tier: 'small' },
+        { id: 'candy_2', name: 'Kẹo Đậu Dâu Đỏ', coins: 5, file: 'keo 2.png', radius: 12, tier: 'small' },
+        { id: 'candy_3', name: 'Gấu Dẻo Cam Gummy', coins: 10, file: 'keo 3.png', radius: 13, tier: 'small' },
+        { id: 'candy_4', name: 'Kẹo Caramen Sữa Béo', coins: 30, file: 'keo 4.png', radius: 14, tier: 'medium' },
+        { id: 'candy_7', name: 'Kẹo Gói Nơ Hồng', coins: 50, file: 'keo 7.png', radius: 15, tier: 'medium' },
+        { id: 'candy_8', name: 'Kẹo Gói Nơ Xanh', coins: 99, file: 'keo 8.png', radius: 16, tier: 'medium' },
+        { id: 'candy_6', name: 'Kẹo Mật Ong Hổ Phách', coins: 100, file: 'keo 6.png', radius: 17, tier: 'medium' },
+        { id: 'candy_5', name: 'Socola Truffle Hạnh Nhân', coins: 299, file: 'keo 5.png', radius: 19, tier: 'medium' },
+        { id: 'candy_9', name: 'Kẹo Vòng Đào Đường Phèn', coins: 500, file: 'keo 9.png', radius: 21, tier: 'medium' },
+        { id: 'candy_10', name: 'Kẹo Cuộn Cầu Vồng Rainbow', coins: 1000, file: 'keo 10.png', radius: 23, tier: 'large' },
+        { id: 'candy_11', name: 'Kẹo Mút Khổng Lồ Lollipop', coins: 10000, file: 'keo 11.png', radius: 26, tier: 'large' }
     ];
 
     const DIAMOND_COLORS = [
-        { top: '#67e8f9', main: '#06b6d4', dark: '#0891b2', shine: '#ffffff' }, // Cyan Diamond
-        { top: '#c084fc', main: '#9333ea', dark: '#7e22ce', shine: '#ffffff' }, // Purple Amethyst
-        { top: '#6ee7b7', main: '#10b981', dark: '#059669', shine: '#ffffff' }, // Emerald
-        { top: '#fca5a5', main: '#ef4444', dark: '#b91c1c', shine: '#ffffff' }, // Ruby
-        { top: '#fde047', main: '#eab308', dark: '#ca8a04', shine: '#ffffff' }  // Gold Topaz
+        { top: '#67e8f9', main: '#06b6d4', dark: '#0891b2', shine: '#ffffff' },
+        { top: '#c084fc', main: '#9333ea', dark: '#7e22ce', shine: '#ffffff' },
+        { top: '#6ee7b7', main: '#10b981', dark: '#059669', shine: '#ffffff' },
+        { top: '#fca5a5', main: '#ef4444', dark: '#b91c1c', shine: '#ffffff' },
+        { top: '#fde047', main: '#eab308', dark: '#ca8a04', shine: '#ffffff' }
     ];
 
     class GiftJarPhysics {
@@ -63,7 +69,7 @@
             this.prevJarRect = null;
             this.dpr = Math.max(2, (window.devicePixelRatio || 1));
 
-            this.preloadPopularGifts();
+            this.preloadAllAssets();
             this.initCanvas();
             this.initPhysics();
             this.setupWalls();
@@ -89,21 +95,24 @@
             return 0.85; // Trung bình (~60 - 70 món quà - Mặc định)
         }
 
-        getAssetUrl(filename) {
+        getAssetUrl(subfolder, filename) {
             if (!filename) return '';
             if (filename.startsWith('http://') || filename.startsWith('https://') || filename.startsWith('data:')) {
                 return filename;
             }
             const clean = filename.replace(/^\/+/, '');
             if (window.location && window.location.protocol === 'file:') {
-                return `assets/gift-icons/${clean.replace(/^assets\/gift-icons\//, '')}`;
+                return `assets/${subfolder}/${clean.replace(/^assets\/(gift-icons|candies)\//, '')}`;
             }
-            return `/assets/gift-icons/${clean.replace(/^assets\/gift-icons\//, '')}`;
+            return `/assets/${subfolder}/${clean.replace(/^assets\/(gift-icons|candies)\//, '')}`;
         }
 
-        preloadPopularGifts() {
+        preloadAllAssets() {
             POPULAR_TIKTOK_GIFTS.forEach(g => {
-                this.loadImage(g.id, this.getAssetUrl(g.file));
+                this.loadImage(g.id, this.getAssetUrl('gift-icons', g.file));
+            });
+            REAL_CANDY_GIFTS.forEach(c => {
+                this.loadImage(c.id, this.getAssetUrl('candies', c.file));
             });
         }
 
@@ -255,7 +264,6 @@
                         const b = this.items[i];
                         const r = b.giftRadius || 11;
 
-                        // 1. Items inside the jar cavity move WITH the jar
                         const wasInside = (
                             b.position.x >= prevInnerLeft && b.position.x <= prevInnerRight &&
                             b.position.y >= prevInnerTop && b.position.y <= prevInnerBottom
@@ -268,7 +276,6 @@
                             });
                             Matter.Body.setVelocity(b, { x: 0, y: 0 });
                         } else {
-                            // 2. Items on the OUTSIDE get physically PUSHED away
                             const isCollidingWithNewJar = (
                                 b.position.x >= (newOuterLeft - r) && b.position.x <= (newOuterRight + r) &&
                                 b.position.y >= (newOuterTop - r) && b.position.y <= (newOuterBottom + r)
@@ -315,7 +322,6 @@
 
             const bounds = this.getArtboardBounds();
 
-            // 1. Strict 9:16 Screen Boundaries
             const leftScreen = Bodies.rectangle(bounds.left - 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
                 isStatic: true, friction: 0.2, label: 'screen_left'
             });
@@ -327,7 +333,6 @@
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. Heavy 60px Solid Basement Box (100% immune to compressive stack penetration)
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jw = jar.w;
@@ -338,19 +343,16 @@
                 isStatic: true, friction: 0.90, restitution: 0.01, label: 'jar_bottom'
             });
 
-            // Solid Left Glass Wall
             const leftX = jar.x + jw * 0.18;
             const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.54, 20, jh * 0.68, {
                 isStatic: true, friction: 0.1, restitution: 0.01, label: 'jar_left'
             });
 
-            // Solid Right Glass Wall
             const rightX = jar.x + jw * 0.82;
             const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.54, 20, jh * 0.68, {
                 isStatic: true, friction: 0.1, restitution: 0.01, label: 'jar_right'
             });
 
-            // Tight Inward Neck Funnel (guiding 100% of drops into jar center)
             const lipLeft = Bodies.rectangle(jar.x + jw * 0.24, jar.y + jh * 0.20, jw * 0.18, 16, {
                 isStatic: true, friction: 0.01, angle: 0.45, label: 'jar_lip_left'
             });
@@ -536,17 +538,30 @@
             });
         }
 
-        // ==================== CANDY OPTION ====================
-        spawnCandy(count = 1, tier = 'small') {
-            const radii = { small: 11, medium: 16, large: 23 };
-            const baseR = radii[tier] || 12;
+        // ==================== REAL CANDY ICONS (11 PNGs) ====================
+        spawnCandyItem(candyId, count = 1) {
+            const candy = REAL_CANDY_GIFTS.find(c => c.id === candyId) || REAL_CANDY_GIFTS[0];
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    const color = CANDY_COLORS[Math.floor(Math.random() * CANDY_COLORS.length)];
-                    this.spawnGiftBody('candy', baseR, {
-                        color,
-                        name: 'Kẹo ngọt',
-                        style: Math.random() < 0.5 ? 'swirl' : 'stripes'
+                    this.spawnGiftBody('candy', candy.radius, {
+                        imageKey: candy.id,
+                        name: candy.name,
+                        coins: candy.coins
+                    });
+                }, i * 45);
+            }
+        }
+
+        spawnCandy(count = 1, tier = 'small') {
+            const pool = REAL_CANDY_GIFTS.filter(c => c.tier === tier);
+            const candidates = pool.length ? pool : REAL_CANDY_GIFTS;
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const candy = candidates[Math.floor(Math.random() * candidates.length)];
+                    this.spawnGiftBody('candy', candy.radius, {
+                        imageKey: candy.id,
+                        name: candy.name,
+                        coins: candy.coins
                     });
                 }, i * 45);
             }
@@ -712,36 +727,8 @@
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(`👑 #${data.rank || 1}`, 0, 0);
-                } else if (type === 'candy') {
-                    // Render Cute Swirl Candy
-                    const col = data.color || CANDY_COLORS[0];
-                    ctx.beginPath();
-                    ctx.arc(0, 0, r, 0, Math.PI * 2);
-                    ctx.fillStyle = col.primary;
-                    ctx.fill();
-                    ctx.strokeStyle = col.accent;
-                    ctx.lineWidth = 1.5;
-                    ctx.stroke();
-
-                    // Swirl stripes
-                    ctx.save();
-                    ctx.clip();
-                    ctx.fillStyle = col.secondary;
-                    for (let s = 0; s < 4; s++) {
-                        ctx.beginPath();
-                        ctx.arc(0, 0, r, (s * Math.PI) / 2, (s * Math.PI) / 2 + Math.PI / 4);
-                        ctx.lineTo(0, 0);
-                        ctx.fill();
-                    }
-                    ctx.restore();
-
-                    // Shine gloss
-                    ctx.beginPath();
-                    ctx.arc(-r * 0.35, -r * 0.35, r * 0.25, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255,255,255,0.75)';
-                    ctx.fill();
                 } else if (type === 'star') {
-                    // Render Golden Shining 5-Point Star
+                    // Golden Shining 5-Point Star
                     ctx.beginPath();
                     const spikes = 5;
                     const outerRadius = r * 1.15;
@@ -775,7 +762,7 @@
                     ctx.lineWidth = 1.2;
                     ctx.stroke();
                 } else if (type === 'gem') {
-                    // Render Multi-Faceted Cut Crystal Diamond
+                    // Multi-Faceted Cut Crystal Diamond
                     const col = data.color || DIAMOND_COLORS[0];
                     const w = r * 1.1;
                     const h = r * 1.0;
@@ -794,7 +781,6 @@
                     ctx.lineWidth = 1.2;
                     ctx.stroke();
 
-                    // Facets
                     ctx.beginPath();
                     ctx.moveTo(-w * 0.4, -h * 0.6);
                     ctx.lineTo(0, h * 0.9);
@@ -802,7 +788,6 @@
                     ctx.fillStyle = col.top;
                     ctx.fill();
 
-                    // Highlight
                     ctx.beginPath();
                     ctx.moveTo(-w * 0.7, -h * 0.6);
                     ctx.lineTo(-w * 0.4, -h * 0.6);
@@ -811,7 +796,7 @@
                     ctx.fillStyle = col.shine;
                     ctx.fill();
                 } else {
-                    // TikTok Gift Icon
+                    // Real Candy or TikTok Gift Sprite
                     const img = this.imageCache[data.imageUrl] || this.imageCache[data.imageKey || type];
                     if (img && img.complete && img.naturalWidth > 0) {
                         const size = r * 2.2;
@@ -820,7 +805,7 @@
                         ctx.font = `${r * 2}px sans-serif`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(type === 'rose' ? '🌹' : type === 'lion' ? '🦁' : '🎁', 0, 0);
+                        ctx.fillText(type === 'candy' ? '🍬' : type === 'rose' ? '🌹' : '🎁', 0, 0);
                     }
                 }
 
@@ -854,5 +839,6 @@
     }
 
     window.GiftJarPhysics = GiftJarPhysics;
+    window.REAL_CANDY_GIFTS = REAL_CANDY_GIFTS;
 
 })(typeof window !== 'undefined' ? window : this);

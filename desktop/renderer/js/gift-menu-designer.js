@@ -8981,17 +8981,23 @@
             const physics = this.ensureGiftJarPhysics(item);
             const dropType = item.dropItemType || 'tiktok_gift';
 
-            // 1. CANDY OPTION
+            // 1. CANDY OPTION (11 Real PNG Candies)
             if (dropType === 'candy') {
                 if (tier === 'small') {
-                    if (physics) physics.spawnCandy(8, 'small');
-                    this.testGiftJarDrop(itemId, 10, { giftName: '🍬 8x Kẹo ngọt', giftIcon: '🍬' });
+                    if (physics) physics.spawnCandy(10, 'small');
+                    this.testGiftJarDrop(itemId, 10, { giftName: '🍬 10x Kẹo dẻo hoa quả', giftIcon: '🍬' });
                 } else if (tier === 'medium') {
-                    if (physics) physics.spawnCandy(4, 'medium');
-                    this.testGiftJarDrop(itemId, 200, { giftName: '🍬 4x Kẹo xoắn cầu vồng', giftIcon: '🍬' });
+                    if (physics) physics.spawnCandy(2, 'medium');
+                    this.testGiftJarDrop(itemId, 200, { giftName: '🍫 2x Kẹo Socola & Caramen', giftIcon: '🍫' });
                 } else if (tier === 'large') {
-                    if (physics) physics.spawnCandy(1, 'large');
-                    this.testGiftJarDrop(itemId, 1000, { giftName: '🍭 Kẹo mút khổng lồ Lollipop', giftIcon: '🍭' });
+                    const isLollipop = Math.random() < 0.5;
+                    if (isLollipop) {
+                        if (physics) physics.spawnCandyItem('candy_11', 1);
+                        this.testGiftJarDrop(itemId, 10000, { giftName: '🍭 Kẹo mút khổng lồ Lollipop', giftIcon: '🍭' });
+                    } else {
+                        if (physics) physics.spawnCandyItem('candy_10', 1);
+                        this.testGiftJarDrop(itemId, 1000, { giftName: '🌈 Kẹo cuộn cầu vồng Rainbow', giftIcon: '🌈' });
+                    }
                 } else if (tier === 'top_donor') {
                     if (physics) physics.spawnTopDonorBadge(1, 'Top 1 Candy Fan');
                     this.testGiftJarDrop(itemId, 500, { giftName: '👑 Top 1 Supporter', giftIcon: '👑', rankBadge: '👑 Hạng 1' });
