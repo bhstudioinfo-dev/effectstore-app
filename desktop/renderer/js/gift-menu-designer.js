@@ -1372,7 +1372,7 @@
                 el.style.width = `${item.width}px`;
                 el.style.height = `${item.height}px`;
                 el.style.transform = `rotate(${item.rotation || 0}deg)`;
-                el.style.zIndex = String(item.zIndex || 1);
+                el.style.zIndex = item.type === 'gift-jar' ? String(Math.max(30, Number(item.zIndex) || 30)) : String(item.zIndex || 1);
 
                 if (item.type === 'gift-stack-group') {
                     el.style.border = '1px solid transparent';

@@ -78,6 +78,7 @@
 
             this.canvas = document.createElement('canvas');
             this.canvas.className = 'gift-jar-physics-canvas';
+            // Z-Index: 20 sits directly BEHIND the Jar front glass (z-index: 30)
             this.canvas.style.cssText = `
                 position: absolute;
                 top: 0;
@@ -85,9 +86,9 @@
                 width: 100%;
                 height: 100%;
                 pointer-events: none;
-                z-index: 25;
+                z-index: 20;
             `;
-            this.ctx = this.canvas.getContext('2d');
+            this.ctx = this.canvas.getContext('2d', { alpha: true });
             this.container.appendChild(this.canvas);
             this.resizeCanvas();
 
@@ -114,7 +115,9 @@
         initPhysics() {
             const { Engine } = Matter;
             this.engine = Engine.create({
-                enableSleeping: false,
+                enableSleeping: true,
+                positionIterations: 8,
+                velocityIterations: 6,
                 gravity: { x: 0, y: this.options.gravity, scale: 0.0016 }
             });
             this.world = this.engine.world;
@@ -187,16 +190,16 @@
             const bounds = this.getArtboardBounds();
             const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
             
-            // If jar moved, smoothly translate all gifts that are inside the jar along with it!
+            // If jar moved, smoothly translate all gifts that are inside the jar along with it
             if (this.prevJarRect) {
                 const dx = jar.x - this.prevJarRect.x;
                 const dy = jar.y - this.prevJarRect.y;
 
                 if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
                     const prev = this.prevJarRect;
-                    const prevLeft = prev.x - 5;
-                    const prevRight = prev.x + prev.w + 5;
-                    const prevTop = prev.y - 10;
+                    const prevLeft = prev.x;
+                    const prevRight = prev.x + prev.w;
+                    const prevTop = prev.y;
                     const prevBottom = prev.y + prev.h + 20;
 
                     for (let i = 0; i < this.items.length; i++) {
@@ -234,7 +237,7 @@
 
             // 1. Heavy Stage Floor & Left/Right Screen Walls (60px thick solid floor)
             const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 30, bounds.width + 200, 60, {
-                isStatic: true, friction: 0.8, restitution: 0.1, label: 'floor'
+                isStatic: true, friction: 0.8, restitution: 0.05, label: 'floor'
             });
             const leftScreen = Bodies.rectangle(bounds.left - 20, (bounds.top + bounds.bottom) / 2, 40, bounds.height * 2, {
                 isStatic: true, friction: 0.1, label: 'screen_left'
@@ -244,40 +247,40 @@
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. 100% Sealed Airtight Jar Physics Walls (Matching hu-thuong.png PNG boundary)
+            // 2. 100% Sealed Airtight Jar Physics Walls (Nestled neatly inside hu-thuong.png)
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jw = jar.w;
             const jh = jar.h;
 
-            const wallThickness = Math.max(16, Math.round(jw * 0.10));
+            const wallThickness = Math.max(16, Math.round(jw * 0.09));
 
-            // Solid Jar Bottom Wall (seamlessly joining with left and right walls)
-            const bottomY = jar.y + jh * 0.94;
-            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.92, wallThickness, {
-                isStatic: true, friction: 0.7, restitution: 0.08, label: 'jar_bottom'
+            // Solid Jar Bottom Wall (positioned inside the jar's bottom rim)
+            const bottomY = jar.y + jh * 0.88;
+            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.74, wallThickness, {
+                isStatic: true, friction: 0.7, restitution: 0.05, label: 'jar_bottom'
             });
 
-            // Solid Jar Left Wall
-            const leftX = jar.x + jw * 0.10;
-            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.58, wallThickness, jh * 0.68, {
-                isStatic: true, friction: 0.1, restitution: 0.08, label: 'jar_left'
+            // Solid Jar Left Wall (inside left glass profile)
+            const leftX = jar.x + jw * 0.16;
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.56, wallThickness, jh * 0.60, {
+                isStatic: true, friction: 0.1, restitution: 0.05, label: 'jar_left'
             });
 
-            // Solid Jar Right Wall
-            const rightX = jar.x + jw * 0.90;
-            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.58, wallThickness, jh * 0.68, {
-                isStatic: true, friction: 0.1, restitution: 0.08, label: 'jar_right'
+            // Solid Jar Right Wall (inside right glass profile)
+            const rightX = jar.x + jw * 0.84;
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.56, wallThickness, jh * 0.60, {
+                isStatic: true, friction: 0.1, restitution: 0.05, label: 'jar_right'
             });
 
-            // Left Inward Mouth Lip (guiding gifts straight down into jar: `\`)
-            const lipLeft = Bodies.rectangle(jar.x + jw * 0.18, jar.y + jh * 0.20, jw * 0.32, wallThickness, {
-                isStatic: true, friction: 0.02, angle: 0.48, label: 'jar_lip_left'
+            // Left Inward Mouth Lip (guiding gifts straight down into jar mouth: `\`)
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.22, jar.y + jh * 0.22, jw * 0.28, wallThickness, {
+                isStatic: true, friction: 0.02, angle: 0.45, label: 'jar_lip_left'
             });
 
-            // Right Inward Mouth Lip (guiding gifts straight down into jar: `/`)
-            const lipRight = Bodies.rectangle(jar.x + jw * 0.82, jar.y + jh * 0.20, jw * 0.32, wallThickness, {
-                isStatic: true, friction: 0.02, angle: -0.48, label: 'jar_lip_right'
+            // Right Inward Mouth Lip (guiding gifts straight down into jar mouth: `/`)
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.78, jar.y + jh * 0.22, jw * 0.28, wallThickness, {
+                isStatic: true, friction: 0.02, angle: -0.45, label: 'jar_lip_right'
             });
 
             this.wallBodies.push(jarBottom, jarLeft, jarRight, lipLeft, lipRight);
@@ -302,14 +305,15 @@
             const scaleFactor = bounds.width < 600 ? (bounds.width / 720) : 1;
             const r = Math.max(7, Math.round(radius * scaleFactor));
 
-            const restitution = type === 'rose' ? 0.10 : 0.15;
-            const friction = type === 'rose' ? 0.40 : 0.25;
+            const restitution = 0.08;
+            const friction = 0.35;
 
             const body = Bodies.circle(spawnX, spawnY, r, {
                 restitution,
                 friction,
-                frictionAir: 0.003,
-                density: 0.005
+                frictionAir: 0.004,
+                density: 0.005,
+                sleepThreshold: 30
             });
 
             body.giftType = type;
@@ -517,6 +521,15 @@
                 // Continuously track moving jar in real-time and translate all inside gifts
                 this.checkAndSyncWalls();
 
+                // Stabilize resting bodies to prevent physics jitter
+                for (let i = 0; i < this.items.length; i++) {
+                    const b = this.items[i];
+                    if (Math.abs(b.velocity.x) < 0.04 && Math.abs(b.velocity.y) < 0.04) {
+                        Matter.Body.setVelocity(b, { x: 0, y: 0 });
+                        Matter.Body.setAngularVelocity(b, 0);
+                    }
+                }
+
                 Matter.Engine.update(this.engine, delta);
                 this.render();
 
@@ -531,10 +544,13 @@
             const ctx = this.ctx;
 
             ctx.clearRect(0, 0, this.width, this.height);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
 
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
-                const { x, y } = b.position;
+                const x = Math.round(b.position.x);
+                const y = Math.round(b.position.y);
                 const angle = b.angle;
                 const r = b.giftRadius || 13;
                 const type = b.giftType;
@@ -548,8 +564,6 @@
                     ctx.beginPath();
                     ctx.arc(0, 0, r, 0, Math.PI * 2);
                     ctx.fillStyle = '#f59e0b';
-                    ctx.shadowColor = 'rgba(245, 158, 11, 0.8)';
-                    ctx.shadowBlur = 8;
                     ctx.fill();
                     ctx.strokeStyle = '#ffffff';
                     ctx.lineWidth = 1.5;
@@ -563,9 +577,6 @@
                 } else {
                     const img = this.imageCache[data.imageUrl] || this.imageCache[data.imageKey || type];
                     if (img && img.complete && img.naturalWidth > 0) {
-                        ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
-                        ctx.shadowBlur = 5;
-                        ctx.shadowOffsetY = 2;
                         const size = r * 2.2;
                         ctx.drawImage(img, -size / 2, -size / 2, size, size);
                     } else {
