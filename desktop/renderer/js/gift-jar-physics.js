@@ -2,23 +2,24 @@
  * LiveFlow Gift Jar 2D Physics Engine (Powered by Matter.js)
  * Implements real physical bouncing, rolling, stacking, and overflow
  * with FULL 100% sync for all 645+ REAL TikTok Live Gift Icons.
+ * Features 2x High-DPI Supersampling for crystal clear, razor-sharp icon rendering.
  */
 (function(window) {
     'use strict';
 
     const POPULAR_TIKTOK_GIFTS = [
-        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 13 },
-        { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', radius: 15 },
-        { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', radius: 18 },
-        { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', radius: 20 },
-        { id: 'diamond', name: 'Kim cương', coins: 100, file: 'Diamond_16051.png', radius: 22 },
-        { id: 'corgi', name: 'Corgi', coins: 299, file: 'Corgi.png', radius: 24 },
-        { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', radius: 27 },
-        { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', radius: 32 },
-        { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', radius: 36 },
-        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_7610.png', radius: 40 },
-        { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', radius: 44 },
-        { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 46 }
+        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 15 },
+        { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', radius: 17 },
+        { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', radius: 20 },
+        { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', radius: 22 },
+        { id: 'diamond', name: 'Kim cương', coins: 100, file: 'Diamond_16051.png', radius: 24 },
+        { id: 'corgi', name: 'Corgi', coins: 299, file: 'Corgi.png', radius: 26 },
+        { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', radius: 29 },
+        { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', radius: 34 },
+        { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', radius: 38 },
+        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_7610.png', radius: 42 },
+        { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', radius: 46 },
+        { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 48 }
     ];
 
     class GiftJarPhysics {
@@ -38,6 +39,7 @@
             this.animFrameId = null;
             this.lastWallSig = '';
             this.prevJarRect = null;
+            this.dpr = Math.max(2, (window.devicePixelRatio || 1));
 
             this.preloadPopularGifts();
             this.initCanvas();
@@ -78,7 +80,6 @@
 
             this.canvas = document.createElement('canvas');
             this.canvas.className = 'gift-jar-physics-canvas';
-            // Z-Index: 20 sits directly BEHIND the Jar front glass (z-index: 30)
             this.canvas.style.cssText = `
                 position: absolute;
                 top: 0;
@@ -104,8 +105,12 @@
             this.width = w;
             this.height = h;
 
-            this.canvas.width = w;
-            this.canvas.height = h;
+            // 2x / High-DPI Supersampling for crystal clear HD icons at any zoom
+            const dpr = Math.max(2, (window.devicePixelRatio || 1));
+            this.dpr = dpr;
+
+            this.canvas.width = Math.round(w * dpr);
+            this.canvas.height = Math.round(h * dpr);
             this.canvas.style.width = '100%';
             this.canvas.style.height = '100%';
 
@@ -303,7 +308,7 @@
             const spawnY = bounds.top - 15 - Math.random() * 15;
 
             const scaleFactor = bounds.width < 600 ? (bounds.width / 720) : 1;
-            const r = Math.max(7, Math.round(radius * scaleFactor));
+            const r = Math.max(8, Math.round(radius * scaleFactor));
 
             const restitution = 0.08;
             const friction = 0.35;
@@ -346,7 +351,7 @@
         spawnRose(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('rose', 13, {
+                    this.spawnGiftBody('rose', 15, {
                         imageKey: 'rose',
                         name: 'Hoa hồng'
                     });
@@ -357,7 +362,7 @@
         spawnHeart(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('heart', 15, {
+                    this.spawnGiftBody('heart', 17, {
                         imageKey: 'heart',
                         name: 'Trái tim'
                     });
@@ -366,14 +371,14 @@
         }
 
         spawnDoughnut() {
-            this.spawnGiftBody('doughnut', 18, {
+            this.spawnGiftBody('doughnut', 20, {
                 imageKey: 'doughnut',
                 name: 'Bánh Donut'
             });
         }
 
         spawnCap() {
-            this.spawnGiftBody('cap', 20, {
+            this.spawnGiftBody('cap', 22, {
                 imageKey: 'cap',
                 name: 'Mũ TikTok'
             });
@@ -382,7 +387,7 @@
         spawnDiamond(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('diamond', 22, {
+                    this.spawnGiftBody('diamond', 24, {
                         imageKey: 'diamond',
                         name: 'Kim cương'
                     });
@@ -391,56 +396,56 @@
         }
 
         spawnCorgi() {
-            this.spawnGiftBody('corgi', 24, {
+            this.spawnGiftBody('corgi', 26, {
                 imageKey: 'corgi',
                 name: 'Corgi'
             });
         }
 
         spawnMoneyGun() {
-            this.spawnGiftBody('money_gun', 27, {
+            this.spawnGiftBody('money_gun', 29, {
                 imageKey: 'money_gun',
                 name: 'Súng bắn tiền'
             });
         }
 
         spawnWhale() {
-            this.spawnGiftBody('whale', 32, {
+            this.spawnGiftBody('whale', 34, {
                 imageKey: 'whale',
                 name: 'Cá voi'
             });
         }
 
         spawnGalaxy() {
-            this.spawnGiftBody('galaxy', 36, {
+            this.spawnGiftBody('galaxy', 38, {
                 imageKey: 'galaxy',
                 name: 'Vũ trụ Galaxy'
             });
         }
 
         spawnDragon() {
-            this.spawnGiftBody('dragon', 40, {
+            this.spawnGiftBody('dragon', 42, {
                 imageKey: 'dragon',
                 name: 'Rồng lửa'
             });
         }
 
         spawnLion() {
-            this.spawnGiftBody('lion', 44, {
+            this.spawnGiftBody('lion', 46, {
                 imageKey: 'lion',
                 name: 'Sư tử'
             });
         }
 
         spawnZeus() {
-            this.spawnGiftBody('zeus', 46, {
+            this.spawnGiftBody('zeus', 48, {
                 imageKey: 'zeus',
                 name: 'Thần Zeus'
             });
         }
 
         spawnTopDonorBadge(rank = 1, nickname = 'Top Fan') {
-            this.spawnGiftBody('top_donor', 22, {
+            this.spawnGiftBody('top_donor', 24, {
                 rank: rank || 1,
                 nickname: nickname || 'Top 1'
             });
@@ -449,15 +454,15 @@
         spawnLiveGift(giftData = {}) {
             const coins = Number(giftData.coins) || 1;
             const repeat = Math.min(15, Number(giftData.repeatCount) || 1);
-            let radius = 13;
+            let radius = 15;
             let type = 'live_gift';
 
-            if (coins >= 10000) radius = 44;
-            else if (coins >= 1000) radius = 36;
-            else if (coins >= 300) radius = 27;
-            else if (coins >= 100) radius = 22;
-            else if (coins >= 10) radius = 15;
-            else radius = 13;
+            if (coins >= 10000) radius = 46;
+            else if (coins >= 1000) radius = 38;
+            else if (coins >= 300) radius = 29;
+            else if (coins >= 100) radius = 24;
+            else if (coins >= 10) radius = 17;
+            else radius = 15;
 
             for (let i = 0; i < repeat; i++) {
                 setTimeout(() => {
@@ -542,17 +547,20 @@
         render() {
             if (!this.ctx || !this.canvas) return;
             const ctx = this.ctx;
+            const dpr = this.dpr || 1;
 
+            ctx.save();
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, this.width, this.height);
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
-                const x = Math.round(b.position.x);
-                const y = Math.round(b.position.y);
+                const x = b.position.x;
+                const y = b.position.y;
                 const angle = b.angle;
-                const r = b.giftRadius || 13;
+                const r = b.giftRadius || 15;
                 const type = b.giftType;
                 const data = b.giftData || {};
 
@@ -566,11 +574,11 @@
                     ctx.fillStyle = '#f59e0b';
                     ctx.fill();
                     ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 1.5;
+                    ctx.lineWidth = 2;
                     ctx.stroke();
 
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = `900 ${Math.max(8, r * 0.7)}px "Inter", "Segoe UI", sans-serif`;
+                    ctx.font = `900 ${Math.max(10, r * 0.7)}px "Inter", "Segoe UI", sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(`👑 #${data.rank || 1}`, 0, 0);
@@ -589,6 +597,8 @@
 
                 ctx.restore();
             }
+
+            ctx.restore();
         }
 
         reset() {
