@@ -1,8 +1,12 @@
 /**
  * LiveFlow Gift Jar 2D Physics Engine (Powered by Matter.js)
  * Implements real physical bouncing, rolling, stacking, and overflow
- * with FULL 100% sync for all 645+ REAL TikTok Live Gift Icons.
- * Features 2x High-DPI Supersampling, Heavy 60px Solid Basement, and Hard Floor Guard (Zero Leak Guarantee).
+ * with FULL 100% sync for:
+ *   1. 🌹 Quà TikTok Live (645+ Real TikTok Gifts)
+ *   2. 🍬 Kẹo ngọt (Candy)
+ *   3. ⭐ Ngôi sao sáng (Star)
+ *   4. 💎 Kim cương quý (Diamond)
+ * Features 3 capacity presets (Vừa / Trung bình / Nhiều), 28px solid basement, and Hard Floor Guard.
  */
 (function(window) {
     'use strict';
@@ -22,6 +26,23 @@
         { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 27 }
     ];
 
+    const CANDY_COLORS = [
+        { primary: '#ef4444', secondary: '#ffffff', accent: '#dc2626' }, // Red peppermint
+        { primary: '#ec4899', secondary: '#fbcfe8', accent: '#db2777' }, // Pink sweet
+        { primary: '#3b82f6', secondary: '#93c5fd', accent: '#2563eb' }, // Blue berry
+        { primary: '#8b5cf6', secondary: '#ddd6fe', accent: '#7c3aed' }, // Purple grape
+        { primary: '#10b981', secondary: '#a7f3d0', accent: '#059669' }, // Green apple
+        { primary: '#f59e0b', secondary: '#fde68a', accent: '#d97706' }  // Orange candy
+    ];
+
+    const DIAMOND_COLORS = [
+        { top: '#67e8f9', main: '#06b6d4', dark: '#0891b2', shine: '#ffffff' }, // Cyan Diamond
+        { top: '#c084fc', main: '#9333ea', dark: '#7e22ce', shine: '#ffffff' }, // Purple Amethyst
+        { top: '#6ee7b7', main: '#10b981', dark: '#059669', shine: '#ffffff' }, // Emerald
+        { top: '#fca5a5', main: '#ef4444', dark: '#b91c1c', shine: '#ffffff' }, // Ruby
+        { top: '#fde047', main: '#eab308', dark: '#ca8a04', shine: '#ffffff' }  // Gold Topaz
+    ];
+
     class GiftJarPhysics {
         constructor(container, options = {}) {
             this.container = typeof container === 'string' ? document.querySelector(container) : container;
@@ -30,7 +51,7 @@
             this.options = Object.assign({
                 gravity: 1.15,
                 getItemRect: null,
-                getTargetCoins: null
+                getCapacityLevel: null
             }, options);
 
             this.items = [];
@@ -50,21 +71,22 @@
         }
 
         getCapacityScale() {
-            let targetCoins = 1000;
-            if (typeof this.options.getTargetCoins === 'function') {
-                targetCoins = Number(this.options.getTargetCoins()) || 1000;
+            let level = 'medium';
+            if (typeof this.options.getCapacityLevel === 'function') {
+                level = this.options.getCapacityLevel() || 'medium';
             } else {
                 const jarWidget = this.container?.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
                 if (jarWidget) {
                     const itemEl = jarWidget.closest('.gmd-item');
-                    if (itemEl && itemEl.dataset && itemEl.dataset.targetCoins) {
-                        targetCoins = Number(itemEl.dataset.targetCoins) || 1000;
+                    if (itemEl && itemEl.dataset && itemEl.dataset.capacityLevel) {
+                        level = itemEl.dataset.capacityLevel || 'medium';
                     }
                 }
             }
-            // Gentle scaling: 1k -> 1.0, 10k -> 0.76, 100k -> 0.60
-            const rawScale = Math.pow(1000 / Math.max(200, targetCoins), 0.12);
-            return Math.max(0.60, Math.min(1.18, rawScale));
+
+            if (level === 'small') return 1.15; // Vừa (~25 - 30 món quà)
+            if (level === 'large') return 0.65; // Nhiều (~120 - 150+ món quà)
+            return 0.85; // Trung bình (~60 - 70 món quà - Mặc định)
         }
 
         getAssetUrl(filename) {
@@ -333,7 +355,7 @@
                 isStatic: true, friction: 0.01, angle: 0.45, label: 'jar_lip_left'
             });
 
-            const lipRight = Bodies.rectangle(jar.x + jw * 0.76, jar.y + jh * 0.20, jw * 0.18, 16, {
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.76, jar.y + jh * 0.20, jw * 0.16, 16, {
                 isStatic: true, friction: 0.01, angle: -0.45, label: 'jar_lip_right'
             });
 
@@ -350,7 +372,6 @@
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
                 const r = b.giftRadius || 11;
-                // If a gift is inside horizontal jar bounds and touching/penetrating floor
                 if (b.position.x >= innerLeft && b.position.x <= innerRight) {
                     if (b.position.y > jarFloorY - r && b.position.y < jarFloorY + 30) {
                         Matter.Body.setPosition(b, {
@@ -416,6 +437,7 @@
             return body;
         }
 
+        // ==================== TIKTOK GIFTS ====================
         spawnRose(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
@@ -517,6 +539,52 @@
                 rank: rank || 1,
                 nickname: nickname || 'Top 1'
             });
+        }
+
+        // ==================== CANDY OPTION ====================
+        spawnCandy(count = 1, tier = 'small') {
+            const radii = { small: 11, medium: 16, large: 23 };
+            const baseR = radii[tier] || 12;
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const color = CANDY_COLORS[Math.floor(Math.random() * CANDY_COLORS.length)];
+                    this.spawnGiftBody('candy', baseR, {
+                        color,
+                        name: 'Kẹo ngọt',
+                        style: Math.random() < 0.5 ? 'swirl' : 'stripes'
+                    });
+                }, i * 45);
+            }
+        }
+
+        // ==================== STAR OPTION ====================
+        spawnStar(count = 1, tier = 'small') {
+            const radii = { small: 11, medium: 16, large: 23 };
+            const baseR = radii[tier] || 12;
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    this.spawnGiftBody('star', baseR, {
+                        name: 'Ngôi sao sáng',
+                        isBig: tier === 'large'
+                    });
+                }, i * 45);
+            }
+        }
+
+        // ==================== DIAMOND OPTION ====================
+        spawnDiamondGem(count = 1, tier = 'small') {
+            const radii = { small: 11, medium: 16, large: 23 };
+            const baseR = radii[tier] || 12;
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const color = DIAMOND_COLORS[Math.floor(Math.random() * DIAMOND_COLORS.length)];
+                    this.spawnGiftBody('gem', baseR, {
+                        color,
+                        name: 'Kim cương',
+                        isBig: tier === 'large'
+                    });
+                }, i * 45);
+            }
         }
 
         spawnLiveGift(giftData = {}) {
@@ -649,7 +717,106 @@
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(`👑 #${data.rank || 1}`, 0, 0);
+                } else if (type === 'candy') {
+                    // Render Cute Swirl Candy
+                    const col = data.color || CANDY_COLORS[0];
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r, 0, Math.PI * 2);
+                    ctx.fillStyle = col.primary;
+                    ctx.fill();
+                    ctx.strokeStyle = col.accent;
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Swirl stripes
+                    ctx.save();
+                    ctx.clip();
+                    ctx.fillStyle = col.secondary;
+                    for (let s = 0; s < 4; s++) {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, r, (s * Math.PI) / 2, (s * Math.PI) / 2 + Math.PI / 4);
+                        ctx.lineTo(0, 0);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+
+                    // Shine gloss
+                    ctx.beginPath();
+                    ctx.arc(-r * 0.35, -r * 0.35, r * 0.25, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+                    ctx.fill();
+                } else if (type === 'star') {
+                    // Render Golden Shining 5-Point Star
+                    ctx.beginPath();
+                    const spikes = 5;
+                    const outerRadius = r * 1.15;
+                    const innerRadius = r * 0.52;
+                    let rot = (Math.PI / 2) * 3;
+                    let step = Math.PI / spikes;
+
+                    ctx.moveTo(0, -outerRadius);
+                    for (let s = 0; s < spikes; s++) {
+                        let sx = Math.cos(rot) * outerRadius;
+                        let sy = Math.sin(rot) * outerRadius;
+                        ctx.lineTo(sx, sy);
+                        rot += step;
+
+                        sx = Math.cos(rot) * innerRadius;
+                        sy = Math.sin(rot) * innerRadius;
+                        ctx.lineTo(sx, sy);
+                        rot += step;
+                    }
+                    ctx.lineTo(0, -outerRadius);
+                    ctx.closePath();
+
+                    const grad = ctx.createRadialGradient(-r * 0.2, -r * 0.2, 1, 0, 0, r * 1.2);
+                    grad.addColorStop(0, '#fffbeb');
+                    grad.addColorStop(0.4, '#fde047');
+                    grad.addColorStop(1, '#d97706');
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#b45309';
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+                } else if (type === 'gem') {
+                    // Render Multi-Faceted Cut Crystal Diamond
+                    const col = data.color || DIAMOND_COLORS[0];
+                    const w = r * 1.1;
+                    const h = r * 1.0;
+
+                    ctx.beginPath();
+                    ctx.moveTo(-w * 0.7, -h * 0.6);
+                    ctx.lineTo(w * 0.7, -h * 0.6);
+                    ctx.lineTo(w * 1.0, -h * 0.1);
+                    ctx.lineTo(0, h * 0.9);
+                    ctx.lineTo(-w * 1.0, -h * 0.1);
+                    ctx.closePath();
+
+                    ctx.fillStyle = col.main;
+                    ctx.fill();
+                    ctx.strokeStyle = col.dark;
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+
+                    // Facets
+                    ctx.beginPath();
+                    ctx.moveTo(-w * 0.4, -h * 0.6);
+                    ctx.lineTo(0, h * 0.9);
+                    ctx.lineTo(w * 0.4, -h * 0.6);
+                    ctx.fillStyle = col.top;
+                    ctx.fill();
+
+                    // Highlight
+                    ctx.beginPath();
+                    ctx.moveTo(-w * 0.7, -h * 0.6);
+                    ctx.lineTo(-w * 0.4, -h * 0.6);
+                    ctx.lineTo(-w * 0.6, -h * 0.1);
+                    ctx.closePath();
+                    ctx.fillStyle = col.shine;
+                    ctx.fill();
                 } else {
+                    // TikTok Gift Icon
                     const img = this.imageCache[data.imageUrl] || this.imageCache[data.imageKey || type];
                     if (img && img.complete && img.naturalWidth > 0) {
                         const size = r * 2.2;

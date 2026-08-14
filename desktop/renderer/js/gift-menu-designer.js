@@ -7433,21 +7433,30 @@
                         <button class="gmd-btn primary" style="width:100%;" onclick="window.giftMenuDesigner.uploadCustomJarImage('${selected.id}')"><i class="fas fa-upload"></i> ${selected.customJarImageUrl ? 'Đổi ảnh Hũ riêng' : 'Tải tệp ảnh Hũ riêng (.PNG)'}</button>
                         ${selected.customJarImageUrl ? `<div style="font-size:10px;color:#34d399;margin-top:4px;word-break:break-all;">✓ Đã nạp ảnh: ${selected.customJarImageUrl}</div>` : ''}
                     </div>
-                    <div class="gmd-row" style="margin-top:8px;">
-                        <div class="gmd-field"><label>Sức chứa (Xu / Hũ)</label><input class="gmd-input" type="number" min="10" max="1000000" value="${selected.targetCoins || 1000}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','targetCoins',Number(this.value))"></div>
-                        <div class="gmd-field"><label>Số Xu hiện tại</label><input class="gmd-input" type="number" min="0" value="${selected.currentCoins || 0}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','currentCoins',Number(this.value))"></div>
+                    <div class="gmd-field" style="margin-top:8px;">
+                        <label>Sức chứa (Dung tích Hũ)</label>
+                        <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','capacityLevel',this.value)">
+                            <option value="small" ${(selected.capacityLevel || 'medium') === 'small' ? 'selected' : ''}>🟢 Vừa (~25 - 30 món quà)</option>
+                            <option value="medium" ${(selected.capacityLevel || 'medium') === 'medium' ? 'selected' : ''}>🟡 Trung bình (~60 - 70 món quà - Mặc định)</option>
+                            <option value="large" ${(selected.capacityLevel || 'medium') === 'large' ? 'selected' : ''}>🔴 Nhiều (~120 - 150+ món quà)</option>
+                        </select>
+                    </div>
+                    <div class="gmd-field" style="margin-top:6px;">
+                        <label>Số Xu hiện tại (Thực tế nhận từ Live)</label>
+                        <div style="display:flex;align-items:center;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 10px;">
+                            <span style="font-weight:900;color:#fbbf24;font-size:14px;flex:1;"><i class="fas fa-coins"></i> ${(Number(selected.currentCoins) || 0).toLocaleString()} Xu</span>
+                            <button class="gmd-btn small secondary" style="font-size:11px;padding:3px 8px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-redo"></i> Reset 0 Xu</button>
+                        </div>
                     </div>
                     <div class="gmd-field" style="margin-top:6px;">
                         <label>Loại quà tích tụ trong hũ</label>
                         <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','dropItemType',this.value)">
-                            <option value="gift_icon" ${(selected.dropItemType || 'gift_icon') === 'gift_icon' ? 'selected' : ''}>🌹 Hoa hồng / Quà TikTok</option>
-                            <option value="coin" ${selected.dropItemType === 'coin' ? 'selected' : ''}>💰 Đồng xu Vàng</option>
-                            <option value="heart" ${selected.dropItemType === 'heart' ? 'selected' : ''}>❤️ Trái tim Neon</option>
-                            <option value="star" ${selected.dropItemType === 'star' ? 'selected' : ''}>⭐ Ngôi sao sáng</option>
-                            <option value="gem" ${selected.dropItemType === 'gem' ? 'selected' : ''}>💎 Đá quý Kim Cương</option>
+                            <option value="tiktok_gift" ${(selected.dropItemType || 'tiktok_gift') === 'tiktok_gift' || selected.dropItemType === 'gift_icon' ? 'selected' : ''}>🌹 Quà TikTok Live (Đa dạng 645+ quà)</option>
+                            <option value="candy" ${selected.dropItemType === 'candy' ? 'selected' : ''}>🍬 Kẹo ngọt (Candy)</option>
+                            <option value="star" ${selected.dropItemType === 'star' ? 'selected' : ''}>⭐ Ngôi sao sáng (Star)</option>
+                            <option value="diamond" ${selected.dropItemType === 'diamond' || selected.dropItemType === 'gem' ? 'selected' : ''}>💎 Kim cương quý (Diamond)</option>
                         </select>
                     </div>
-                    <div class="gmd-field gmd-toggle-row" style="margin-top:8px;"><label>Tự reset về 0 khi đầy Hũ</label><label class="gmd-switch"><input type="checkbox" ${selected.autoResetOnTarget !== false ? 'checked' : ''} onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','autoResetOnTarget',this.checked)"><span></span></label></div>
                 `;
             } else if (selected.type === 'goal-list') {
                 specificConfigHTML = `
@@ -8909,9 +8918,9 @@
                         }
                         return null;
                     },
-                    getTargetCoins: () => {
+                    getCapacityLevel: () => {
                         const curItem = item || this.items.find(e => e.type === 'gift-jar');
-                        return curItem ? Number(curItem.targetCoins) || 1000 : 1000;
+                        return curItem ? (curItem.capacityLevel || 'medium') : 'medium';
                     }
                 });
             }
@@ -8924,12 +8933,32 @@
         testGiftJarRandom(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
+            const dropType = item.dropItemType || 'tiktok_gift';
+            const physics = this.ensureGiftJarPhysics(item);
+
+            if (dropType === 'candy') {
+                const tiers = ['small', 'medium', 'large'];
+                const t = tiers[Math.floor(Math.random() * tiers.length)];
+                this.testGiftJarPreset(itemId, t);
+                return;
+            } else if (dropType === 'star') {
+                const tiers = ['small', 'medium', 'large'];
+                const t = tiers[Math.floor(Math.random() * tiers.length)];
+                this.testGiftJarPreset(itemId, t);
+                return;
+            } else if (dropType === 'diamond' || dropType === 'gem') {
+                const tiers = ['small', 'medium', 'large'];
+                const t = tiers[Math.floor(Math.random() * tiers.length)];
+                this.testGiftJarPreset(itemId, t);
+                return;
+            }
+
             const giftList = [
-                { id: 'rose', name: '🌹 10x Hoa hồng TikTok', coins: 10, count: 10, icon: '🌹', fn: (p) => p.spawnRose(10) },
-                { id: 'heart', name: '❤️ 2x Trái tim TikTok', coins: 10, count: 2, icon: '❤️', fn: (p) => p.spawnHeart(2) },
+                { id: 'rose', name: '🌹 10x Hoa hồng TikTok', coins: 10, icon: '🌹', fn: (p) => p.spawnRose(10) },
+                { id: 'heart', name: '❤️ 2x Trái tim TikTok', coins: 10, icon: '❤️', fn: (p) => p.spawnHeart(2) },
                 { id: 'doughnut', name: '🍩 Bánh Donut', coins: 30, icon: '🍩', fn: (p) => p.spawnDoughnut() },
                 { id: 'cap', name: '🧢 Mũ TikTok', coins: 99, icon: '🧢', fn: (p) => p.spawnCap() },
-                { id: 'diamond', name: '💎 2x Kim cương', coins: 200, count: 2, icon: '💎', fn: (p) => p.spawnDiamond(2) },
+                { id: 'diamond', name: '💎 2x Kim cương', coins: 200, icon: '💎', fn: (p) => p.spawnDiamond(2) },
                 { id: 'corgi', name: '🐶 Chó Corgi', coins: 299, icon: '🐶', fn: (p) => p.spawnCorgi() },
                 { id: 'money_gun', name: '🔫 Súng bắn tiền', coins: 500, icon: '🔫', fn: (p) => p.spawnMoneyGun() },
                 { id: 'whale', name: '🐋 Cá voi lặn', coins: 1000, icon: '🐋', fn: (p) => p.spawnWhale() },
@@ -8939,7 +8968,6 @@
                 { id: 'zeus', name: '⚡ Thần Zeus', coins: 34000, icon: '⚡', fn: (p) => p.spawnZeus() }
             ];
             const choice = giftList[Math.floor(Math.random() * giftList.length)];
-            const physics = this.ensureGiftJarPhysics(item);
             if (physics && typeof choice.fn === 'function') {
                 choice.fn(physics);
             }
@@ -8951,6 +8979,69 @@
             if (!item) return;
 
             const physics = this.ensureGiftJarPhysics(item);
+            const dropType = item.dropItemType || 'tiktok_gift';
+
+            // 1. CANDY OPTION
+            if (dropType === 'candy') {
+                if (tier === 'small') {
+                    if (physics) physics.spawnCandy(8, 'small');
+                    this.testGiftJarDrop(itemId, 10, { giftName: '🍬 8x Kẹo ngọt', giftIcon: '🍬' });
+                } else if (tier === 'medium') {
+                    if (physics) physics.spawnCandy(4, 'medium');
+                    this.testGiftJarDrop(itemId, 200, { giftName: '🍬 4x Kẹo xoắn cầu vồng', giftIcon: '🍬' });
+                } else if (tier === 'large') {
+                    if (physics) physics.spawnCandy(1, 'large');
+                    this.testGiftJarDrop(itemId, 1000, { giftName: '🍭 Kẹo mút khổng lồ Lollipop', giftIcon: '🍭' });
+                } else if (tier === 'top_donor') {
+                    if (physics) physics.spawnTopDonorBadge(1, 'Top 1 Candy Fan');
+                    this.testGiftJarDrop(itemId, 500, { giftName: '👑 Top 1 Supporter', giftIcon: '👑', rankBadge: '👑 Hạng 1' });
+                } else {
+                    this.testGiftJarPreset(itemId, 'small');
+                }
+                return;
+            }
+
+            // 2. STAR OPTION
+            if (dropType === 'star') {
+                if (tier === 'small') {
+                    if (physics) physics.spawnStar(8, 'small');
+                    this.testGiftJarDrop(itemId, 10, { giftName: '⭐ 8x Ngôi sao sáng', giftIcon: '⭐' });
+                } else if (tier === 'medium') {
+                    if (physics) physics.spawnStar(4, 'medium');
+                    this.testGiftJarDrop(itemId, 200, { giftName: '✨ 4x Ngôi sao lấp lánh', giftIcon: '✨' });
+                } else if (tier === 'large') {
+                    if (physics) physics.spawnStar(1, 'large');
+                    this.testGiftJarDrop(itemId, 1000, { giftName: '🌟 Đại Ngôi Sao Rực Rỡ', giftIcon: '🌟' });
+                } else if (tier === 'top_donor') {
+                    if (physics) physics.spawnTopDonorBadge(1, 'Top 1 Star Fan');
+                    this.testGiftJarDrop(itemId, 500, { giftName: '👑 Top 1 Supporter', giftIcon: '👑', rankBadge: '👑 Hạng 1' });
+                } else {
+                    this.testGiftJarPreset(itemId, 'small');
+                }
+                return;
+            }
+
+            // 3. DIAMOND OPTION
+            if (dropType === 'diamond' || dropType === 'gem') {
+                if (tier === 'small') {
+                    if (physics) physics.spawnDiamondGem(8, 'small');
+                    this.testGiftJarDrop(itemId, 10, { giftName: '💎 8x Đá quý Kim Cương', giftIcon: '💎' });
+                } else if (tier === 'medium') {
+                    if (physics) physics.spawnDiamondGem(4, 'medium');
+                    this.testGiftJarDrop(itemId, 200, { giftName: '💎 4x Kim cương lấp lánh', giftIcon: '💎' });
+                } else if (tier === 'large') {
+                    if (physics) physics.spawnDiamondGem(1, 'large');
+                    this.testGiftJarDrop(itemId, 1000, { giftName: '💠 Siêu Kim Cương Hoàng Gia', giftIcon: '💠' });
+                } else if (tier === 'top_donor') {
+                    if (physics) physics.spawnTopDonorBadge(1, 'Top 1 Diamond Fan');
+                    this.testGiftJarDrop(itemId, 500, { giftName: '👑 Top 1 Supporter', giftIcon: '👑', rankBadge: '👑 Hạng 1' });
+                } else {
+                    this.testGiftJarPreset(itemId, 'small');
+                }
+                return;
+            }
+
+            // 4. TIKTOK GIFTS (DEFAULT)
             let coins = 10;
             let giftName = '🌹 10x Hoa hồng TikTok';
             let giftIcon = '🌹';
@@ -9053,6 +9144,20 @@
                     nickname: 'Khán giả Live'
                 });
             }
+        }
+
+        updateGiftJarField(itemId, field, value) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+            this.pushHistory(`update-gift-jar-${field}`);
+            item[field] = value;
+            if (field === 'capacityLevel' || field === 'targetCoins') {
+                if (this.giftJarPhysics) {
+                    this.giftJarPhysics.setupWalls();
+                }
+            }
+            this.renderCanvas();
+            this.renderInspector();
         }
 
         resetGiftJarCoins(itemId) {
