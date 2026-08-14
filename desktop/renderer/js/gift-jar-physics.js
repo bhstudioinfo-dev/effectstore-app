@@ -131,6 +131,7 @@
             REAL_DIAMOND_GIFTS.forEach(d => {
                 this.loadImage(d.id, this.getAssetUrl('diamonds', d.file));
             });
+            this.loadImage('hu-thuong-lop-tren', this.getAssetUrl('jars', 'hu-thuong-lop-tren.png'));
         }
 
         loadImage(key, src) {
@@ -822,6 +823,17 @@
                 }
 
                 ctx.restore();
+            }
+
+            // 2. Draw Front Glass Layer (hu-thuong-lop-tren) directly over the jar
+            const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
+            const theme = jarWidget?.dataset?.theme || 'hu-thuong';
+
+            if (theme === 'hu-thuong') {
+                const frontImg = this.imageCache['hu-thuong-lop-tren'] || this.loadImage('hu-thuong-lop-tren', this.getAssetUrl('jars', 'hu-thuong-lop-tren.png'));
+                if (frontImg && frontImg.complete && frontImg.naturalWidth > 0) {
+                    ctx.drawImage(frontImg, jar.x, jar.y, jar.w, jar.h);
+                }
             }
 
             ctx.restore();

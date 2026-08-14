@@ -1949,14 +1949,22 @@
             } catch (_e) {}
         }
 
-        const frontSrc = jarImageUrl || (theme === 'hu-thuong' ? 'assets/jars/hu-thuong-lop-tren.png' : `assets/jars/${theme}.png`);
+        if (theme === 'hu-thuong' && !jarImageUrl) {
+            return `<div class="gmd-gift-jar-widget" data-theme="hu-thuong" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
+                <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                    <img class="gmd-jar-back" src="assets/jars/hu-thuong-lop-duoi.png" onerror="this.onerror=null;this.src='assets/jars/hu-thuong.png';" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1;" />
+                </div>
+            </div>`;
+        }
 
-        return `<div class="gmd-gift-jar-widget" data-theme="${theme}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;overflow:visible;">
-            <div class="gmd-gift-jar-inner" style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                ${theme === 'hu-thuong' && !jarImageUrl ? `
-                    <img class="gmd-jar-back" src="assets/jars/hu-thuong-lop-duoi.png" onerror="this.onerror=null;this.src='assets/jars/hu-thuong.png';" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1;" />
-                ` : ''}
-                <img class="gmd-jar-front" src="${frontSrc}" onerror="this.onerror=null;this.src='assets/jars/hu-thuong.png';" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:3;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.5));" />
+        if (!jarImageUrl) {
+            const themeKey = ['hu-nam-bau', 'hu-nu-bau', 'hu-thuong'].includes(theme) ? theme : 'hu-thuong';
+            jarImageUrl = `assets/jars/${themeKey}.png`;
+        }
+
+        return `<div class="gmd-gift-jar-widget" data-theme="${theme}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
+            <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                <img src="${jarImageUrl}" onerror="this.onerror=null;this.src='assets/jars/hu-thuong-lop-tren.png';" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.5));" />
             </div>
         </div>`;
     }
