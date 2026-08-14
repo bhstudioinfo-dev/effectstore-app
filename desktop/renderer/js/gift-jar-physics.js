@@ -249,8 +249,27 @@
             return null;
         }
 
+        getJarInnerRect() {
+            const r = this.getJarRect();
+            if (!r) return null;
+            let w = r.w;
+            let h = r.w;
+            if (h > r.h) {
+                h = r.h;
+                w = r.h;
+            }
+            const offX = (r.w - w) / 2;
+            const offY = (r.h - h) / 2;
+            return {
+                x: r.x + offX,
+                y: r.y + offY,
+                w: w,
+                h: h
+            };
+        }
+
         checkAndSyncWalls() {
-            const jar = this.getJarRect();
+            const jar = this.getJarInnerRect();
             if (!jar) {
                 if (this.wallBodies.length && this.world) {
                     Matter.World.remove(this.world, this.wallBodies);
@@ -294,7 +313,6 @@
                             });
                         } else {
                             // 2. OUTSIDE ITEMS: NEVER sucked into the jar!
-                            // If the moving jar bumps into outside gifts, push them AWAY from the jar outer glass
                             const isCollidingWithNewJar = (
                                 b.position.x >= (newOuterLeft - r) && b.position.x <= (newOuterRight + r) &&
                                 b.position.y >= (newOuterTop - r) && b.position.y <= (newOuterBottom + r)
@@ -338,7 +356,7 @@
                 this.wallBodies = [];
             }
 
-            const jar = this.getJarRect();
+            const jar = this.getJarInnerRect();
             if (!jar) return;
 
             const bounds = this.getArtboardBounds();
@@ -392,7 +410,8 @@
         }
 
         applyHardFloorGuard() {
-            const jar = this.getJarRect();
+            const jar = this.getJarInnerRect();
+            if (!jar) return;
             const jarFloorY = jar.y + jar.h * 0.85;
             const innerLeft = jar.x + jar.w * 0.18;
             const innerRight = jar.x + jar.w * 0.82;
@@ -447,7 +466,8 @@
             
             this.checkAndSyncWalls();
 
-            const jar = this.getJarRect();
+            const jar = this.getJarInnerRect();
+            if (!jar) return null;
             const bounds = this.getArtboardBounds();
 
             const mouthCenterX = jar.x + jar.w / 2;
@@ -768,7 +788,7 @@
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
-            const jar = this.getJarRect();
+            const jar = this.getJarInnerRect();
             if (!jar) {
                 if (this.items.length) {
                     this.reset();
