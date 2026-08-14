@@ -83,7 +83,7 @@
 
         resizeCanvas() {
             if (!this.canvas || !this.container) return;
-            // Use stage offsetWidth / offsetHeight which is in logical stage coordinate space (e.g. 1080x1920)
+            // The container is the 1080x1920 stage element
             const w = this.container.offsetWidth || this.container.clientWidth || 1080;
             const h = this.container.offsetHeight || this.container.clientHeight || 1920;
 
@@ -102,7 +102,7 @@
             const { Engine } = Matter;
             this.engine = Engine.create({
                 enableSleeping: false,
-                gravity: { x: 0, y: this.options.gravity, scale: 0.0012 }
+                gravity: { x: 0, y: this.options.gravity, scale: 0.0015 }
             });
             this.world = this.engine.world;
         }
@@ -110,7 +110,7 @@
         getJarRect() {
             if (typeof this.options.getItemRect === 'function') {
                 const r = this.options.getItemRect();
-                if (r) return r;
+                if (r && r.w > 0 && r.h > 0) return r;
             }
 
             const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
@@ -127,10 +127,10 @@
             }
 
             return {
-                x: this.width * 0.25,
-                y: this.height * 0.45,
-                w: this.width * 0.5,
-                h: this.height * 0.45
+                x: (this.width - 480) / 2,
+                y: this.height - 750,
+                w: 480,
+                h: 600
             };
         }
 
@@ -146,63 +146,75 @@
             const w = this.width;
             const h = this.height;
 
-            // Screen Artboard Floor & Side walls (confined to 9:16 stage frame)
-            const floor = Bodies.rectangle(w / 2, h + 25, w * 2, 60, { isStatic: true, friction: 0.6, label: 'floor' });
-            const leftScreen = Bodies.rectangle(-25, h / 2, 60, h * 2, { isStatic: true, friction: 0.1, label: 'screen_left' });
-            const rightScreen = Bodies.rectangle(w + 25, h / 2, 60, h * 2, { isStatic: true, friction: 0.1, label: 'screen_right' });
+            // 1. Stage Floor & Outer Boundary (Confined strictly inside the 9:16 Canvas)
+            const floor = Bodies.rectangle(w / 2, h + 30, w * 2, 60, { isStatic: true, friction: 0.6, label: 'floor' });
+            const leftScreen = Bodies.rectangle(-30, h / 2, 60, h * 2, { isStatic: true, friction: 0.1, label: 'screen_left' });
+            const rightScreen = Bodies.rectangle(w + 30, h / 2, 60, h * 2, { isStatic: true, friction: 0.1, label: 'screen_right' });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // Compute Jar Physics Box in logical stage coordinates
+            // 2. Exact Physics Walls of the Glass Jar
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jy = jar.y + jar.h / 2;
-            const jw = jar.w * 0.80;
-            const jh = jar.h * 0.76;
+            const jw = jar.w;
+            const jh = jar.h;
 
-            this.jarCenter = { x: jx, y: jy, w: jw, h: jh, topY: jar.y };
+            this.jarCenter = { 
+                x: jx, 
+                y: jy, 
+                w: jw, 
+                h: jh, 
+                topY: jar.y,
+                mouthY: jar.y + jh * 0.18
+            };
 
-            const wallThickness = 20;
-            const halfW = jw / 2;
-            const halfH = jh / 2;
+            const wallThickness = 24;
 
-            // Jar Bottom Wall
-            const jarBottom = Bodies.rectangle(jx, jy + halfH - 10, jw * 0.82, wallThickness, {
+            // Jar Bottom Wall (holding gifts at bottom of jar)
+            const bottomY = jar.y + jh * 0.88;
+            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.68, wallThickness, {
                 isStatic: true, friction: 0.4, restitution: 0.2, label: 'jar_bottom'
             });
 
             // Jar Left Wall
-            const jarLeft = Bodies.rectangle(jx - halfW + 10, jy + 15, wallThickness, jh * 0.75, {
-                isStatic: true, friction: 0.15, restitution: 0.2, angle: 0.04, label: 'jar_left'
+            const leftX = jar.x + jw * 0.16;
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.55, wallThickness, jh * 0.60, {
+                isStatic: true, friction: 0.15, restitution: 0.2, label: 'jar_left'
             });
 
             // Jar Right Wall
-            const jarRight = Bodies.rectangle(jx + halfW - 10, jy + 15, wallThickness, jh * 0.75, {
-                isStatic: true, friction: 0.15, restitution: 0.2, angle: -0.04, label: 'jar_right'
+            const rightX = jar.x + jw * 0.84;
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.55, wallThickness, jh * 0.60, {
+                isStatic: true, friction: 0.15, restitution: 0.2, label: 'jar_right'
             });
 
-            // Jar Left Funnel Lip (funnels gifts into jar)
-            const jarLipLeft = Bodies.rectangle(jx - halfW * 0.68, jy - halfH + 26, jw * 0.35, wallThickness, {
-                isStatic: true, friction: 0.1, angle: -0.38, label: 'jar_lip_left'
+            // Left Funnel Lip (funnels falling gifts right into jar mouth)
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.24, jar.y + jh * 0.20, jw * 0.26, wallThickness, {
+                isStatic: true, friction: 0.05, angle: -0.55, label: 'jar_lip_left'
             });
 
-            // Jar Right Funnel Lip (funnels gifts into jar)
-            const jarLipRight = Bodies.rectangle(jx + halfW * 0.68, jy - halfH + 26, jw * 0.35, wallThickness, {
-                isStatic: true, friction: 0.1, angle: 0.38, label: 'jar_lip_right'
+            // Right Funnel Lip (funnels falling gifts right into jar mouth)
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.76, jar.y + jh * 0.20, jw * 0.26, wallThickness, {
+                isStatic: true, friction: 0.05, angle: 0.55, label: 'jar_lip_right'
             });
 
-            this.wallBodies.push(jarBottom, jarLeft, jarRight, jarLipLeft, jarLipRight);
+            this.wallBodies.push(jarBottom, jarLeft, jarRight, lipLeft, lipRight);
             World.add(this.world, this.wallBodies);
         }
 
         spawnGiftBody(type, radius, data = {}) {
             const { Bodies, World, Body } = Matter;
+            
+            // Re-sync walls with current jar coordinates before spawning
+            this.setupWalls();
+
             const jar = this.jarCenter || { x: this.width / 2, topY: 100 };
             
-            // Spawn directly above the jar opening
-            const spawnX = jar.x + (Math.random() * 24 - 12);
-            const spawnY = Math.max(20, jar.topY - 140 - Math.random() * 40);
+            // Spawn precisely at the center of the jar opening!
+            const spawnX = jar.x + (Math.random() * 20 - 10);
+            const spawnY = Math.max(10, jar.topY - 100 - Math.random() * 40);
 
-            const restitution = type === 'rose' ? 0.2 : 0.3;
+            const restitution = type === 'rose' ? 0.2 : 0.28;
             const friction = type === 'rose' ? 0.2 : 0.12;
 
             const body = Bodies.circle(spawnX, spawnY, radius, {
@@ -216,11 +228,12 @@
             body.giftData = data;
             body.giftRadius = radius;
 
+            // Direct vertical velocity down into the jar mouth
             Body.setVelocity(body, {
-                x: (Math.random() - 0.5) * 1.5,
-                y: Math.random() * 2 + 2
+                x: (Math.random() - 0.5) * 0.5,
+                y: Math.random() * 2 + 3.5
             });
-            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.08);
+            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.06);
 
             // If image URL is provided dynamically from TikTok live, load it
             if (data.imageUrl && !this.imageCache[data.imageUrl]) {
