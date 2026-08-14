@@ -7415,50 +7415,39 @@
                 }
             } else if (selected.type === 'gift-jar') {
                 specificConfigHTML = `
-                    <div class="gmd-section" style="background:linear-gradient(135deg,rgba(56,189,248,.12),rgba(168,85,247,.08));border-color:rgba(56,189,248,.35);">
-                        <h4><i class="fas fa-circle-info"></i> HŨ QUÀ TẶNG LIVESTREAM</h4>
-                        <div style="font-size:11px;color:#cbd5e1;line-height:1.6;">
-                            <div><b style="color:#38bdf8;">1.</b> Chọn giao diện Hũ sẵn có hoặc nạp ảnh Hũ riêng.</div>
-                            <div><b style="color:#38bdf8;">2.</b> Cài đặt số Xu mục tiêu cho mỗi Hũ.</div>
-                            <div><b style="color:#38bdf8;">3.</b> Khán giả tặng quà trên Live sẽ làm rơi hạt vật lý vào hũ.</div>
-                            <div><b style="color:#38bdf8;">4.</b> Khi Hũ nạp đầy 100%, màn hình sẽ nổ Hũ ăn mừng!</div>
-                        </div>
+                    <div class="gmd-field"><label>Tiêu đề hũ</label><input class="gmd-input" value="${this.escapeHtml(selected.title || 'HŨ QUÀ TẶNG')}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','title',this.value)"></div>
+                    <div class="gmd-field"><label>Giao diện Hũ (Theme)</label>
+                        <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','theme',this.value)">
+                            <option value="hu-thuong" ${(selected.theme || 'hu-thuong') === 'hu-thuong' ? 'selected' : ''}>🏺 Hũ Thường (hu-thuong.png - Mặc định)</option>
+                            <option value="hu-nam-bau" ${selected.theme === 'hu-nam-bau' ? 'selected' : ''}>🍄 Hũ Nấm Bầu (hu-nam-bau.png)</option>
+                            <option value="hu-nam-cao-cap" ${selected.theme === 'hu-nam-cao-cap' ? 'selected' : ''}>✨ Hũ Nấm Cao Cấp (hu-nam-cao-cap.png)</option>
+                            <option value="hu-nu-bau" ${selected.theme === 'hu-nu-bau' ? 'selected' : ''}>🌸 Hũ Nụ Bầu (hu-nu-bau.png)</option>
+                            <option value="glass" ${selected.theme === 'glass' ? 'selected' : ''}>Hũ Thủy Tinh (Glass)</option>
+                            <option value="golden" ${selected.theme === 'golden' ? 'selected' : ''}>Hũ Hoàng Gia (Golden)</option>
+                            <option value="chest" ${selected.theme === 'chest' ? 'selected' : ''}>Hũ Rương Kho Báu (Chest)</option>
+                            <option value="diamond" ${selected.theme === 'diamond' ? 'selected' : ''}>Hũ Kim Cương (Diamond)</option>
+                            <option value="custom" ${selected.theme === 'custom' ? 'selected' : ''}>Tải tệp ảnh Hũ khác (.PNG)</option>
+                        </select>
                     </div>
-                    <div class="gmd-section">
-                        <h4><i class="fas fa-palette"></i> CẤU HÌNH HŨ QUÀ TẶNG</h4>
-                        <div class="gmd-field"><label>Tiêu đề hũ</label><input class="gmd-input" value="${this.escapeHtml(selected.title || 'HŨ QUÀ TẶNG')}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','title',this.value)"></div>
-                        <div class="gmd-field"><label>Giao diện Hũ (Theme)</label>
-                            <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','theme',this.value)">
-                                <option value="hu-thuong" ${(selected.theme || 'hu-thuong') === 'hu-thuong' ? 'selected' : ''}>🏺 Hũ Thường (hu-thuong.png - Mặc định)</option>
-                                <option value="hu-nam-bau" ${selected.theme === 'hu-nam-bau' ? 'selected' : ''}>🍄 Hũ Nấm Bầu (hu-nam-bau.png)</option>
-                                <option value="hu-nam-cao-cap" ${selected.theme === 'hu-nam-cao-cap' ? 'selected' : ''}>✨ Hũ Nấm Cao Cấp (hu-nam-cao-cap.png)</option>
-                                <option value="hu-nu-bau" ${selected.theme === 'hu-nu-bau' ? 'selected' : ''}>🌸 Hũ Nụ Bầu (hu-nu-bau.png)</option>
-                                <option value="glass" ${selected.theme === 'glass' ? 'selected' : ''}>Hũ Thủy Tinh (Glass)</option>
-                                <option value="golden" ${selected.theme === 'golden' ? 'selected' : ''}>Hũ Hoàng Gia (Golden)</option>
-                                <option value="chest" ${selected.theme === 'chest' ? 'selected' : ''}>Hũ Rương Kho Báu (Chest)</option>
-                                <option value="diamond" ${selected.theme === 'diamond' ? 'selected' : ''}>Hũ Kim Cương (Diamond)</option>
-                                <option value="custom" ${selected.theme === 'custom' ? 'selected' : ''}>Tải tệp ảnh Hũ khác (.PNG)</option>
-                            </select>
-                        </div>
-                        <div class="gmd-field" style="margin-top:8px;">
-                            <button class="gmd-btn primary" style="width:100%;" onclick="window.giftMenuDesigner.uploadCustomJarImage('${selected.id}')"><i class="fas fa-upload"></i> ${selected.customJarImageUrl ? 'Đổi ảnh Hũ riêng' : 'Tải tệp ảnh Hũ riêng (.PNG)'}</button>
-                            ${selected.customJarImageUrl ? `<div style="font-size:10px;color:#34d399;margin-top:4px;word-break:break-all;">✓ Đã nạp ảnh Hũ: ${selected.customJarImageUrl}</div>` : ''}
-                        </div>
-                        <div class="gmd-row" style="margin-top:10px;">
-                            <div class="gmd-field"><label>Mục tiêu (Xu / Hũ)</label><input class="gmd-input" type="number" min="10" max="1000000" value="${selected.targetCoins || 1000}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','targetCoins',Number(this.value))"></div>
-                            <div class="gmd-field"><label>Số Xu hiện tại</label><input class="gmd-input" type="number" min="0" value="${selected.currentCoins || 0}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','currentCoins',Number(this.value))"></div>
-                        </div>
-                        <div class="gmd-field"><label>Loại hạt rơi vật lý</label>
-                            <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','dropItemType',this.value)">
-                                <option value="coin" ${(selected.dropItemType || 'coin') === 'coin' ? 'selected' : ''}>💰 Đồng xu Vàng</option>
-                                <option value="gift_icon" ${selected.dropItemType === 'gift_icon' ? 'selected' : ''}>🌹 Icon Quà TikTok</option>
-                                <option value="heart" ${selected.dropItemType === 'heart' ? 'selected' : ''}>❤️ Trái tim Neon</option>
-                                <option value="star" ${selected.dropItemType === 'star' ? 'selected' : ''}>⭐ Ngôi sao sáng</option>
-                                <option value="gem" ${selected.dropItemType === 'gem' ? 'selected' : ''}>💎 Đá quý Kim Cương</option>
-                            </select>
-                        </div>
-                        <div class="gmd-field gmd-toggle-row"><label>Tự mở nắp & Reset khi đầy Hũ</label><label class="gmd-switch"><input type="checkbox" ${selected.autoResetOnTarget !== false ? 'checked' : ''} onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','autoResetOnTarget',this.checked)"><span></span></label></div>
+                    <div class="gmd-field" style="margin-top:6px;">
+                        <button class="gmd-btn primary" style="width:100%;" onclick="window.giftMenuDesigner.uploadCustomJarImage('${selected.id}')"><i class="fas fa-upload"></i> ${selected.customJarImageUrl ? 'Đổi ảnh Hũ riêng' : 'Tải tệp ảnh Hũ riêng (.PNG)'}</button>
+                        ${selected.customJarImageUrl ? `<div style="font-size:10px;color:#34d399;margin-top:4px;word-break:break-all;">✓ Đã nạp ảnh: ${selected.customJarImageUrl}</div>` : ''}
                     </div>
+                    <div class="gmd-row" style="margin-top:8px;">
+                        <div class="gmd-field"><label>Sức chứa (Xu / Hũ)</label><input class="gmd-input" type="number" min="10" max="1000000" value="${selected.targetCoins || 1000}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','targetCoins',Number(this.value))"></div>
+                        <div class="gmd-field"><label>Số Xu hiện tại</label><input class="gmd-input" type="number" min="0" value="${selected.currentCoins || 0}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','currentCoins',Number(this.value))"></div>
+                    </div>
+                    <div class="gmd-field" style="margin-top:6px;">
+                        <label>Loại quà tích tụ trong hũ</label>
+                        <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','dropItemType',this.value)">
+                            <option value="gift_icon" ${(selected.dropItemType || 'gift_icon') === 'gift_icon' ? 'selected' : ''}>🌹 Hoa hồng / Quà TikTok</option>
+                            <option value="coin" ${selected.dropItemType === 'coin' ? 'selected' : ''}>💰 Đồng xu Vàng</option>
+                            <option value="heart" ${selected.dropItemType === 'heart' ? 'selected' : ''}>❤️ Trái tim Neon</option>
+                            <option value="star" ${selected.dropItemType === 'star' ? 'selected' : ''}>⭐ Ngôi sao sáng</option>
+                            <option value="gem" ${selected.dropItemType === 'gem' ? 'selected' : ''}>💎 Đá quý Kim Cương</option>
+                        </select>
+                    </div>
+                    <div class="gmd-field gmd-toggle-row" style="margin-top:8px;"><label>Tự reset về 0 khi đầy Hũ</label><label class="gmd-switch"><input type="checkbox" ${selected.autoResetOnTarget !== false ? 'checked' : ''} onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','autoResetOnTarget',this.checked)"><span></span></label></div>
                 `;
             } else if (selected.type === 'goal-list') {
                 specificConfigHTML = `
@@ -8900,30 +8889,120 @@
         testGiftJarRandom(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
-            const coinOpts = [10, 25, 50, 99, 150, 200, 300, 500];
-            const dropOpts = ['coin', 'gift_icon', 'heart', 'star', 'gem'];
-            const randomCoins = coinOpts[Math.floor(Math.random() * coinOpts.length)];
-            const randomDrop = dropOpts[Math.floor(Math.random() * dropOpts.length)];
-            
-            item.dropItemType = randomDrop;
-            this.testGiftJarDrop(itemId, randomCoins);
+            const tiers = ['small', 'medium', 'large'];
+            const randomTier = tiers[Math.floor(Math.random() * tiers.length)];
+            this.testGiftJarPreset(itemId, randomTier);
         }
 
-        testGiftJarDrop(itemId, coins = 50) {
+        testGiftJarPreset(itemId, tier) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+
+            let coins = 10;
+            let giftName = '🌹 Hoa hồng TikTok';
+            let giftIcon = '🌹';
+            let rankBadge = '';
+
+            if (tier === 'small') {
+                coins = Math.floor(Math.random() * 10) + 1;
+                giftName = '🌹 Hoa hồng TikTok';
+                giftIcon = '🌹';
+            } else if (tier === 'medium') {
+                coins = Math.floor(Math.random() * 400) + 100;
+                giftName = '🎁 Súng bắn tiền';
+                giftIcon = '🎁';
+            } else if (tier === 'large') {
+                coins = Math.floor(Math.random() * 2000) + 1000;
+                giftName = '🦁 Sư tử Vũ trụ';
+                giftIcon = '🦁';
+            } else if (tier === 'top_donor') {
+                coins = 500;
+                giftName = '👑 Top 1 Supporter';
+                rankBadge = '👑 Hạng 1';
+            }
+
+            this.testGiftJarDrop(itemId, coins, { giftName, giftIcon, rankBadge });
+        }
+
+        animateGiftJarCanvasDrop(item, coins, extra = {}) {
+            if (!this.mount) return;
+            const jarEl = this.mount.querySelector(`#gmd-item-${item.id}`) || this.mount.querySelector('.gmd-gift-jar-widget');
+            if (!jarEl) return;
+            const jarRect = jarEl.getBoundingClientRect();
+            const mountRect = this.mount.getBoundingClientRect();
+
+            let pSize = 28;
+            if (coins > 500) pSize = 72;
+            else if (coins > 100) pSize = 48;
+            else if (coins > 10) pSize = 36;
+
+            const startX = (jarRect.left - mountRect.left) + (jarRect.width * (0.25 + Math.random() * 0.5));
+            const startY = 10;
+
+            const particle = document.createElement('div');
+            if (extra.rankBadge) {
+                particle.innerHTML = `<div style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;padding:4px 12px;border-radius:14px;font-size:12px;font-weight:900;box-shadow:0 4px 14px rgba(0,0,0,0.6);white-space:nowrap;">${extra.rankBadge} ${extra.giftName || ''}</div>`;
+            } else {
+                const icon = extra.giftIcon || (item.dropItemType === 'coin' ? '💰' : item.dropItemType === 'heart' ? '❤️' : '🌹');
+                particle.innerHTML = `<span style="font-size:${pSize}px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.6));user-select:none;">${icon}</span>`;
+            }
+
+            particle.style.cssText = `
+                position: absolute;
+                top: ${startY}px;
+                left: ${startX}px;
+                z-index: 9999;
+                pointer-events: none;
+                transition: transform 0.75s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+            `;
+            this.mount.appendChild(particle);
+
+            const isOverflow = (Number(item.currentCoins) || 0) >= (Number(item.targetCoins) || 1000);
+            const targetY = (jarRect.top - mountRect.top) + (jarRect.height * (isOverflow ? 0.95 : (0.35 + Math.random() * 0.45)));
+            const targetX = startX + (isOverflow ? (Math.random() * 200 - 100) : (Math.random() * 30 - 15));
+
+            requestAnimationFrame(() => {
+                particle.style.transform = `translate(${targetX - startX}px, ${targetY - startY}px) rotate(${Math.random() * 360}deg)`;
+            });
+
+            setTimeout(() => {
+                particle.style.opacity = '0';
+                setTimeout(() => particle.remove(), 400);
+            }, 900);
+        }
+
+        testGiftJarDrop(itemId, coins = 50, extra = {}) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
             this.pushHistory('test-gift-jar-drop');
             const targetCoins = Number(item.targetCoins) || 1000;
             const currentCoins = (Number(item.currentCoins) || 0) + coins;
-            if (currentCoins >= targetCoins && item.autoResetOnTarget !== false) {
+            const reachedTarget = currentCoins >= targetCoins;
+
+            if (reachedTarget && item.autoResetOnTarget !== false) {
                 item.currentCoins = 0;
-                if (window.app?.showNotification) window.app.showNotification('success', '🎉 NỔ HŨ JACKPOT! Hũ đã tự mở nắp và reset về 0!');
+                if (window.app?.showNotification) window.app.showNotification('success', '🎉 NỔ HŨ TRÀN MÀN HÌNH! Hũ đã tràn quà ngập toàn màn hình và tự reset!');
             } else {
                 item.currentCoins = currentCoins;
-                if (window.app?.showNotification) window.app.showNotification('info', `🧪 Đã thả ${coins} Xu thử nghiệm vào Hũ!`);
+                if (window.app?.showNotification) window.app.showNotification('info', `🧪 Đã thả ${extra.giftName || `${coins} Xu`} từ Live vào Hũ!`);
             }
             this.renderCanvas();
             this.updateInspector();
+
+            this.animateGiftJarCanvasDrop(item, coins, extra);
+
+            if (this.socket && this.socket.connected) {
+                this.socket.emit('gift_jar_drop', {
+                    coins,
+                    currentCoins: item.currentCoins,
+                    targetCoins,
+                    dropItemType: item.dropItemType || 'gift_icon',
+                    reachedTarget,
+                    giftIcon: extra.giftIcon || '🎁',
+                    rankBadge: extra.rankBadge || '',
+                    nickname: 'Khán giả Live'
+                });
+            }
         }
 
         resetGiftJarCoins(itemId) {
@@ -9091,7 +9170,7 @@
                             title: 'HŨ QUÀ TẶNG',
                             theme: 'hu-thuong',
                             targetCoins: 1000,
-                            currentCoins: 350,
+                            currentCoins: 0,
                             dropItemType: 'gift_icon',
                             autoResetOnTarget: true,
                             celebrationSound: 'jackpot'

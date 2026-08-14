@@ -1964,15 +1964,16 @@
             jarImageUrl = base.replace(/\/$/, '') + jarImageUrl;
         }
 
-        const dropType = item.dropItemType || 'heart';
-        let particleEmoji = '❤️';
+        const dropType = item.dropItemType || 'gift_icon';
+        let particleEmoji = '🌹';
         if (dropType === 'coin') particleEmoji = '💰';
-        else if (dropType === 'gift_icon') particleEmoji = '🎁';
+        else if (dropType === 'gift_icon') particleEmoji = '🌹';
+        else if (dropType === 'heart') particleEmoji = '❤️';
         else if (dropType === 'star') particleEmoji = '⭐';
         else if (dropType === 'gem') particleEmoji = '💎';
 
         const maxParticles = 90;
-        const particleCount = Math.min(maxParticles, Math.max(percent > 0 ? 5 : 0, Math.floor((percent / 100) * maxParticles)));
+        const particleCount = currentCoins <= 0 ? 0 : Math.min(maxParticles, Math.max(1, Math.floor((percent / 100) * maxParticles)));
         
         const stackedParticlesHtml = Array.from({ length: particleCount }, (_, i) => {
             const rot = ((i * 47) % 70) - 35;
