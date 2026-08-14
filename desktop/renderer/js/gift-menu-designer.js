@@ -8940,31 +8940,21 @@
         }
 
         ensureGiftJarPhysics(item) {
-            const stage = this.mount?.querySelector('#gmd-stage') || document.querySelector('#gmd-stage');
-            if (!stage || typeof window.GiftJarPhysics !== 'function') return null;
+            const curItem = item || this.items.find(e => e.type === 'gift-jar');
+            const itemEl = curItem ? (this.mount?.querySelector(`#gmd-item-${curItem.id}`) || document.querySelector(`#gmd-item-${curItem.id}`)) : null;
+            const jarEl = itemEl?.querySelector('.gmd-gift-jar-widget') || this.mount?.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
+            if (!jarEl || typeof window.GiftJarPhysics !== 'function') return null;
 
-            if (this.giftJarPhysics && this.giftJarPhysics.container !== stage) {
+            if (this.giftJarPhysics && this.giftJarPhysics.container !== jarEl) {
                 this.giftJarPhysics.destroy();
                 this.giftJarPhysics = null;
             }
 
             if (!this.giftJarPhysics) {
-                this.giftJarPhysics = new window.GiftJarPhysics(stage, {
-                    getItemRect: () => {
-                        const curItem = item || this.items.find(e => e.type === 'gift-jar');
-                        if (curItem) {
-                            return {
-                                x: Number(curItem.x) || 0,
-                                y: Number(curItem.y) || 0,
-                                w: Number(curItem.width || curItem.w) || 160,
-                                h: Number(curItem.height || curItem.h) || 200
-                            };
-                        }
-                        return null;
-                    },
+                this.giftJarPhysics = new window.GiftJarPhysics(jarEl, {
                     getCapacityLevel: () => {
-                        const curItem = item || this.items.find(e => e.type === 'gift-jar');
-                        return curItem ? (curItem.capacityLevel || 'medium') : 'medium';
+                        const it = item || this.items.find(e => e.type === 'gift-jar');
+                        return it ? (it.capacityLevel || 'medium') : 'medium';
                     }
                 });
             }
