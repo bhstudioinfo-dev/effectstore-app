@@ -8920,9 +8920,26 @@
         testGiftJarRandom(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
-            const tiers = ['small', 'medium', 'large'];
-            const randomTier = tiers[Math.floor(Math.random() * tiers.length)];
-            this.testGiftJarPreset(itemId, randomTier);
+            const giftList = [
+                { id: 'rose', name: '🌹 10x Hoa hồng TikTok', coins: 10, count: 10, icon: '🌹', fn: (p) => p.spawnRose(10) },
+                { id: 'heart', name: '❤️ 2x Trái tim TikTok', coins: 10, count: 2, icon: '❤️', fn: (p) => p.spawnHeart(2) },
+                { id: 'doughnut', name: '🍩 Bánh Donut', coins: 30, icon: '🍩', fn: (p) => p.spawnDoughnut() },
+                { id: 'cap', name: '🧢 Mũ TikTok', coins: 99, icon: '🧢', fn: (p) => p.spawnCap() },
+                { id: 'diamond', name: '💎 2x Kim cương', coins: 200, count: 2, icon: '💎', fn: (p) => p.spawnDiamond(2) },
+                { id: 'corgi', name: '🐶 Chó Corgi', coins: 299, icon: '🐶', fn: (p) => p.spawnCorgi() },
+                { id: 'money_gun', name: '🔫 Súng bắn tiền', coins: 500, icon: '🔫', fn: (p) => p.spawnMoneyGun() },
+                { id: 'whale', name: '🐋 Cá voi lặn', coins: 1000, icon: '🐋', fn: (p) => p.spawnWhale() },
+                { id: 'galaxy', name: '🌌 Vũ trụ Galaxy', coins: 1000, icon: '🌌', fn: (p) => p.spawnGalaxy() },
+                { id: 'dragon', name: '🔥 Rồng lửa TikTok', coins: 10000, icon: '🔥', fn: (p) => p.spawnDragon() },
+                { id: 'lion', name: '🦁 Sư tử TikTok', coins: 29999, icon: '🦁', fn: (p) => p.spawnLion() },
+                { id: 'zeus', name: '⚡ Thần Zeus', coins: 34000, icon: '⚡', fn: (p) => p.spawnZeus() }
+            ];
+            const choice = giftList[Math.floor(Math.random() * giftList.length)];
+            const physics = this.ensureGiftJarPhysics(item);
+            if (physics && typeof choice.fn === 'function') {
+                choice.fn(physics);
+            }
+            this.testGiftJarDrop(itemId, choice.coins, { giftName: choice.name, giftIcon: choice.icon });
         }
 
         testGiftJarPreset(itemId, tier) {
@@ -8930,46 +8947,69 @@
             if (!item) return;
 
             const physics = this.ensureGiftJarPhysics(item);
-            if (physics) {
-                if (tier === 'small') {
-                    physics.spawnRose(10);
-                } else if (tier === 'medium') {
-                    const choice = Math.random();
-                    if (choice < 0.5) physics.spawnDiamond(2);
-                    else if (choice < 0.8) physics.spawnCorgi();
-                    else physics.spawnMoneyGun();
-                } else if (tier === 'large') {
-                    const choice = Math.random();
-                    if (choice < 0.5) physics.spawnGalaxy();
-                    else physics.spawnLion();
-                } else if (tier === 'top_donor') {
-                    physics.spawnTopDonorBadge(1, 'Top 1 Supporter');
-                } else {
-                    physics.spawnRandomGift('random');
-                }
-            }
-
             let coins = 10;
-            let giftName = '🌹 Hoa hồng TikTok';
+            let giftName = '🌹 10x Hoa hồng TikTok';
             let giftIcon = '🌹';
             let rankBadge = '';
 
             if (tier === 'small') {
-                coins = Math.floor(Math.random() * 10) + 1;
-                giftName = '🌹 Hoa hồng TikTok';
-                giftIcon = '🌹';
+                const isHeart = Math.random() < 0.5;
+                if (isHeart) {
+                    coins = 10; // 2 hearts x 5 xu = 10 xu
+                    giftName = '❤️ 2x Trái tim TikTok';
+                    giftIcon = '❤️';
+                    if (physics) physics.spawnHeart(2);
+                } else {
+                    coins = 10; // 10 roses x 1 xu = 10 xu
+                    giftName = '🌹 10x Hoa hồng TikTok';
+                    giftIcon = '🌹';
+                    if (physics) physics.spawnRose(10);
+                }
             } else if (tier === 'medium') {
-                coins = Math.floor(Math.random() * 400) + 100;
-                giftName = '🎁 Quà Vừa (Đá quý / Quả cầu)';
-                giftIcon = '💎';
+                const choice = Math.random();
+                if (choice < 0.35) {
+                    coins = 200; // 2 diamonds x 100 xu = 200 xu
+                    giftName = '💎 2x Kim cương';
+                    giftIcon = '💎';
+                    if (physics) physics.spawnDiamond(2);
+                } else if (choice < 0.70) {
+                    coins = 299; // Corgi = 299 xu
+                    giftName = '🐶 Chó Corgi';
+                    giftIcon = '🐶';
+                    if (physics) physics.spawnCorgi();
+                } else {
+                    coins = 500; // Money gun = 500 xu
+                    giftName = '🔫 Súng bắn tiền';
+                    giftIcon = '🔫';
+                    if (physics) physics.spawnMoneyGun();
+                }
             } else if (tier === 'large') {
-                coins = Math.floor(Math.random() * 2000) + 1000;
-                giftName = '🦁 Sư tử / Cá voi TikTok';
-                giftIcon = '🦁';
+                const choice = Math.random();
+                if (choice < 0.40) {
+                    coins = 1000; // Galaxy = 1000 xu
+                    giftName = '🌌 Vũ trụ Galaxy';
+                    giftIcon = '🌌';
+                    if (physics) physics.spawnGalaxy();
+                } else if (choice < 0.75) {
+                    coins = 29999; // Lion = 29,999 xu
+                    giftName = '🦁 Sư tử TikTok';
+                    giftIcon = '🦁';
+                    if (physics) physics.spawnLion();
+                } else {
+                    coins = 34000; // Zeus = 34,000 xu
+                    giftName = '⚡ Thần Zeus';
+                    giftIcon = '⚡';
+                    if (physics) physics.spawnZeus();
+                }
             } else if (tier === 'top_donor') {
                 coins = 500;
                 giftName = '👑 Top 1 Supporter';
+                giftIcon = '👑';
                 rankBadge = '👑 Hạng 1';
+                if (physics) physics.spawnTopDonorBadge(1, 'Top 1 Supporter');
+            } else {
+                this.testGiftJarRandom(itemId);
+                return;
             }
 
             this.testGiftJarDrop(itemId, coins, { giftName, giftIcon, rankBadge });
@@ -8987,15 +9027,12 @@
             const currentCoins = (Number(item.currentCoins) || 0) + coins;
             const reachedTarget = currentCoins >= targetCoins;
 
-            if (reachedTarget && item.autoResetOnTarget === true) {
-                item.currentCoins = 0;
-                if (this.giftJarPhysics) {
-                    this.giftJarPhysics.reset();
-                }
-                if (window.app?.showNotification) window.app.showNotification('success', `🎉 NỔ HŨ TRÀN MÀN HÌNH! Đã đạt mốc ${targetCoins.toLocaleString()} Xu và tự động làm mới Hũ!`);
+            // Continuously accumulate exact coins without wiping the jar on target
+            item.currentCoins = currentCoins;
+            if (reachedTarget) {
+                if (window.app?.showNotification) window.app.showNotification('success', `🎉 ĐÃ ĐẦY VÀ TRÀN HŨ! (+${coins.toLocaleString()} Xu từ ${extra.giftName || 'Quà TikTok'}) -> Tổng: ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu`);
             } else {
-                item.currentCoins = currentCoins;
-                if (window.app?.showNotification) window.app.showNotification('info', `🧪 Đã nhận +${coins.toLocaleString()} Xu (${extra.giftName || 'Quà TikTok'})! Hiện có: ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu`);
+                if (window.app?.showNotification) window.app.showNotification('info', `🧪 Nhận +${coins.toLocaleString()} Xu (${extra.giftName || 'Quà TikTok'}) -> Tổng: ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu`);
             }
             this.renderCanvas();
             this.renderInspector();
