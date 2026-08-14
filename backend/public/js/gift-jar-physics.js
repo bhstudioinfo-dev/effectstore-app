@@ -96,8 +96,8 @@
 
         resizeCanvas() {
             if (!this.canvas || !this.container) return;
-            const w = this.container.offsetWidth || this.container.clientWidth || 1080;
-            const h = this.container.offsetHeight || this.container.clientHeight || 1920;
+            const w = this.container.offsetWidth || this.container.clientWidth || 720;
+            const h = this.container.offsetHeight || this.container.clientHeight || 960;
 
             this.width = w;
             this.height = h;
@@ -122,10 +122,12 @@
         getArtboardBounds() {
             const safeAreaEl = this.container.querySelector('#gmd-safe-area');
             if (safeAreaEl) {
-                const sx = parseFloat(safeAreaEl.style.left) || 180;
-                const sy = parseFloat(safeAreaEl.style.top) || 160;
                 const sw = parseFloat(safeAreaEl.style.width) || 360;
                 const sh = parseFloat(safeAreaEl.style.height) || 640;
+                const w = this.width || 720;
+                const h = this.height || 960;
+                const sx = Math.round((w - sw) / 2);
+                const sy = Math.round((h - sh) / 2);
                 return {
                     left: sx,
                     top: sy,
@@ -149,7 +151,6 @@
         }
 
         getJarRect() {
-            // First priority: Read directly from the live DOM element on screen!
             const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
             if (jarWidget) {
                 const itemEl = jarWidget.closest('.gmd-item');
@@ -201,14 +202,14 @@
 
             const bounds = this.getArtboardBounds();
 
-            // 1. Stage Floor & Left/Right Screen Walls strictly at 9:16 Artboard Boundaries
-            const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 15, bounds.width + 40, 30, {
-                isStatic: true, friction: 0.6, label: 'floor'
+            // 1. Heavy Stage Floor & Left/Right Screen Walls strictly at 9:16 Artboard Boundaries (60px thick floor)
+            const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 30, bounds.width + 200, 60, {
+                isStatic: true, friction: 0.8, restitution: 0.1, label: 'floor'
             });
-            const leftScreen = Bodies.rectangle(bounds.left - 15, (bounds.top + bounds.bottom) / 2, 30, bounds.height * 2, {
+            const leftScreen = Bodies.rectangle(bounds.left - 20, (bounds.top + bounds.bottom) / 2, 40, bounds.height * 2, {
                 isStatic: true, friction: 0.1, label: 'screen_left'
             });
-            const rightScreen = Bodies.rectangle(bounds.right + 15, (bounds.top + bounds.bottom) / 2, 30, bounds.height * 2, {
+            const rightScreen = Bodies.rectangle(bounds.right + 20, (bounds.top + bounds.bottom) / 2, 40, bounds.height * 2, {
                 isStatic: true, friction: 0.1, label: 'screen_right'
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
@@ -229,22 +230,22 @@
                 mouthY: jar.y + jh * 0.16
             };
 
-            const wallThickness = Math.max(12, Math.round(jw * 0.08));
+            const wallThickness = Math.max(14, Math.round(jw * 0.08));
 
             // Jar Bottom Wall
             const bottomY = jar.y + jh * 0.90;
             const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.78, wallThickness, {
-                isStatic: true, friction: 0.5, restitution: 0.12, label: 'jar_bottom'
+                isStatic: true, friction: 0.55, restitution: 0.12, label: 'jar_bottom'
             });
 
             // Jar Left Wall
-            const leftX = jar.x + jw * 0.12;
+            const leftX = jar.x + jw * 0.13;
             const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.56, wallThickness, jh * 0.64, {
                 isStatic: true, friction: 0.1, restitution: 0.12, label: 'jar_left'
             });
 
             // Jar Right Wall
-            const rightX = jar.x + jw * 0.88;
+            const rightX = jar.x + jw * 0.87;
             const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.56, wallThickness, jh * 0.64, {
                 isStatic: true, friction: 0.1, restitution: 0.12, label: 'jar_right'
             });
@@ -275,14 +276,14 @@
             const mouthCenterX = jar.x + jar.w / 2;
 
             // Spawn at the top edge of the 9:16 frame, EXACTLY above the jar's mouth!
-            const spawnX = mouthCenterX + (Math.random() * 8 - 4);
+            const spawnX = mouthCenterX + (Math.random() * 6 - 3);
             const spawnY = bounds.top - 15 - Math.random() * 15;
 
             const scaleFactor = bounds.width < 600 ? (bounds.width / 720) : 1;
             const r = Math.max(7, Math.round(radius * scaleFactor));
 
             const restitution = type === 'rose' ? 0.12 : 0.18;
-            const friction = type === 'rose' ? 0.30 : 0.20;
+            const friction = type === 'rose' ? 0.35 : 0.22;
 
             const body = Bodies.circle(spawnX, spawnY, r, {
                 restitution,
@@ -309,7 +310,8 @@
             World.add(this.world, body);
             this.items.push(body);
 
-            if (this.items.length > 320) {
+            // Keep up to 800 active gifts without prematurely deleting bottom gifts
+            if (this.items.length > 800) {
                 const oldest = this.items.shift();
                 World.remove(this.world, oldest);
             }
