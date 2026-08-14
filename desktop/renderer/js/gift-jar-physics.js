@@ -37,6 +37,7 @@
             this.isRunning = false;
             this.animFrameId = null;
             this.lastWallSig = '';
+            this.prevJarRect = null;
 
             this.preloadPopularGifts();
             this.initCanvas();
@@ -185,6 +186,35 @@
             const jar = this.getJarRect();
             const bounds = this.getArtboardBounds();
             const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
+            
+            // If jar moved, smoothly translate all gifts that are inside the jar along with it!
+            if (this.prevJarRect) {
+                const dx = jar.x - this.prevJarRect.x;
+                const dy = jar.y - this.prevJarRect.y;
+
+                if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                    const prev = this.prevJarRect;
+                    const prevLeft = prev.x - 5;
+                    const prevRight = prev.x + prev.w + 5;
+                    const prevTop = prev.y - 10;
+                    const prevBottom = prev.y + prev.h + 20;
+
+                    for (let i = 0; i < this.items.length; i++) {
+                        const b = this.items[i];
+                        if (b.position.x >= prevLeft && b.position.x <= prevRight &&
+                            b.position.y >= prevTop && b.position.y <= prevBottom) {
+                            Matter.Body.setPosition(b, {
+                                x: b.position.x + dx,
+                                y: b.position.y + dy
+                            });
+                            Matter.Body.setVelocity(b, { x: 0, y: 0 });
+                        }
+                    }
+                }
+            }
+
+            this.prevJarRect = { x: jar.x, y: jar.y, w: jar.w, h: jar.h };
+
             if (this.lastWallSig !== sig) {
                 this.lastWallSig = sig;
                 this.setupWalls();
@@ -483,6 +513,9 @@
                 if (!this.isRunning) return;
                 const delta = Math.min(32, currentTime - lastTime);
                 lastTime = currentTime;
+
+                // Continuously track moving jar in real-time and translate all inside gifts
+                this.checkAndSyncWalls();
 
                 Matter.Engine.update(this.engine, delta);
                 this.render();
