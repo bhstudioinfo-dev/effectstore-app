@@ -2,7 +2,7 @@
  * LiveFlow Gift Jar 2D Physics Engine (Powered by Matter.js)
  * Implements real physical bouncing, rolling, stacking, and overflow
  * with FULL 100% sync for all 645+ REAL TikTok Live Gift Icons.
- * Features 2x High-DPI Supersampling, strict 9:16 boundaries, and full proportional hierarchy.
+ * Features 2x High-DPI Supersampling, thick anti-tunneling walls, and zero-leak bottom.
  */
 (function(window) {
     'use strict';
@@ -120,8 +120,8 @@
             const { Engine } = Matter;
             this.engine = Engine.create({
                 enableSleeping: true,
-                positionIterations: 8,
-                velocityIterations: 6,
+                positionIterations: 10,
+                velocityIterations: 8,
                 gravity: { x: 0, y: this.options.gravity, scale: 0.0016 }
             });
             this.world = this.engine.world;
@@ -194,17 +194,17 @@
             const bounds = this.getArtboardBounds();
             const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
             
-            // STRICT CHECK: ONLY move bodies that are TRULY INSIDE the hollow belly of the jar
+            // STRICT CHECK: ONLY move bodies that are TRULY INSIDE the hollow cavity of the jar
             if (this.prevJarRect) {
                 const dx = jar.x - this.prevJarRect.x;
                 const dy = jar.y - this.prevJarRect.y;
 
                 if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
                     const prev = this.prevJarRect;
-                    const innerLeft = prev.x + prev.w * 0.14;
-                    const innerRight = prev.x + prev.w * 0.86;
+                    const innerLeft = prev.x + prev.w * 0.12;
+                    const innerRight = prev.x + prev.w * 0.88;
                     const innerTop = prev.y + prev.h * 0.16;
-                    const innerBottom = prev.y + prev.h * 0.90;
+                    const innerBottom = prev.y + prev.h * 0.86;
 
                     for (let i = 0; i < this.items.length; i++) {
                         const b = this.items[i];
@@ -246,44 +246,44 @@
             const rightScreen = Bodies.rectangle(bounds.right + 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
                 isStatic: true, friction: 0.2, label: 'screen_right'
             });
-            const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 25, bounds.width + 100, 50, {
+            const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 30, bounds.width + 100, 60, {
                 isStatic: true, friction: 0.8, restitution: 0.05, label: 'floor'
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. 100% Sealed Airtight Jar Physics Cavity with Funnel Catch
+            // 2. Thick, Solid, Impenetrable Anti-Tunneling Jar Walls (100% Sealed)
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jw = jar.w;
             const jh = jar.h;
 
-            const wallThickness = Math.max(18, Math.round(jw * 0.10));
+            const wallThickness = Math.max(28, Math.round(jw * 0.14));
 
-            // Solid Jar Bottom Wall
-            const bottomY = jar.y + jh * 0.88;
-            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.80, wallThickness, {
-                isStatic: true, friction: 0.7, restitution: 0.05, label: 'jar_bottom'
+            // Heavy Solid Bottom Wall (40px thick basement, 100% immune to speed tunneling)
+            const bottomY = jar.y + jh * 0.86 + 15;
+            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.86, 40, {
+                isStatic: true, friction: 0.8, restitution: 0.02, label: 'jar_bottom'
             });
 
-            // Solid Jar Left Wall
-            const leftX = jar.x + jw * 0.14;
-            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.55, wallThickness, jh * 0.62, {
-                isStatic: true, friction: 0.1, restitution: 0.05, label: 'jar_left'
+            // Solid Left Wall
+            const leftX = jar.x + jw * 0.12;
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.52, wallThickness, jh * 0.68, {
+                isStatic: true, friction: 0.1, restitution: 0.02, label: 'jar_left'
             });
 
-            // Solid Jar Right Wall
-            const rightX = jar.x + jw * 0.86;
-            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.55, wallThickness, jh * 0.62, {
-                isStatic: true, friction: 0.1, restitution: 0.05, label: 'jar_right'
+            // Solid Right Wall
+            const rightX = jar.x + jw * 0.88;
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.52, wallThickness, jh * 0.68, {
+                isStatic: true, friction: 0.1, restitution: 0.02, label: 'jar_right'
             });
 
-            // Inward Funnel Guide Lips
-            const lipLeft = Bodies.rectangle(jar.x + jw * 0.22, jar.y + jh * 0.18, jw * 0.28, wallThickness, {
-                isStatic: true, friction: 0.01, angle: 0.55, label: 'jar_lip_left'
+            // Inward Funnel Guide Lips: Direct 100% of drops into jar center
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.20, jar.y + jh * 0.18, jw * 0.32, wallThickness, {
+                isStatic: true, friction: 0.01, angle: 0.52, label: 'jar_lip_left'
             });
 
-            const lipRight = Bodies.rectangle(jar.x + jw * 0.78, jar.y + jh * 0.18, jw * 0.28, wallThickness, {
-                isStatic: true, friction: 0.01, angle: -0.55, label: 'jar_lip_right'
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.80, jar.y + jh * 0.18, jw * 0.32, wallThickness, {
+                isStatic: true, friction: 0.01, angle: -0.52, label: 'jar_lip_right'
             });
 
             this.wallBodies.push(jarBottom, jarLeft, jarRight, lipLeft, lipRight);
@@ -305,14 +305,14 @@
             const scaleFactor = bounds.width < 600 ? (bounds.width / 720) : 1;
             const r = Math.max(8, Math.round(radius * scaleFactor));
 
-            const restitution = 0.05;
-            const friction = 0.40;
+            const restitution = 0.02;
+            const friction = 0.45;
 
             const body = Bodies.circle(spawnX, spawnY, r, {
                 restitution,
                 friction,
                 frictionAir: 0.005,
-                density: 0.005,
+                density: 0.003,
                 sleepThreshold: 25
             });
 
@@ -320,9 +320,10 @@
             body.giftData = data;
             body.giftRadius = r;
 
+            // Controlled drop velocity to eliminate physics tunneling
             Body.setVelocity(body, {
                 x: 0,
-                y: Math.random() * 1.0 + 3.8
+                y: Math.random() * 0.5 + 2.5
             });
             Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.01);
 
