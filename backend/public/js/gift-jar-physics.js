@@ -230,7 +230,7 @@
             const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
             if (jarWidget) {
                 const itemEl = jarWidget.closest('.gmd-item');
-                if (itemEl) {
+                if (itemEl && itemEl.style.display !== 'none') {
                     const x = parseFloat(itemEl.style.left);
                     const y = parseFloat(itemEl.style.top);
                     const w = parseFloat(itemEl.style.width);
@@ -246,19 +246,24 @@
                 if (r && r.w > 0 && r.h > 0) return r;
             }
 
-            const bounds = this.getArtboardBounds();
-            const defW = Math.round(bounds.width * 0.40);
-            const defH = Math.round(bounds.height * 0.32);
-            return {
-                x: Math.round(bounds.left + (bounds.width - defW) / 2),
-                y: Math.round(bounds.bottom - defH - 20),
-                w: defW,
-                h: defH
-            };
+            return null;
         }
 
         checkAndSyncWalls() {
             const jar = this.getJarRect();
+            if (!jar) {
+                if (this.wallBodies.length && this.world) {
+                    Matter.World.remove(this.world, this.wallBodies);
+                    this.wallBodies = [];
+                }
+                if (this.items.length) {
+                    this.reset();
+                }
+                this.prevJarRect = null;
+                this.lastWallSig = '';
+                return;
+            }
+
             const bounds = this.getArtboardBounds();
             const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
             
@@ -333,6 +338,9 @@
                 this.wallBodies = [];
             }
 
+            const jar = this.getJarRect();
+            if (!jar) return;
+
             const bounds = this.getArtboardBounds();
 
             // 1. Strict 9:16 Screen Boundaries
@@ -348,7 +356,6 @@
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
             // 2. Sleek Jar Boundaries (Exact inner glass fit, no lateral overflow blockage)
-            const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jw = jar.w;
             const jh = jar.h;
@@ -762,6 +769,14 @@
             ctx.imageSmoothingQuality = 'high';
 
             const jar = this.getJarRect();
+            if (!jar) {
+                if (this.items.length) {
+                    this.reset();
+                }
+                ctx.restore();
+                return;
+            }
+
             const jarWidget = this.container?.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
             const itemEl = jarWidget?.closest('.gmd-item');
             const theme = jarWidget?.dataset?.theme || itemEl?.dataset?.theme || 'hu-thuong';
