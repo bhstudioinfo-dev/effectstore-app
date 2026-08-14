@@ -1591,8 +1591,11 @@ router.post('/gift-menu-layout', authMiddleware, planQuotaLock('layouts'), async
             };
             try {
                 fs.writeFileSync(goalBoardLayoutPath, JSON.stringify(goalBoardLayout, null, 2), 'utf8');
+                if (layout.isActive) {
+                    fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
+                }
             } catch (err) {
-                console.error('Failed to sync goal board layout file:', err);
+                console.error('Failed to sync goal board/gift menu layout file:', err);
             }
             tiktokService.setGoalBoardLayout(goalBoardLayout);
 

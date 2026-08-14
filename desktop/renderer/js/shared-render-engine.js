@@ -1934,81 +1934,56 @@
 
     function renderGiftJar(item, ctx = {}) {
         ctx = ctx || {};
-        const title = item.title || 'HŨ QUÀ TẶNG';
-        const targetCoins = Number(item.targetCoins) || 1000;
-        const currentCoins = Number(item.currentCoins) || 0;
-        const percent = Math.min(100, Math.round((currentCoins / targetCoins) * 100));
         const theme = item.theme || 'hu-thuong';
         
         let borderColor = `#38bdf8`;
-        let themeIcon = '🏺';
+        let glowColor = `rgba(56, 189, 248, 0.4)`;
 
         if (theme === 'golden' || theme === 'hu-nam-cao-cap') {
             borderColor = `#fbbf24`;
-            themeIcon = '✨';
+            glowColor = `rgba(251, 191, 36, 0.4)`;
         } else if (theme === 'chest' || theme === 'hu-nam-bau') {
             borderColor = `#f59e0b`;
-            themeIcon = '🍄';
+            glowColor = `rgba(245, 158, 11, 0.4)`;
         } else if (theme === 'diamond' || theme === 'hu-nu-bau') {
             borderColor = `#c084fc`;
-            themeIcon = '🌸';
+            glowColor = `rgba(192, 132, 252, 0.4)`;
         }
 
         let jarImageUrl = item.customJarImageUrl || '';
-        if (['hu-nam-bau', 'hu-nam-cao-cap', 'hu-nu-bau', 'hu-thuong'].includes(theme)) {
-            jarImageUrl = `/uploads/jars/${theme}.png`;
-        }
-
         if (jarImageUrl && jarImageUrl.startsWith('/')) {
-            const base = (ctx && ctx.apiBase) || (window.giftMenuDesigner && window.giftMenuDesigner.apiBase) || 'http://localhost:3000';
-            jarImageUrl = base.replace(/\/$/, '') + jarImageUrl;
+            const base = (ctx && ctx.apiBase) || (window.giftMenuDesigner && window.giftMenuDesigner.apiBase) || '';
+            if (base) {
+                jarImageUrl = base.replace(/\/$/, '') + jarImageUrl;
+            }
         }
-
-        const dropType = item.dropItemType || 'gift_icon';
-        let particleEmoji = '🌹';
-        if (dropType === 'coin') particleEmoji = '💰';
-        else if (dropType === 'gift_icon') particleEmoji = '🌹';
-        else if (dropType === 'heart') particleEmoji = '❤️';
-        else if (dropType === 'star') particleEmoji = '⭐';
-        else if (dropType === 'gem') particleEmoji = '💎';
-
-        const maxParticles = 90;
-        const particleCount = currentCoins <= 0 ? 0 : Math.min(maxParticles, Math.max(1, Math.floor((percent / 100) * maxParticles)));
-        
-        const stackedParticlesHtml = Array.from({ length: particleCount }, (_, i) => {
-            const rot = ((i * 47) % 70) - 35;
-            const sz = 16 + (i % 4) * 4;
-            return `<span style="font-size:${font(ctx, sz, sz)}px;transform:rotate(${rot}deg);filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6));display:inline-block;margin:1px;user-select:none;">${particleEmoji}</span>`;
-        }).join('');
 
         const jarVisualHtml = jarImageUrl
             ? `<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                <!-- Stacked Physical Particles inside PNG Jar Mask -->
-                <div style="position:absolute;inset:0;-webkit-mask-image:url('${jarImageUrl}');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-image:url('${jarImageUrl}');mask-size:contain;mask-repeat:no-repeat;mask-position:center;display:flex;align-items:flex-end;justify-content:center;z-index:2;padding:12% 10%;">
-                    <div style="width:100%;height:${percent}%;display:flex;flex-wrap:wrap-reverse;align-content:flex-start;justify-content:center;overflow:hidden;transition:height 0.4s ease;gap:2px;">
-                        ${stackedParticlesHtml}
-                    </div>
-                </div>
-                <!-- Main PNG Jar Image Overlay -->
                 <img src="${jarImageUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 0 15px ${borderColor}88);" />
                </div>`
-            : `<div style="position:relative;width:100%;height:100%;display:flex;align-items:flex-end;justify-content:center;">
-                <svg viewBox="0 0 200 240" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;">
+            : `<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 200 240" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;filter:drop-shadow(0 8px 24px ${glowColor});">
                     <defs>
                         <linearGradient id="jarGlassGrad_${item.id || 'def'}" x1="0" y1="0" x2="1" y2="1">
                             <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
-                            <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.15"/>
-                            <stop offset="100%" stop-color="#0284c7" stop-opacity="0.25"/>
+                            <stop offset="35%" stop-color="#38bdf8" stop-opacity="0.12"/>
+                            <stop offset="70%" stop-color="#0284c7" stop-opacity="0.20"/>
+                            <stop offset="100%" stop-color="#ffffff" stop-opacity="0.30"/>
+                        </linearGradient>
+                        <linearGradient id="jarRimGrad_${item.id || 'def'}" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stop-color="${borderColor}" stop-opacity="0.9"/>
+                            <stop offset="50%" stop-color="#ffffff" stop-opacity="1.0"/>
+                            <stop offset="100%" stop-color="${borderColor}" stop-opacity="0.9"/>
                         </linearGradient>
                     </defs>
-                    <rect x="55" y="10" width="90" height="20" rx="6" fill="#f59e0b" stroke="#78350f" stroke-width="2"/>
-                    <rect x="65" y="30" width="70" height="12" rx="4" fill="#fbbf24" stroke="#78350f" stroke-width="1.5"/>
-                    <path d="M 45 42 C 30 55, 20 80, 20 120 C 20 180, 35 220, 100 220 C 165 220, 180 180, 180 120 C 180 80, 170 55, 155 42 Z" fill="url(#jarGlassGrad_${item.id || 'def'})" stroke="${borderColor}" stroke-width="4"/>
-                    <path d="M 35 60 C 28 80, 28 140, 38 180" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+                    <rect x="52" y="10" width="96" height="18" rx="8" fill="url(#jarRimGrad_${item.id || 'def'})" stroke="${borderColor}" stroke-width="2.5"/>
+                    <rect x="64" y="28" width="72" height="12" rx="4" fill="rgba(255,255,255,0.25)" stroke="${borderColor}" stroke-width="2"/>
+                    <path d="M 46 40 C 30 52, 18 78, 18 120 C 18 185, 35 224, 100 224 C 165 224, 182 185, 182 120 C 182 78, 170 52, 154 40 Z" fill="url(#jarGlassGrad_${item.id || 'def'})" stroke="${borderColor}" stroke-width="3.5"/>
+                    <path d="M 32 60 C 24 85, 24 145, 36 190" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" opacity="0.65"/>
+                    <path d="M 168 70 C 174 95, 174 140, 164 180" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+                    <ellipse cx="100" cy="216" rx="60" ry="6" fill="${borderColor}" opacity="0.25"/>
                 </svg>
-                <div style="width:75%;height:${percent}%;display:flex;flex-wrap:wrap-reverse;align-content:flex-start;justify-content:center;overflow:hidden;transition:height 0.4s ease;z-index:2;padding-bottom:15px;">
-                    ${stackedParticlesHtml}
-                </div>
                </div>`;
 
         return `<div class="gmd-gift-jar-widget" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
