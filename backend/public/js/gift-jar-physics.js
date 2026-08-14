@@ -4,8 +4,8 @@
  * with FULL 100% sync for:
  *   1. 🌹 Quà TikTok Live (645+ Real TikTok Gifts)
  *   2. 🍬 Kẹo ngọt (11 Real High-Res Candy PNGs từ D:\HỦ QUÀ)
- *   3. ⭐ Ngôi sao sáng (Star)
- *   4. 💎 Kim cương quý (Diamond)
+ *   3. 💎 Kim cương quý (15 Real High-Res Diamond/Gem PNGs từ D:\HỦ QUÀ\KIM CUONG QUY)
+ *   4. ⭐ Ngôi sao sáng (Star)
  * Features 3 capacity presets (Vừa / Trung bình / Nhiều), sleek form-fitting bottom (zero under-jar gaps),
  * Hard Internal Floor Guard (zero leakage guarantee), and Dynamic Jar Movement physics.
  */
@@ -42,12 +42,23 @@
         { id: 'candy_11', name: 'Kẹo Mút Khổng Lồ Lollipop', coins: 10000, file: 'keo 11.png', radius: 26, tier: 'large' }
     ];
 
-    const DIAMOND_COLORS = [
-        { top: '#67e8f9', main: '#06b6d4', dark: '#0891b2', shine: '#ffffff' },
-        { top: '#c084fc', main: '#9333ea', dark: '#7e22ce', shine: '#ffffff' },
-        { top: '#6ee7b7', main: '#10b981', dark: '#059669', shine: '#ffffff' },
-        { top: '#fca5a5', main: '#ef4444', dark: '#b91c1c', shine: '#ffffff' },
-        { top: '#fde047', main: '#eab308', dark: '#ca8a04', shine: '#ffffff' }
+    // 15 Real Diamond / Gem PNG Icons (Copied from D:\HỦ QUÀ\KIM CUONG QUY)
+    const REAL_DIAMOND_GIFTS = [
+        { id: 'gem_1', name: 'Ngọc Lục Bảo Emerald Vuông', coins: 1, file: 'kimcuong 1.png', radius: 11, tier: 'small' },
+        { id: 'gem_2', name: 'Lam Ngọc Sapphire Biển Sâu', coins: 5, file: 'kimcuong 2.png', radius: 12, tier: 'small' },
+        { id: 'gem_3', name: 'Thạch Anh Tím Amethyst', coins: 10, file: 'kimcuong 3.png', radius: 13, tier: 'small' },
+        { id: 'gem_4', name: 'Hồng Ngọc Ruby Đỏ Lửa', coins: 30, file: 'kimcuong 4.png', radius: 14, tier: 'medium' },
+        { id: 'gem_5', name: 'Hoàng Ngọc Topaz Vàng', coins: 50, file: 'kimcuong 5.png', radius: 15, tier: 'medium' },
+        { id: 'gem_6', name: 'Ngọc Biển Aquamarine Lam', coins: 99, file: 'kimcuong 6.png', radius: 16, tier: 'medium' },
+        { id: 'gem_7', name: 'Ngọc Bích Cẩm Thạch Jade', coins: 100, file: 'kimcuong 7.png', radius: 17, tier: 'medium' },
+        { id: 'gem_8', name: 'Thạch Anh Ovan Tím Mộng', coins: 199, file: 'kimcuong 8.png', radius: 18, tier: 'medium' },
+        { id: 'gem_9', name: 'Bảo Ngọc Opal Cầu Vồng', coins: 299, file: 'kimcuong 9.png', radius: 19, tier: 'medium' },
+        { id: 'gem_10', name: 'Hổ Phách Hoàng Kim Amber', coins: 500, file: 'kimcuong 10.png', radius: 21, tier: 'medium' },
+        { id: 'gem_11', name: 'Pha Lê Tinh Thể Hồng', coins: 1000, file: 'kimcuong 11.png', radius: 23, tier: 'large' },
+        { id: 'gem_12', name: 'Kim Cương Trắng Tinh Khiết', coins: 3000, file: 'kimcuong 12.png', radius: 24, tier: 'large' },
+        { id: 'gem_13', name: 'Đá Vũ Trụ Galaxy Giọt Nước', coins: 5000, file: 'kimcuong 13.png', radius: 25, tier: 'large' },
+        { id: 'gem_14', name: 'Cụm Tinh Thể Bạch Ngọc Quartz', coins: 10000, file: 'kimcuong 14.png', radius: 26, tier: 'large' },
+        { id: 'gem_15', name: 'Cụm Kim Cương Thần Thoại 7 Màu', coins: 30000, file: 'kimcuong 15.png', radius: 27, tier: 'large' }
     ];
 
     class GiftJarPhysics {
@@ -103,9 +114,9 @@
             }
             const clean = filename.replace(/^\/+/, '');
             if (window.location && window.location.protocol === 'file:') {
-                return `assets/${subfolder}/${clean.replace(/^assets\/(gift-icons|candies)\//, '')}`;
+                return `assets/${subfolder}/${clean.replace(/^assets\/(gift-icons|candies|diamonds)\//, '')}`;
             }
-            return `/assets/${subfolder}/${clean.replace(/^assets\/(gift-icons|candies)\//, '')}`;
+            return `/assets/${subfolder}/${clean.replace(/^assets\/(gift-icons|candies|diamonds)\//, '')}`;
         }
 
         preloadAllAssets() {
@@ -114,6 +125,9 @@
             });
             REAL_CANDY_GIFTS.forEach(c => {
                 this.loadImage(c.id, this.getAssetUrl('candies', c.file));
+            });
+            REAL_DIAMOND_GIFTS.forEach(d => {
+                this.loadImage(d.id, this.getAssetUrl('diamonds', d.file));
             });
         }
 
@@ -271,19 +285,16 @@
                         );
 
                         if (wasInside) {
-                            // 1. Move inside items WITH the jar smoothly and wake them up so they maintain natural volume
                             Matter.Sleeping.set(b, false);
                             Matter.Body.setPosition(b, {
                                 x: b.position.x + dx,
                                 y: b.position.y + dy
                             });
-                            // Natural dynamic jiggle instead of zeroing velocity into a squashed lump
                             Matter.Body.setVelocity(b, {
                                 x: dx * 0.40 + (Math.random() - 0.5) * 0.4,
                                 y: dy * 0.40 + (Math.random() - 0.5) * 0.4
                             });
                         } else {
-                            // 2. Outside items get physically pushed away and woken up
                             const isCollidingWithNewJar = (
                                 b.position.x >= (newOuterLeft - r) && b.position.x <= (newOuterRight + r) &&
                                 b.position.y >= (newOuterTop - r) && b.position.y <= (newOuterBottom + r)
@@ -349,25 +360,21 @@
             const jw = jar.w;
             const jh = jar.h;
 
-            // Thin 10px jar bottom glass plate
             const bottomY = jar.y + jh * 0.88;
             const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.70, 10, {
                 isStatic: true, friction: 0.85, restitution: 0.01, label: 'jar_bottom'
             });
 
-            // Solid Left Glass Wall
             const leftX = jar.x + jw * 0.18;
             const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.54, 18, jh * 0.68, {
                 isStatic: true, friction: 0.1, restitution: 0.01, label: 'jar_left'
             });
 
-            // Solid Right Glass Wall
             const rightX = jar.x + jw * 0.82;
             const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.54, 18, jh * 0.68, {
                 isStatic: true, friction: 0.1, restitution: 0.01, label: 'jar_right'
             });
 
-            // Inward Neck Lip Funnel
             const lipLeft = Bodies.rectangle(jar.x + jw * 0.24, jar.y + jh * 0.20, jw * 0.18, 14, {
                 isStatic: true, friction: 0.01, angle: 0.45, label: 'jar_lip_left'
             });
@@ -390,7 +397,6 @@
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
                 const r = b.giftRadius || 11;
-                // Only constrain items that are truly INSIDE the jar cavity
                 if (b.position.x >= innerLeft && b.position.x <= innerRight && b.position.y >= jarTopY) {
                     if (b.position.y > jarFloorY - r && b.position.y < jarFloorY + 20) {
                         Matter.Body.setPosition(b, {
@@ -584,6 +590,35 @@
             }
         }
 
+        // ==================== REAL DIAMOND / GEM ICONS (15 PNGs) ====================
+        spawnGemItem(gemId, count = 1) {
+            const gem = REAL_DIAMOND_GIFTS.find(d => d.id === gemId) || REAL_DIAMOND_GIFTS[0];
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    this.spawnGiftBody('gem', gem.radius, {
+                        imageKey: gem.id,
+                        name: gem.name,
+                        coins: gem.coins
+                    });
+                }, i * 45);
+            }
+        }
+
+        spawnDiamondGem(count = 1, tier = 'small') {
+            const pool = REAL_DIAMOND_GIFTS.filter(d => d.tier === tier);
+            const candidates = pool.length ? pool : REAL_DIAMOND_GIFTS;
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const gem = candidates[Math.floor(Math.random() * candidates.length)];
+                    this.spawnGiftBody('gem', gem.radius, {
+                        imageKey: gem.id,
+                        name: gem.name,
+                        coins: gem.coins
+                    });
+                }, i * 45);
+            }
+        }
+
         // ==================== STAR OPTION ====================
         spawnStar(count = 1, tier = 'small') {
             const radii = { small: 11, medium: 16, large: 23 };
@@ -592,22 +627,6 @@
                 setTimeout(() => {
                     this.spawnGiftBody('star', baseR, {
                         name: 'Ngôi sao sáng',
-                        isBig: tier === 'large'
-                    });
-                }, i * 45);
-            }
-        }
-
-        // ==================== DIAMOND OPTION ====================
-        spawnDiamondGem(count = 1, tier = 'small') {
-            const radii = { small: 11, medium: 16, large: 23 };
-            const baseR = radii[tier] || 12;
-            for (let i = 0; i < count; i++) {
-                setTimeout(() => {
-                    const color = DIAMOND_COLORS[Math.floor(Math.random() * DIAMOND_COLORS.length)];
-                    this.spawnGiftBody('gem', baseR, {
-                        color,
-                        name: 'Kim cương',
                         isBig: tier === 'large'
                     });
                 }, i * 45);
@@ -745,7 +764,6 @@
                     ctx.textBaseline = 'middle';
                     ctx.fillText(`👑 #${data.rank || 1}`, 0, 0);
                 } else if (type === 'star') {
-                    // Golden Shining 5-Point Star
                     ctx.beginPath();
                     const spikes = 5;
                     const outerRadius = r * 1.15;
@@ -778,42 +796,8 @@
                     ctx.strokeStyle = '#b45309';
                     ctx.lineWidth = 1.2;
                     ctx.stroke();
-                } else if (type === 'gem') {
-                    // Multi-Faceted Cut Crystal Diamond
-                    const col = data.color || DIAMOND_COLORS[0];
-                    const w = r * 1.1;
-                    const h = r * 1.0;
-
-                    ctx.beginPath();
-                    ctx.moveTo(-w * 0.7, -h * 0.6);
-                    ctx.lineTo(w * 0.7, -h * 0.6);
-                    ctx.lineTo(w * 1.0, -h * 0.1);
-                    ctx.lineTo(0, h * 0.9);
-                    ctx.lineTo(-w * 1.0, -h * 0.1);
-                    ctx.closePath();
-
-                    ctx.fillStyle = col.main;
-                    ctx.fill();
-                    ctx.strokeStyle = col.dark;
-                    ctx.lineWidth = 1.2;
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.moveTo(-w * 0.4, -h * 0.6);
-                    ctx.lineTo(0, h * 0.9);
-                    ctx.lineTo(w * 0.4, -h * 0.6);
-                    ctx.fillStyle = col.top;
-                    ctx.fill();
-
-                    ctx.beginPath();
-                    ctx.moveTo(-w * 0.7, -h * 0.6);
-                    ctx.lineTo(-w * 0.4, -h * 0.6);
-                    ctx.lineTo(-w * 0.6, -h * 0.1);
-                    ctx.closePath();
-                    ctx.fillStyle = col.shine;
-                    ctx.fill();
                 } else {
-                    // Real Candy or TikTok Gift Sprite
+                    // Real Diamond, Candy or TikTok Gift Sprite PNG
                     const img = this.imageCache[data.imageUrl] || this.imageCache[data.imageKey || type];
                     if (img && img.complete && img.naturalWidth > 0) {
                         const size = r * 2.2;
@@ -822,7 +806,7 @@
                         ctx.font = `${r * 2}px sans-serif`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(type === 'candy' ? '🍬' : type === 'rose' ? '🌹' : '🎁', 0, 0);
+                        ctx.fillText(type === 'gem' ? '💎' : type === 'candy' ? '🍬' : type === 'rose' ? '🌹' : '🎁', 0, 0);
                     }
                 }
 
@@ -857,5 +841,6 @@
 
     window.GiftJarPhysics = GiftJarPhysics;
     window.REAL_CANDY_GIFTS = REAL_CANDY_GIFTS;
+    window.REAL_DIAMOND_GIFTS = REAL_DIAMOND_GIFTS;
 
 })(typeof window !== 'undefined' ? window : this);

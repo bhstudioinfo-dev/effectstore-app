@@ -8943,9 +8943,28 @@
                 this.testGiftJarPreset(itemId, t);
                 return;
             } else if (dropType === 'diamond' || dropType === 'gem') {
-                const tiers = ['small', 'medium', 'large'];
-                const t = tiers[Math.floor(Math.random() * tiers.length)];
-                this.testGiftJarPreset(itemId, t);
+                const gemList = [
+                    { name: '🟩 10x Ngọc Lục Bảo Emerald', coins: 10, fn: (p) => p.spawnGemItem('gem_1', 10) },
+                    { name: '🟦 2x Lam Ngọc Sapphire', coins: 10, fn: (p) => p.spawnGemItem('gem_2', 2) },
+                    { name: '🟪 Thạch Anh Tím Amethyst', coins: 10, fn: (p) => p.spawnGemItem('gem_3', 1) },
+                    { name: '🔴 Hồng Ngọc Ruby Đỏ Lửa', coins: 30, fn: (p) => p.spawnGemItem('gem_4', 1) },
+                    { name: '🟨 Hoàng Ngọc Topaz Vàng', coins: 50, fn: (p) => p.spawnGemItem('gem_5', 1) },
+                    { name: '🩵 Ngọc Biển Aquamarine', coins: 99, fn: (p) => p.spawnGemItem('gem_6', 1) },
+                    { name: '🟢 Ngọc Bích Cẩm Thạch Jade', coins: 100, fn: (p) => p.spawnGemItem('gem_7', 1) },
+                    { name: '🟣 Thạch Anh Ovan Tím Mộng', coins: 199, fn: (p) => p.spawnGemItem('gem_8', 1) },
+                    { name: '🌈 Bảo Ngọc Opal Cầu Vồng', coins: 299, fn: (p) => p.spawnGemItem('gem_9', 1) },
+                    { name: '🟠 Hổ Phách Hoàng Kim Amber', coins: 500, fn: (p) => p.spawnGemItem('gem_10', 1) },
+                    { name: '🌸 Pha Lê Tinh Thể Hồng', coins: 1000, fn: (p) => p.spawnGemItem('gem_11', 1) },
+                    { name: '💎 Kim Cương Trắng Tinh Khiết', coins: 3000, fn: (p) => p.spawnGemItem('gem_12', 1) },
+                    { name: '🌌 Đá Vũ Trụ Galaxy', coins: 5000, fn: (p) => p.spawnGemItem('gem_13', 1) },
+                    { name: '🏔️ Cụm Tinh Thể Bạch Ngọc Quartz', coins: 10000, fn: (p) => p.spawnGemItem('gem_14', 1) },
+                    { name: '👑 Cụm Kim Cương Thần Thoại 7 Màu', coins: 30000, fn: (p) => p.spawnGemItem('gem_15', 1) }
+                ];
+                const choice = gemList[Math.floor(Math.random() * gemList.length)];
+                if (physics && typeof choice.fn === 'function') {
+                    choice.fn(physics);
+                }
+                this.testGiftJarDrop(itemId, choice.coins, { giftName: choice.name, giftIcon: '💎' });
                 return;
             }
 
@@ -9023,17 +9042,41 @@
                 return;
             }
 
-            // 3. DIAMOND OPTION
+            // 3. DIAMOND OPTION (15 Real PNG Diamonds/Gems)
             if (dropType === 'diamond' || dropType === 'gem') {
                 if (tier === 'small') {
-                    if (physics) physics.spawnDiamondGem(8, 'small');
-                    this.testGiftJarDrop(itemId, 10, { giftName: '💎 8x Đá quý Kim Cương', giftIcon: '💎' });
+                    const isEmerald = Math.random() < 0.5;
+                    if (isEmerald) {
+                        if (physics) physics.spawnGemItem('gem_1', 10);
+                        this.testGiftJarDrop(itemId, 10, { giftName: '🟩 10x Ngọc Lục Bảo Emerald', giftIcon: '💎' });
+                    } else {
+                        if (physics) physics.spawnGemItem('gem_2', 2);
+                        this.testGiftJarDrop(itemId, 10, { giftName: '🟦 2x Lam Ngọc Sapphire', giftIcon: '💎' });
+                    }
                 } else if (tier === 'medium') {
-                    if (physics) physics.spawnDiamondGem(4, 'medium');
-                    this.testGiftJarDrop(itemId, 200, { giftName: '💎 4x Kim cương lấp lánh', giftIcon: '💎' });
+                    const choice = Math.random();
+                    if (choice < 0.35) {
+                        if (physics) physics.spawnGemItem('gem_7', 1);
+                        this.testGiftJarDrop(itemId, 100, { giftName: '🟢 Ngọc Bích Cẩm Thạch Jade', giftIcon: '💎' });
+                    } else if (choice < 0.70) {
+                        if (physics) physics.spawnGemItem('gem_9', 1);
+                        this.testGiftJarDrop(itemId, 299, { giftName: '🌈 Bảo Ngọc Opal Cầu Vồng', giftIcon: '💎' });
+                    } else {
+                        if (physics) physics.spawnGemItem('gem_10', 1);
+                        this.testGiftJarDrop(itemId, 500, { giftName: '🟠 Hổ Phách Hoàng Kim Amber', giftIcon: '💎' });
+                    }
                 } else if (tier === 'large') {
-                    if (physics) physics.spawnDiamondGem(1, 'large');
-                    this.testGiftJarDrop(itemId, 1000, { giftName: '💠 Siêu Kim Cương Hoàng Gia', giftIcon: '💠' });
+                    const choice = Math.random();
+                    if (choice < 0.35) {
+                        if (physics) physics.spawnGemItem('gem_11', 1);
+                        this.testGiftJarDrop(itemId, 1000, { giftName: '🌸 Pha Lê Tinh Thể Hồng', giftIcon: '💎' });
+                    } else if (choice < 0.70) {
+                        if (physics) physics.spawnGemItem('gem_14', 1);
+                        this.testGiftJarDrop(itemId, 10000, { giftName: '🏔️ Cụm Tinh Thể Bạch Ngọc Quartz', giftIcon: '💎' });
+                    } else {
+                        if (physics) physics.spawnGemItem('gem_15', 1);
+                        this.testGiftJarDrop(itemId, 30000, { giftName: '👑 Cụm Kim Cương Thần Thoại 7 Màu', giftIcon: '💎' });
+                    }
                 } else if (tier === 'top_donor') {
                     if (physics) physics.spawnTopDonorBadge(1, 'Top 1 Diamond Fan');
                     this.testGiftJarDrop(itemId, 500, { giftName: '👑 Top 1 Supporter', giftIcon: '👑', rankBadge: '👑 Hạng 1' });
