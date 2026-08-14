@@ -8903,8 +8903,8 @@
                             return {
                                 x: Number(curItem.x) || 0,
                                 y: Number(curItem.y) || 0,
-                                w: Number(curItem.w || curItem.width) || 480,
-                                h: Number(curItem.h || curItem.height) || 600
+                                w: Number(curItem.width || curItem.w) || 160,
+                                h: Number(curItem.height || curItem.h) || 200
                             };
                         }
                         return null;

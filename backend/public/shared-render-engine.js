@@ -1936,20 +1936,6 @@
         ctx = ctx || {};
         const theme = item.theme || 'hu-thuong';
         
-        let borderColor = `#38bdf8`;
-        let glowColor = `rgba(56, 189, 248, 0.4)`;
-
-        if (theme === 'golden' || theme === 'hu-nam-cao-cap') {
-            borderColor = `#fbbf24`;
-            glowColor = `rgba(251, 191, 36, 0.4)`;
-        } else if (theme === 'chest' || theme === 'hu-nam-bau') {
-            borderColor = `#f59e0b`;
-            glowColor = `rgba(245, 158, 11, 0.4)`;
-        } else if (theme === 'diamond' || theme === 'hu-nu-bau') {
-            borderColor = `#c084fc`;
-            glowColor = `rgba(192, 132, 252, 0.4)`;
-        }
-
         let jarImageUrl = item.customJarImageUrl || '';
         if (jarImageUrl && jarImageUrl.startsWith('/')) {
             const base = (ctx && ctx.apiBase) || (window.giftMenuDesigner && window.giftMenuDesigner.apiBase) || '';
@@ -1960,29 +1946,27 @@
 
         const jarVisualHtml = jarImageUrl
             ? `<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                <img src="${jarImageUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 0 15px ${borderColor}88);" />
+                <img src="${jarImageUrl}" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 0 15px rgba(56,189,248,0.5));" />
                </div>`
             : `<div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                <svg viewBox="0 0 200 240" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;filter:drop-shadow(0 8px 24px ${glowColor});">
+                <svg viewBox="0 0 200 240" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;filter:drop-shadow(0 6px 16px rgba(0,0,0,0.45));">
                     <defs>
                         <linearGradient id="jarGlassGrad_${item.id || 'def'}" x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
-                            <stop offset="35%" stop-color="#38bdf8" stop-opacity="0.12"/>
-                            <stop offset="70%" stop-color="#0284c7" stop-opacity="0.20"/>
-                            <stop offset="100%" stop-color="#ffffff" stop-opacity="0.30"/>
-                        </linearGradient>
-                        <linearGradient id="jarRimGrad_${item.id || 'def'}" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stop-color="${borderColor}" stop-opacity="0.9"/>
-                            <stop offset="50%" stop-color="#ffffff" stop-opacity="1.0"/>
-                            <stop offset="100%" stop-color="${borderColor}" stop-opacity="0.9"/>
+                            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+                            <stop offset="40%" stop-color="#e0f2fe" stop-opacity="0.15"/>
+                            <stop offset="80%" stop-color="#bae6fd" stop-opacity="0.25"/>
+                            <stop offset="100%" stop-color="#ffffff" stop-opacity="0.40"/>
                         </linearGradient>
                     </defs>
-                    <rect x="52" y="10" width="96" height="18" rx="8" fill="url(#jarRimGrad_${item.id || 'def'})" stroke="${borderColor}" stroke-width="2.5"/>
-                    <rect x="64" y="28" width="72" height="12" rx="4" fill="rgba(255,255,255,0.25)" stroke="${borderColor}" stroke-width="2"/>
-                    <path d="M 46 40 C 30 52, 18 78, 18 120 C 18 185, 35 224, 100 224 C 165 224, 182 185, 182 120 C 182 78, 170 52, 154 40 Z" fill="url(#jarGlassGrad_${item.id || 'def'})" stroke="${borderColor}" stroke-width="3.5"/>
-                    <path d="M 32 60 C 24 85, 24 145, 36 190" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" opacity="0.65"/>
-                    <path d="M 168 70 C 174 95, 174 140, 164 180" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
-                    <ellipse cx="100" cy="216" rx="60" ry="6" fill="${borderColor}" opacity="0.25"/>
+                    <!-- Cap Rim -->
+                    <rect x="58" y="12" width="84" height="18" rx="6" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+                    <rect x="68" y="30" width="64" height="10" rx="3" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
+                    <!-- Glass Jar Body (Square Shoulders & Crystal Glass) -->
+                    <path d="M 50 40 C 35 48, 25 65, 25 90 L 25 200 C 25 218, 40 226, 100 226 C 160 226, 175 218, 175 200 L 175 90 C 175 65, 165 48, 150 40 Z" fill="url(#jarGlassGrad_${item.id || 'def'})" stroke="#ffffff" stroke-width="3" opacity="0.95"/>
+                    <!-- Glass Highlight Reflection Strips -->
+                    <path d="M 38 65 L 38 195" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" opacity="0.75"/>
+                    <path d="M 48 70 L 48 185" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.45"/>
+                    <path d="M 162 75 L 162 185" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
                 </svg>
                </div>`;
 

@@ -27,7 +27,7 @@
             if (!this.container) return;
 
             this.options = Object.assign({
-                gravity: 1.1,
+                gravity: 1.15,
                 getItemRect: null
             }, options);
 
@@ -149,30 +149,32 @@
         }
 
         getJarRect() {
+            // First priority: Read directly from the live DOM element on screen!
+            const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
+            if (jarWidget) {
+                const itemEl = jarWidget.closest('.gmd-item');
+                if (itemEl) {
+                    const x = parseFloat(itemEl.style.left);
+                    const y = parseFloat(itemEl.style.top);
+                    const w = parseFloat(itemEl.style.width);
+                    const h = parseFloat(itemEl.style.height);
+                    if (!isNaN(x) && !isNaN(y) && !isNaN(w) && !isNaN(h) && w > 20 && h > 20) {
+                        return { x, y, w, h };
+                    }
+                }
+            }
+
             if (typeof this.options.getItemRect === 'function') {
                 const r = this.options.getItemRect();
                 if (r && r.w > 0 && r.h > 0) return r;
             }
 
-            const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
-            if (jarWidget) {
-                const itemEl = jarWidget.closest('.gmd-item');
-                if (itemEl) {
-                    return {
-                        x: parseFloat(itemEl.style.left) || 0,
-                        y: parseFloat(itemEl.style.top) || 0,
-                        w: parseFloat(itemEl.style.width) || 160,
-                        h: parseFloat(itemEl.style.height) || 200
-                    };
-                }
-            }
-
             const bounds = this.getArtboardBounds();
-            const defW = bounds.width * 0.45;
-            const defH = bounds.height * 0.35;
+            const defW = Math.round(bounds.width * 0.40);
+            const defH = Math.round(bounds.height * 0.32);
             return {
-                x: bounds.left + (bounds.width - defW) / 2,
-                y: bounds.bottom - defH - 30,
+                x: Math.round(bounds.left + (bounds.width - defW) / 2),
+                y: Math.round(bounds.bottom - defH - 20),
                 w: defW,
                 h: defH
             };
@@ -232,29 +234,29 @@
             // Jar Bottom Wall
             const bottomY = jar.y + jh * 0.90;
             const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.78, wallThickness, {
-                isStatic: true, friction: 0.45, restitution: 0.15, label: 'jar_bottom'
+                isStatic: true, friction: 0.5, restitution: 0.12, label: 'jar_bottom'
             });
 
             // Jar Left Wall
             const leftX = jar.x + jw * 0.12;
-            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.54, wallThickness, jh * 0.64, {
-                isStatic: true, friction: 0.1, restitution: 0.15, label: 'jar_left'
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.56, wallThickness, jh * 0.64, {
+                isStatic: true, friction: 0.1, restitution: 0.12, label: 'jar_left'
             });
 
             // Jar Right Wall
             const rightX = jar.x + jw * 0.88;
-            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.54, wallThickness, jh * 0.64, {
-                isStatic: true, friction: 0.1, restitution: 0.15, label: 'jar_right'
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.56, wallThickness, jh * 0.64, {
+                isStatic: true, friction: 0.1, restitution: 0.12, label: 'jar_right'
             });
 
             // Left Inward Funnel Lip (slanted downward into jar opening: `\`)
-            const lipLeft = Bodies.rectangle(jar.x + jw * 0.18, jar.y + jh * 0.18, jw * 0.32, wallThickness, {
-                isStatic: true, friction: 0.02, angle: 0.52, label: 'jar_lip_left'
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.20, jar.y + jh * 0.20, jw * 0.30, wallThickness, {
+                isStatic: true, friction: 0.02, angle: 0.50, label: 'jar_lip_left'
             });
 
             // Right Inward Funnel Lip (slanted downward into jar opening: `/`)
-            const lipRight = Bodies.rectangle(jar.x + jw * 0.82, jar.y + jh * 0.18, jw * 0.32, wallThickness, {
-                isStatic: true, friction: 0.02, angle: -0.52, label: 'jar_lip_right'
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.80, jar.y + jh * 0.20, jw * 0.30, wallThickness, {
+                isStatic: true, friction: 0.02, angle: -0.50, label: 'jar_lip_right'
             });
 
             this.wallBodies.push(jarBottom, jarLeft, jarRight, lipLeft, lipRight);
@@ -266,35 +268,39 @@
             
             this.checkAndSyncWalls();
 
-            const jar = this.jarCenter || { x: this.width / 2, topY: 300 };
+            const jar = this.getJarRect();
             const bounds = this.getArtboardBounds();
 
-            // Spawn at the VERY TOP of the 9:16 artboard directly aligned with jar opening
-            const spawnX = jar.x + (Math.random() * 12 - 6);
-            const spawnY = bounds.top - 15 - Math.random() * 20;
+            // Center of the jar's mouth opening:
+            const mouthCenterX = jar.x + jar.w / 2;
+
+            // Spawn at the top edge of the 9:16 frame, EXACTLY above the jar's mouth!
+            const spawnX = mouthCenterX + (Math.random() * 8 - 4);
+            const spawnY = bounds.top - 15 - Math.random() * 15;
 
             const scaleFactor = bounds.width < 600 ? (bounds.width / 720) : 1;
             const r = Math.max(7, Math.round(radius * scaleFactor));
 
-            const restitution = type === 'rose' ? 0.15 : 0.22;
-            const friction = type === 'rose' ? 0.25 : 0.15;
+            const restitution = type === 'rose' ? 0.12 : 0.18;
+            const friction = type === 'rose' ? 0.30 : 0.20;
 
             const body = Bodies.circle(spawnX, spawnY, r, {
                 restitution,
                 friction,
-                frictionAir: 0.004,
-                density: 0.003
+                frictionAir: 0.003,
+                density: 0.004
             });
 
             body.giftType = type;
             body.giftData = data;
             body.giftRadius = r;
 
+            // Straight vertical drop down into the jar mouth
             Body.setVelocity(body, {
-                x: (Math.random() - 0.5) * 0.15,
-                y: Math.random() * 1.5 + 4.0
+                x: (Math.random() - 0.5) * 0.05,
+                y: Math.random() * 1.5 + 4.5
             });
-            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.04);
+            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.03);
 
             if (data.imageUrl && !this.imageCache[data.imageUrl]) {
                 this.loadImage(data.imageUrl, data.imageUrl);
