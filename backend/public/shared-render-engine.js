@@ -1937,6 +1937,17 @@
         const theme = item.theme || 'hu-thuong';
         
         let jarImageUrl = item.customJarImageUrl || '';
+        if (!jarImageUrl && String(theme).startsWith('custom_')) {
+            try {
+                if (typeof window !== 'undefined' && window.localStorage) {
+                    const list = JSON.parse(window.localStorage.getItem('liveflow_custom_jars') || '[]');
+                    const found = list.find(j => j.id === theme);
+                    if (found && found.dataUrl) {
+                        jarImageUrl = found.dataUrl;
+                    }
+                }
+            } catch (_e) {}
+        }
         if (!jarImageUrl) {
             const themeKey = ['hu-nam-bau', 'hu-nu-bau', 'hu-thuong'].includes(theme) ? theme : 'hu-thuong';
             jarImageUrl = `assets/jars/${themeKey}.png`;

@@ -7421,20 +7421,26 @@
                 }
             } else if (selected.type === 'gift-jar') {
                 specificConfigHTML = `
-                    <div class="gmd-field"><label>Tiêu đề hũ</label><input class="gmd-input" value="${this.escapeHtml(selected.title || 'HŨ QUÀ TẶNG')}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','title',this.value)"></div>
                     <div class="gmd-field"><label>Giao diện Hũ (Theme)</label>
                         <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','theme',this.value)">
                             <option value="hu-thuong" ${(selected.theme || 'hu-thuong') === 'hu-thuong' ? 'selected' : ''}>🏺 Hũ Thường (Mặc định)</option>
                             <option value="hu-nu-bau" ${selected.theme === 'hu-nu-bau' ? 'selected' : ''}>🌸 Hũ Bầu Nữ</option>
                             <option value="hu-nam-bau" ${selected.theme === 'hu-nam-bau' ? 'selected' : ''}>🍄 Hũ Bầu Nam</option>
+                            ${this.getUserCustomJars().map((cj, idx) => `
+                                <option value="${cj.id}" ${selected.theme === cj.id ? 'selected' : ''}>🖼️ ${this.escapeHtml(cj.name || `Hũ riêng #${idx + 1}`)}</option>
+                            `).join('')}
                         </select>
                     </div>
                     <div class="gmd-field" style="margin-top:6px;">
-                        <button class="gmd-btn primary" style="width:100%;" onclick="window.giftMenuDesigner.uploadCustomJarImage('${selected.id}')"><i class="fas fa-upload"></i> ${selected.customJarImageUrl ? 'Đổi ảnh Hũ riêng (.PNG)' : 'Tải tệp ảnh Hũ riêng (.PNG)'}</button>
-                        ${selected.customJarImageUrl ? `
+                        <button class="gmd-btn primary" style="width:100%;" onclick="window.giftMenuDesigner.uploadCustomJarImage('${selected.id}')"><i class="fas fa-upload"></i> Tải tệp ảnh Hũ riêng (.PNG)</button>
+                        ${selected.customJarImageUrl || String(selected.theme).startsWith('custom_') ? `
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;background:rgba(52,211,153,0.1);padding:4px 8px;border-radius:6px;border:1px solid rgba(52,211,153,0.2);">
-                                <span style="font-size:11px;color:#34d399;font-weight:700;"><i class="fas fa-check-circle"></i> Đang dùng ảnh riêng</span>
-                                <button class="gmd-btn small secondary" style="font-size:10px;padding:2px 6px;" onclick="window.giftMenuDesigner.clearCustomJarImage('${selected.id}')"><i class="fas fa-undo"></i> Dùng Hũ mẫu</button>
+                                <span style="font-size:11px;color:#34d399;font-weight:700;"><i class="fas fa-check-circle"></i> Đang dùng Hũ riêng</span>
+                                ${String(selected.theme).startsWith('custom_') ? `
+                                    <button class="gmd-btn small secondary" style="font-size:10px;padding:2px 6px;color:#f87171;" onclick="window.giftMenuDesigner.deleteUserCustomJar('${selected.theme}','${selected.id}')"><i class="fas fa-trash"></i> Xóa Hũ này</button>
+                                ` : `
+                                    <button class="gmd-btn small secondary" style="font-size:10px;padding:2px 6px;" onclick="window.giftMenuDesigner.clearCustomJarImage('${selected.id}')"><i class="fas fa-undo"></i> Dùng Hũ mẫu</button>
+                                `}
                             </div>
                         ` : ''}
                     </div>
@@ -8844,6 +8850,43 @@
 
 
 
+        getUserCustomJars() {
+            try {
+                return JSON.parse(localStorage.getItem('liveflow_custom_jars') || '[]');
+            } catch (_e) {
+                return [];
+            }
+        }
+
+        saveUserCustomJar(dataUrl, name = 'Hũ riêng') {
+            try {
+                const list = this.getUserCustomJars();
+                const id = `custom_${Date.now()}`;
+                list.unshift({ id, name, dataUrl, createdAt: new Date().toISOString() });
+                if (list.length > 20) list.pop();
+                localStorage.setItem('liveflow_custom_jars', JSON.stringify(list));
+                return id;
+            } catch (_e) {
+                return null;
+            }
+        }
+
+        deleteUserCustomJar(jarId, itemId) {
+            try {
+                let list = this.getUserCustomJars();
+                list = list.filter(j => j.id !== jarId);
+                localStorage.setItem('liveflow_custom_jars', JSON.stringify(list));
+                const item = this.items.find(entry => entry.id === itemId && entry.type === 'gift-jar');
+                if (item && (item.theme === jarId || item.customJarImageUrl)) {
+                    item.theme = 'hu-thuong';
+                    item.customJarImageUrl = '';
+                    this.renderCanvas();
+                }
+                this.renderInspector();
+                if (window.app?.showNotification) window.app.showNotification('success', 'Đã xóa Hũ riêng khỏi danh sách!');
+            } catch (_e) {}
+        }
+
         uploadCustomJarImage(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
@@ -8853,13 +8896,17 @@
             input.onchange = () => {
                 const file = input.files?.[0];
                 if (!file) return;
+                const fileName = file.name ? file.name.replace(/\.[^/.]+$/, '') : 'Hũ riêng';
                 const reader = new FileReader();
                 reader.onload = () => {
+                    const dataUrl = String(reader.result || '');
                     this.pushHistory('upload-custom-jar');
-                    item.customJarImageUrl = String(reader.result || '');
+                    const customId = this.saveUserCustomJar(dataUrl, fileName) || 'custom';
+                    item.theme = customId;
+                    item.customJarImageUrl = dataUrl;
                     this.renderCanvas();
                     this.renderInspector();
-                    if (window.app?.showNotification) window.app.showNotification('success', 'Đã tải ảnh Hũ riêng thành công!');
+                    if (window.app?.showNotification) window.app.showNotification('success', `Đã lưu Hũ riêng “${fileName}” vào máy thành công!`);
                 };
                 reader.readAsDataURL(file);
             };
@@ -8870,6 +8917,7 @@
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
             this.pushHistory('clear-custom-jar');
+            item.theme = 'hu-thuong';
             item.customJarImageUrl = '';
             this.renderCanvas();
             this.renderInspector();
@@ -9197,7 +9245,13 @@
             this.pushHistory(`update-gift-jar-${field}`);
             item[field] = value;
             if (field === 'theme') {
-                item.customJarImageUrl = '';
+                if (String(value).startsWith('custom_')) {
+                    const list = this.getUserCustomJars();
+                    const found = list.find(j => j.id === value);
+                    item.customJarImageUrl = found ? found.dataUrl : '';
+                } else {
+                    item.customJarImageUrl = '';
+                }
             }
             if (field === 'capacityLevel' || field === 'targetCoins') {
                 if (this.giftJarPhysics) {
