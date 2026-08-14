@@ -1938,7 +1938,7 @@
         
         let jarImageUrl = item.customJarImageUrl || '';
         if (!jarImageUrl) {
-            const themeKey = ['hu-nam-bau', 'hu-nam-cao-cap', 'hu-nu-bau', 'hu-thuong'].includes(theme) ? theme : 'hu-thuong';
+            const themeKey = ['hu-nam-bau', 'hu-nu-bau', 'hu-thuong'].includes(theme) ? theme : 'hu-thuong';
             if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
                 jarImageUrl = `assets/jars/${themeKey}.png`;
             } else {

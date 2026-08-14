@@ -7418,20 +7418,19 @@
                     <div class="gmd-field"><label>Tiêu đề hũ</label><input class="gmd-input" value="${this.escapeHtml(selected.title || 'HŨ QUÀ TẶNG')}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','title',this.value)"></div>
                     <div class="gmd-field"><label>Giao diện Hũ (Theme)</label>
                         <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','theme',this.value)">
-                            <option value="hu-thuong" ${(selected.theme || 'hu-thuong') === 'hu-thuong' ? 'selected' : ''}>🏺 Hũ Thường (hu-thuong.png - Mặc định)</option>
-                            <option value="hu-nam-bau" ${selected.theme === 'hu-nam-bau' ? 'selected' : ''}>🍄 Hũ Nấm Bầu (hu-nam-bau.png)</option>
-                            <option value="hu-nam-cao-cap" ${selected.theme === 'hu-nam-cao-cap' ? 'selected' : ''}>✨ Hũ Nấm Cao Cấp (hu-nam-cao-cap.png)</option>
-                            <option value="hu-nu-bau" ${selected.theme === 'hu-nu-bau' ? 'selected' : ''}>🌸 Hũ Nụ Bầu (hu-nu-bau.png)</option>
-                            <option value="glass" ${selected.theme === 'glass' ? 'selected' : ''}>Hũ Thủy Tinh (Glass)</option>
-                            <option value="golden" ${selected.theme === 'golden' ? 'selected' : ''}>Hũ Hoàng Gia (Golden)</option>
-                            <option value="chest" ${selected.theme === 'chest' ? 'selected' : ''}>Hũ Rương Kho Báu (Chest)</option>
-                            <option value="diamond" ${selected.theme === 'diamond' ? 'selected' : ''}>Hũ Kim Cương (Diamond)</option>
-                            <option value="custom" ${selected.theme === 'custom' ? 'selected' : ''}>Tải tệp ảnh Hũ khác (.PNG)</option>
+                            <option value="hu-thuong" ${(selected.theme || 'hu-thuong') === 'hu-thuong' ? 'selected' : ''}>🏺 Hũ Thường (Mặc định)</option>
+                            <option value="hu-nu-bau" ${selected.theme === 'hu-nu-bau' ? 'selected' : ''}>🌸 Hũ Bầu Nữ</option>
+                            <option value="hu-nam-bau" ${selected.theme === 'hu-nam-bau' ? 'selected' : ''}>🍄 Hũ Bầu Nam</option>
                         </select>
                     </div>
                     <div class="gmd-field" style="margin-top:6px;">
-                        <button class="gmd-btn primary" style="width:100%;" onclick="window.giftMenuDesigner.uploadCustomJarImage('${selected.id}')"><i class="fas fa-upload"></i> ${selected.customJarImageUrl ? 'Đổi ảnh Hũ riêng' : 'Tải tệp ảnh Hũ riêng (.PNG)'}</button>
-                        ${selected.customJarImageUrl ? `<div style="font-size:10px;color:#34d399;margin-top:4px;word-break:break-all;">✓ Đã nạp ảnh: ${selected.customJarImageUrl}</div>` : ''}
+                        <button class="gmd-btn primary" style="width:100%;" onclick="window.giftMenuDesigner.uploadCustomJarImage('${selected.id}')"><i class="fas fa-upload"></i> ${selected.customJarImageUrl ? 'Đổi ảnh Hũ riêng (.PNG)' : 'Tải tệp ảnh Hũ riêng (.PNG)'}</button>
+                        ${selected.customJarImageUrl ? `
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;background:rgba(52,211,153,0.1);padding:4px 8px;border-radius:6px;border:1px solid rgba(52,211,153,0.2);">
+                                <span style="font-size:11px;color:#34d399;font-weight:700;"><i class="fas fa-check-circle"></i> Đang dùng ảnh riêng</span>
+                                <button class="gmd-btn small secondary" style="font-size:10px;padding:2px 6px;" onclick="window.giftMenuDesigner.clearCustomJarImage('${selected.id}')"><i class="fas fa-undo"></i> Dùng Hũ mẫu</button>
+                            </div>
+                        ` : ''}
                     </div>
                     <div class="gmd-field" style="margin-top:8px;">
                         <label>Sức chứa (Dung tích Hũ)</label>
@@ -8846,38 +8845,36 @@
             this.updateInspector();
         }
 
-        async uploadCustomJarImage(itemId) {
+        uploadCustomJarImage(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = 'image/png,image/jpeg,image/webp,image/svg+xml';
-            input.onchange = async () => {
+            input.accept = 'image/png,image/jpeg,image/webp';
+            input.onchange = () => {
                 const file = input.files?.[0];
                 if (!file) return;
-                const formData = new FormData();
-                formData.append('jarImage', file);
-                try {
-                    const res = await fetch(`${this.apiBase}/api/gift-jar/upload-image`, {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${this.token}` },
-                        body: formData
-                    });
-                    const data = await res.json();
-                    if (data.success && data.customJarImageUrl) {
-                        item.theme = 'custom';
-                        item.customJarImageUrl = data.customJarImageUrl;
-                        this.renderCanvas();
-                        this.updateInspector();
-                        if (window.app?.showNotification) window.app.showNotification('success', 'Đã nạp ảnh Hũ quà riêng thành công!');
-                    } else {
-                        if (window.app?.showNotification) window.app.showNotification('error', data.error || 'Lỗi nạp ảnh');
-                    }
-                } catch (e) {
-                    if (window.app?.showNotification) window.app.showNotification('error', 'Lỗi kết nối: ' + e.message);
-                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    this.pushHistory('upload-custom-jar');
+                    item.customJarImageUrl = String(reader.result || '');
+                    this.renderCanvas();
+                    this.renderInspector();
+                    if (window.app?.showNotification) window.app.showNotification('success', 'Đã tải ảnh Hũ riêng thành công!');
+                };
+                reader.readAsDataURL(file);
             };
             input.click();
+        }
+
+        clearCustomJarImage(itemId) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+            this.pushHistory('clear-custom-jar');
+            item.customJarImageUrl = '';
+            this.renderCanvas();
+            this.renderInspector();
+            if (window.app?.showNotification) window.app.showNotification('success', 'Đã chuyển về Hũ mẫu mặc định!');
         }
 
         toggleInspectorSize() {
