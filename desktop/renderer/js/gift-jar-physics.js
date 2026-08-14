@@ -2,7 +2,7 @@
  * LiveFlow Gift Jar 2D Physics Engine (Powered by Matter.js)
  * Implements real physical bouncing, rolling, stacking, and overflow
  * with FULL 100% sync for all 645+ REAL TikTok Live Gift Icons.
- * Features 2x High-DPI Supersampling, strict 9:16 boundaries, and smart capacity scaling.
+ * Features 2x High-DPI Supersampling, strict 9:16 boundaries, and funnel catch system.
  */
 (function(window) {
     'use strict';
@@ -195,17 +195,16 @@
             const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
             
             // STRICT CHECK: ONLY move bodies that are TRULY INSIDE the hollow belly of the jar!
-            // Bodies on the outside (on the floor or outside the walls) stay completely untouched on the floor!
             if (this.prevJarRect) {
                 const dx = jar.x - this.prevJarRect.x;
                 const dy = jar.y - this.prevJarRect.y;
 
                 if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
                     const prev = this.prevJarRect;
-                    const innerLeft = prev.x + prev.w * 0.16;
-                    const innerRight = prev.x + prev.w * 0.84;
-                    const innerTop = prev.y + prev.h * 0.20;
-                    const innerBottom = prev.y + prev.h * 0.88;
+                    const innerLeft = prev.x + prev.w * 0.14;
+                    const innerRight = prev.x + prev.w * 0.86;
+                    const innerTop = prev.y + prev.h * 0.16;
+                    const innerBottom = prev.y + prev.h * 0.90;
 
                     for (let i = 0; i < this.items.length; i++) {
                         const b = this.items[i];
@@ -240,55 +239,51 @@
 
             const bounds = this.getArtboardBounds();
 
-            // 1. Strict 9:16 Screen Boundaries (Zero escape to checkerboard)
-            // Left Screen Wall
+            // 1. Strict 9:16 Screen Boundaries
             const leftScreen = Bodies.rectangle(bounds.left - 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
                 isStatic: true, friction: 0.2, label: 'screen_left'
             });
-            // Right Screen Wall
             const rightScreen = Bodies.rectangle(bounds.right + 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
                 isStatic: true, friction: 0.2, label: 'screen_right'
             });
-            // Heavy Stage Floor
             const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 25, bounds.width + 100, 50, {
                 isStatic: true, friction: 0.8, restitution: 0.05, label: 'floor'
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. 100% Sealed Airtight Jar Physics Walls (Nestled neatly inside hu-thuong.png)
+            // 2. 100% Sealed Airtight Jar Physics Cavity with Funnel Catch
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jw = jar.w;
             const jh = jar.h;
 
-            const wallThickness = Math.max(16, Math.round(jw * 0.09));
+            const wallThickness = Math.max(18, Math.round(jw * 0.10));
 
-            // Solid Jar Bottom Wall (positioned inside the jar's bottom rim)
+            // Solid Jar Bottom Wall
             const bottomY = jar.y + jh * 0.88;
-            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.74, wallThickness, {
+            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.80, wallThickness, {
                 isStatic: true, friction: 0.7, restitution: 0.05, label: 'jar_bottom'
             });
 
-            // Solid Jar Left Wall (inside left glass profile)
-            const leftX = jar.x + jw * 0.16;
-            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.56, wallThickness, jh * 0.60, {
+            // Solid Jar Left Wall
+            const leftX = jar.x + jw * 0.14;
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.55, wallThickness, jh * 0.62, {
                 isStatic: true, friction: 0.1, restitution: 0.05, label: 'jar_left'
             });
 
-            // Solid Jar Right Wall (inside right glass profile)
-            const rightX = jar.x + jw * 0.84;
-            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.56, wallThickness, jh * 0.60, {
+            // Solid Jar Right Wall
+            const rightX = jar.x + jw * 0.86;
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.55, wallThickness, jh * 0.62, {
                 isStatic: true, friction: 0.1, restitution: 0.05, label: 'jar_right'
             });
 
-            // Left Inward Mouth Lip (guiding gifts straight down into jar mouth: `\`)
-            const lipLeft = Bodies.rectangle(jar.x + jw * 0.22, jar.y + jh * 0.22, jw * 0.28, wallThickness, {
-                isStatic: true, friction: 0.02, angle: 0.45, label: 'jar_lip_left'
+            // Inward Funnel Guide Lips: Catch 100% of falling items straight down into jar mouth
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.22, jar.y + jh * 0.18, jw * 0.28, wallThickness, {
+                isStatic: true, friction: 0.01, angle: 0.55, label: 'jar_lip_left'
             });
 
-            // Right Inward Mouth Lip (guiding gifts straight down into jar mouth: `/`)
-            const lipRight = Bodies.rectangle(jar.x + jw * 0.78, jar.y + jh * 0.22, jw * 0.28, wallThickness, {
-                isStatic: true, friction: 0.02, angle: -0.45, label: 'jar_lip_right'
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.78, jar.y + jh * 0.18, jw * 0.28, wallThickness, {
+                isStatic: true, friction: 0.01, angle: -0.55, label: 'jar_lip_right'
             });
 
             this.wallBodies.push(jarBottom, jarLeft, jarRight, lipLeft, lipRight);
@@ -303,37 +298,35 @@
             const jar = this.getJarRect();
             const bounds = this.getArtboardBounds();
 
-            // Center of the jar's mouth opening:
+            // Spawn at exact center of jar mouth opening (0 horizontal error)
             const mouthCenterX = jar.x + jar.w / 2;
-
-            // Spawn at the top edge of the 9:16 frame, EXACTLY above the jar's mouth!
-            const spawnX = mouthCenterX + (Math.random() * 4 - 2);
-            const spawnY = bounds.top - 15 - Math.random() * 15;
+            const spawnX = mouthCenterX + (Math.random() * 2 - 1);
+            const spawnY = bounds.top - 15;
 
             const scaleFactor = bounds.width < 600 ? (bounds.width / 720) : 1;
             const r = Math.max(7, Math.round(radius * scaleFactor));
 
-            const restitution = 0.08;
-            const friction = 0.35;
+            const restitution = 0.05;
+            const friction = 0.40;
 
             const body = Bodies.circle(spawnX, spawnY, r, {
                 restitution,
                 friction,
-                frictionAir: 0.004,
+                frictionAir: 0.005,
                 density: 0.005,
-                sleepThreshold: 30
+                sleepThreshold: 25
             });
 
             body.giftType = type;
             body.giftData = data;
             body.giftRadius = r;
 
-            // Straight vertical drop down into the jar mouth
+            // Direct straight-down drop directly into jar cavity
             Body.setVelocity(body, {
-                x: (Math.random() - 0.5) * 0.02,
-                y: Math.random() * 1.5 + 4.5
+                x: 0,
+                y: Math.random() * 1.0 + 3.8
             });
-            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.02);
+            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.01);
 
             if (data.imageUrl && !this.imageCache[data.imageUrl]) {
                 this.loadImage(data.imageUrl, data.imageUrl);
@@ -342,7 +335,6 @@
             World.add(this.world, body);
             this.items.push(body);
 
-            // Keep active gifts clean without unbounded memory bloat
             if (this.items.length > 800) {
                 const oldest = this.items.shift();
                 World.remove(this.world, oldest);
@@ -526,10 +518,8 @@
                 const delta = Math.min(32, currentTime - lastTime);
                 lastTime = currentTime;
 
-                // Continuously track moving jar in real-time and translate all inside gifts
                 this.checkAndSyncWalls();
 
-                // Stabilize resting bodies to prevent physics jitter
                 for (let i = 0; i < this.items.length; i++) {
                     const b = this.items[i];
                     if (Math.abs(b.velocity.x) < 0.04 && Math.abs(b.velocity.y) < 0.04) {
