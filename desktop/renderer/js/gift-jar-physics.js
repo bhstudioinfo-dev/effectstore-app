@@ -7,18 +7,18 @@
     'use strict';
 
     const POPULAR_TIKTOK_GIFTS = [
-        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 14 },
-        { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', radius: 16 },
-        { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', radius: 19 },
-        { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', radius: 21 },
-        { id: 'diamond', name: 'Kim cương', coins: 100, file: 'Diamond_16051.png', radius: 23 },
-        { id: 'corgi', name: 'Corgi', coins: 299, file: 'Corgi.png', radius: 26 },
-        { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', radius: 29 },
-        { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', radius: 34 },
-        { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', radius: 38 },
-        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_7610.png', radius: 42 },
-        { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', radius: 46 },
-        { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 48 }
+        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 13 },
+        { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', radius: 15 },
+        { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', radius: 18 },
+        { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', radius: 20 },
+        { id: 'diamond', name: 'Kim cương', coins: 100, file: 'Diamond_16051.png', radius: 22 },
+        { id: 'corgi', name: 'Corgi', coins: 299, file: 'Corgi.png', radius: 24 },
+        { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', radius: 27 },
+        { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', radius: 32 },
+        { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', radius: 36 },
+        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_7610.png', radius: 40 },
+        { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', radius: 44 },
+        { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 46 }
     ];
 
     class GiftJarPhysics {
@@ -27,7 +27,7 @@
             if (!this.container) return;
 
             this.options = Object.assign({
-                gravity: 1.0,
+                gravity: 1.1,
                 getItemRect: null
             }, options);
 
@@ -36,6 +36,7 @@
             this.imageCache = {};
             this.isRunning = false;
             this.animFrameId = null;
+            this.lastWallSig = '';
 
             this.preloadPopularGifts();
             this.initCanvas();
@@ -83,7 +84,7 @@
                 width: 100%;
                 height: 100%;
                 pointer-events: none;
-                z-index: 15;
+                z-index: 25;
             `;
             this.ctx = this.canvas.getContext('2d');
             this.container.appendChild(this.canvas);
@@ -113,13 +114,12 @@
             const { Engine } = Matter;
             this.engine = Engine.create({
                 enableSleeping: false,
-                gravity: { x: 0, y: this.options.gravity, scale: 0.0015 }
+                gravity: { x: 0, y: this.options.gravity, scale: 0.0016 }
             });
             this.world = this.engine.world;
         }
 
         getArtboardBounds() {
-            // Check if inside designer stage with #gmd-safe-area
             const safeAreaEl = this.container.querySelector('#gmd-safe-area');
             if (safeAreaEl) {
                 const sx = parseFloat(safeAreaEl.style.left) || 180;
@@ -136,7 +136,6 @@
                 };
             }
 
-            // In OBS Overlay
             const w = this.container.offsetWidth || this.container.clientWidth || 1080;
             const h = this.container.offsetHeight || this.container.clientHeight || 1920;
             return {
@@ -179,6 +178,16 @@
             };
         }
 
+        checkAndSyncWalls() {
+            const jar = this.getJarRect();
+            const bounds = this.getArtboardBounds();
+            const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
+            if (this.lastWallSig !== sig) {
+                this.lastWallSig = sig;
+                this.setupWalls();
+            }
+        }
+
         setupWalls() {
             if (!this.world) return;
             const { Bodies, World } = Matter;
@@ -190,7 +199,7 @@
 
             const bounds = this.getArtboardBounds();
 
-            // 1. Stage Floor & Left/Right Screen Walls STRICTLY at the 9:16 Artboard Boundaries
+            // 1. Stage Floor & Left/Right Screen Walls strictly at 9:16 Artboard Boundaries
             const floor = Bodies.rectangle((bounds.left + bounds.right) / 2, bounds.bottom + 15, bounds.width + 40, 30, {
                 isStatic: true, friction: 0.6, label: 'floor'
             });
@@ -202,7 +211,7 @@
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. Exact Physics Walls of the Glass Jar (matching the DOM element position)
+            // 2. Exact Physics Walls of the Glass Jar (strictly inside the Jar SVG silhouette)
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jy = jar.y + jar.h / 2;
@@ -215,37 +224,37 @@
                 w: jw, 
                 h: jh, 
                 topY: jar.y,
-                mouthY: jar.y + jh * 0.18
+                mouthY: jar.y + jh * 0.16
             };
 
-            const wallThickness = Math.max(14, Math.round(jw * 0.08));
+            const wallThickness = Math.max(12, Math.round(jw * 0.08));
 
             // Jar Bottom Wall
-            const bottomY = jar.y + jh * 0.88;
-            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.68, wallThickness, {
-                isStatic: true, friction: 0.4, restitution: 0.2, label: 'jar_bottom'
+            const bottomY = jar.y + jh * 0.90;
+            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.78, wallThickness, {
+                isStatic: true, friction: 0.45, restitution: 0.15, label: 'jar_bottom'
             });
 
             // Jar Left Wall
-            const leftX = jar.x + jw * 0.16;
-            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.55, wallThickness, jh * 0.60, {
-                isStatic: true, friction: 0.15, restitution: 0.2, label: 'jar_left'
+            const leftX = jar.x + jw * 0.12;
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.54, wallThickness, jh * 0.64, {
+                isStatic: true, friction: 0.1, restitution: 0.15, label: 'jar_left'
             });
 
             // Jar Right Wall
-            const rightX = jar.x + jw * 0.84;
-            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.55, wallThickness, jh * 0.60, {
-                isStatic: true, friction: 0.15, restitution: 0.2, label: 'jar_right'
+            const rightX = jar.x + jw * 0.88;
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.54, wallThickness, jh * 0.64, {
+                isStatic: true, friction: 0.1, restitution: 0.15, label: 'jar_right'
             });
 
-            // Left Funnel Lip
-            const lipLeft = Bodies.rectangle(jar.x + jw * 0.24, jar.y + jh * 0.20, jw * 0.26, wallThickness, {
-                isStatic: true, friction: 0.05, angle: -0.55, label: 'jar_lip_left'
+            // Left Inward Funnel Lip (slanted downward into jar opening: `\`)
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.18, jar.y + jh * 0.18, jw * 0.32, wallThickness, {
+                isStatic: true, friction: 0.02, angle: 0.52, label: 'jar_lip_left'
             });
 
-            // Right Funnel Lip
-            const lipRight = Bodies.rectangle(jar.x + jw * 0.76, jar.y + jh * 0.20, jw * 0.26, wallThickness, {
-                isStatic: true, friction: 0.05, angle: 0.55, label: 'jar_lip_right'
+            // Right Inward Funnel Lip (slanted downward into jar opening: `/`)
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.82, jar.y + jh * 0.18, jw * 0.32, wallThickness, {
+                isStatic: true, friction: 0.02, angle: -0.52, label: 'jar_lip_right'
             });
 
             this.wallBodies.push(jarBottom, jarLeft, jarRight, lipLeft, lipRight);
@@ -255,27 +264,26 @@
         spawnGiftBody(type, radius, data = {}) {
             const { Bodies, World, Body } = Matter;
             
-            this.setupWalls();
+            this.checkAndSyncWalls();
 
-            const jar = this.jarCenter || { x: 360, topY: 300 };
+            const jar = this.jarCenter || { x: this.width / 2, topY: 300 };
             const bounds = this.getArtboardBounds();
 
-            // Spawn directly above the jar opening (inside the 9:16 safe frame)
+            // Spawn at the VERY TOP of the 9:16 artboard directly aligned with jar opening
             const spawnX = jar.x + (Math.random() * 12 - 6);
-            const spawnY = Math.max(bounds.top + 10, jar.topY - 60 - Math.random() * 20);
+            const spawnY = bounds.top - 15 - Math.random() * 20;
 
-            // Scale radius proportionally to the artboard width
             const scaleFactor = bounds.width < 600 ? (bounds.width / 720) : 1;
-            const r = Math.max(8, Math.round(radius * scaleFactor));
+            const r = Math.max(7, Math.round(radius * scaleFactor));
 
-            const restitution = type === 'rose' ? 0.2 : 0.28;
-            const friction = type === 'rose' ? 0.2 : 0.12;
+            const restitution = type === 'rose' ? 0.15 : 0.22;
+            const friction = type === 'rose' ? 0.25 : 0.15;
 
             const body = Bodies.circle(spawnX, spawnY, r, {
                 restitution,
                 friction,
-                frictionAir: 0.005,
-                density: 0.002
+                frictionAir: 0.004,
+                density: 0.003
             });
 
             body.giftType = type;
@@ -283,8 +291,8 @@
             body.giftRadius = r;
 
             Body.setVelocity(body, {
-                x: (Math.random() - 0.5) * 0.2,
-                y: Math.random() * 1.5 + 2.5
+                x: (Math.random() - 0.5) * 0.15,
+                y: Math.random() * 1.5 + 4.0
             });
             Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.04);
 
@@ -306,7 +314,7 @@
         spawnRose(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('rose', 14, {
+                    this.spawnGiftBody('rose', 13, {
                         imageKey: 'rose',
                         name: 'Hoa hồng'
                     });
@@ -317,7 +325,7 @@
         spawnHeart(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('heart', 16, {
+                    this.spawnGiftBody('heart', 15, {
                         imageKey: 'heart',
                         name: 'Trái tim'
                     });
@@ -326,14 +334,14 @@
         }
 
         spawnDoughnut() {
-            this.spawnGiftBody('doughnut', 19, {
+            this.spawnGiftBody('doughnut', 18, {
                 imageKey: 'doughnut',
                 name: 'Bánh Donut'
             });
         }
 
         spawnCap() {
-            this.spawnGiftBody('cap', 21, {
+            this.spawnGiftBody('cap', 20, {
                 imageKey: 'cap',
                 name: 'Mũ TikTok'
             });
@@ -342,7 +350,7 @@
         spawnDiamond(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('diamond', 23, {
+                    this.spawnGiftBody('diamond', 22, {
                         imageKey: 'diamond',
                         name: 'Kim cương'
                     });
@@ -351,56 +359,56 @@
         }
 
         spawnCorgi() {
-            this.spawnGiftBody('corgi', 26, {
+            this.spawnGiftBody('corgi', 24, {
                 imageKey: 'corgi',
                 name: 'Corgi'
             });
         }
 
         spawnMoneyGun() {
-            this.spawnGiftBody('money_gun', 29, {
+            this.spawnGiftBody('money_gun', 27, {
                 imageKey: 'money_gun',
                 name: 'Súng bắn tiền'
             });
         }
 
         spawnWhale() {
-            this.spawnGiftBody('whale', 34, {
+            this.spawnGiftBody('whale', 32, {
                 imageKey: 'whale',
                 name: 'Cá voi'
             });
         }
 
         spawnGalaxy() {
-            this.spawnGiftBody('galaxy', 38, {
+            this.spawnGiftBody('galaxy', 36, {
                 imageKey: 'galaxy',
                 name: 'Vũ trụ Galaxy'
             });
         }
 
         spawnDragon() {
-            this.spawnGiftBody('dragon', 42, {
+            this.spawnGiftBody('dragon', 40, {
                 imageKey: 'dragon',
                 name: 'Rồng lửa'
             });
         }
 
         spawnLion() {
-            this.spawnGiftBody('lion', 46, {
+            this.spawnGiftBody('lion', 44, {
                 imageKey: 'lion',
                 name: 'Sư tử'
             });
         }
 
         spawnZeus() {
-            this.spawnGiftBody('zeus', 48, {
+            this.spawnGiftBody('zeus', 46, {
                 imageKey: 'zeus',
                 name: 'Thần Zeus'
             });
         }
 
         spawnTopDonorBadge(rank = 1, nickname = 'Top Fan') {
-            this.spawnGiftBody('top_donor', 24, {
+            this.spawnGiftBody('top_donor', 22, {
                 rank: rank || 1,
                 nickname: nickname || 'Top 1'
             });
@@ -409,15 +417,15 @@
         spawnLiveGift(giftData = {}) {
             const coins = Number(giftData.coins) || 1;
             const repeat = Math.min(15, Number(giftData.repeatCount) || 1);
-            let radius = 14;
+            let radius = 13;
             let type = 'live_gift';
 
-            if (coins >= 10000) radius = 46;
-            else if (coins >= 1000) radius = 38;
-            else if (coins >= 300) radius = 29;
-            else if (coins >= 100) radius = 23;
-            else if (coins >= 10) radius = 16;
-            else radius = 14;
+            if (coins >= 10000) radius = 44;
+            else if (coins >= 1000) radius = 36;
+            else if (coins >= 300) radius = 27;
+            else if (coins >= 100) radius = 22;
+            else if (coins >= 10) radius = 15;
+            else radius = 13;
 
             for (let i = 0; i < repeat; i++) {
                 setTimeout(() => {
@@ -497,7 +505,7 @@
                 const b = this.items[i];
                 const { x, y } = b.position;
                 const angle = b.angle;
-                const r = b.giftRadius || 14;
+                const r = b.giftRadius || 13;
                 const type = b.giftType;
                 const data = b.giftData || {};
 
@@ -524,7 +532,7 @@
                 } else {
                     const img = this.imageCache[data.imageUrl] || this.imageCache[data.imageKey || type];
                     if (img && img.complete && img.naturalWidth > 0) {
-                        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
                         ctx.shadowBlur = 5;
                         ctx.shadowOffsetY = 2;
                         const size = r * 2.2;
