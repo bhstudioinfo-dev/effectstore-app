@@ -557,53 +557,57 @@ app.use('/api/admin/banner', bannerRoutes);
 app.get('/api/cloud/status', async (_req, res) => {
     const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
     const desktopManaged = process.env.EFFECTSTORE_DESKTOP_MANAGED === 'true';
-    if (!desktopManaged) {
-        const connected = mongoose.connection.readyState === 1 && databaseSchemaReady;
-        return res.status(connected ? 200 : 503).json({
-            success: connected,
-            compatible: true,
+    const localConnected = mongoose.connection.readyState === 1 && databaseSchemaReady;
+
+    if (!desktopManaged || !cloudApiUrl) {
+        return res.status(localConnected ? 200 : 503).json({
+            success: localConnected,
+            compatible: localConnected,
             commercialApiVersion: COMMERCIAL_API_VERSION,
-            database: { connected }
+            database: { connected: localConnected }
         });
     }
-    if (!cloudApiUrl) {
-        const connected = mongoose.connection.readyState === 1 && databaseSchemaReady;
-        return res.status(connected ? 200 : 503).json({
-            success: connected,
-            compatible: connected,
-            commercialApiVersion: COMMERCIAL_API_VERSION,
-            database: { connected }
-        });
-    }
+
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const timeout = setTimeout(() => controller.abort(), 8_000);
     try {
         const response = await fetch(`${cloudApiUrl}/api/system/status`, { signal: controller.signal });
         const data = await response.json().catch(() => ({}));
         const version = Number(data.commercialApiVersion || 0);
-        const compatible = response.ok && data.database?.connected === true && version >= COMMERCIAL_API_VERSION;
-        const cloudAvailable = response.ok && data.database?.connected === true;
-        return res.status(cloudAvailable ? 200 : 426).json({
-            success: cloudAvailable,
-            compatible: cloudAvailable,
-            cloudUpgradePending: cloudAvailable && !compatible,
-            commercialApiVersion: version,
-            requiredCommercialApiVersion: COMMERCIAL_API_VERSION,
-            database: { connected: data.database?.connected === true },
-            warning: cloudAvailable && !compatible
-                ? 'Backend cloud đang cập nhật; các tính năng cloud mới tạm thời chưa sẵn sàng.'
-                : undefined,
-            error: cloudAvailable ? undefined : 'Backend cloud chưa được cập nhật đúng phiên bản dành cho app này.'
-        });
-    } catch (_error) {
-        const localConnected = mongoose.connection.readyState === 1 && databaseSchemaReady;
+        const cloudDbConnected = data.database?.connected === true;
+        const cloudCompatible = response.ok && cloudDbConnected && version >= COMMERCIAL_API_VERSION;
+        const cloudAvailable = response.ok && cloudDbConnected;
+
+        if (cloudAvailable) {
+            return res.status(200).json({
+                success: true,
+                compatible: true,
+                cloudUpgradePending: !cloudCompatible,
+                commercialApiVersion: version,
+                requiredCommercialApiVersion: COMMERCIAL_API_VERSION,
+                database: { connected: true },
+                warning: !cloudCompatible
+                    ? 'Backend cloud đang cập nhật; các tính năng cloud mới tạm thời chưa sẵn sàng.'
+                    : undefined
+            });
+        }
+
         return res.status(localConnected ? 200 : 503).json({
             success: localConnected,
             compatible: localConnected,
             offlineMode: true,
             commercialApiVersion: COMMERCIAL_API_VERSION,
             database: { connected: localConnected },
-            warning: 'Máy chủ Cloud đang khởi động hoặc tạm thời gián đoạn. Ứng dụng đang hoạt động ở chế độ Offline trên máy.'
+            warning: 'Máy chủ Cloud đang kết nối hoặc cập nhật. Các tính năng thiết kế và livestream trên máy vẫn hoạt động bình thường.'
+        });
+    } catch (_error) {
+        return res.status(localConnected ? 200 : 503).json({
+            success: localConnected,
+            compatible: localConnected,
+            offlineMode: true,
+            commercialApiVersion: COMMERCIAL_API_VERSION,
+            database: { connected: localConnected },
+            warning: 'Máy chủ Cloud đang khởi động. Ứng dụng đang hoạt động ở chế độ ngoại tuyến trên máy.'
         });
     } finally {
         clearTimeout(timeout);

@@ -183,21 +183,33 @@ class EffectStoreApp {
     }
 
     async verifyCloudCompatibility() {
-        const response = await fetch(`${this.API_URL}/api/cloud/status`);
-        const data = await response.json().catch(() => ({}));
-        const cloudDatabaseConnected = data.database?.connected === true;
-        if (response.status === 426 && cloudDatabaseConnected) {
-            console.warn('Cloud backend is still deploying the required API version.', data);
-            setTimeout(() => this.showNotification(
-                'warning',
-                'Cloud đang cập nhật phiên bản mới. Bạn vẫn có thể dùng các tính năng trên máy; Trợ lý AI sẽ sẵn sàng sau khi cập nhật xong.'
-            ), 300);
+        try {
+            const response = await fetch(`${this.API_URL}/api/cloud/status`);
+            const data = await response.json().catch(() => ({}));
+            const isConnected = data.database?.connected === true || data.compatible === true || data.offlineMode === true;
+            if (response.status === 426 && isConnected) {
+                console.warn('Cloud backend is still deploying the required API version.', data);
+                setTimeout(() => this.showNotification(
+                    'warning',
+                    'Cloud đang cập nhật phiên bản mới. Bạn vẫn có thể dùng các tính năng trên máy; Trợ lý AI sẽ sẵn sàng sau khi cập nhật xong.'
+                ), 300);
+                return true;
+            }
+            if (data.warning && !sessionStorage.getItem('notified_cloud_warning')) {
+                sessionStorage.setItem('notified_cloud_warning', '1');
+                setTimeout(() => this.showNotification('info', data.warning), 600);
+            }
+            if (!response.ok && !isConnected) {
+                throw new Error(data.error || 'Backend cloud chưa sẵn sàng cho phiên bản LiveFlow này.');
+            }
             return true;
+        } catch (error) {
+            if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+                console.warn('Network issue connecting to cloud, running in local mode:', error);
+                return true;
+            }
+            throw error;
         }
-        if (!response.ok || data.compatible !== true || !cloudDatabaseConnected) {
-            throw new Error(data.error || 'Backend cloud chưa sẵn sàng cho phiên bản LiveFlow này.');
-        }
-        return true;
     }
 
     accountStorageKey(base, user = this.currentUser) {
@@ -3276,6 +3288,9 @@ class EffectStoreApp {
     }
 
     async getTemplateLayout(templateId) {
+        if (!templateId || templateId === 'preload' || templateId === 'undefined' || templateId === 'null') {
+            return null;
+        }
         try {
             if (this._templatesCache && this._templatesCache.length > 0) {
                 const cached = this._templatesCache.find(t => String(t._id || t.id) === String(templateId));
