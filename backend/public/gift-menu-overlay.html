@@ -2131,12 +2131,13 @@
         } else if (coins > 500) {
           physics.spawnLion();
         } else if (coins > 100) {
-          if (Math.random() < 0.5) physics.spawnTiktokWhale();
-          else physics.spawnPurpleOrb();
+          if (Math.random() < 0.5) physics.spawnGalaxy();
+          else physics.spawnMoneyGun();
         } else if (coins > 10) {
-          physics.spawnDiamond(null, 2);
+          if (Math.random() < 0.5) physics.spawnDiamond(2);
+          else physics.spawnCorgi();
         } else {
-          physics.spawnRose(null, Math.min(15, Math.max(4, coins)));
+          physics.spawnRose(Math.min(15, Math.max(3, coins)));
         }
       }
     }

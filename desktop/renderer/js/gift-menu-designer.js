@@ -8886,13 +8886,26 @@
             this.renderInspector();
         }
 
-        ensureGiftJarPhysics() {
-            if (this.giftJarPhysics) return this.giftJarPhysics;
-            if (typeof window.GiftJarPhysics === 'function') {
-                const canvasContainer = this.mount?.querySelector('.gmd-canvas-viewport') || this.mount?.querySelector('.gmd-canvas-area') || this.mount;
-                if (canvasContainer) {
-                    this.giftJarPhysics = new window.GiftJarPhysics(canvasContainer, { autoResize: true });
-                }
+        ensureGiftJarPhysics(item) {
+            const stage = this.mount?.querySelector('#gmd-stage') || document.querySelector('#gmd-stage') || this.mount;
+            if (!this.giftJarPhysics && typeof window.GiftJarPhysics === 'function' && stage) {
+                this.giftJarPhysics = new window.GiftJarPhysics(stage, {
+                    getItemRect: () => {
+                        const curItem = item || this.items.find(e => e.type === 'gift-jar');
+                        if (curItem) {
+                            return {
+                                x: Number(curItem.x) || 0,
+                                y: Number(curItem.y) || 0,
+                                w: Number(curItem.w || curItem.width) || 480,
+                                h: Number(curItem.h || curItem.height) || 600
+                            };
+                        }
+                        return null;
+                    }
+                });
+            }
+            if (this.giftJarPhysics) {
+                this.giftJarPhysics.setupWalls();
             }
             return this.giftJarPhysics;
         }
@@ -8909,16 +8922,19 @@
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
 
-            const physics = this.ensureGiftJarPhysics();
+            const physics = this.ensureGiftJarPhysics(item);
             if (physics) {
                 if (tier === 'small') {
-                    physics.spawnRose(null, 12);
+                    physics.spawnRose(10);
                 } else if (tier === 'medium') {
-                    if (Math.random() < 0.5) physics.spawnDiamond(null, 2);
-                    else physics.spawnPurpleOrb(null);
+                    const choice = Math.random();
+                    if (choice < 0.5) physics.spawnDiamond(2);
+                    else if (choice < 0.8) physics.spawnCorgi();
+                    else physics.spawnMoneyGun();
                 } else if (tier === 'large') {
-                    if (Math.random() < 0.5) physics.spawnTiktokWhale(null);
-                    else physics.spawnLion(null);
+                    const choice = Math.random();
+                    if (choice < 0.5) physics.spawnGalaxy();
+                    else physics.spawnLion();
                 } else if (tier === 'top_donor') {
                     physics.spawnTopDonorBadge(1, 'Top 1 Supporter');
                 } else {

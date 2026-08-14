@@ -1,10 +1,20 @@
 /**
  * LiveFlow Gift Jar 2D Physics Engine (Powered by Matter.js)
  * Implements real physical bouncing, rolling, stacking, and overflow
- * for TikTok Live gifts (Roses, Diamonds, Purple Orbs, Whales, Lions, and Top Donor Badges).
+ * using REAL TikTok Live Gift Icons (Rose, Heart, Diamond, Corgi, Money Gun, Galaxy, Lion).
  */
 (function(window) {
     'use strict';
+
+    const GIFT_ASSETS = {
+        rose: '/assets/gift-icons/Rose_5655.png',
+        heart: '/assets/gift-icons/Beating_Heart_11809.png',
+        diamond: '/assets/gift-icons/Diamond_16051.png',
+        corgi: '/assets/gift-icons/Corgi.png',
+        money_gun: '/assets/gift-icons/Money_Gun.png',
+        galaxy: '/assets/gift-icons/Galaxy_11046.png',
+        lion: '/assets/gift-icons/Lion_6369.png'
+    };
 
     class GiftJarPhysics {
         constructor(container, options = {}) {
@@ -12,23 +22,36 @@
             if (!this.container) return;
 
             this.options = Object.assign({
-                autoResize: true,
                 gravity: 1.0,
-                jarRect: null
+                getItemRect: null
             }, options);
 
             this.items = [];
             this.wallBodies = [];
+            this.imageCache = {};
             this.isRunning = false;
             this.animFrameId = null;
 
+            this.preloadImages();
             this.initCanvas();
             this.initPhysics();
             this.setupWalls();
             this.startLoop();
         }
 
+        preloadImages() {
+            Object.keys(GIFT_ASSETS).forEach(key => {
+                const img = new Image();
+                img.src = GIFT_ASSETS[key];
+                this.imageCache[key] = img;
+            });
+        }
+
         initCanvas() {
+            // Remove any existing physics canvas in container
+            const oldCanvas = this.container.querySelector('.gift-jar-physics-canvas');
+            if (oldCanvas) oldCanvas.remove();
+
             this.canvas = document.createElement('canvas');
             this.canvas.className = 'gift-jar-physics-canvas';
             this.canvas.style.cssText = `
@@ -37,23 +60,21 @@
                 width: 100%;
                 height: 100%;
                 pointer-events: none;
-                z-index: 10;
+                z-index: 15;
             `;
             this.ctx = this.canvas.getContext('2d');
             this.container.appendChild(this.canvas);
             this.resizeCanvas();
 
-            if (this.options.autoResize) {
-                this.resizeObserver = new ResizeObserver(() => this.resizeCanvas());
-                this.resizeObserver.observe(this.container);
-            }
+            this.resizeObserver = new ResizeObserver(() => this.resizeCanvas());
+            this.resizeObserver.observe(this.container);
         }
 
         resizeCanvas() {
             if (!this.canvas || !this.container) return;
             const rect = this.container.getBoundingClientRect();
-            this.width = rect.width || window.innerWidth;
-            this.height = rect.height || window.innerHeight;
+            this.width = this.container.clientWidth || rect.width || 720;
+            this.height = this.container.clientHeight || rect.height || 1280;
             this.dpr = window.devicePixelRatio || 1;
 
             this.canvas.width = this.width * this.dpr;
@@ -65,19 +86,46 @@
         }
 
         initPhysics() {
-            const { Engine, World } = Matter;
+            const { Engine } = Matter;
             this.engine = Engine.create({
                 enableSleeping: false,
-                gravity: { x: 0, y: this.options.gravity, scale: 0.001 }
+                gravity: { x: 0, y: this.options.gravity, scale: 0.0012 }
             });
             this.world = this.engine.world;
+        }
+
+        getJarRect() {
+            if (typeof this.options.getItemRect === 'function') {
+                const r = this.options.getItemRect();
+                if (r) return r;
+            }
+
+            const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
+            if (jarWidget) {
+                const itemEl = jarWidget.closest('.gmd-item') || jarWidget;
+                const cRect = this.container.getBoundingClientRect();
+                const jRect = itemEl.getBoundingClientRect();
+                return {
+                    x: jRect.left - cRect.left,
+                    y: jRect.top - cRect.top,
+                    w: jRect.width,
+                    h: jRect.height
+                };
+            }
+
+            // Fallback default center-bottom
+            return {
+                x: this.width * 0.25,
+                y: this.height * 0.45,
+                w: this.width * 0.5,
+                h: this.height * 0.45
+            };
         }
 
         setupWalls() {
             if (!this.world) return;
             const { Bodies, World } = Matter;
 
-            // Remove old walls
             if (this.wallBodies.length) {
                 World.remove(this.world, this.wallBodies);
                 this.wallBodies = [];
@@ -86,83 +134,69 @@
             const w = this.width;
             const h = this.height;
 
-            // Screen Ground Floor
-            const floor = Bodies.rectangle(w / 2, h + 25, w * 2, 60, { isStatic: true, friction: 0.4, label: 'floor' });
-            const leftScreen = Bodies.rectangle(-25, h / 2, 60, h * 2, { isStatic: true, label: 'screen_left' });
-            const rightScreen = Bodies.rectangle(w + 25, h / 2, 60, h * 2, { isStatic: true, label: 'screen_right' });
+            // Screen Artboard Floor & Side walls
+            const floor = Bodies.rectangle(w / 2, h + 20, w * 2, 50, { isStatic: true, friction: 0.5, label: 'floor' });
+            const leftScreen = Bodies.rectangle(-20, h / 2, 50, h * 2, { isStatic: true, friction: 0.1, label: 'screen_left' });
+            const rightScreen = Bodies.rectangle(w + 20, h / 2, 50, h * 2, { isStatic: true, friction: 0.1, label: 'screen_right' });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // Determine Jar Boundaries
-            let jx = w / 2;
-            let jy = h * 0.65;
-            let jw = Math.min(320, w * 0.55);
-            let jh = Math.min(380, h * 0.55);
+            // Compute Jar Physics Box
+            const jar = this.getJarRect();
+            const jx = jar.x + jar.w / 2;
+            const jy = jar.y + jar.h / 2;
+            const jw = jar.w * 0.78;
+            const jh = jar.h * 0.74;
 
-            if (this.options.jarRect) {
-                const r = this.options.jarRect;
-                jx = r.x + r.w / 2;
-                jy = r.y + r.h / 2;
-                jw = r.w * 0.85;
-                jh = r.h * 0.82;
-            } else {
-                const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
-                if (jarWidget) {
-                    const cRect = this.container.getBoundingClientRect();
-                    const jRect = jarWidget.getBoundingClientRect();
-                    jx = (jRect.left - cRect.left) + jRect.width / 2;
-                    jy = (jRect.top - cRect.top) + jRect.height / 2;
-                    jw = jRect.width * 0.82;
-                    jh = jRect.height * 0.82;
-                }
-            }
+            this.jarCenter = { x: jx, y: jy, w: jw, h: jh, topY: jar.y };
 
-            this.jarCenter = { x: jx, y: jy, w: jw, h: jh };
-
-            const wallThickness = 18;
+            const wallThickness = 16;
             const halfW = jw / 2;
             const halfH = jh / 2;
 
-            // Jar Bottom
-            const jarBottom = Bodies.rectangle(jx, jy + halfH - 10, jw * 0.76, wallThickness, {
-                isStatic: true, friction: 0.3, label: 'jar_bottom'
+            // Jar Bottom Wall
+            const jarBottom = Bodies.rectangle(jx, jy + halfH - 8, jw * 0.78, wallThickness, {
+                isStatic: true, friction: 0.4, restitution: 0.2, label: 'jar_bottom'
             });
 
             // Jar Left Wall
-            const jarLeft = Bodies.rectangle(jx - halfW + 12, jy + 15, wallThickness, jh * 0.72, {
-                isStatic: true, friction: 0.15, angle: 0.05, label: 'jar_left'
+            const jarLeft = Bodies.rectangle(jx - halfW + 8, jy + 10, wallThickness, jh * 0.75, {
+                isStatic: true, friction: 0.15, restitution: 0.2, angle: 0.04, label: 'jar_left'
             });
 
             // Jar Right Wall
-            const jarRight = Bodies.rectangle(jx + halfW - 12, jy + 15, wallThickness, jh * 0.72, {
-                isStatic: true, friction: 0.15, angle: -0.05, label: 'jar_right'
+            const jarRight = Bodies.rectangle(jx + halfW - 8, jy + 10, wallThickness, jh * 0.75, {
+                isStatic: true, friction: 0.15, restitution: 0.2, angle: -0.04, label: 'jar_right'
             });
 
-            // Jar Neck Left Lip (curved funnel)
-            const jarLipLeft = Bodies.rectangle(jx - halfW * 0.62, jy - halfH + 28, jw * 0.28, wallThickness, {
-                isStatic: true, friction: 0.1, angle: -0.35, label: 'jar_lip_left'
+            // Jar Left Funnel Lip
+            const jarLipLeft = Bodies.rectangle(jx - halfW * 0.65, jy - halfH + 22, jw * 0.32, wallThickness, {
+                isStatic: true, friction: 0.1, angle: -0.38, label: 'jar_lip_left'
             });
 
-            // Jar Neck Right Lip (curved funnel)
-            const jarLipRight = Bodies.rectangle(jx + halfW * 0.62, jy - halfH + 28, jw * 0.28, wallThickness, {
-                isStatic: true, friction: 0.1, angle: 0.35, label: 'jar_lip_right'
+            // Jar Right Funnel Lip
+            const jarLipRight = Bodies.rectangle(jx + halfW * 0.65, jy - halfH + 22, jw * 0.32, wallThickness, {
+                isStatic: true, friction: 0.1, angle: 0.38, label: 'jar_lip_right'
             });
 
             this.wallBodies.push(jarBottom, jarLeft, jarRight, jarLipLeft, jarLipRight);
             World.add(this.world, this.wallBodies);
         }
 
-        spawnBody(x, y, radius, type, data = {}) {
+        spawnGiftBody(type, radius, data = {}) {
             const { Bodies, World, Body } = Matter;
-            const spawnX = typeof x === 'number' ? x : (this.jarCenter.x + (Math.random() * 40 - 20));
-            const spawnY = typeof y === 'number' ? y : -30;
+            const jar = this.jarCenter || { x: this.width / 2, topY: 100 };
+            
+            // Spawn directly above jar mouth
+            const spawnX = jar.x + (Math.random() * 24 - 12);
+            const spawnY = Math.max(10, jar.topY - 80 - Math.random() * 30);
 
-            const restitution = type === 'rose' ? 0.2 : 0.32;
-            const friction = type === 'rose' ? 0.15 : 0.1;
+            const restitution = type === 'rose' ? 0.2 : 0.3;
+            const friction = type === 'rose' ? 0.2 : 0.12;
 
             const body = Bodies.circle(spawnX, spawnY, radius, {
                 restitution,
                 friction,
-                frictionAir: 0.006,
+                frictionAir: 0.005,
                 density: 0.002
             });
 
@@ -171,16 +205,16 @@
             body.giftRadius = radius;
 
             Body.setVelocity(body, {
-                x: (Math.random() - 0.5) * 2.5,
-                y: Math.random() * 2 + 1
+                x: (Math.random() - 0.5) * 1.5,
+                y: Math.random() * 2 + 1.5
             });
-            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.1);
+            Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.08);
 
             World.add(this.world, body);
             this.items.push(body);
 
-            // Limit total max items to prevent memory overhead
-            if (this.items.length > 280) {
+            // Cap total items to maintain 60 FPS
+            if (this.items.length > 320) {
                 const oldest = this.items.shift();
                 World.remove(this.world, oldest);
             }
@@ -188,91 +222,95 @@
             return body;
         }
 
-        spawnRose(x, count = 1) {
+        spawnRose(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    const offset = (Math.random() - 0.5) * 50;
-                    this.spawnBody((x || this.jarCenter.x) + offset, -20 - (i * 15), 11, 'rose', {
-                        emoji: '🌹',
-                        size: 22
+                    this.spawnGiftBody('rose', 13, {
+                        imageKey: 'rose',
+                        name: 'Hoa hồng'
                     });
-                }, i * 40);
+                }, i * 45);
             }
         }
 
-        spawnDiamond(x, count = 1) {
+        spawnHeart(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    const offset = (Math.random() - 0.5) * 40;
-                    this.spawnBody((x || this.jarCenter.x) + offset, -30, 20, 'diamond', {
-                        emoji: '💎',
-                        size: 38
+                    this.spawnGiftBody('heart', 18, {
+                        imageKey: 'heart',
+                        name: 'Trái tim'
                     });
-                }, i * 80);
+                }, i * 60);
             }
         }
 
-        spawnPurpleOrb(x) {
-            this.spawnBody(x || this.jarCenter.x, -40, 32, 'purple_orb', {
-                label: 'Mãi Yêu',
-                color: '#9333ea',
-                size: 64
+        spawnDiamond(count = 1) {
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    this.spawnGiftBody('diamond', 22, {
+                        imageKey: 'diamond',
+                        name: 'Kim cương'
+                    });
+                }, i * 70);
+            }
+        }
+
+        spawnCorgi() {
+            this.spawnGiftBody('corgi', 30, {
+                imageKey: 'corgi',
+                name: 'Corgi'
             });
         }
 
-        spawnTiktokWhale(x) {
-            this.spawnBody(x || this.jarCenter.x, -50, 36, 'tiktok_whale', {
-                label: 'TikTok LIVE',
-                color: '#0284c7',
-                size: 72
+        spawnMoneyGun() {
+            this.spawnGiftBody('money_gun', 34, {
+                imageKey: 'money_gun',
+                name: 'Súng bắn tiền'
             });
         }
 
-        spawnLion(x) {
-            this.spawnBody(x || this.jarCenter.x, -60, 48, 'lion', {
-                emoji: '🦁',
-                label: 'Sư Tử',
-                color: '#d97706',
-                size: 96
+        spawnGalaxy() {
+            this.spawnGiftBody('galaxy', 40, {
+                imageKey: 'galaxy',
+                name: 'Vũ trụ Galaxy'
             });
         }
 
-        spawnTopDonorBadge(rank = 1, nickname = 'Top Fan', avatarUrl = '', x) {
-            this.spawnBody(x || this.jarCenter.x, -40, 28, 'top_donor', {
+        spawnLion() {
+            this.spawnGiftBody('lion', 48, {
+                imageKey: 'lion',
+                name: 'Sư tử'
+            });
+        }
+
+        spawnTopDonorBadge(rank = 1, nickname = 'Top Fan') {
+            this.spawnGiftBody('top_donor', 28, {
                 rank: rank || 1,
-                nickname: nickname || 'Top 1',
-                avatarUrl,
-                size: 56
+                nickname: nickname || 'Top 1'
             });
         }
 
-        spawnRandomGift(tier = 'random', x) {
+        spawnRandomGift(tier = 'random') {
             if (tier === 'small') {
-                this.spawnRose(x, Math.floor(Math.random() * 8) + 4);
+                this.spawnRose(Math.floor(Math.random() * 8) + 4);
             } else if (tier === 'medium') {
                 const choice = Math.random();
-                if (choice < 0.5) this.spawnDiamond(x, 2);
-                else this.spawnPurpleOrb(x);
+                if (choice < 0.5) this.spawnDiamond(2);
+                else if (choice < 0.8) this.spawnCorgi();
+                else this.spawnMoneyGun();
             } else if (tier === 'large') {
                 const choice = Math.random();
-                if (choice < 0.5) this.spawnTiktokWhale(x);
-                else this.spawnLion(x);
+                if (choice < 0.5) this.spawnGalaxy();
+                else this.spawnLion();
             } else if (tier === 'top_donor') {
-                this.spawnTopDonorBadge(1, 'Top 1 Supporter', '', x);
+                this.spawnTopDonorBadge(1, 'Top 1 Supporter');
             } else {
-                // Completely random realistic live stream drop
                 const roll = Math.random();
-                if (roll < 0.55) {
-                    this.spawnRose(x, Math.floor(Math.random() * 12) + 3);
-                } else if (roll < 0.75) {
-                    this.spawnDiamond(x, 2);
-                } else if (roll < 0.88) {
-                    this.spawnPurpleOrb(x);
-                } else if (roll < 0.96) {
-                    this.spawnTiktokWhale(x);
-                } else {
-                    this.spawnLion(x);
-                }
+                if (roll < 0.55) this.spawnRose(Math.floor(Math.random() * 10) + 3);
+                else if (roll < 0.72) this.spawnHeart(2);
+                else if (roll < 0.85) this.spawnDiamond(1);
+                else if (roll < 0.94) this.spawnMoneyGun();
+                else this.spawnLion();
             }
         }
 
@@ -304,12 +342,12 @@
             ctx.scale(dpr, dpr);
             ctx.clearRect(0, 0, this.width, this.height);
 
-            // Render every active dynamic physical gift body
+            // Draw each physical gift with its real TikTok image
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
                 const { x, y } = b.position;
                 const angle = b.angle;
-                const r = b.giftRadius || 12;
+                const r = b.giftRadius || 14;
                 const type = b.giftType;
                 const data = b.giftData || {};
 
@@ -317,88 +355,13 @@
                 ctx.translate(x, y);
                 ctx.rotate(angle);
 
-                if (type === 'rose') {
-                    // Render 2D Realistic Rose
-                    ctx.font = `${r * 2}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.shadowColor = 'rgba(225, 29, 72, 0.6)';
-                    ctx.shadowBlur = 4;
-                    ctx.fillText('🌹', 0, 0);
-                } else if (type === 'diamond') {
-                    // Render Prismatic Diamond
-                    ctx.font = `${r * 2}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.shadowColor = 'rgba(56, 189, 248, 0.8)';
-                    ctx.shadowBlur = 8;
-                    ctx.fillText('💎', 0, 0);
-                } else if (type === 'purple_orb') {
-                    // Render Purple Orb "Mãi Yêu"
-                    const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 2, 0, 0, r);
-                    grad.addColorStop(0, '#f3e8ff');
-                    grad.addColorStop(0.3, '#c084fc');
-                    grad.addColorStop(0.8, '#7e22ce');
-                    grad.addColorStop(1, '#3b0764');
-
-                    ctx.beginPath();
-                    ctx.arc(0, 0, r, 0, Math.PI * 2);
-                    ctx.fillStyle = grad;
-                    ctx.shadowColor = 'rgba(168, 85, 247, 0.8)';
-                    ctx.shadowBlur = 10;
-                    ctx.fill();
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 1.5;
-                    ctx.stroke();
-
-                    // Text banner "Mãi Yêu"
-                    ctx.fillStyle = '#fef08a';
-                    ctx.font = `bold 10px "Inter", "Segoe UI", sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.shadowColor = '#000000';
-                    ctx.shadowBlur = 4;
-                    ctx.fillText('Mãi Yêu 💜', 0, 0);
-                } else if (type === 'tiktok_whale') {
-                    // Render Blue TikTok LIVE Whale / Spiral
-                    const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 2, 0, 0, r);
-                    grad.addColorStop(0, '#e0f2fe');
-                    grad.addColorStop(0.4, '#38bdf8');
-                    grad.addColorStop(0.9, '#0369a1');
-                    grad.addColorStop(1, '#082f49');
-
-                    ctx.beginPath();
-                    ctx.arc(0, 0, r, 0, Math.PI * 2);
-                    ctx.fillStyle = grad;
-                    ctx.shadowColor = 'rgba(56, 189, 248, 0.9)';
-                    ctx.shadowBlur = 12;
-                    ctx.fill();
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = `900 9px "Inter", "Segoe UI", sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.shadowColor = '#000000';
-                    ctx.shadowBlur = 4;
-                    ctx.fillText('TikTok LIVE 🌊', 0, 0);
-                } else if (type === 'lion') {
-                    // Render Grand Lion
-                    ctx.font = `${r * 1.9}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.shadowColor = 'rgba(245, 158, 11, 0.9)';
-                    ctx.shadowBlur = 14;
-                    ctx.fillText('🦁', 0, 0);
-                } else if (type === 'top_donor') {
-                    // Render Circular Avatar Badge with Crown
+                if (type === 'top_donor') {
+                    // Avatar Badge with Gold Crown
                     ctx.beginPath();
                     ctx.arc(0, 0, r, 0, Math.PI * 2);
                     ctx.fillStyle = 'linear-gradient(135deg, #f59e0b, #ef4444)';
                     ctx.fillStyle = '#f59e0b';
-                    ctx.shadowColor = 'rgba(245, 158, 11, 0.9)';
+                    ctx.shadowColor = 'rgba(245, 158, 11, 0.8)';
                     ctx.shadowBlur = 10;
                     ctx.fill();
                     ctx.strokeStyle = '#ffffff';
@@ -409,7 +372,22 @@
                     ctx.font = `900 10px "Inter", "Segoe UI", sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(`👑 TOP ${data.rank || 1}`, 0, 0);
+                    ctx.fillText(`👑 #${data.rank || 1}`, 0, 0);
+                } else {
+                    const img = this.imageCache[data.imageKey || type];
+                    if (img && img.complete && img.naturalWidth > 0) {
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                        ctx.shadowBlur = 6;
+                        ctx.shadowOffsetY = 2;
+                        const size = r * 2.2;
+                        ctx.drawImage(img, -size / 2, -size / 2, size, size);
+                    } else {
+                        // Fallback emoji while image loads
+                        ctx.font = `${r * 2}px sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(type === 'rose' ? '🌹' : type === 'lion' ? '🦁' : '🎁', 0, 0);
+                    }
                 }
 
                 ctx.restore();
