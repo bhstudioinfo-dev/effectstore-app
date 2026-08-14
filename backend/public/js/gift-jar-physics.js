@@ -7,18 +7,18 @@
     'use strict';
 
     const POPULAR_TIKTOK_GIFTS = [
-        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 13 },
-        { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', radius: 16 },
-        { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', radius: 20 },
-        { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', radius: 22 },
-        { id: 'diamond', name: 'Kim cương', coins: 100, file: 'Diamond_16051.png', radius: 24 },
-        { id: 'corgi', name: 'Corgi', coins: 299, file: 'Corgi.png', radius: 28 },
-        { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', radius: 32 },
-        { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', radius: 38 },
-        { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', radius: 40 },
-        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_13338.png', radius: 46 },
-        { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', radius: 52 },
-        { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 54 }
+        { id: 'rose', name: 'Hoa hồng', coins: 1, file: 'Rose_5655.png', radius: 14 },
+        { id: 'heart', name: 'Trái tim', coins: 5, file: 'Beating_Heart_11809.png', radius: 18 },
+        { id: 'doughnut', name: 'Bánh Donut', coins: 30, file: 'Doughnut.png', radius: 22 },
+        { id: 'cap', name: 'Mũ TikTok', coins: 99, file: 'Wooly_Hat.png', radius: 24 },
+        { id: 'diamond', name: 'Kim cương', coins: 100, file: 'Diamond_16051.png', radius: 26 },
+        { id: 'corgi', name: 'Corgi', coins: 299, file: 'Corgi.png', radius: 30 },
+        { id: 'money_gun', name: 'Súng bắn tiền', coins: 500, file: 'Money_Gun.png', radius: 34 },
+        { id: 'whale', name: 'Cá voi lặn', coins: 1000, file: 'Whale_Diving_6820.png', radius: 40 },
+        { id: 'galaxy', name: 'Vũ trụ Galaxy', coins: 1000, file: 'Galaxy_11046.png', radius: 44 },
+        { id: 'dragon', name: 'Rồng lửa', coins: 10000, file: 'Dragon_Flame_13338.png', radius: 48 },
+        { id: 'lion', name: 'Sư tử', coins: 29999, file: 'Lion_6369.png', radius: 54 },
+        { id: 'zeus', name: 'Thần Zeus', coins: 34000, file: 'Zeus_8624.png', radius: 56 }
     ];
 
     class GiftJarPhysics {
@@ -66,7 +66,8 @@
             this.canvas.className = 'gift-jar-physics-canvas';
             this.canvas.style.cssText = `
                 position: absolute;
-                inset: 0;
+                top: 0;
+                left: 0;
                 width: 100%;
                 height: 100%;
                 pointer-events: none;
@@ -82,15 +83,17 @@
 
         resizeCanvas() {
             if (!this.canvas || !this.container) return;
-            const rect = this.container.getBoundingClientRect();
-            this.width = this.container.clientWidth || rect.width || 720;
-            this.height = this.container.clientHeight || rect.height || 1280;
-            this.dpr = window.devicePixelRatio || 1;
+            // Use stage offsetWidth / offsetHeight which is in logical stage coordinate space (e.g. 1080x1920)
+            const w = this.container.offsetWidth || this.container.clientWidth || 1080;
+            const h = this.container.offsetHeight || this.container.clientHeight || 1920;
 
-            this.canvas.width = this.width * this.dpr;
-            this.canvas.height = this.height * this.dpr;
-            this.canvas.style.width = `${this.width}px`;
-            this.canvas.style.height = `${this.height}px`;
+            this.width = w;
+            this.height = h;
+
+            this.canvas.width = w;
+            this.canvas.height = h;
+            this.canvas.style.width = '100%';
+            this.canvas.style.height = '100%';
 
             this.setupWalls();
         }
@@ -112,15 +115,15 @@
 
             const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
             if (jarWidget) {
-                const itemEl = jarWidget.closest('.gmd-item') || jarWidget;
-                const cRect = this.container.getBoundingClientRect();
-                const jRect = itemEl.getBoundingClientRect();
-                return {
-                    x: jRect.left - cRect.left,
-                    y: jRect.top - cRect.top,
-                    w: jRect.width,
-                    h: jRect.height
-                };
+                const itemEl = jarWidget.closest('.gmd-item');
+                if (itemEl) {
+                    return {
+                        x: parseFloat(itemEl.style.left) || 0,
+                        y: parseFloat(itemEl.style.top) || 0,
+                        w: parseFloat(itemEl.style.width) || 480,
+                        h: parseFloat(itemEl.style.height) || 600
+                    };
+                }
             }
 
             return {
@@ -143,47 +146,47 @@
             const w = this.width;
             const h = this.height;
 
-            // Screen Artboard Floor & Side walls
-            const floor = Bodies.rectangle(w / 2, h + 20, w * 2, 50, { isStatic: true, friction: 0.5, label: 'floor' });
-            const leftScreen = Bodies.rectangle(-20, h / 2, 50, h * 2, { isStatic: true, friction: 0.1, label: 'screen_left' });
-            const rightScreen = Bodies.rectangle(w + 20, h / 2, 50, h * 2, { isStatic: true, friction: 0.1, label: 'screen_right' });
+            // Screen Artboard Floor & Side walls (confined to 9:16 stage frame)
+            const floor = Bodies.rectangle(w / 2, h + 25, w * 2, 60, { isStatic: true, friction: 0.6, label: 'floor' });
+            const leftScreen = Bodies.rectangle(-25, h / 2, 60, h * 2, { isStatic: true, friction: 0.1, label: 'screen_left' });
+            const rightScreen = Bodies.rectangle(w + 25, h / 2, 60, h * 2, { isStatic: true, friction: 0.1, label: 'screen_right' });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // Compute Jar Physics Box
+            // Compute Jar Physics Box in logical stage coordinates
             const jar = this.getJarRect();
             const jx = jar.x + jar.w / 2;
             const jy = jar.y + jar.h / 2;
-            const jw = jar.w * 0.78;
-            const jh = jar.h * 0.74;
+            const jw = jar.w * 0.80;
+            const jh = jar.h * 0.76;
 
             this.jarCenter = { x: jx, y: jy, w: jw, h: jh, topY: jar.y };
 
-            const wallThickness = 16;
+            const wallThickness = 20;
             const halfW = jw / 2;
             const halfH = jh / 2;
 
             // Jar Bottom Wall
-            const jarBottom = Bodies.rectangle(jx, jy + halfH - 8, jw * 0.78, wallThickness, {
+            const jarBottom = Bodies.rectangle(jx, jy + halfH - 10, jw * 0.82, wallThickness, {
                 isStatic: true, friction: 0.4, restitution: 0.2, label: 'jar_bottom'
             });
 
             // Jar Left Wall
-            const jarLeft = Bodies.rectangle(jx - halfW + 8, jy + 10, wallThickness, jh * 0.75, {
+            const jarLeft = Bodies.rectangle(jx - halfW + 10, jy + 15, wallThickness, jh * 0.75, {
                 isStatic: true, friction: 0.15, restitution: 0.2, angle: 0.04, label: 'jar_left'
             });
 
             // Jar Right Wall
-            const jarRight = Bodies.rectangle(jx + halfW - 8, jy + 10, wallThickness, jh * 0.75, {
+            const jarRight = Bodies.rectangle(jx + halfW - 10, jy + 15, wallThickness, jh * 0.75, {
                 isStatic: true, friction: 0.15, restitution: 0.2, angle: -0.04, label: 'jar_right'
             });
 
-            // Jar Left Funnel Lip
-            const jarLipLeft = Bodies.rectangle(jx - halfW * 0.65, jy - halfH + 22, jw * 0.32, wallThickness, {
+            // Jar Left Funnel Lip (funnels gifts into jar)
+            const jarLipLeft = Bodies.rectangle(jx - halfW * 0.68, jy - halfH + 26, jw * 0.35, wallThickness, {
                 isStatic: true, friction: 0.1, angle: -0.38, label: 'jar_lip_left'
             });
 
-            // Jar Right Funnel Lip
-            const jarLipRight = Bodies.rectangle(jx + halfW * 0.65, jy - halfH + 22, jw * 0.32, wallThickness, {
+            // Jar Right Funnel Lip (funnels gifts into jar)
+            const jarLipRight = Bodies.rectangle(jx + halfW * 0.68, jy - halfH + 26, jw * 0.35, wallThickness, {
                 isStatic: true, friction: 0.1, angle: 0.38, label: 'jar_lip_right'
             });
 
@@ -195,9 +198,9 @@
             const { Bodies, World, Body } = Matter;
             const jar = this.jarCenter || { x: this.width / 2, topY: 100 };
             
-            // Spawn directly above jar mouth
+            // Spawn directly above the jar opening
             const spawnX = jar.x + (Math.random() * 24 - 12);
-            const spawnY = Math.max(10, jar.topY - 80 - Math.random() * 30);
+            const spawnY = Math.max(20, jar.topY - 140 - Math.random() * 40);
 
             const restitution = type === 'rose' ? 0.2 : 0.3;
             const friction = type === 'rose' ? 0.2 : 0.12;
@@ -215,7 +218,7 @@
 
             Body.setVelocity(body, {
                 x: (Math.random() - 0.5) * 1.5,
-                y: Math.random() * 2 + 1.5
+                y: Math.random() * 2 + 2
             });
             Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.08);
 
@@ -239,7 +242,7 @@
         spawnRose(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('rose', 13, {
+                    this.spawnGiftBody('rose', 14, {
                         imageKey: 'rose',
                         name: 'Hoa hồng'
                     });
@@ -250,7 +253,7 @@
         spawnHeart(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('heart', 16, {
+                    this.spawnGiftBody('heart', 18, {
                         imageKey: 'heart',
                         name: 'Trái tim'
                     });
@@ -261,7 +264,7 @@
         spawnDiamond(count = 1) {
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
-                    this.spawnGiftBody('diamond', 24, {
+                    this.spawnGiftBody('diamond', 26, {
                         imageKey: 'diamond',
                         name: 'Kim cương'
                     });
@@ -270,28 +273,28 @@
         }
 
         spawnCorgi() {
-            this.spawnGiftBody('corgi', 28, {
+            this.spawnGiftBody('corgi', 30, {
                 imageKey: 'corgi',
                 name: 'Corgi'
             });
         }
 
         spawnMoneyGun() {
-            this.spawnGiftBody('money_gun', 32, {
+            this.spawnGiftBody('money_gun', 34, {
                 imageKey: 'money_gun',
                 name: 'Súng bắn tiền'
             });
         }
 
         spawnGalaxy() {
-            this.spawnGiftBody('galaxy', 40, {
+            this.spawnGiftBody('galaxy', 44, {
                 imageKey: 'galaxy',
                 name: 'Vũ trụ Galaxy'
             });
         }
 
         spawnLion() {
-            this.spawnGiftBody('lion', 52, {
+            this.spawnGiftBody('lion', 54, {
                 imageKey: 'lion',
                 name: 'Sư tử'
             });
@@ -310,12 +313,12 @@
             let radius = 14;
             let type = 'live_gift';
 
-            if (coins >= 10000) radius = 50;
-            else if (coins >= 1000) radius = 40;
-            else if (coins >= 300) radius = 32;
-            else if (coins >= 100) radius = 24;
+            if (coins >= 10000) radius = 54;
+            else if (coins >= 1000) radius = 44;
+            else if (coins >= 300) radius = 34;
+            else if (coins >= 100) radius = 26;
             else if (coins >= 10) radius = 18;
-            else radius = 13;
+            else radius = 14;
 
             for (let i = 0; i < repeat; i++) {
                 setTimeout(() => {
@@ -374,10 +377,7 @@
         render() {
             if (!this.ctx || !this.canvas) return;
             const ctx = this.ctx;
-            const dpr = this.dpr || 1;
 
-            ctx.save();
-            ctx.scale(dpr, dpr);
             ctx.clearRect(0, 0, this.width, this.height);
 
             // Draw each physical gift with its real TikTok image
@@ -430,8 +430,6 @@
 
                 ctx.restore();
             }
-
-            ctx.restore();
         }
 
         reset() {

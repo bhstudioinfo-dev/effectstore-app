@@ -8887,8 +8887,15 @@
         }
 
         ensureGiftJarPhysics(item) {
-            const stage = this.mount?.querySelector('#gmd-stage') || document.querySelector('#gmd-stage') || this.mount;
-            if (!this.giftJarPhysics && typeof window.GiftJarPhysics === 'function' && stage) {
+            const stage = this.mount?.querySelector('#gmd-stage') || document.querySelector('#gmd-stage');
+            if (!stage || typeof window.GiftJarPhysics !== 'function') return null;
+
+            if (this.giftJarPhysics && this.giftJarPhysics.container !== stage) {
+                this.giftJarPhysics.destroy();
+                this.giftJarPhysics = null;
+            }
+
+            if (!this.giftJarPhysics) {
                 this.giftJarPhysics = new window.GiftJarPhysics(stage, {
                     getItemRect: () => {
                         const curItem = item || this.items.find(e => e.type === 'gift-jar');
