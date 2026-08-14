@@ -1551,6 +1551,12 @@
                     goals: Array.isArray(item.goals) ? item.goals.map(g => ({ id: g.id, text: g.text, target: g.target, giftId: g.giftId })) : undefined,
                     pkPlayers: Array.isArray(item.pkPlayers) ? item.pkPlayers.map(p => ({ name: p.name, giftId: p.giftId, target: p.target })) : undefined,
                     talentCompetition: item.talentCompetition,
+                    theme: item.theme,
+                    customJarImageUrl: item.customJarImageUrl,
+                    title: item.title,
+                    capacityLevel: item.capacityLevel,
+                    dropItemType: item.dropItemType,
+                    targetCoins: item.targetCoins,
                 };
                 const contentSignature = JSON.stringify(structuralState);
 
