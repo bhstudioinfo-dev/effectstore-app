@@ -777,6 +777,29 @@
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
+            const theme = jarWidget.dataset?.theme || 'hu-thuong';
+            const jarColor = jarWidget.dataset?.jarColor || '';
+            const curItem = typeof this.options.getItem === 'function' ? this.options.getItem() : null;
+            const ribbonUrl = curItem?.ribbonImageUrl || '';
+
+            // 1. Draw Back Glass Layer (hu-thuong-2.png) BEHIND GIFTS
+            if ((theme === 'hu-thuong' || !theme) && jar && jar.w > 0 && jar.h > 0) {
+                const backImg = this.imageCache['hu-thuong-back'] || this.loadImage('hu-thuong-back', this.getAssetUrl('jars', 'hu-thuong-2.png'));
+                if (backImg && backImg.complete && backImg.naturalWidth > 0) {
+                    ctx.drawImage(backImg, jar.x, jar.y, jar.w, jar.h);
+
+                    if (jarColor && jarColor !== '#ffffff' && jarColor !== 'transparent') {
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'source-atop';
+                        ctx.fillStyle = jarColor;
+                        ctx.globalAlpha = 0.45;
+                        ctx.fillRect(jar.x, jar.y, jar.w, jar.h);
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // 2. Draw Falling / Settled Gifts
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
                 const x = b.position.x;
@@ -853,12 +876,7 @@
                 ctx.restore();
             }
 
-            // 2. Draw Front Glass Layer (hu-thuong.png) ON TOP OF GIFTS
-            const theme = jarWidget.dataset?.theme || 'hu-thuong';
-            const jarColor = jarWidget.dataset?.jarColor || '';
-            const curItem = typeof this.options.getItem === 'function' ? this.options.getItem() : null;
-            const ribbonUrl = curItem?.ribbonImageUrl || '';
-
+            // 3. Draw Front Glass Layer (hu-thuong.png) ON TOP OF GIFTS
             if ((theme === 'hu-thuong' || !theme) && jar && jar.w > 0 && jar.h > 0) {
                 const frontImg = this.imageCache['hu-thuong'] || this.loadImage('hu-thuong', this.getAssetUrl('jars', 'hu-thuong.png'));
                 if (frontImg && frontImg.complete && frontImg.naturalWidth > 0) {
@@ -875,7 +893,7 @@
                 }
             }
 
-            // 3. Draw Ribbon/Bow over Jar Neck (Layer 4 - Frontmost)
+            // 4. Draw Ribbon/Bow over Jar Neck (Layer 4 - Frontmost)
             if (ribbonUrl && jar && jar.w > 0 && jar.h > 0) {
                 const ribbonImg = this.imageCache[ribbonUrl] || this.loadImage(ribbonUrl, ribbonUrl);
                 if (ribbonImg && ribbonImg.complete && ribbonImg.naturalWidth > 0) {

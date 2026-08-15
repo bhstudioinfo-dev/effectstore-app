@@ -1951,13 +1951,7 @@
             } catch (_e) {}
         }
         if (theme === 'hu-thuong' && !jarImageUrl) {
-            const hasColor = jarColor && jarColor !== '#ffffff' && jarColor !== 'transparent';
-            const tintFilter = hasColor ? `filter:drop-shadow(0 0 0 ${jarColor}) drop-shadow(0 0 1px ${jarColor});` : '';
-            return `<div class="gmd-gift-jar-widget" data-theme="hu-thuong" data-jar-color="${jarColor}" data-ribbon="${ribbonImageUrl ? '1' : '0'}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
-                <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                    <img class="gmd-jar-back" src="assets/jars/hu-thuong-2.png" onerror="this.onerror=null;this.style.display='none';" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1;transform:translate(-0.8%, -1.2%);${tintFilter}" />
-                    ${hasColor ? `<div class="gmd-jar-back-tint" style="position:absolute;inset:0;width:100%;height:100%;background:${jarColor};mix-blend-mode:color;opacity:0.75;pointer-events:none;z-index:2;-webkit-mask-image:url('assets/jars/hu-thuong-2.png');mask-image:url('assets/jars/hu-thuong-2.png');-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;transform:translate(-0.8%, -1.2%);"></div>` : ''}
-                </div>
+            return `<div class="gmd-gift-jar-widget" data-theme="hu-thuong" data-jar-color="${jarColor}" data-ribbon="${ribbonImageUrl ? '1' : '0'}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;pointer-events:none;">
             </div>`;
         }
 
