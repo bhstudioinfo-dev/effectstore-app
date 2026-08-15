@@ -6803,6 +6803,7 @@
             const makeCustomGiftSelectForJar = (fieldKey, currentId) => {
                 const currentGift = this.gifts.find(g => String(g.id) === String(currentId)) || { id: '', name: 'Chọn quà mapping...', icon: '' };
                 const currentIcon = this.normalizeIcon(currentGift.icon || '');
+                const nameKey = fieldKey === 'bombGiftId' ? 'bombGiftName' : (fieldKey === 'resetGiftId' ? 'resetGiftName' : '');
                 return `
                     <div class="gmd-custom-select" style="width: 100%; margin-top: 4px;">
                         <div class="gmd-custom-select-header" style="height: 32px; padding: 4px 8px;" onclick="this.nextElementSibling.classList.toggle('show')">
@@ -6814,7 +6815,7 @@
                             ${this.gifts.map(g => {
                                 const gIcon = this.normalizeIcon(g.icon || '');
                                 return `
-                                    <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" style="padding: 5px 8px; font-size: 11px;" onclick="window.giftMenuDesigner.updateGiftJarField('${selected.id}', '${fieldKey}', '${g.id}'); this.parentElement.classList.remove('show'); window.giftMenuDesigner.renderInspector();">
+                                    <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" style="padding: 5px 8px; font-size: 11px;" onclick="window.giftMenuDesigner.updateGiftJarField('${selected.id}', '${fieldKey}', '${g.id}'); ${nameKey ? `window.giftMenuDesigner.updateGiftJarField('${selected.id}', '${nameKey}', '${this.escapeHtml(g.name || '')}');` : ''} this.parentElement.classList.remove('show'); window.giftMenuDesigner.renderInspector();">
                                         ${renderGiftOptionMedia(g, gIcon, 18)}
                                         <span style="font-weight: 600;">${g.name || g.id}</span>
                                         <span style="margin-left: auto; font-size: 10px; color: #a855f7;">${g.coins || 1}💎</span>

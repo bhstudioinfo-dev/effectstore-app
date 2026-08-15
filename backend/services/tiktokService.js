@@ -642,17 +642,21 @@ class TikTokService {
         // 4. Update Gift Jar widget
         layout.layers.forEach(layer => {
             if (layer.type === 'gift-jar' && layer.visible !== false) {
-                const receivedGiftId = String(gift.giftId || '');
-                const receivedGiftName = String(gift.giftName || '');
+                const rawGiftId = String(gift.giftId || '').toLowerCase().trim();
+                const rawGiftName = String(gift.giftName || '').toLowerCase().trim();
 
-                const isBombMatch = layer.bombGiftEnabled && (
-                    (layer.bombGiftId && (String(layer.bombGiftId) === receivedGiftId || String(layer.bombGiftId) === receivedGiftName)) ||
-                    (layer.bombGiftName && layer.bombGiftName === receivedGiftName)
+                const bombId = String(layer.bombGiftId || '').toLowerCase().trim();
+                const bombName = String(layer.bombGiftName || '').toLowerCase().trim();
+                const isBombMatch = Boolean(layer.bombGiftEnabled) && Boolean(
+                    (bombId && (bombId === rawGiftId || bombId === rawGiftName)) ||
+                    (bombName && (bombName === rawGiftName || bombName === rawGiftId))
                 );
 
-                const isResetMatch = layer.resetGiftEnabled && (
-                    (layer.resetGiftId && (String(layer.resetGiftId) === receivedGiftId || String(layer.resetGiftId) === receivedGiftName)) ||
-                    (layer.resetGiftName && layer.resetGiftName === receivedGiftName)
+                const resetId = String(layer.resetGiftId || '').toLowerCase().trim();
+                const resetName = String(layer.resetGiftName || '').toLowerCase().trim();
+                const isResetMatch = Boolean(layer.resetGiftEnabled) && Boolean(
+                    (resetId && (resetId === rawGiftId || resetId === rawGiftName)) ||
+                    (resetName && (resetName === rawGiftName || resetName === rawGiftId))
                 );
 
                 if (isBombMatch) {
