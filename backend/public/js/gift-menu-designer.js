@@ -8054,7 +8054,9 @@
                                     <button class="gmd-btn" style="font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'small')">🌹 Quà Nhỏ (1-10 Xu)</button>
                                     <button class="gmd-btn" style="font-size: 11px; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'medium')">🎁 Quà Vừa (100-500 Xu)</button>
                                     <button class="gmd-btn" style="font-size: 11px; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.3); color: #c084fc; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'large')">🦁 Quà Khủng (1,000+ Xu)</button>
-                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(236,72,153,0.15); border: 1px solid rgba(236,72,153,0.3); color: #f472b6; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'top_donor')">👑 Rơi Huy Hiệu Top 1</button>
+                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.35); color: #facc15; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'top_donor_1')">👑 Rơi Huy Hiệu Top 1</button>
+                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.35); color: #fb923c; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'top_donor_3')">🥉 Rơi Huy Hiệu Top 3</button>
+                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.35); color: #38bdf8; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'top_donor_5')">💎 Rơi Huy Hiệu Top 5</button>
                                 </div>
                                 <button class="gmd-btn" style="width: 100%; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 30px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> Reset Hũ về 0 Xu (Làm sạch)</button>
                             </div>
@@ -9229,12 +9231,24 @@
                     giftIcon = '⚡';
                     if (physics) physics.spawnZeus();
                 }
-            } else if (tier === 'top_donor') {
+            } else if (tier === 'top_donor' || tier === 'top_donor_1') {
                 coins = 500;
                 giftName = '👑 Top 1 Supporter';
                 giftIcon = '👑';
                 rankBadge = '👑 Hạng 1';
                 if (physics) physics.spawnTopDonorBadge(1, 'Top 1 Supporter');
+            } else if (tier === 'top_donor_3') {
+                coins = 300;
+                giftName = '🥉 Top 3 Supporter';
+                giftIcon = '🥉';
+                rankBadge = '🥉 Hạng 3';
+                if (physics) physics.spawnTopDonorBadge(3, 'Top 3 Supporter');
+            } else if (tier === 'top_donor_5') {
+                coins = 150;
+                giftName = '💎 Top 5 Supporter';
+                giftIcon = '💎';
+                rankBadge = '💎 Hạng 5';
+                if (physics) physics.spawnTopDonorBadge(5, 'Top 5 Supporter');
             } else {
                 this.testGiftJarRandom(itemId);
                 return;

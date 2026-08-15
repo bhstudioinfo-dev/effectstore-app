@@ -417,9 +417,9 @@
 
                     if (isSpilledOut) {
                         b.isInsideJar = false;
-                        b.friction = 0.50;
-                        b.frictionAir = 0.015;
-                        b.restitution = 0.05;
+                        b.friction = 0.08;
+                        b.frictionAir = 0.001;
+                        b.restitution = 0.20;
                     } else {
                         if (b.position.y > jarFloorY - r && b.position.y < jarFloorY + 25) {
                             Matter.Body.setPosition(b, {
@@ -429,6 +429,14 @@
                             if (b.velocity.y > 0) {
                                 Matter.Body.setVelocity(b, { x: b.velocity.x * 0.7, y: 0 });
                             }
+                        }
+                    }
+                } else {
+                    if (b.position.y > jarFloorY && Math.abs(b.velocity.y) < 0.1 && Math.abs(b.velocity.x) < 0.05) {
+                        const centerX = jar.x + jar.w / 2;
+                        if (Math.abs(b.position.x - centerX) > 30 && b.position.y > jarFloorY + 10) {
+                            const dir = b.position.x < centerX ? 0.04 : -0.04;
+                            Matter.Body.applyForce(b, b.position, { x: dir * b.mass * 0.001, y: 0 });
                         }
                     }
                 }
@@ -582,9 +590,11 @@
         }
 
         spawnTopDonorBadge(rank = 1, nickname = 'Top Fan') {
-            this.spawnGiftBody('top_donor', 18, {
-                rank: rank || 1,
-                nickname: nickname || 'Top 1'
+            const numRank = Number(rank) || 1;
+            const radius = numRank === 1 ? 21 : (numRank <= 3 ? 19 : 17);
+            this.spawnGiftBody('top_donor', radius, {
+                rank: numRank,
+                nickname: nickname || `Top ${numRank}`
             });
         }
 
@@ -736,7 +746,7 @@
 
                 for (let i = 0; i < this.items.length; i++) {
                     const b = this.items[i];
-                    if (Math.abs(b.velocity.x) < 0.12 && Math.abs(b.velocity.y) < 0.12) {
+                    if (Math.abs(b.velocity.x) < 0.04 && Math.abs(b.velocity.y) < 0.04) {
                         Matter.Body.setVelocity(b, { x: 0, y: 0 });
                         Matter.Body.setAngularVelocity(b, 0);
                     }
@@ -825,19 +835,70 @@
                 ctx.rotate(angle);
 
                 if (type === 'top_donor') {
+                    const rank = Number(data.rank) || 1;
                     ctx.beginPath();
                     ctx.arc(0, 0, r, 0, Math.PI * 2);
-                    ctx.fillStyle = '#f59e0b';
+
+                    const grad = ctx.createLinearGradient(-r, -r, r, r);
+                    let ringColor = '#fbbf24';
+                    let badgeLabel = `👑 #${rank}`;
+
+                    if (rank === 1) {
+                        grad.addColorStop(0, '#fef08a');
+                        grad.addColorStop(0.5, '#f59e0b');
+                        grad.addColorStop(1, '#b45309');
+                        ringColor = '#fbbf24';
+                        badgeLabel = '👑 #1';
+                    } else if (rank === 2) {
+                        grad.addColorStop(0, '#ffffff');
+                        grad.addColorStop(0.5, '#cbd5e1');
+                        grad.addColorStop(1, '#64748b');
+                        ringColor = '#e2e8f0';
+                        badgeLabel = '🥈 #2';
+                    } else if (rank === 3) {
+                        grad.addColorStop(0, '#ffedd5');
+                        grad.addColorStop(0.5, '#f97316');
+                        grad.addColorStop(1, '#9a3412');
+                        ringColor = '#fdba74';
+                        badgeLabel = '🥉 #3';
+                    } else if (rank === 4) {
+                        grad.addColorStop(0, '#fae8ff');
+                        grad.addColorStop(0.5, '#c084fc');
+                        grad.addColorStop(1, '#7e22ce');
+                        ringColor = '#e879f9';
+                        badgeLabel = '💎 #4';
+                    } else {
+                        grad.addColorStop(0, '#ecfeff');
+                        grad.addColorStop(0.5, '#22d3ee');
+                        grad.addColorStop(1, '#0e7490');
+                        ringColor = '#67e8f9';
+                        badgeLabel = '💎 #5';
+                    }
+
+                    ctx.fillStyle = grad;
                     ctx.fill();
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 1.5;
+
+                    // Outer glossy ring
+                    ctx.strokeStyle = ringColor;
+                    ctx.lineWidth = 2.5;
                     ctx.stroke();
 
+                    // Inner reflective highlight ring
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r - 3, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    // Text
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = `900 ${Math.max(9, r * 0.75)}px "Inter", "Segoe UI", sans-serif`;
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+                    ctx.shadowBlur = 4;
+                    ctx.font = `900 ${Math.max(10, r * 0.70)}px "Inter", "Segoe UI", sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(`👑 #${data.rank || 1}`, 0, 0);
+                    ctx.fillText(badgeLabel, 0, 1);
+                    ctx.shadowBlur = 0;
                 } else if (type === 'star') {
                     ctx.beginPath();
                     const spikes = 5;
