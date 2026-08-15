@@ -4874,19 +4874,16 @@
                         </div>`;
                 } else if (t.id === 'tmpl_interactive_gift_jar' || t.category === 'gift-jar') {
                     previewHTML = `
-                        <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #241238 0%, #090412 100%); border: 1px solid rgba(244,63,94,0.5); box-shadow: 0 0 10px rgba(244,63,94,0.3); border-radius: 6px; padding: 2px 4px; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; position: relative; overflow: hidden;">
-                            <div style="position: absolute; top: 2px; left: 0; right: 0; text-align: center; font-size: 5.5px; font-weight: 900; color: #f43f5e; line-height: 1; letter-spacing: 0.3px; text-shadow: 0 0 4px rgba(244,63,94,0.8);">🏺 HŨ QUÀ TẶNG</div>
-                            <div style="position: relative; width: 34px; height: 38px; margin-top: 5px; display: flex; align-items: center; justify-content: center;">
-                                <img src="assets/jars/hu-thuong.png" onerror="this.style.opacity='0.2'" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 6px rgba(244,63,94,0.6));" />
-                                <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0px; pointer-events: none;">
-                                    <div style="font-size: 9px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.9)); transform: scale(1.1);">🎁</div>
-                                    <div style="display: flex; gap: 1px; font-size: 8px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.9));">
-                                        <span>💎</span>
-                                        <span>🌹</span>
-                                    </div>
+                        <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, rgba(168,85,247,0.18) 0%, #090d1f 100%); border: 1px solid rgba(168,85,247,0.4); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; box-sizing: border-box; position: relative; overflow: hidden;">
+                            <div style="position: relative; width: 34px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                <img src="assets/jars/hu-thuong.png" onerror="this.style.display='none'" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 6px rgba(168,85,247,0.6)); z-index: 2;" />
+                                <div style="position: absolute; bottom: 4px; display: flex; gap: 1px; z-index: 1;">
+                                    <span style="font-size: 7px;">🪙</span>
+                                    <span style="font-size: 7px;">💎</span>
+                                    <span style="font-size: 7px;">🌹</span>
                                 </div>
                             </div>
-                            <div style="position: absolute; bottom: 2px; font-size: 4.5px; color: #fbbf24; font-weight: 800; text-shadow: 0 0 3px rgba(251,191,36,0.8);">PHYSICS 3D</div>
+                            <div style="font-size: 5px; font-weight: 900; color: #c084fc; text-shadow: 0 0 4px #a855f7; line-height: 1; letter-spacing: 0.2px;">HŨ QUÀ TẶNG</div>
                         </div>
                     `;
                 } else if (t.id === 'tmpl_pk_versus_bar') {
