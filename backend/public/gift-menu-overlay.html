@@ -1825,6 +1825,15 @@
           itemElementCache.delete(id);
         }
       });
+
+      currentMenuData = layout;
+      const hasJar = items.some((item) => item && item.type === 'gift-jar' && item.visible !== false);
+      if (hasJar) {
+        ensureOverlayGiftJarPhysics();
+      } else if (overlayGiftJarPhysics) {
+        overlayGiftJarPhysics.destroy();
+        overlayGiftJarPhysics = null;
+      }
     }
 
     let giftsLibrary = [];
@@ -2127,17 +2136,24 @@
     }
 
     let overlayGiftJarPhysics = null;
+    let currentMenuData = null;
+
     function ensureOverlayGiftJarPhysics() {
-      if (overlayGiftJarPhysics) return overlayGiftJarPhysics;
       if (typeof window.GiftJarPhysics === 'function') {
         const root = document.getElementById('overlay-root') || document.body;
-        overlayGiftJarPhysics = new window.GiftJarPhysics(root, {
-          autoResize: true,
-          getItem: () => {
-            const items = currentMenuData?.items || [];
-            return items.find(e => e.type === 'gift-jar') || null;
-          }
-        });
+        if (!overlayGiftJarPhysics || overlayGiftJarPhysics.container !== root) {
+          if (overlayGiftJarPhysics) overlayGiftJarPhysics.destroy();
+          overlayGiftJarPhysics = new window.GiftJarPhysics(root, {
+            autoResize: true,
+            getItem: () => {
+              const items = currentMenuData?.exportedItems || currentMenuData?.items || [];
+              return items.find(e => e.type === 'gift-jar') || null;
+            }
+          });
+        }
+        if (overlayGiftJarPhysics) {
+          overlayGiftJarPhysics.setupWalls();
+        }
       }
       return overlayGiftJarPhysics;
     }
