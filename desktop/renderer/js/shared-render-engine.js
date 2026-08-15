@@ -1938,7 +1938,6 @@
         const jarColor = item.jarColor || '';
         const ribbonImageUrl = item.ribbonImageUrl || '';
         let jarImageUrl = item.customJarImageUrl || item.jarImageUrl || '';
-        const ctx = getRenderContext(options);
 
         if (!jarImageUrl && String(theme).startsWith('custom_')) {
             try {
@@ -1951,18 +1950,21 @@
                 }
             } catch (_e) {}
         }
-
-        const isPreview = options.mode === 'preview' || options.includeDesignerFallback;
-
-        if (isPreview) {
-            const imgSrc = jarImageUrl || 'assets/jars/hu-thuong.png';
-            const colorFilter = jarColor ? `filter: drop-shadow(0 0 12px ${jarColor});` : 'filter: drop-shadow(0 8px 24px rgba(0,0,0,0.6));';
-            return `<div class="gmd-gift-jar-widget" data-theme="${theme}" data-jar-color="${jarColor}" data-ribbon="${ribbonImageUrl ? '1' : '0'}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">
-                <div style="position:relative;width:92%;height:92%;display:flex;align-items:center;justify-content:center;">
-                    <img src="${imgSrc}" onerror="this.onerror=null;this.src='assets/jars/hu-thuong.png';" style="width:100%;height:100%;object-fit:contain;pointer-events:none;${colorFilter}" />
-                    <div style="position:absolute;inset:25% 15% 15% 15%;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:center;gap:6px;pointer-events:none;font-size:${font(ctx, 28, 28)}px;">
-                        <span>💎</span><span>🌹</span><span>🎁</span><span>🍬</span><span>⭐</span>
+        if (options && options.mode === 'preview') {
+            const apiBase = options.apiBase || '';
+            const jarSrc = jarImageUrl || `${apiBase}assets/jars/hu-thuong.png`;
+            return `
+            <div class="gmd-gift-jar-widget gmd-gift-jar-preview-stage" data-theme="${theme}" data-jar-color="${jarColor}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">
+                <div style="position:relative;width:85%;height:90%;display:flex;align-items:center;justify-content:center;">
+                    <img src="${apiBase}assets/jars/hu-thuong-2.png" onerror="this.style.display='none'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0.6;filter:drop-shadow(0 0 12px ${jarColor || 'rgba(244,63,94,0.4)'});" />
+                    <div style="position:absolute;inset:20% 12% 12% 12%;display:flex;flex-wrap:wrap;align-content:flex-end;justify-content:center;gap:10px;overflow:hidden;pointer-events:none;">
+                        <div style="font-size:36px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6));">💎</div>
+                        <div style="font-size:36px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6));">🎁</div>
+                        <div style="font-size:36px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6));">🌹</div>
+                        <div style="font-size:36px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6));">🍬</div>
+                        <div style="font-size:40px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6));">🪐</div>
                     </div>
+                    <img src="${jarSrc}" onerror="this.onerror=null;this.src='${apiBase}assets/jars/hu-thuong.png';" style="position:relative;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:3;filter:drop-shadow(0 8px 22px rgba(0,0,0,0.6));" />
                 </div>
             </div>`;
         }
