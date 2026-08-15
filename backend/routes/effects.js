@@ -291,16 +291,23 @@ async function streamEffectById(req, res) {
         const effect = await Effect.findById(effectId);
         if (!effect) return res.status(404).json({ error: 'Not found' });
 
-        let streamPath = effect.previewFilePath;
-        if (!streamPath || !fs.existsSync(streamPath)) {
-            if (effect.encryptedFilePath) {
-                const migratedEncryptedPath = path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath));
-                streamPath = fs.existsSync(migratedEncryptedPath) ? migratedEncryptedPath : effect.encryptedFilePath;
-            }
-        }
+        const candidatePaths = [
+            effect.previewFilePath,
+            effect.encryptedFilePath,
+            effect.previewFilePath ? path.join(previewsDir, path.basename(effect.previewFilePath)) : null,
+            effect.encryptedFilePath ? path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath)) : null,
+            effect.previewFilePath ? path.join(dataPaths.backendRoot, 'uploads', 'previews', path.basename(effect.previewFilePath)) : null,
+            effect.encryptedFilePath ? path.join(dataPaths.backendRoot, 'effects', 'encrypted', path.basename(effect.encryptedFilePath)) : null,
+            path.join(encryptedEffectsDir, `${effectId}.enc`),
+            path.join(previewsDir, `${effectId}.webm`),
+            path.join(dataPaths.backendRoot, 'effects', 'encrypted', `${effectId}.enc`),
+            path.join(dataPaths.backendRoot, 'uploads', 'previews', `${effectId}.webm`)
+        ].filter(Boolean);
+
+        let streamPath = candidatePaths.find(p => fs.existsSync(p));
 
         if (streamPath && fs.existsSync(streamPath)) {
-            if (streamPath.includes('encrypted')) {
+            if (streamPath.includes('encrypted') || streamPath.endsWith('.enc')) {
                 res.setHeader('Cache-Control', 'private, no-store');
                 return streamDecryptedVideo(streamPath, req, res);
             } else {

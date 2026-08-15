@@ -53,6 +53,9 @@ function ensureRuntimeDirectories() {
     ].forEach((directory) => fs.mkdirSync(directory, { recursive: true }));
     if (dataRoot !== backendRoot) {
         copyMissing(path.join(backendRoot, 'assets', 'gift-icons'), paths.runtimeGiftIconsDir);
+        copyMissing(path.join(backendRoot, 'uploads', 'thumbs'), paths.thumbsDir);
+        copyMissing(path.join(backendRoot, 'uploads', 'previews'), paths.previewsDir);
+        copyMissing(path.join(backendRoot, 'effects', 'encrypted'), paths.encryptedEffectsDir);
     }
 }
 
