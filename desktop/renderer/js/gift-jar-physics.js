@@ -417,9 +417,9 @@
 
                     if (isSpilledOut) {
                         b.isInsideJar = false;
-                        b.friction = 0.08;
-                        b.frictionAir = 0.001;
-                        b.restitution = 0.20;
+                        b.friction = 0.50;
+                        b.frictionAir = 0.015;
+                        b.restitution = 0.05;
                     } else {
                         if (b.position.y > jarFloorY - r && b.position.y < jarFloorY + 25) {
                             Matter.Body.setPosition(b, {
@@ -429,14 +429,6 @@
                             if (b.velocity.y > 0) {
                                 Matter.Body.setVelocity(b, { x: b.velocity.x * 0.7, y: 0 });
                             }
-                        }
-                    }
-                } else {
-                    if (b.position.y > jarFloorY && Math.abs(b.velocity.y) < 0.1 && Math.abs(b.velocity.x) < 0.05) {
-                        const centerX = jar.x + jar.w / 2;
-                        if (Math.abs(b.position.x - centerX) > 30 && b.position.y > jarFloorY + 10) {
-                            const dir = b.position.x < centerX ? 0.04 : -0.04;
-                            Matter.Body.applyForce(b, b.position, { x: dir * b.mass * 0.001, y: 0 });
                         }
                     }
                 }
@@ -744,7 +736,7 @@
 
                 for (let i = 0; i < this.items.length; i++) {
                     const b = this.items[i];
-                    if (Math.abs(b.velocity.x) < 0.04 && Math.abs(b.velocity.y) < 0.04) {
+                    if (Math.abs(b.velocity.x) < 0.12 && Math.abs(b.velocity.y) < 0.12) {
                         Matter.Body.setVelocity(b, { x: 0, y: 0 });
                         Matter.Body.setAngularVelocity(b, 0);
                     }
