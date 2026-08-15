@@ -2821,7 +2821,11 @@ class EffectStoreApp {
                 let previewHTML = '';
                 const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value);
                 const thumbUrl = effect.thumbUrl ? resolveMediaUrl(effect.thumbUrl) : '';
-                const videoUrl = resolveMediaUrl(effect.previewUrl || effect.fileUrl);
+                let rawVideo = effect.previewUrl || effect.fileUrl;
+                if (!rawVideo || rawVideo.startsWith('/uploads/')) {
+                    rawVideo = effectId ? `/api/stream/effect/${effectId}` : '';
+                }
+                const videoUrl = rawVideo ? resolveMediaUrl(rawVideo) : '';
                 const fallbackIcon = effect.icon || '🎬';
                 const effectiveVideo = videoUrl || (effectId ? resolveMediaUrl(`/api/stream/effect/${effectId}`) : '');
 
@@ -3094,7 +3098,10 @@ class EffectStoreApp {
         // Protected playback routes read media from the desktop backend's local
         // library. Render's ephemeral filesystem does not contain these files,
         // so resolving them against CLOUD_API_URL produces a 404.
-        const isLocalPlaybackRoute = /^\/api\/(?:stream\/effect\/|obs\/effect-player-media\/)/i.test(raw);
+        const isLocalPlaybackRoute = /^\/api\/(?:stream\/effect\/|obs\/effect-player-media\/)/i.test(raw)
+            || /^\/assets\//i.test(raw)
+            || /^\/effects\//i.test(raw)
+            || /^\/uploads\//i.test(raw);
         const baseUrl = isLocalPlaybackRoute ? this.API_URL : this.CLOUD_API_URL;
         try {
             return new URL(raw, baseUrl).toString();
@@ -3131,7 +3138,11 @@ class EffectStoreApp {
         const hasPurchased = effect.isOwned === true ||
             this.ownedEffects.some(e => String(e.id || e._id) === String(effectId));
         const isOwned = isAdmin || isBusiness || hasPurchased;
-        const videoUrl = this.resolveCatalogMediaUrl(effect.previewUrl);
+        let rawVideo = effect.previewUrl || effect.fileUrl;
+        if (!rawVideo || rawVideo.startsWith('/uploads/')) {
+            rawVideo = effectId ? `/api/stream/effect/${effectId}` : '';
+        }
+        const videoUrl = this.resolveCatalogMediaUrl(rawVideo);
 
         document.getElementById('detail-name').textContent = `${effect.icon || '🎬'} ${effect.name}`;
         const templateKindSuffix = effect.category === 'menu_template'
