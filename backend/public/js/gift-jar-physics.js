@@ -290,33 +290,35 @@
             const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
             
             if (this.prevJarRect) {
+                const dw = jar.w - this.prevJarRect.w;
+                const dh = jar.h - this.prevJarRect.h;
                 const dx = jar.x - this.prevJarRect.x;
                 const dy = jar.y - this.prevJarRect.y;
 
-                if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3) {
-                    const newOuterLeft = jar.x + jar.w * 0.15;
-                    const newOuterRight = jar.x + jar.w * 0.85;
-                    const newOuterTop = jar.y + jar.h * 0.15;
-                    const newOuterBottom = jar.y + jar.h * 0.85;
+                if (Math.abs(dw) > 0.5 || Math.abs(dh) > 0.5) {
+                    const oldCenterX = this.prevJarRect.x + this.prevJarRect.w / 2;
+                    const oldCenterY = this.prevJarRect.y + this.prevJarRect.h * 0.55;
+                    const newCenterX = jar.x + jar.w / 2;
+                    const newCenterY = jar.y + jar.h * 0.55;
+                    const sx = jar.w / (this.prevJarRect.w || 1);
+                    const sy = jar.h / (this.prevJarRect.h || 1);
 
                     for (let i = 0; i < this.items.length; i++) {
                         const b = this.items[i];
-                        const r = b.giftRadius || 11;
+                        if (b.isInsideJar === true) {
+                            const relX = b.position.x - oldCenterX;
+                            const relY = b.position.y - oldCenterY;
+                            Matter.Body.setPosition(b, {
+                                x: newCenterX + relX * sx,
+                                y: newCenterY + relY * sy
+                            });
+                        }
+                    }
+                } else if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3) {
+                    for (let i = 0; i < this.items.length; i++) {
+                        const b = this.items[i];
                         if (b.isInsideJar === true) {
                             Matter.Body.setPosition(b, { x: b.position.x + dx, y: b.position.y + dy });
-                        } else {
-                            if (b.position.x >= newOuterLeft - 10 && b.position.x <= newOuterRight + 10 &&
-                                b.position.y >= newOuterTop - 10 && b.position.y <= newOuterBottom + 10) {
-                                const pushDir = b.position.x >= (jar.x + jar.w / 2) ? 1 : -1;
-                                Matter.Body.setPosition(b, { x: b.position.x + pushDir * 4, y: b.position.y + dy });
-                                Matter.Body.setVelocity(b, { x: pushDir * 3.5, y: b.velocity.y });
-
-                                if (dy > 0.3 && b.position.y >= newOuterBottom - 10) {
-                                    const sideDir = b.position.x >= (jar.x + jar.w / 2) ? 1 : -1;
-                                    Matter.Body.setPosition(b, { x: b.position.x + sideDir * 3, y: Math.max(b.position.y, newOuterBottom + r + 2) });
-                                    Matter.Body.setVelocity(b, { x: sideDir * 2.5, y: dy * 0.6 });
-                                }
-                            }
                         }
                     }
                 }

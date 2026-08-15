@@ -1957,7 +1957,6 @@
                 <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
                     <img class="gmd-jar-back" src="assets/jars/hu-thuong-2.png" onerror="this.onerror=null;this.style.display='none';" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1;transform:translate(-0.8%, -1.2%);${tintFilter}" />
                     ${hasColor ? `<div class="gmd-jar-back-tint" style="position:absolute;inset:0;width:100%;height:100%;background:${jarColor};mix-blend-mode:color;opacity:0.75;pointer-events:none;z-index:2;-webkit-mask-image:url('assets/jars/hu-thuong-2.png');mask-image:url('assets/jars/hu-thuong-2.png');-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;transform:translate(-0.8%, -1.2%);"></div>` : ''}
-                    ${ribbonImageUrl ? `<img class="gmd-jar-ribbon" src="${ribbonImageUrl}" style="position:absolute;top:10.5%;left:50%;transform:translate(-50%, 0);max-width:62%;max-height:28%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));" />` : ''}
                 </div>
             </div>`;
         }
@@ -1969,7 +1968,6 @@
         return `<div class="gmd-gift-jar-widget" data-theme="${theme}" data-jar-color="${jarColor}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
             <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
                 <img src="${jarImageUrl}" onerror="this.onerror=null;this.src='assets/jars/hu-thuong.png';" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:3;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.5));" />
-                ${ribbonImageUrl ? `<img class="gmd-jar-ribbon" src="${ribbonImageUrl}" style="position:absolute;top:10.5%;left:50%;transform:translate(-50%, 0);max-width:62%;max-height:28%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));" />` : ''}
             </div>
         </div>`;
     }
