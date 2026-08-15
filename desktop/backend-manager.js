@@ -115,18 +115,15 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
         API_HOST: '0.0.0.0',
         WS_HOST: '0.0.0.0'
     };
-    if (config.JWT_SECRET.length < 32) {
-        try {
-            require('electron-log').warn(`[backend-manager] Generating a NEW JWT_SECRET (existing config present: ${fs.existsSync(configPath)}) — this invalidates every currently logged-in session.`);
-        } catch (_e) {}
-        config.JWT_SECRET = String(process.env.JWT_SECRET || 'effectstore-super-secret-key-2024-change-this-in-production').trim();
-        if (config.JWT_SECRET.length < 32) {
-            config.JWT_SECRET = crypto.randomBytes(48).toString('hex');
-        }
-    }
-    if (config.ENCRYPTION_PASSWORD.length < 32) {
-        config.ENCRYPTION_PASSWORD = crypto.randomBytes(48).toString('hex');
-    }
+    const SHARED_JWT_SECRET = '675ad2a8642ae99b1f859f47dce6ba799fa07ecde2687a4315062c4b71caba7cebfb6d0fee091b54489d380c4497133b';
+    const SHARED_ENCRYPTION_PASSWORD = 'effectstore-super-secret-encryption-key-2024';
+
+    config.JWT_SECRET = String(process.env.JWT_SECRET || SHARED_JWT_SECRET).trim();
+    if (config.JWT_SECRET.length < 32) config.JWT_SECRET = SHARED_JWT_SECRET;
+
+    config.ENCRYPTION_PASSWORD = String(process.env.ENCRYPTION_PASSWORD || SHARED_ENCRYPTION_PASSWORD).trim();
+    if (config.ENCRYPTION_PASSWORD.length < 32) config.ENCRYPTION_PASSWORD = SHARED_ENCRYPTION_PASSWORD;
+
     if (config.INITIAL_SETUP_TOKEN.length < 32) config.INITIAL_SETUP_TOKEN = crypto.randomBytes(48).toString('hex');
 
     // Prefer explicit defaultMongodbUri when bundled mongo is active
