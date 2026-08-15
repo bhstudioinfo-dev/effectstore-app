@@ -355,11 +355,11 @@ try {
                 if (ws.messageWindow.resetAt <= now) ws.messageWindow = { count: 0, resetAt: now + 10000 };
                 ws.messageWindow.count += 1;
                 if (ws.messageWindow.count > 30) return ws.close(1008, 'Message rate exceeded');
-                const packet = JSON.parse(raw.toString() || '{}');
-                // Phase 2A infrastructure only. These events do not trigger media.
                 if (packet.event === 'effect_player_ready' || packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
                     if (packet.event === 'effect_player_ready') effectPlayerClients.add(ws);
                     effectQueue.handleEffectPlayerEvent(packet.event, packet.data || {});
+                    broadcastToClients(packet.event, packet.data || {});
+                } else if (packet.event === 'gift_jar_reset' || packet.event === 'gift_jar_drop' || packet.event === 'challenge_wheel_spin') {
                     broadcastToClients(packet.event, packet.data || {});
                 }
             } catch (error) {

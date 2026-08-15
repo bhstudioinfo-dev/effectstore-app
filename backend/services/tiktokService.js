@@ -639,6 +639,29 @@ class TikTokService {
             }
         });
 
+        // 4. Update Gift Jar widget
+        layout.layers.forEach(layer => {
+            if (layer.type === 'gift-jar' && layer.visible !== false) {
+                const addedCoins = (diamondCount > 0 ? diamondCount : 1) * repeatCount;
+                layer.currentCoins = (Number(layer.currentCoins) || 0) + addedCoins;
+                hasUpdates = true;
+
+                this.broadcast('gift_jar_drop', {
+                    coins: addedCoins,
+                    giftName: gift.giftName || 'Quà TikTok',
+                    giftIcon: gift.iconUrl || '',
+                    nickname: senderNickname,
+                    currentCoins: layer.currentCoins,
+                    targetCoins: layer.targetCoins || 1000,
+                    reachedTarget: layer.currentCoins >= (layer.targetCoins || 1000),
+                    theme: layer.theme || 'hu-thuong',
+                    jarColor: layer.jarColor || '',
+                    dropItemType: layer.dropItemType || 'tiktok_gift',
+                    timestamp: Date.now()
+                });
+            }
+        });
+
         if (hasUpdates) {
             const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
             try {
