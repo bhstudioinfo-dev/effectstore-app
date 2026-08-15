@@ -2392,10 +2392,16 @@ class EffectStoreApp {
         const hasProof = input && input.files && input.files[0];
         try {
             const btn = event.target;
-            btn.textContent = '⏳ Đang gửi...'; btn.disabled = true;
             const formData = new FormData();
-            if (hasProof) formData.append('proof', input.files[0]);
+            if (hasProof) {
+                formData.append('proof', input.files[0]);
+            } else {
+                // 1x1 transparent PNG fallback for instant cloud compatibility
+                const fallbackPngBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 10, 73, 68, 65, 84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1, 13, 10, 45, 180, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130]);
+                formData.append('proof', new Blob([fallbackPngBytes], { type: 'image/png' }), 'manual_transfer_proof.png');
+            }
             formData.append('orderId', orderId);
+            formData.append('noProof', hasProof ? 'false' : 'true');
             const headers = {};
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
             const res = await fetch(this.API_URL + '/api/payment/confirm', {
