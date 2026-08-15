@@ -6,10 +6,9 @@
  *   2. 🍬 Kẹo ngọt (11 Real High-Res Candy PNGs từ D:\HỦ QUÀ)
  *   3. 💎 Kim cương quý (15 Real High-Res Diamond/Gem PNGs từ D:\HỦ QUÀ\KIM CUONG QUY)
  *   4. ⭐ Ngôi sao sáng (Star)
- * Features:
- *   - Drops from the VERY TOP of the 9:16 screen into the jar mouth
- *   - Full screen overflow and stacking when jar is filled to capacity
- *   - Smooth dragging without ghost duplicate jars
+ * Features 3 capacity presets (Vừa / Trung bình / Nhiều), sleek form-fitting bottom (zero under-jar gaps),
+ * Hard Internal Floor Guard (zero leakage guarantee), strict inside/outside gift separation (zero sucking),
+ * and Dynamic Jar Movement physics.
  */
 (function(window) {
     'use strict';
@@ -104,9 +103,9 @@
                 }
             }
 
-            if (level === 'small') return 1.15;
-            if (level === 'large') return 0.65;
-            return 0.85;
+            if (level === 'small') return 1.50; // Vừa (~25 - 30 món quà -> Icon to nổi bật)
+            if (level === 'large') return 0.80; // Nhiều (~120 - 150+ món quà -> Icon gọn gàng)
+            return 1.10; // Trung bình (~60 - 70 món quà - Mặc định)
         }
 
         getAssetUrl(subfolder, filename) {
@@ -122,6 +121,8 @@
         }
 
         preloadAllAssets() {
+            this.loadImage('hu-thuong', this.getAssetUrl('jars', 'hu-thuong.png'));
+            this.loadImage('hu-thuong-2', this.getAssetUrl('jars', 'hu-thuong-2.png'));
             POPULAR_TIKTOK_GIFTS.forEach(g => {
                 this.loadImage(g.id, this.getAssetUrl('gift-icons', g.file));
             });
@@ -131,7 +132,6 @@
             REAL_DIAMOND_GIFTS.forEach(d => {
                 this.loadImage(d.id, this.getAssetUrl('diamonds', d.file));
             });
-            this.loadImage('hu-thuong-lop-tren', this.getAssetUrl('jars', 'hu-thuong-lop-tren.png'));
         }
 
         loadImage(key, src) {
@@ -227,10 +227,17 @@
         }
 
         getJarRect() {
+            const target = this.mountTarget || this.container;
+            if (target && target.classList && (target.classList.contains('gmd-gift-jar-inner') || target.classList.contains('gmd-gift-jar-widget'))) {
+                const w = target.offsetWidth || target.clientWidth || 450;
+                const h = target.offsetHeight || target.clientHeight || 600;
+                return { x: 0, y: 0, w, h };
+            }
+
             const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
             if (jarWidget) {
                 const itemEl = jarWidget.closest('.gmd-item');
-                if (itemEl && itemEl.style.display !== 'none') {
+                if (itemEl) {
                     const x = parseFloat(itemEl.style.left);
                     const y = parseFloat(itemEl.style.top);
                     const w = parseFloat(itemEl.style.width);
@@ -246,7 +253,15 @@
                 if (r && r.w > 0 && r.h > 0) return r;
             }
 
-            return null;
+            const bounds = this.getArtboardBounds();
+            const defW = Math.round(bounds.width * 0.40);
+            const defH = Math.round(bounds.height * 0.32);
+            return {
+                x: Math.round(bounds.left + (bounds.width - defW) / 2),
+                y: Math.round(bounds.bottom - defH - 20),
+                w: defW,
+                h: defH
+            };
         }
 
         getJarInnerRect() {
@@ -270,19 +285,7 @@
 
         checkAndSyncWalls() {
             const jar = this.getJarInnerRect();
-            if (!jar) {
-                if (this.wallBodies.length && this.world) {
-                    Matter.World.remove(this.world, this.wallBodies);
-                    this.wallBodies = [];
-                }
-                if (this.items.length) {
-                    this.reset();
-                }
-                this.prevJarRect = null;
-                this.lastWallSig = '';
-                return;
-            }
-
+            if (!jar) return;
             const bounds = this.getArtboardBounds();
             const sig = `${bounds.left.toFixed(1)},${bounds.top.toFixed(1)},${bounds.width.toFixed(1)},${bounds.height.toFixed(1)}|${jar.x.toFixed(1)},${jar.y.toFixed(1)},${jar.w.toFixed(1)},${jar.h.toFixed(1)}`;
             
@@ -291,18 +294,29 @@
                 const dy = jar.y - this.prevJarRect.y;
 
                 if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3) {
+                    const newOuterLeft = jar.x + jar.w * 0.15;
+                    const newOuterRight = jar.x + jar.w * 0.85;
+                    const newOuterTop = jar.y + jar.h * 0.15;
+                    const newOuterBottom = jar.y + jar.h * 0.85;
+
                     for (let i = 0; i < this.items.length; i++) {
                         const b = this.items[i];
+                        const r = b.giftRadius || 11;
                         if (b.isInsideJar === true) {
-                            Matter.Sleeping.set(b, false);
-                            Matter.Body.setPosition(b, {
-                                x: b.position.x + dx,
-                                y: b.position.y + dy
-                            });
-                            Matter.Body.setVelocity(b, {
-                                x: dx * 0.35,
-                                y: dy * 0.35
-                            });
+                            Matter.Body.setPosition(b, { x: b.position.x + dx, y: b.position.y + dy });
+                        } else {
+                            if (b.position.x >= newOuterLeft - 10 && b.position.x <= newOuterRight + 10 &&
+                                b.position.y >= newOuterTop - 10 && b.position.y <= newOuterBottom + 10) {
+                                const pushDir = b.position.x >= (jar.x + jar.w / 2) ? 1 : -1;
+                                Matter.Body.setPosition(b, { x: b.position.x + pushDir * 4, y: b.position.y + dy });
+                                Matter.Body.setVelocity(b, { x: pushDir * 3.5, y: b.velocity.y });
+
+                                if (dy > 0.3 && b.position.y >= newOuterBottom - 10) {
+                                    const sideDir = b.position.x >= (jar.x + jar.w / 2) ? 1 : -1;
+                                    Matter.Body.setPosition(b, { x: b.position.x + sideDir * 3, y: Math.max(b.position.y, newOuterBottom + r + 2) });
+                                    Matter.Body.setVelocity(b, { x: sideDir * 2.5, y: dy * 0.6 });
+                                }
+                            }
                         }
                     }
                 }
@@ -325,12 +339,8 @@
                 this.wallBodies = [];
             }
 
-            const jar = this.getJarInnerRect();
-            if (!jar) return;
-
             const bounds = this.getArtboardBounds();
 
-            // 1. Strict 9:16 Screen Boundaries
             const leftScreen = Bodies.rectangle(bounds.left - 25, (bounds.top + bounds.bottom) / 2, 50, bounds.height * 2, {
                 isStatic: true, friction: 0.1, restitution: 0.1, label: 'screen_left'
             });
@@ -342,35 +352,45 @@
             });
             this.wallBodies.push(floor, leftScreen, rightScreen);
 
-            // 2. Sleek Jar Boundaries (Exact inner glass fit, no lateral overflow blockage)
+            const jar = this.getJarInnerRect();
+            if (!jar) return;
             const jx = jar.x + jar.w / 2;
-            const bottomY = jar.y + jar.h * 0.93;
+            const jw = jar.w;
+            const jh = jar.h;
 
-            // Thin 6px jar bottom glass plate — exactly spans bottom glass floor
-            const jarBottom = Bodies.rectangle(jx, bottomY, jar.w * 0.68, 6, {
+            const bottomY = jar.y + jh * 0.93;
+            const jarBottom = Bodies.rectangle(jx, bottomY, jw * 0.64, 6, {
                 isStatic: true, friction: 0.80, restitution: 0.01, label: 'jar_bottom'
             });
 
-            // Solid Left Glass Wall
-            const jarLeft = Bodies.rectangle(jar.x + jar.w * 0.18, jar.y + jar.h * 0.56, 14, jar.h * 0.72, {
+            const leftX = jar.x + jw * 0.18;
+            const jarLeft = Bodies.rectangle(leftX, jar.y + jh * 0.56, 14, jh * 0.72, {
                 isStatic: true, friction: 0.05, restitution: 0.01, label: 'jar_left'
             });
 
-            // Solid Right Glass Wall
-            const jarRight = Bodies.rectangle(jar.x + jar.w * 0.82, jar.y + jar.h * 0.56, 14, jar.h * 0.72, {
+            const rightX = jar.x + jw * 0.82;
+            const jarRight = Bodies.rectangle(rightX, jar.y + jh * 0.56, 14, jh * 0.72, {
                 isStatic: true, friction: 0.05, restitution: 0.01, label: 'jar_right'
             });
 
-            // Inward Neck Lip Funnels
-            const lipLeft = Bodies.rectangle(jar.x + jar.w * 0.24, jar.y + jar.h * 0.20, jar.w * 0.16, 12, {
-                isStatic: true, friction: 0.01, angle: 0.45, label: 'jar_lip_left'
+            // Solid Neck Collars (Prevents gifts bulging out through jar neck/rim)
+            const neckLeft = Bodies.rectangle(jar.x + jw * 0.22, jar.y + jh * 0.14, 16, jh * 0.14, {
+                isStatic: true, friction: 0.05, restitution: 0.01, label: 'jar_neck_left'
+            });
+            const neckRight = Bodies.rectangle(jar.x + jw * 0.78, jar.y + jh * 0.14, 16, jh * 0.14, {
+                isStatic: true, friction: 0.05, restitution: 0.01, label: 'jar_neck_right'
             });
 
-            const lipRight = Bodies.rectangle(jar.x + jar.w * 0.76, jar.y + jar.h * 0.20, jar.w * 0.16, 12, {
-                isStatic: true, friction: 0.01, angle: -0.45, label: 'jar_lip_right'
+            // Inward Neck Lip Funnels (Guides gifts into body)
+            const lipLeft = Bodies.rectangle(jar.x + jw * 0.22, jar.y + jh * 0.22, jw * 0.18, 16, {
+                isStatic: true, friction: 0.01, angle: 0.55, label: 'jar_lip_left'
             });
 
-            this.wallBodies.push(jarBottom, jarLeft, jarRight, lipLeft, lipRight);
+            const lipRight = Bodies.rectangle(jar.x + jw * 0.78, jar.y + jh * 0.22, jw * 0.18, 16, {
+                isStatic: true, friction: 0.01, angle: -0.55, label: 'jar_lip_right'
+            });
+
+            this.wallBodies.push(jarBottom, jarLeft, jarRight, neckLeft, neckRight, lipLeft, lipRight);
             World.add(this.world, this.wallBodies);
         }
 
@@ -380,7 +400,7 @@
             const jarFloorY = jar.y + jar.h * 0.93;
             const innerLeft = jar.x + jar.w * 0.18;
             const innerRight = jar.x + jar.w * 0.82;
-            const jarTopY = jar.y + jar.h * 0.18;
+            const jarTopY = jar.y + jar.h * 0.10;
 
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
@@ -409,13 +429,21 @@
                             }
                         }
                     }
+                } else {
+                    if (b.position.y > jarFloorY && Math.abs(b.velocity.y) < 0.1 && Math.abs(b.velocity.x) < 0.05) {
+                        const centerX = jar.x + jar.w / 2;
+                        if (Math.abs(b.position.x - centerX) > 30 && b.position.y > jarFloorY + 10) {
+                            const dir = b.position.x < centerX ? 0.04 : -0.04;
+                            Matter.Body.applyForce(b, b.position, { x: dir * b.mass * 0.001, y: 0 });
+                        }
+                    }
                 }
             }
         }
 
         spawnGiftBody(type, baseRadius, data = {}) {
             const { Bodies, World, Body } = Matter;
-
+            
             this.checkAndSyncWalls();
 
             const jar = this.getJarInnerRect();
@@ -423,13 +451,12 @@
 
             const bounds = this.getArtboardBounds();
 
-            // Spawn from the VERY TOP of the 9:16 Livestream screen
             const mouthCenterX = jar.x + jar.w / 2;
             const spawnX = mouthCenterX + (Math.random() - 0.5) * (jar.w * 0.15);
             const spawnY = bounds.top - 20;
 
             const capScale = this.getCapacityScale();
-            const r = Math.max(12, Math.round(baseRadius * (jar.w / 180) * capScale));
+            const r = Math.max(10, Math.round(baseRadius * (jar.w / 180) * capScale));
 
             const restitution = 0.01;
             const friction = 0.40;
@@ -445,11 +472,11 @@
             body.giftType = type;
             body.giftData = data;
             body.giftRadius = r;
-            body.isInsideJar = true;
+            body.isInsideJar = true; // Born to fall into the jar cavity!
 
             Body.setVelocity(body, {
                 x: 0,
-                y: Math.random() * 0.5 + 3.0
+                y: Math.random() * 0.5 + 2.4
             });
             Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.01);
 
@@ -733,8 +760,14 @@
 
         render() {
             if (!this.ctx || !this.canvas) return;
+            const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
+            if (!jarWidget) {
+                if (this.items.length) this.reset();
+                return;
+            }
             const ctx = this.ctx;
             const dpr = this.dpr || 1;
+            const jar = this.getJarInnerRect();
 
             ctx.save();
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -742,13 +775,6 @@
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
-            const jar = this.getJarInnerRect();
-            if (!jar || this.items.length === 0) {
-                ctx.restore();
-                return;
-            }
-
-            // Canvas ONLY renders the falling gifts. Zero duplicate jar images!
             for (let i = 0; i < this.items.length; i++) {
                 const b = this.items[i];
                 const x = b.position.x;
@@ -825,12 +851,10 @@
                 ctx.restore();
             }
 
-            // 2. Draw Front Glass Layer (hu-thuong-lop-tren) directly over the jar
-            const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
-            const theme = jarWidget?.dataset?.theme || 'hu-thuong';
-
-            if (theme === 'hu-thuong') {
-                const frontImg = this.imageCache['hu-thuong-lop-tren'] || this.loadImage('hu-thuong-lop-tren', this.getAssetUrl('jars', 'hu-thuong-lop-tren.png'));
+            // 2. Draw Front Glass Layer (hu-thuong.png) ON TOP OF GIFTS
+            const theme = jarWidget.dataset?.theme || 'hu-thuong';
+            if ((theme === 'hu-thuong' || !theme) && jar && jar.w > 0 && jar.h > 0) {
+                const frontImg = this.imageCache['hu-thuong'] || this.loadImage('hu-thuong', this.getAssetUrl('jars', 'hu-thuong.png'));
                 if (frontImg && frontImg.complete && frontImg.naturalWidth > 0) {
                     ctx.drawImage(frontImg, jar.x, jar.y, jar.w, jar.h);
                 }
@@ -847,7 +871,10 @@
                 this.items = [];
             }
             if (this.ctx && this.canvas) {
-                this.ctx.clearRect(0, 0, this.width, this.height);
+                this.ctx.save();
+                this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.restore();
             }
         }
 

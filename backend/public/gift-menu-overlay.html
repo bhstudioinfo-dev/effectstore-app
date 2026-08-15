@@ -1558,11 +1558,12 @@
         el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
         el.style.width = `${Math.round((item.width || 480) * s)}px`;
         el.style.height = `${Math.round((item.height || 600) * s)}px`;
-        el.style.zIndex = String(Number(item.zIndex) || 1);
+        el.style.zIndex = String(Number(item.zIndex) || 10);
         el.style.overflow = 'visible';
         el.innerHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
           ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: s, apiBase: '', escapeText: true, gifts: giftsLibrary })
           : '';
+        setTimeout(() => ensureOverlayGiftJarPhysics(), 0);
         return el;
       }
 
