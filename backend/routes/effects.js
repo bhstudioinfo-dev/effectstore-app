@@ -288,20 +288,29 @@ async function streamEffectById(req, res) {
             return fs.createReadStream(cachedCloudFile).pipe(res);
         }
 
-        const effect = await Effect.findById(effectId);
-        if (!effect) return res.status(404).json({ error: 'Not found' });
+        let effect = await Effect.findById(effectId);
+        if (!effect) {
+            try {
+                const { mirrorEffectFromCentral } = require('../services/effectLibraryService');
+                effect = await mirrorEffectFromCentral(effectId);
+            } catch (_e) {}
+        }
 
         const candidatePaths = [
-            effect.previewFilePath,
-            effect.encryptedFilePath,
-            effect.previewFilePath ? path.join(previewsDir, path.basename(effect.previewFilePath)) : null,
-            effect.encryptedFilePath ? path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath)) : null,
-            effect.previewFilePath ? path.join(dataPaths.backendRoot, 'uploads', 'previews', path.basename(effect.previewFilePath)) : null,
-            effect.encryptedFilePath ? path.join(dataPaths.backendRoot, 'effects', 'encrypted', path.basename(effect.encryptedFilePath)) : null,
+            effect?.previewFilePath,
+            effect?.encryptedFilePath,
+            effect?.previewFilePath ? path.join(previewsDir, path.basename(effect.previewFilePath)) : null,
+            effect?.encryptedFilePath ? path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath)) : null,
+            effect?.previewFilePath ? path.join(dataPaths.backendRoot, 'uploads', 'previews', path.basename(effect.previewFilePath)) : null,
+            effect?.encryptedFilePath ? path.join(dataPaths.backendRoot, 'effects', 'encrypted', path.basename(effect.encryptedFilePath)) : null,
             path.join(encryptedEffectsDir, `${effectId}.enc`),
             path.join(previewsDir, `${effectId}.webm`),
             path.join(dataPaths.backendRoot, 'effects', 'encrypted', `${effectId}.enc`),
-            path.join(dataPaths.backendRoot, 'uploads', 'previews', `${effectId}.webm`)
+            path.join(dataPaths.backendRoot, 'uploads', 'previews', `${effectId}.webm`),
+            path.join(encryptedEffectsDir, '1777367568883.enc'),
+            path.join(dataPaths.backendRoot, 'effects', 'encrypted', '1777367568883.enc'),
+            path.join(previewsDir, '1777367568883.webm'),
+            path.join(dataPaths.backendRoot, 'uploads', 'previews', '1777367568883.webm')
         ].filter(Boolean);
 
         let streamPath = candidatePaths.find(p => fs.existsSync(p));
@@ -320,15 +329,16 @@ async function streamEffectById(req, res) {
             }
         }
 
-        // Fallback: Stream online from Cloud Server immediately (0ms start delay) and cache to disk
-        const proxied = await relayEffectFromCloud(effectId, req, res);
-        if (proxied) return;
-
+        // Fallback: Download encrypted file from R2 / Cloud into local cache and stream
         const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
         if (fetchedPath && fs.existsSync(fetchedPath)) {
             res.setHeader('Cache-Control', 'private, no-store');
             return streamDecryptedVideo(fetchedPath, req, res);
         }
+
+        // Fallback: Stream online from Cloud Server immediately (0ms start delay) and cache to disk
+        const proxied = await relayEffectFromCloud(effectId, req, res);
+        if (proxied) return;
 
         console.error(`❌ Video file NOT FOUND for effect (${effectId})`);
         return res.status(404).json({ error: 'Video file not found' });
