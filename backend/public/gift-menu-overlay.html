@@ -2130,7 +2130,13 @@
       if (overlayGiftJarPhysics) return overlayGiftJarPhysics;
       if (typeof window.GiftJarPhysics === 'function') {
         const root = document.getElementById('overlay-root') || document.body;
-        overlayGiftJarPhysics = new window.GiftJarPhysics(root, { autoResize: true });
+        overlayGiftJarPhysics = new window.GiftJarPhysics(root, {
+          autoResize: true,
+          getItem: () => {
+            const items = currentMenuData?.items || [];
+            return items.find(e => e.type === 'gift-jar') || null;
+          }
+        });
       }
       return overlayGiftJarPhysics;
     }

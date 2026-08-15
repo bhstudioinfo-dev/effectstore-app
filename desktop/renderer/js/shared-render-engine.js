@@ -1932,11 +1932,13 @@
         return `<div class="gmd-challenge-wheel-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(28,ctx.scale)}px;background:linear-gradient(145deg,#0f766e,#082f49);border:3px solid #5eead4;border-radius:${roundPx(34,ctx.scale)}px;color:#fff;text-align:center;box-shadow:0 0 ${roundPx(30,ctx.scale)}px #22d3ee88;overflow:hidden;"><div style="font-size:${font(ctx,item.titleFontSize,34)}px;font-weight:1000;color:#fef08a;text-shadow:0 0 14px #f59e0b;">🎡 ${text(ctx,item.title || 'VÒNG QUAY THỬ THÁCH')}</div><div style="font-size:${font(ctx,item.subtitleFontSize,18)}px;color:#ccfbf1;margin:${roundPx(8,ctx.scale)}px 0;">Donate đúng quà để kích hoạt</div><div style="position:relative;width:78%;aspect-ratio:1;margin:${roundPx(20,ctx.scale)}px auto 0;border:${roundPx(14,ctx.scale)}px solid #f8fafc;border-radius:50%;background:conic-gradient(${gradient});box-shadow:0 0 0 ${roundPx(10,ctx.scale)}px #ef4444,0 0 ${roundPx(28,ctx.scale)}px #fbbf24aa;"><div style="position:absolute;inset:0;display:grid;place-items:center;"><div style="width:26%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:#2563eb;border:${roundPx(8,ctx.scale)}px solid #fbbf24;font-size:${font(ctx,24,24)}px;font-weight:1000;">QUAY</div></div></div></div>`;
     }
 
-    function renderGiftJar(item, ctx = {}) {
-        ctx = ctx || {};
+    function renderGiftJar(item, options = {}) {
+        if (!item) return '';
         const theme = item.theme || 'hu-thuong';
-        
-        let jarImageUrl = item.customJarImageUrl || '';
+        const jarColor = item.jarColor || '';
+        const ribbonImageUrl = item.ribbonImageUrl || '';
+        let jarImageUrl = item.customJarImageUrl || item.jarImageUrl || '';
+
         if (!jarImageUrl && String(theme).startsWith('custom_')) {
             try {
                 if (typeof window !== 'undefined' && window.localStorage) {
@@ -1949,9 +1951,13 @@
             } catch (_e) {}
         }
         if (theme === 'hu-thuong' && !jarImageUrl) {
-            return `<div class="gmd-gift-jar-widget" data-theme="hu-thuong" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
+            const hasColor = jarColor && jarColor !== '#ffffff' && jarColor !== 'transparent';
+            const tintFilter = hasColor ? `filter:drop-shadow(0 0 0 ${jarColor}) drop-shadow(0 0 1px ${jarColor});` : '';
+            return `<div class="gmd-gift-jar-widget" data-theme="hu-thuong" data-jar-color="${jarColor}" data-ribbon="${ribbonImageUrl ? '1' : '0'}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
                 <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                    <img class="gmd-jar-back" src="assets/jars/hu-thuong-2.png" onerror="this.onerror=null;this.style.display='none';" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1;transform:translate(-0.8%, -1.2%);" />
+                    <img class="gmd-jar-back" src="assets/jars/hu-thuong-2.png" onerror="this.onerror=null;this.style.display='none';" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1;transform:translate(-0.8%, -1.2%);${tintFilter}" />
+                    ${hasColor ? `<div class="gmd-jar-back-tint" style="position:absolute;inset:0;width:100%;height:100%;background:${jarColor};mix-blend-mode:color;opacity:0.75;pointer-events:none;z-index:2;-webkit-mask-image:url('assets/jars/hu-thuong-2.png');mask-image:url('assets/jars/hu-thuong-2.png');-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;transform:translate(-0.8%, -1.2%);"></div>` : ''}
+                    ${ribbonImageUrl ? `<img class="gmd-jar-ribbon" src="${ribbonImageUrl}" style="position:absolute;top:10.5%;left:50%;transform:translate(-50%, 0);max-width:62%;max-height:28%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));" />` : ''}
                 </div>
             </div>`;
         }
@@ -1960,9 +1966,10 @@
             jarImageUrl = 'assets/jars/hu-thuong.png';
         }
 
-        return `<div class="gmd-gift-jar-widget" data-theme="${theme}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
+        return `<div class="gmd-gift-jar-widget" data-theme="${theme}" data-jar-color="${jarColor}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;">
             <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
-                <img src="${jarImageUrl}" onerror="this.onerror=null;this.src='assets/jars/hu-thuong.png';" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.5));" />
+                <img src="${jarImageUrl}" onerror="this.onerror=null;this.src='assets/jars/hu-thuong.png';" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:3;filter:drop-shadow(0 6px 18px rgba(0,0,0,0.5));" />
+                ${ribbonImageUrl ? `<img class="gmd-jar-ribbon" src="${ribbonImageUrl}" style="position:absolute;top:10.5%;left:50%;transform:translate(-50%, 0);max-width:62%;max-height:28%;object-fit:contain;pointer-events:none;z-index:4;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));" />` : ''}
             </div>
         </div>`;
     }

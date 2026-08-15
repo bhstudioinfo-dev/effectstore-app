@@ -853,10 +853,35 @@
 
             // 2. Draw Front Glass Layer (hu-thuong.png) ON TOP OF GIFTS
             const theme = jarWidget.dataset?.theme || 'hu-thuong';
+            const jarColor = jarWidget.dataset?.jarColor || '';
+            const curItem = typeof this.options.getItem === 'function' ? this.options.getItem() : null;
+            const ribbonUrl = curItem?.ribbonImageUrl || '';
+
             if ((theme === 'hu-thuong' || !theme) && jar && jar.w > 0 && jar.h > 0) {
                 const frontImg = this.imageCache['hu-thuong'] || this.loadImage('hu-thuong', this.getAssetUrl('jars', 'hu-thuong.png'));
                 if (frontImg && frontImg.complete && frontImg.naturalWidth > 0) {
                     ctx.drawImage(frontImg, jar.x, jar.y, jar.w, jar.h);
+
+                    if (jarColor && jarColor !== '#ffffff' && jarColor !== 'transparent') {
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'source-atop';
+                        ctx.fillStyle = jarColor;
+                        ctx.globalAlpha = 0.45;
+                        ctx.fillRect(jar.x, jar.y, jar.w, jar.h);
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // 3. Draw Ribbon/Bow over Jar Neck (Layer 4 - Frontmost)
+            if (ribbonUrl && jar && jar.w > 0 && jar.h > 0) {
+                const ribbonImg = this.imageCache[ribbonUrl] || this.loadImage(ribbonUrl, ribbonUrl);
+                if (ribbonImg && ribbonImg.complete && ribbonImg.naturalWidth > 0) {
+                    const rw = jar.w * 0.58;
+                    const rh = (rw / ribbonImg.naturalWidth) * ribbonImg.naturalHeight;
+                    const rx = jar.x + (jar.w - rw) / 2;
+                    const ry = jar.y + jar.h * 0.12 - rh * 0.40;
+                    ctx.drawImage(ribbonImg, rx, ry, rw, rh);
                 }
             }
 

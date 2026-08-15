@@ -7428,24 +7428,25 @@
                 }
             } else if (selected.type === 'gift-jar') {
                 specificConfigHTML = `
-                    <div class="gmd-field"><label>Giao diện Hũ (Theme)</label>
-                        <select class="gmd-select" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','theme',this.value)">
-                            <option value="hu-thuong" ${(selected.theme || 'hu-thuong') === 'hu-thuong' ? 'selected' : ''}>🏺 Hũ Thường (Mặc định)</option>
-                            ${this.getUserCustomJars().map((cj, idx) => `
-                                <option value="${cj.id}" ${selected.theme === cj.id ? 'selected' : ''}>🖼️ ${this.escapeHtml(cj.name || `Hũ riêng #${idx + 1}`)}</option>
-                            `).join('')}
-                        </select>
+                    <div class="gmd-field">
+                        <label>Màu sắc Hũ thủy tinh (Color Tint)</label>
+                        <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+                            <input type="color" class="gmd-color" style="width:36px;height:32px;border-radius:6px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);" value="${selected.jarColor && selected.jarColor !== 'transparent' ? selected.jarColor : '#ffffff'}" onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','jarColor',this.value)" />
+                            <div style="display:flex;gap:4px;flex:1;flex-wrap:wrap;">
+                                <button type="button" class="gmd-btn small ${!selected.jarColor || selected.jarColor === '#ffffff' || selected.jarColor === 'transparent' ? 'primary' : 'secondary'}" style="font-size:10px;padding:3px 6px;" onclick="window.giftMenuDesigner.updateGiftJarField('${selected.id}','jarColor','')">Mặc định</button>
+                                <button type="button" class="gmd-btn small secondary" style="font-size:10px;padding:3px 6px;background:rgba(244,63,94,0.2);color:#fb7185;border:1px solid rgba(244,63,94,0.3);" onclick="window.giftMenuDesigner.updateGiftJarField('${selected.id}','jarColor','#f43f5e')">Hồng</button>
+                                <button type="button" class="gmd-btn small secondary" style="font-size:10px;padding:3px 6px;background:rgba(56,189,248,0.2);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);" onclick="window.giftMenuDesigner.updateGiftJarField('${selected.id}','jarColor','#38bdf8')">Xanh</button>
+                                <button type="button" class="gmd-btn small secondary" style="font-size:10px;padding:3px 6px;background:rgba(168,85,247,0.2);color:#c084fc;border:1px solid rgba(168,85,247,0.3);" onclick="window.giftMenuDesigner.updateGiftJarField('${selected.id}','jarColor','#a855f7')">Tím</button>
+                                <button type="button" class="gmd-btn small secondary" style="font-size:10px;padding:3px 6px;background:rgba(234,179,8,0.2);color:#facc15;border:1px solid rgba(234,179,8,0.3);" onclick="window.giftMenuDesigner.updateGiftJarField('${selected.id}','jarColor','#eab308')">Vàng</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="gmd-field" style="margin-top:6px;">
-                        <button class="gmd-btn primary" style="width:100%;" onclick="window.giftMenuDesigner.uploadCustomJarImage('${selected.id}')"><i class="fas fa-upload"></i> Tải tệp ảnh Hũ riêng (.PNG)</button>
-                        ${selected.customJarImageUrl || String(selected.theme).startsWith('custom_') ? `
-                            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;background:rgba(52,211,153,0.1);padding:4px 8px;border-radius:6px;border:1px solid rgba(52,211,153,0.2);">
-                                <span style="font-size:11px;color:#34d399;font-weight:700;"><i class="fas fa-check-circle"></i> Đang dùng Hũ riêng</span>
-                                ${String(selected.theme).startsWith('custom_') ? `
-                                    <button class="gmd-btn small secondary" style="font-size:10px;padding:2px 6px;color:#f87171;" onclick="window.giftMenuDesigner.deleteUserCustomJar('${selected.theme}','${selected.id}')"><i class="fas fa-trash"></i> Xóa Hũ này</button>
-                                ` : `
-                                    <button class="gmd-btn small secondary" style="font-size:10px;padding:2px 6px;" onclick="window.giftMenuDesigner.clearCustomJarImage('${selected.id}')"><i class="fas fa-undo"></i> Dùng Hũ mẫu</button>
-                                `}
+                    <div class="gmd-field" style="margin-top:8px;">
+                        <button class="gmd-btn primary" style="width:100%;" onclick="window.giftMenuDesigner.uploadJarRibbonImage('${selected.id}')"><i class="fas fa-ribbon"></i> 🎀 Tải Nơ cho hũ (.PNG)</button>
+                        ${selected.ribbonImageUrl ? `
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;background:rgba(236,72,153,0.12);padding:5px 10px;border-radius:6px;border:1px solid rgba(236,72,153,0.25);">
+                                <span style="font-size:11px;color:#f472b6;font-weight:700;"><i class="fas fa-check-circle"></i> Đang gắn Nơ cổ Hũ</span>
+                                <button class="gmd-btn small secondary" style="font-size:10px;padding:2px 8px;color:#f87171;" onclick="window.giftMenuDesigner.clearJarRibbonImage('${selected.id}')"><i class="fas fa-trash"></i> Xóa Nơ</button>
                             </div>
                         ` : ''}
                     </div>
@@ -8892,6 +8893,39 @@
             } catch (_e) {}
         }
 
+        uploadJarRibbonImage(itemId) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/png,image/jpeg,image/webp';
+            input.onchange = () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const dataUrl = String(reader.result || '');
+                    this.pushHistory('upload-jar-ribbon');
+                    item.ribbonImageUrl = dataUrl;
+                    this.renderCanvas();
+                    this.renderInspector();
+                    if (window.app?.showNotification) window.app.showNotification('success', 'Đã gắn Nơ trang trí cho Hũ thành công!');
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+
+        clearJarRibbonImage(itemId) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+            this.pushHistory('clear-jar-ribbon');
+            item.ribbonImageUrl = '';
+            this.renderCanvas();
+            this.renderInspector();
+            if (window.app?.showNotification) window.app.showNotification('success', 'Đã gỡ Nơ trang trí khỏi Hũ!');
+        }
+
         uploadCustomJarImage(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
@@ -8955,6 +8989,7 @@
 
             if (!this.giftJarPhysics) {
                 this.giftJarPhysics = new window.GiftJarPhysics(stage, {
+                    getItem: () => this.items.find(e => e.type === 'gift-jar'),
                     getItemRect: () => {
                         const curItem = this.items.find(e => e.type === 'gift-jar');
                         if (curItem) {
