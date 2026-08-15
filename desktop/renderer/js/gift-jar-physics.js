@@ -589,12 +589,13 @@
             });
         }
 
-        spawnTopDonorBadge(rank = 1, nickname = 'Top Fan') {
+        spawnTopDonorBadge(rank = 1, nickname = 'Top Fan', avatarUrl = '') {
             const numRank = Number(rank) || 1;
-            const radius = numRank === 1 ? 21 : (numRank <= 3 ? 19 : 17);
+            const radius = numRank === 1 ? 24 : (numRank <= 3 ? 21 : 19);
             this.spawnGiftBody('top_donor', radius, {
                 rank: numRank,
-                nickname: nickname || `Top ${numRank}`
+                nickname: nickname || `Top ${numRank}`,
+                avatarUrl: avatarUrl || ''
             });
         }
 
@@ -836,69 +837,137 @@
 
                 if (type === 'top_donor') {
                     const rank = Number(data.rank) || 1;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, r, 0, Math.PI * 2);
+                    const avatarUrl = data.avatarUrl || data.profilePictureUrl || data.avatar || '';
+                    const avatarImg = avatarUrl ? (this.imageCache[avatarUrl] || this.loadImage(avatarUrl, avatarUrl)) : null;
+                    const hasAvatar = avatarImg && avatarImg.complete && avatarImg.naturalWidth > 0;
 
-                    const grad = ctx.createLinearGradient(-r, -r, r, r);
                     let ringColor = '#fbbf24';
-                    let badgeLabel = `👑 #${rank}`;
+                    let badgeBg = '#f59e0b';
+                    let badgeEmoji = '👑';
 
                     if (rank === 1) {
-                        grad.addColorStop(0, '#fef08a');
-                        grad.addColorStop(0.5, '#f59e0b');
-                        grad.addColorStop(1, '#b45309');
                         ringColor = '#fbbf24';
-                        badgeLabel = '👑 #1';
+                        badgeBg = '#d97706';
+                        badgeEmoji = '👑';
                     } else if (rank === 2) {
-                        grad.addColorStop(0, '#ffffff');
-                        grad.addColorStop(0.5, '#cbd5e1');
-                        grad.addColorStop(1, '#64748b');
                         ringColor = '#e2e8f0';
-                        badgeLabel = '🥈 #2';
+                        badgeBg = '#64748b';
+                        badgeEmoji = '🥈';
                     } else if (rank === 3) {
-                        grad.addColorStop(0, '#ffedd5');
-                        grad.addColorStop(0.5, '#f97316');
-                        grad.addColorStop(1, '#9a3412');
                         ringColor = '#fdba74';
-                        badgeLabel = '🥉 #3';
+                        badgeBg = '#c2410c';
+                        badgeEmoji = '🥉';
                     } else if (rank === 4) {
-                        grad.addColorStop(0, '#fae8ff');
-                        grad.addColorStop(0.5, '#c084fc');
-                        grad.addColorStop(1, '#7e22ce');
                         ringColor = '#e879f9';
-                        badgeLabel = '💎 #4';
+                        badgeBg = '#7e22ce';
+                        badgeEmoji = '💎';
                     } else {
-                        grad.addColorStop(0, '#ecfeff');
-                        grad.addColorStop(0.5, '#22d3ee');
-                        grad.addColorStop(1, '#0e7490');
                         ringColor = '#67e8f9';
-                        badgeLabel = '💎 #5';
+                        badgeBg = '#0e7490';
+                        badgeEmoji = '💎';
                     }
 
-                    ctx.fillStyle = grad;
-                    ctx.fill();
+                    if (hasAvatar) {
+                        // 1. Draw circular avatar clipped cleanly inside the medal
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(0, 0, r - 2, 0, Math.PI * 2);
+                        ctx.clip();
+                        ctx.drawImage(avatarImg, -(r - 2), -(r - 2), (r - 2) * 2, (r - 2) * 2);
+                        ctx.restore();
 
-                    // Outer glossy ring
-                    ctx.strokeStyle = ringColor;
-                    ctx.lineWidth = 2.5;
-                    ctx.stroke();
+                        // 2. Shiny Outer Ring (Gold/Silver/Bronze/Purple/Cyan)
+                        ctx.beginPath();
+                        ctx.arc(0, 0, r, 0, Math.PI * 2);
+                        ctx.strokeStyle = ringColor;
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
 
-                    // Inner reflective highlight ring
-                    ctx.beginPath();
-                    ctx.arc(0, 0, r - 3, 0, Math.PI * 2);
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
+                        // 3. Inner fine white border
+                        ctx.beginPath();
+                        ctx.arc(0, 0, r - 2, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                        ctx.lineWidth = 1.2;
+                        ctx.stroke();
 
-                    // Text
-                    ctx.fillStyle = '#ffffff';
-                    ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
-                    ctx.shadowBlur = 4;
-                    ctx.font = `900 ${Math.max(10, r * 0.70)}px "Inter", "Segoe UI", sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(badgeLabel, 0, 1);
-                    ctx.shadowBlur = 0;
+                        // 4. Rank Badge Crown / Pill at the bottom center of the circular avatar
+                        const tagH = Math.round(r * 0.62);
+                        const tagW = Math.round(r * 1.35);
+                        const tagY = r * 0.45;
+
+                        ctx.save();
+                        ctx.beginPath();
+                        if (typeof ctx.roundRect === 'function') {
+                            ctx.roundRect(-tagW / 2, tagY - tagH / 2, tagW, tagH, tagH / 2);
+                        } else {
+                            ctx.rect(-tagW / 2, tagY - tagH / 2, tagW, tagH);
+                        }
+                        ctx.fillStyle = ringColor;
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                        ctx.shadowBlur = 4;
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        ctx.restore();
+
+                        ctx.fillStyle = '#0f172a';
+                        ctx.font = `900 ${Math.max(9, Math.round(tagH * 0.72))}px "Inter", "Segoe UI", sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(`${badgeEmoji} #${rank}`, 0, tagY);
+                    } else {
+                        // Radiant gradient medal fallback when avatar is not yet loaded
+                        const grad = ctx.createLinearGradient(-r, -r, r, r);
+                        if (rank === 1) {
+                            grad.addColorStop(0, '#fef08a');
+                            grad.addColorStop(0.5, '#f59e0b');
+                            grad.addColorStop(1, '#b45309');
+                        } else if (rank === 2) {
+                            grad.addColorStop(0, '#ffffff');
+                            grad.addColorStop(0.5, '#cbd5e1');
+                            grad.addColorStop(1, '#64748b');
+                        } else if (rank === 3) {
+                            grad.addColorStop(0, '#ffedd5');
+                            grad.addColorStop(0.5, '#f97316');
+                            grad.addColorStop(1, '#9a3412');
+                        } else if (rank === 4) {
+                            grad.addColorStop(0, '#fae8ff');
+                            grad.addColorStop(0.5, '#c084fc');
+                            grad.addColorStop(1, '#7e22ce');
+                        } else {
+                            grad.addColorStop(0, '#ecfeff');
+                            grad.addColorStop(0.5, '#22d3ee');
+                            grad.addColorStop(1, '#0e7490');
+                        }
+
+                        ctx.beginPath();
+                        ctx.arc(0, 0, r, 0, Math.PI * 2);
+                        ctx.fillStyle = grad;
+                        ctx.fill();
+
+                        // Outer glossy ring
+                        ctx.strokeStyle = ringColor;
+                        ctx.lineWidth = 2.5;
+                        ctx.stroke();
+
+                        // Inner reflective highlight ring
+                        ctx.beginPath();
+                        ctx.arc(0, 0, r - 3, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+
+                        // Text
+                        ctx.fillStyle = '#ffffff';
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+                        ctx.shadowBlur = 4;
+                        ctx.font = `900 ${Math.max(10, r * 0.70)}px "Inter", "Segoe UI", sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(`${badgeEmoji} #${rank}`, 0, 1);
+                        ctx.shadowBlur = 0;
+                    }
                 } else if (type === 'star') {
                     ctx.beginPath();
                     const spikes = 5;

@@ -2165,7 +2165,8 @@
       if (physics) {
         if (data.rankBadge || data.rank) {
           const rank = Number(data.rank) || (data.rankBadge ? (parseInt(String(data.rankBadge).replace(/\D/g, '')) || 1) : 1);
-          physics.spawnTopDonorBadge(rank, data.nickname || `Top ${rank} Supporter`);
+          const avatarUrl = data.avatarUrl || data.profilePictureUrl || data.avatar || '';
+          physics.spawnTopDonorBadge(rank, data.nickname || `Top ${rank} Supporter`, avatarUrl);
         } else if (coins > 500) {
           physics.spawnLion();
         } else if (coins > 100) {

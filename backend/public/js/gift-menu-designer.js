@@ -9236,19 +9236,22 @@
                 giftName = '👑 Top 1 Supporter';
                 giftIcon = '👑';
                 rankBadge = '👑 Hạng 1';
-                if (physics) physics.spawnTopDonorBadge(1, 'Top 1 Supporter');
+                const avatar = 'assets/gift-icons/lion.png';
+                if (physics) physics.spawnTopDonorBadge(1, 'Top 1 Supporter', avatar);
             } else if (tier === 'top_donor_3') {
                 coins = 300;
                 giftName = '🥉 Top 3 Supporter';
                 giftIcon = '🥉';
                 rankBadge = '🥉 Hạng 3';
-                if (physics) physics.spawnTopDonorBadge(3, 'Top 3 Supporter');
+                const avatar = 'assets/gift-icons/corgi.png';
+                if (physics) physics.spawnTopDonorBadge(3, 'Top 3 Supporter', avatar);
             } else if (tier === 'top_donor_5') {
                 coins = 150;
                 giftName = '💎 Top 5 Supporter';
                 giftIcon = '💎';
                 rankBadge = '💎 Hạng 5';
-                if (physics) physics.spawnTopDonorBadge(5, 'Top 5 Supporter');
+                const avatar = 'assets/gift-icons/rose.png';
+                if (physics) physics.spawnTopDonorBadge(5, 'Top 5 Supporter', avatar);
             } else {
                 this.testGiftJarRandom(itemId);
                 return;
