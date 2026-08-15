@@ -760,6 +760,36 @@
             this.animFrameId = requestAnimationFrame(loop);
         }
 
+        drawTintedImage(img, x, y, w, h, tintColor, alpha = 0.50) {
+            if (!img || !img.complete || img.naturalWidth <= 0) return;
+            if (!tintColor || tintColor === '#ffffff' || tintColor === 'transparent') {
+                this.ctx.drawImage(img, x, y, w, h);
+                return;
+            }
+            if (!this.tintCanvas) {
+                this.tintCanvas = document.createElement('canvas');
+                this.tintCtx = this.tintCanvas.getContext('2d');
+            }
+            const tc = this.tintCanvas;
+            const tctx = this.tintCtx;
+            if (tc.width !== img.naturalWidth || tc.height !== img.naturalHeight) {
+                tc.width = img.naturalWidth;
+                tc.height = img.naturalHeight;
+            } else {
+                tctx.clearRect(0, 0, tc.width, tc.height);
+            }
+
+            tctx.drawImage(img, 0, 0);
+            tctx.save();
+            tctx.globalCompositeOperation = 'source-atop';
+            tctx.fillStyle = tintColor;
+            tctx.globalAlpha = alpha;
+            tctx.fillRect(0, 0, tc.width, tc.height);
+            tctx.restore();
+
+            this.ctx.drawImage(tc, x, y, w, h);
+        }
+
         render() {
             if (!this.ctx || !this.canvas) return;
             const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
@@ -785,18 +815,7 @@
             // 1. Draw Back Glass Layer (hu-thuong-2.png) BEHIND GIFTS
             if ((theme === 'hu-thuong' || !theme) && jar && jar.w > 0 && jar.h > 0) {
                 const backImg = this.imageCache['hu-thuong-back'] || this.loadImage('hu-thuong-back', this.getAssetUrl('jars', 'hu-thuong-2.png'));
-                if (backImg && backImg.complete && backImg.naturalWidth > 0) {
-                    ctx.drawImage(backImg, jar.x, jar.y, jar.w, jar.h);
-
-                    if (jarColor && jarColor !== '#ffffff' && jarColor !== 'transparent') {
-                        ctx.save();
-                        ctx.globalCompositeOperation = 'source-atop';
-                        ctx.fillStyle = jarColor;
-                        ctx.globalAlpha = 0.45;
-                        ctx.fillRect(jar.x, jar.y, jar.w, jar.h);
-                        ctx.restore();
-                    }
-                }
+                this.drawTintedImage(backImg, jar.x, jar.y, jar.w, jar.h, jarColor, 0.50);
             }
 
             // 2. Draw Falling / Settled Gifts
@@ -879,18 +898,7 @@
             // 3. Draw Front Glass Layer (hu-thuong.png) ON TOP OF GIFTS
             if ((theme === 'hu-thuong' || !theme) && jar && jar.w > 0 && jar.h > 0) {
                 const frontImg = this.imageCache['hu-thuong'] || this.loadImage('hu-thuong', this.getAssetUrl('jars', 'hu-thuong.png'));
-                if (frontImg && frontImg.complete && frontImg.naturalWidth > 0) {
-                    ctx.drawImage(frontImg, jar.x, jar.y, jar.w, jar.h);
-
-                    if (jarColor && jarColor !== '#ffffff' && jarColor !== 'transparent') {
-                        ctx.save();
-                        ctx.globalCompositeOperation = 'source-atop';
-                        ctx.fillStyle = jarColor;
-                        ctx.globalAlpha = 0.45;
-                        ctx.fillRect(jar.x, jar.y, jar.w, jar.h);
-                        ctx.restore();
-                    }
-                }
+                this.drawTintedImage(frontImg, jar.x, jar.y, jar.w, jar.h, jarColor, 0.50);
             }
 
             // 4. Draw Ribbon/Bow over Jar Neck (Layer 4 - Frontmost)
