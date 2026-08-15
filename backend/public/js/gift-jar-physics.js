@@ -777,9 +777,9 @@
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
-            const theme = jarWidget.dataset?.theme || 'hu-thuong';
-            const jarColor = jarWidget.dataset?.jarColor || '';
             const curItem = typeof this.options.getItem === 'function' ? this.options.getItem() : null;
+            const theme = curItem?.theme || jarWidget?.dataset?.theme || 'hu-thuong';
+            const jarColor = curItem?.jarColor || jarWidget?.dataset?.jarColor || '';
             const ribbonUrl = curItem?.ribbonImageUrl || '';
 
             // 1. Draw Back Glass Layer (hu-thuong-2.png) BEHIND GIFTS
