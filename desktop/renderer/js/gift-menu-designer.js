@@ -6800,6 +6800,32 @@
                 `;
             };
 
+            const makeCustomGiftSelectForJar = (fieldKey, currentId) => {
+                const currentGift = this.gifts.find(g => String(g.id) === String(currentId)) || { id: '', name: 'Chọn quà mapping...', icon: '' };
+                const currentIcon = this.normalizeIcon(currentGift.icon || '');
+                return `
+                    <div class="gmd-custom-select" style="width: 100%; margin-top: 4px;">
+                        <div class="gmd-custom-select-header" style="height: 32px; padding: 4px 8px;" onclick="this.nextElementSibling.classList.toggle('show')">
+                            ${currentGift.id ? renderGiftOptionMedia(currentGift, currentIcon, 18, 6) : '<i class="fas fa-gift" style="margin-right: 6px; color: #a855f7;"></i>'}
+                            <span style="font-size: 11px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:180px; font-weight: 600;">${currentGift.name || 'Chọn quà mapping...'}</span>
+                            <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 10px; opacity: 0.7;"></i>
+                        </div>
+                        <div class="gmd-custom-select-options" style="max-height: 180px;">
+                            ${this.gifts.map(g => {
+                                const gIcon = this.normalizeIcon(g.icon || '');
+                                return `
+                                    <div class="gmd-custom-select-option ${String(g.id) === String(currentId) ? 'active' : ''}" style="padding: 5px 8px; font-size: 11px;" onclick="window.giftMenuDesigner.updateGiftJarField('${selected.id}', '${fieldKey}', '${g.id}'); this.parentElement.classList.remove('show'); window.giftMenuDesigner.renderInspector();">
+                                        ${renderGiftOptionMedia(g, gIcon, 18)}
+                                        <span style="font-weight: 600;">${g.name || g.id}</span>
+                                        <span style="margin-left: auto; font-size: 10px; color: #a855f7;">${g.coins || 1}💎</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            };
+
             let specificConfigHTML = '';
 
             if (selected.type === 'gift-stack-group') {
@@ -7474,6 +7500,32 @@
                             <option value="diamond" ${selected.dropItemType === 'diamond' || selected.dropItemType === 'gem' ? 'selected' : ''}>💎 Kim cương quý (Diamond)</option>
                         </select>
                     </div>
+
+                    <div class="gmd-field" style="margin-top:10px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; padding: 8px 10px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between;">
+                            <label style="font-weight: 700; color: #f87171; font-size: 11px; margin: 0; display:flex; align-items:center; gap: 5px;">
+                                <i class="fas fa-bomb"></i> 💣 Quà kích hoạt "Thả Bom Nổ Hũ"
+                            </label>
+                            <input type="checkbox" ${selected.bombGiftEnabled ? 'checked' : ''} onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','bombGiftEnabled',this.checked)">
+                        </div>
+                        ${selected.bombGiftEnabled ? `
+                            <p style="font-size: 10px; color: #94a3b8; margin: 4px 0 6px 0;">Khi donate quà này, quả Bom sẽ rơi vào hũ và nổ tung toàn bộ quà!</p>
+                            ${makeCustomGiftSelectForJar('bombGiftId', selected.bombGiftId || '5269')}
+                        ` : ''}
+                    </div>
+
+                    <div class="gmd-field" style="margin-top:8px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 8px; padding: 8px 10px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between;">
+                            <label style="font-weight: 700; color: #c084fc; font-size: 11px; margin: 0; display:flex; align-items:center; gap: 5px;">
+                                <i class="fas fa-fire"></i> 🔄 Quà kích hoạt "Reset Hũ (Pháo hoa)"
+                            </label>
+                            <input type="checkbox" ${selected.resetGiftEnabled ? 'checked' : ''} onchange="window.giftMenuDesigner.updateGiftJarField('${selected.id}','resetGiftEnabled',this.checked)">
+                        </div>
+                        ${selected.resetGiftEnabled ? `
+                            <p style="font-size: 10px; color: #94a3b8; margin: 4px 0 6px 0;">Khi donate quà này, hũ sẽ bùng nổ pháo hoa và làm sạch về 0 Xu!</p>
+                            ${makeCustomGiftSelectForJar('resetGiftId', selected.resetGiftId || '5655')}
+                        ` : ''}
+                    </div>
                 `;
             } else if (selected.type === 'goal-list') {
                 specificConfigHTML = `
@@ -8048,9 +8100,12 @@
                                 <i class="fas ${isTestExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size: 10px; color: rgba(255,255,255,0.4);"></i>
                             </h4>
                             <div style="display: ${isTestExpanded ? 'block' : 'none'};">
-                                <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng quà rơi từ đỉnh màn hình xuống Hũ theo đúng số xu và kích thước thực tế trên TikTok Live.</p>
-                                <button class="gmd-btn primary" style="width: 100%; font-size: 11px; background: linear-gradient(135deg, #0284c7, #8b5cf6); padding: 6px 12px; height: 36px; margin-bottom: 8px;" onclick="window.giftMenuDesigner.testGiftJarRandom('${selected.id}')"><i class="fas fa-dice"></i> 🎲 Gửi quà ngẫu nhiên (Kích thước & Xu ngẫu nhiên)</button>
-                                <button class="gmd-btn" style="width: 100%; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 30px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> Reset Hũ về 0 Xu (Làm sạch)</button>
+                                <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng quà rơi, thả bom và nổ pháo hoa làm sạch hũ thực tế.</p>
+                                <button class="gmd-btn primary" style="width: 100%; font-size: 11px; background: linear-gradient(135deg, #0284c7, #8b5cf6); padding: 6px 12px; height: 34px; margin-bottom: 6px;" onclick="window.giftMenuDesigner.testGiftJarRandom('${selected.id}')"><i class="fas fa-dice"></i> 🎲 Gửi quà ngẫu nhiên (Rơi vào Hũ)</button>
+                                <div style="display: flex; gap: 6px;">
+                                    <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5; height: 32px;" onclick="window.giftMenuDesigner.testGiftJarBomb('${selected.id}')"><i class="fas fa-bomb"></i> 💣 Thả Bom (Test)</button>
+                                    <button class="gmd-btn" style="flex: 1; font-size: 11px; background: rgba(168, 85, 247, 0.18); border: 1px solid rgba(168, 85, 247, 0.45); color: #e9d5ff; height: 32px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> 🔄 Reset Hũ (Test)</button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -9305,6 +9360,23 @@
             this.renderCanvas();
             this.renderInspector();
             if (window.app?.showNotification) window.app.showNotification('success', '💥 Đã kích hoạt nổ quà và làm sạch Hũ về 0 Xu!');
+        }
+
+        testGiftJarBomb(itemId) {
+            const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
+            if (!item) return;
+            const physics = this.activeGiftJarPhysics || this.giftJarPhysics;
+            if (physics) {
+                physics.spawnBombAndExplode(() => {
+                    item.currentCoins = 0;
+                    this.renderCanvas();
+                    this.renderInspector();
+                });
+            }
+            if (this.socket && this.socket.connected) {
+                this.socket.emit('gift_jar_bomb_drop', { itemId });
+            }
+            if (window.app?.showNotification) window.app.showNotification('info', '💣 Đã thả Bom vào Hũ!');
         }
 
         uploadChallengeResultImage(itemId) {

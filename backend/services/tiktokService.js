@@ -642,23 +642,62 @@ class TikTokService {
         // 4. Update Gift Jar widget
         layout.layers.forEach(layer => {
             if (layer.type === 'gift-jar' && layer.visible !== false) {
-                const addedCoins = (diamondCount > 0 ? diamondCount : 1) * repeatCount;
-                layer.currentCoins = (Number(layer.currentCoins) || 0) + addedCoins;
-                hasUpdates = true;
+                const receivedGiftId = String(gift.giftId || '');
+                const receivedGiftName = String(gift.giftName || '');
 
-                this.broadcast('gift_jar_drop', {
-                    coins: addedCoins,
-                    giftName: gift.giftName || 'Quà TikTok',
-                    giftIcon: gift.iconUrl || '',
-                    nickname: senderNickname,
-                    currentCoins: layer.currentCoins,
-                    targetCoins: layer.targetCoins || 1000,
-                    reachedTarget: layer.currentCoins >= (layer.targetCoins || 1000),
-                    theme: layer.theme || 'hu-thuong',
-                    jarColor: layer.jarColor || '',
-                    dropItemType: layer.dropItemType || 'tiktok_gift',
-                    timestamp: Date.now()
-                });
+                const isBombMatch = layer.bombGiftEnabled && (
+                    (layer.bombGiftId && (String(layer.bombGiftId) === receivedGiftId || String(layer.bombGiftId) === receivedGiftName)) ||
+                    (layer.bombGiftName && layer.bombGiftName === receivedGiftName)
+                );
+
+                const isResetMatch = layer.resetGiftEnabled && (
+                    (layer.resetGiftId && (String(layer.resetGiftId) === receivedGiftId || String(layer.resetGiftId) === receivedGiftName)) ||
+                    (layer.resetGiftName && layer.resetGiftName === receivedGiftName)
+                );
+
+                if (isBombMatch) {
+                    layer.currentCoins = 0;
+                    hasUpdates = true;
+                    this.broadcast('gift_jar_bomb_drop', {
+                        giftName: receivedGiftName,
+                        giftIcon: gift.iconUrl || '',
+                        nickname: senderNickname,
+                        currentCoins: 0,
+                        theme: layer.theme || 'hu-thuong',
+                        jarColor: layer.jarColor || '',
+                        timestamp: Date.now()
+                    });
+                } else if (isResetMatch) {
+                    layer.currentCoins = 0;
+                    hasUpdates = true;
+                    this.broadcast('gift_jar_reset', {
+                        giftName: receivedGiftName,
+                        giftIcon: gift.iconUrl || '',
+                        nickname: senderNickname,
+                        currentCoins: 0,
+                        theme: layer.theme || 'hu-thuong',
+                        jarColor: layer.jarColor || '',
+                        timestamp: Date.now()
+                    });
+                } else {
+                    const addedCoins = (diamondCount > 0 ? diamondCount : 1) * repeatCount;
+                    layer.currentCoins = (Number(layer.currentCoins) || 0) + addedCoins;
+                    hasUpdates = true;
+
+                    this.broadcast('gift_jar_drop', {
+                        coins: addedCoins,
+                        giftName: gift.giftName || 'Quà TikTok',
+                        giftIcon: gift.iconUrl || '',
+                        nickname: senderNickname,
+                        currentCoins: layer.currentCoins,
+                        targetCoins: layer.targetCoins || 1000,
+                        reachedTarget: layer.currentCoins >= (layer.targetCoins || 1000),
+                        theme: layer.theme || 'hu-thuong',
+                        jarColor: layer.jarColor || '',
+                        dropItemType: layer.dropItemType || 'tiktok_gift',
+                        timestamp: Date.now()
+                    });
+                }
             }
         });
 

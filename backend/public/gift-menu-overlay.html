@@ -2210,6 +2210,11 @@
             if (physics) {
               physics.explodeAndReset();
             }
+          } else if (packet.event === 'gift_jar_bomb_drop') {
+            const physics = ensureOverlayGiftJarPhysics();
+            if (physics) {
+              physics.spawnBombAndExplode();
+            }
           } else if (packet.event === 'effect_queue_empty') {
             setGiftMenuPlaybackVisibility(false);
           }

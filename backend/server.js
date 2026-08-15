@@ -359,7 +359,7 @@ try {
                     if (packet.event === 'effect_player_ready') effectPlayerClients.add(ws);
                     effectQueue.handleEffectPlayerEvent(packet.event, packet.data || {});
                     broadcastToClients(packet.event, packet.data || {});
-                } else if (packet.event === 'gift_jar_reset' || packet.event === 'gift_jar_drop' || packet.event === 'challenge_wheel_spin') {
+                } else if (packet.event === 'gift_jar_reset' || packet.event === 'gift_jar_drop' || packet.event === 'gift_jar_bomb_drop' || packet.event === 'challenge_wheel_spin') {
                     broadcastToClients(packet.event, packet.data || {});
                 }
             } catch (error) {

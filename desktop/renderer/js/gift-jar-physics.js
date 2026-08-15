@@ -590,6 +590,42 @@
             });
         }
 
+        spawnBombAndExplode(callback) {
+            const bombBody = this.spawnGiftBody('bomb', 26, {
+                isBomb: true,
+                name: 'Bom Nổ Hũ'
+            });
+
+            const sparkInterval = setInterval(() => {
+                if (!bombBody || !bombBody.position) {
+                    clearInterval(sparkInterval);
+                    return;
+                }
+                const bx = bombBody.position.x;
+                const by = bombBody.position.y - 20;
+                for (let i = 0; i < 3; i++) {
+                    this.particles.push({
+                        x: bx + (Math.random() - 0.5) * 6,
+                        y: by + (Math.random() - 0.5) * 6,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: -Math.random() * 6 - 2,
+                        gravity: 0.2,
+                        size: 3 + Math.random() * 3,
+                        color: ['#f59e0b', '#ef4444', '#fde047', '#ffffff'][Math.floor(Math.random() * 4)],
+                        alpha: 1.0,
+                        decay: 0.04,
+                        shape: 'star',
+                        emoji: '✨'
+                    });
+                }
+            }, 50);
+
+            setTimeout(() => {
+                clearInterval(sparkInterval);
+                this.explodeAndReset(callback);
+            }, 650);
+        }
+
         spawnTopDonorBadge(rank = 1, nickname = 'Top Fan', avatarUrl = '', userId = '') {
             const numRank = Number(rank) || 1;
             const radius = numRank === 1 ? 24 : (numRank <= 3 ? 21 : 19);
@@ -879,7 +915,45 @@
                     ctx.scale(b.scale, b.scale);
                 }
 
-                if (type === 'top_donor') {
+                if (type === 'bomb') {
+                    // Draw Glossy 3D Bomb with burning fuse
+                    ctx.beginPath();
+                    ctx.arc(0, 4, r * 0.9, 0, Math.PI * 2);
+                    const bombGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.2, 1, 0, 4, r * 0.95);
+                    bombGrad.addColorStop(0, '#64748b');
+                    bombGrad.addColorStop(0.3, '#1e293b');
+                    bombGrad.addColorStop(0.8, '#0f172a');
+                    bombGrad.addColorStop(1, '#020617');
+                    ctx.fillStyle = bombGrad;
+                    ctx.fill();
+                    ctx.strokeStyle = '#334155';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Bomb nozzle
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(-r * 0.25, -r * 0.95, r * 0.5, r * 0.3);
+
+                    // Fuse curve
+                    ctx.beginPath();
+                    ctx.moveTo(0, -r * 0.95);
+                    ctx.quadraticCurveTo(r * 0.4, -r * 1.35, r * 0.2, -r * 1.55);
+                    ctx.strokeStyle = '#d97706';
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+
+                    // Fuse Flame & Spark
+                    ctx.font = `${Math.round(r * 0.9)}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🔥', r * 0.25, -r * 1.6);
+
+                    // Skull / Danger Icon in center of bomb
+                    ctx.font = `bold ${Math.round(r * 0.85)}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('💣', 0, 4);
+                } else if (type === 'top_donor') {
                     const rank = Number(data.rank) || 1;
                     const avatarUrl = data.avatarUrl || data.profilePictureUrl || data.avatar || '';
                     const avatarImg = avatarUrl ? (this.imageCache[avatarUrl] || this.loadImage(avatarUrl, avatarUrl)) : null;
