@@ -1950,24 +1950,6 @@
                 }
             } catch (_e) {}
         }
-        if (options && options.mode === 'preview') {
-            const previewJarUrl = jarImageUrl || 'assets/jars/hu-thuong.png';
-            const filterStyle = jarColor ? `filter: drop-shadow(0 0 16px ${jarColor}) drop-shadow(0 10px 30px rgba(0,0,0,0.6));` : 'filter: drop-shadow(0 10px 30px rgba(0,0,0,0.6));';
-            return `<div class="gmd-gift-jar-widget gmd-gift-jar-preview" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-                <div style="position:relative;width:85%;height:90%;display:flex;align-items:center;justify-content:center;">
-                    <img src="${previewJarUrl}" onerror="this.onerror=null;this.src='assets/jars/hu-thuong.png';" style="width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:3;${filterStyle}" />
-                    <div style="position:absolute;inset:22% 15% 14% 15%;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:center;gap:6px;padding:12px;z-index:2;opacity:0.95;">
-                        <span style="font-size:24px;">🪙</span>
-                        <span style="font-size:26px;">💎</span>
-                        <span style="font-size:22px;">🌹</span>
-                        <span style="font-size:24px;">🎁</span>
-                        <span style="font-size:20px;">🍬</span>
-                        <span style="font-size:22px;">🪙</span>
-                    </div>
-                </div>
-            </div>`;
-        }
-
         if (theme === 'hu-thuong' && !jarImageUrl) {
             return `<div class="gmd-gift-jar-widget" data-theme="hu-thuong" data-jar-color="${jarColor}" data-ribbon="${ribbonImageUrl ? '1' : '0'}" style="width:100%;height:100%;box-sizing:border-box;background:transparent;position:relative;display:flex;align-items:center;justify-content:center;pointer-events:none;">
             </div>`;

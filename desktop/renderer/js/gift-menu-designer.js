@@ -4872,20 +4872,6 @@
                                 ${this.buildTemplatePreviewLayers(t)}
                             </div>
                         </div>`;
-                } else if (t.id === 'tmpl_interactive_gift_jar' || t.category === 'gift-jar') {
-                    previewHTML = `
-                        <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, rgba(168,85,247,0.18) 0%, #090d1f 100%); border: 1px solid rgba(168,85,247,0.4); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; box-sizing: border-box; position: relative; overflow: hidden;">
-                            <div style="position: relative; width: 34px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                                <img src="assets/jars/hu-thuong.png" onerror="this.style.display='none'" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 6px rgba(168,85,247,0.6)); z-index: 2;" />
-                                <div style="position: absolute; bottom: 4px; display: flex; gap: 1px; z-index: 1;">
-                                    <span style="font-size: 7px;">🪙</span>
-                                    <span style="font-size: 7px;">💎</span>
-                                    <span style="font-size: 7px;">🌹</span>
-                                </div>
-                            </div>
-                            <div style="font-size: 5px; font-weight: 900; color: #c084fc; text-shadow: 0 0 4px #a855f7; line-height: 1; letter-spacing: 0.2px;">HŨ QUÀ TẶNG</div>
-                        </div>
-                    `;
                 } else if (t.id === 'tmpl_pk_versus_bar') {
                     previewHTML = `
                                 <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #0f172a 0%, #05070f 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box; position: relative;">
