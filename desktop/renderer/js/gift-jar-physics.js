@@ -115,15 +115,19 @@
                 return filename;
             }
             const clean = filename.replace(/^\/+/, '');
-            if (window.location && window.location.protocol === 'file:') {
-                return `assets/${subfolder}/${clean.replace(/^assets\/(gift-icons|candies|diamonds)\//, '')}`;
+            const stripped = clean.replace(/^assets\/(gift-icons|candies|diamonds|jars|tiktok-gifts)\//, '');
+            if (this.options && this.options.apiBase) {
+                return `${this.options.apiBase}/assets/${subfolder}/${stripped}`;
             }
-            return `/assets/${subfolder}/${clean.replace(/^assets\/(gift-icons|candies|diamonds)\//, '')}`;
+            if (typeof window !== 'undefined' && window.app && window.app.apiBase) {
+                return `${window.app.apiBase}/assets/${subfolder}/${stripped}`;
+            }
+            return `assets/${subfolder}/${stripped}`;
         }
 
         preloadAllAssets() {
             this.loadImage('hu-thuong', this.getAssetUrl('jars', 'hu-thuong.png'));
-            this.loadImage('hu-thuong-2', this.getAssetUrl('jars', 'hu-thuong-2.png'));
+            this.loadImage('hu-thuong-back', this.getAssetUrl('jars', 'hu-thuong-2.png'));
             POPULAR_TIKTOK_GIFTS.forEach(g => {
                 this.loadImage(g.id, this.getAssetUrl('gift-icons', g.file));
             });
@@ -136,9 +140,31 @@
         }
 
         loadImage(key, src) {
-            if (this.imageCache[key]) return this.imageCache[key];
+            if (!src) return null;
+            if (this.imageCache[key] && this.imageCache[key].complete && this.imageCache[key].naturalWidth > 0) {
+                return this.imageCache[key];
+            }
             const img = new Image();
             img.src = src;
+            img.onload = () => {
+                this.imageCache[key] = img;
+            };
+            img.onerror = () => {
+                if (src.startsWith('assets/')) {
+                    const fallback = new Image();
+                    fallback.src = `../public/${src}`;
+                    fallback.onload = () => {
+                        this.imageCache[key] = fallback;
+                    };
+                    fallback.onerror = () => {
+                        const fallback2 = new Image();
+                        fallback2.src = `http://localhost:3000/${src}`;
+                        fallback2.onload = () => {
+                            this.imageCache[key] = fallback2;
+                        };
+                    };
+                }
+            };
             this.imageCache[key] = img;
             return img;
         }
@@ -1100,6 +1126,36 @@
             this.ctx.drawImage(tc, x, y, w, h);
         }
 
+        drawFallbackGlassJar(x, y, w, h, jarColor) {
+            const ctx = this.ctx;
+            ctx.save();
+            ctx.strokeStyle = jarColor || 'rgba(244, 114, 182, 0.75)';
+            ctx.lineWidth = 3.5;
+            ctx.shadowColor = jarColor || 'rgba(244, 114, 182, 0.6)';
+            ctx.shadowBlur = 12;
+
+            const mouthW = w * 0.42;
+            const mouthH = h * 0.10;
+            const mx = x + (w - mouthW) / 2;
+            const my = y + h * 0.05;
+
+            // Mouth rim
+            ctx.beginPath();
+            ctx.ellipse(mx + mouthW / 2, my + mouthH / 2, mouthW / 2, mouthH / 2, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Jar body
+            ctx.beginPath();
+            ctx.moveTo(mx, my + mouthH / 2);
+            ctx.bezierCurveTo(x + w * 0.05, y + h * 0.22, x, y + h * 0.45, x + w * 0.04, y + h * 0.88);
+            ctx.bezierCurveTo(x + w * 0.08, y + h * 0.98, x + w * 0.92, y + h * 0.98, x + w * 0.96, y + h * 0.88);
+            ctx.bezierCurveTo(x + w, y + h * 0.45, x + w * 0.95, y + h * 0.22, mx + mouthW, my + mouthH / 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+
         render() {
             if (!this.ctx || !this.canvas) return;
             const jarWidget = this.container.querySelector('.gmd-gift-jar-widget') || document.querySelector('.gmd-gift-jar-widget');
@@ -1125,7 +1181,11 @@
             // 1. Draw Back Glass Layer (hu-thuong-2.png) BEHIND GIFTS
             if ((theme === 'hu-thuong' || !theme) && jar && jar.w > 0 && jar.h > 0) {
                 const backImg = this.imageCache['hu-thuong-back'] || this.loadImage('hu-thuong-back', this.getAssetUrl('jars', 'hu-thuong-2.png'));
-                this.drawTintedImage(backImg, jar.x, jar.y, jar.w, jar.h, jarColor, 0.50);
+                if (backImg && backImg.complete && backImg.naturalWidth > 0) {
+                    this.drawTintedImage(backImg, jar.x, jar.y, jar.w, jar.h, jarColor, 0.50);
+                } else {
+                    this.drawFallbackGlassJar(jar.x, jar.y, jar.w, jar.h, jarColor);
+                }
             }
 
             // 2. Draw Falling / Settled Gifts
