@@ -8050,15 +8050,11 @@
                             <div style="display: ${isTestExpanded ? 'block' : 'none'};">
                                 <p style="font-size: 10px; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.3;">Mô phỏng quà rơi từ đỉnh màn hình xuống Hũ theo đúng số xu và kích thước thực tế trên TikTok Live.</p>
                                 <button class="gmd-btn primary" style="width: 100%; font-size: 11px; background: linear-gradient(135deg, #0284c7, #8b5cf6); padding: 6px 12px; height: 34px; margin-bottom: 8px;" onclick="window.giftMenuDesigner.testGiftJarRandom('${selected.id}')"><i class="fas fa-dice"></i> 🎲 Gửi quà ngẫu nhiên (Kích thước & Xu ngẫu nhiên)</button>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'small')">🌹 Quà Nhỏ (1-10 Xu)</button>
-                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'medium')">🎁 Quà Vừa (100-500 Xu)</button>
-                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.3); color: #c084fc; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'large')">🦁 Quà Khủng (1,000+ Xu)</button>
-                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.35); color: #facc15; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'top_donor_1')">👑 Rơi Huy Hiệu Top 1</button>
-                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.35); color: #fb923c; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'top_donor_3')">🥉 Rơi Huy Hiệu Top 3</button>
-                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.35); color: #38bdf8; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'top_donor_5')">💎 Rơi Huy Hiệu Top 5</button>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3); color: #38bdf8; height: 32px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'small')">🌹 Quà Nhỏ (1-10 Xu)</button>
+                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; height: 32px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'medium')">🎁 Quà Vừa (100-500 Xu)</button>
+                                    <button class="gmd-btn" style="font-size: 11px; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.3); color: #c084fc; height: 32px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'large')">🦁 Quà Khủng (1,000+ Xu)</button>
                                 </div>
-                                <button class="gmd-btn" style="width: 100%; font-size: 11px; background: linear-gradient(135deg, #f59e0b, #ef4444); color: #ffffff; border: none; height: 32px; margin-bottom: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="window.giftMenuDesigner.testSimulateTopShift('${selected.id}')"><i class="fas fa-bolt"></i> ⚡ Test Mô Phỏng "Giật Top 1" (Tự Động Đổi Rank)</button>
                                 <button class="gmd-btn" style="width: 100%; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 30px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> Reset Hũ về 0 Xu (Làm sạch)</button>
                             </div>
                         </div>
@@ -9232,84 +9228,12 @@
                     giftIcon = '⚡';
                     if (physics) physics.spawnZeus();
                 }
-            } else if (tier === 'top_donor' || tier === 'top_donor_1') {
-                coins = 500;
-                giftName = '👑 Top 1 Supporter';
-                giftIcon = '👑';
-                rankBadge = '👑 Hạng 1';
-                const avatar = 'assets/gift-icons/lion.png';
-                if (physics) physics.spawnTopDonorBadge(1, 'Top 1 Supporter', avatar);
-            } else if (tier === 'top_donor_3') {
-                coins = 300;
-                giftName = '🥉 Top 3 Supporter';
-                giftIcon = '🥉';
-                rankBadge = '🥉 Hạng 3';
-                const avatar = 'assets/gift-icons/corgi.png';
-                if (physics) physics.spawnTopDonorBadge(3, 'Top 3 Supporter', avatar);
-            } else if (tier === 'top_donor_5') {
-                coins = 150;
-                giftName = '💎 Top 5 Supporter';
-                giftIcon = '💎';
-                rankBadge = '💎 Hạng 5';
-                const avatar = 'assets/gift-icons/rose.png';
-                if (physics) physics.spawnTopDonorBadge(5, 'Top 5 Supporter', avatar);
             } else {
                 this.testGiftJarRandom(itemId);
                 return;
             }
 
-            this.testGiftJarDrop(itemId, coins, { giftName, giftIcon, rankBadge });
-        }
-
-        testSimulateTopShift(itemId) {
-            const physics = this.activeGiftJarPhysics;
-            if (!physics) return;
-            if (!this._simTopDonorsStep) this._simTopDonorsStep = 0;
-            this._simTopDonorsStep++;
-
-            const step = ((this._simTopDonorsStep - 1) % 4) + 1;
-            let topList = [];
-            let bannerMsg = '';
-
-            if (step === 1) {
-                topList = [
-                    { userId: 'donor_A', nickname: 'Alex Gamer', avatarUrl: 'assets/gift-icons/lion.png', rank: 1, coins: 15000 }
-                ];
-                bannerMsg = '👑 Alex Gamer vươn lên chiếm 👑 TOP 1!';
-            } else if (step === 2) {
-                topList = [
-                    { userId: 'donor_B', nickname: 'Bella Live', avatarUrl: 'assets/gift-icons/corgi.png', rank: 1, coins: 25000 },
-                    { userId: 'donor_A', nickname: 'Alex Gamer', avatarUrl: 'assets/gift-icons/lion.png', rank: 2, coins: 15000 }
-                ];
-                bannerMsg = '⚡ Bella Live GIẬT TOP 1! (Alex Gamer tụt 🥈 Top 2)';
-            } else if (step === 3) {
-                topList = [
-                    { userId: 'donor_C', nickname: 'Caesar Pro', avatarUrl: 'assets/gift-icons/zeus.png', rank: 1, coins: 38000 },
-                    { userId: 'donor_B', nickname: 'Bella Live', avatarUrl: 'assets/gift-icons/corgi.png', rank: 2, coins: 25000 },
-                    { userId: 'donor_A', nickname: 'Alex Gamer', avatarUrl: 'assets/gift-icons/lion.png', rank: 3, coins: 15000 }
-                ];
-                bannerMsg = '💥 Caesar Pro SOÁN NGÔI TOP 1! (Bella tụt 🥈 Top 2, Alex tụt 🥉 Top 3)';
-            } else {
-                topList = [
-                    { userId: 'donor_A', nickname: 'Alex Gamer', avatarUrl: 'assets/gift-icons/lion.png', rank: 1, coins: 50000 },
-                    { userId: 'donor_C', nickname: 'Caesar Pro', avatarUrl: 'assets/gift-icons/zeus.png', rank: 2, coins: 38000 },
-                    { userId: 'donor_B', nickname: 'Bella Live', avatarUrl: 'assets/gift-icons/corgi.png', rank: 3, coins: 25000 }
-                ];
-                bannerMsg = '🌟 Alex Gamer NẠP KHỦNG GIẬT LẠI 👑 TOP 1! (Caesar tụt 🥈 Top 2, Bella tụt 🥉 Top 3)';
-            }
-
-            physics.syncTopDonors(topList);
-
-            if (this.socket && this.socket.connected) {
-                this.socket.emit('gift_jar_top_donors_sync', { topDonors: topList });
-            }
-
-            this.testGiftJarDrop(itemId, 1000, {
-                giftName: bannerMsg,
-                giftIcon: '👑',
-                rankBadge: '👑 Đua Top 1',
-                topDonors: topList
-            });
+            this.testGiftJarDrop(itemId, coins, { giftName, giftIcon });
         }
 
         animateGiftJarCanvasDrop(item, coins, extra = {}) {
