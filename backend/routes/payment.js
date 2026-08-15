@@ -102,19 +102,18 @@ router.post('/confirm', authMiddleware, upload.single('proof'), async (req, res)
             removeUploadedFile(req.file);
             return res.status(409).json({ success: false, message: 'Payment order can no longer be changed.' });
         }
-        if (process.env.NODE_ENV === 'production' && !req.file) {
-            return res.status(400).json({ success: false, message: 'Payment proof is required.' });
-        }
         if (req.file && !isValidProofImage(req.file.path)) {
             removeUploadedFile(req.file);
             return res.status(400).json({ success: false, message: 'Invalid proof image.' });
         }
-        if (payment.proofImage) {
+        if (payment.proofImage && req.file) {
             const previousPath = path.join(proofDirectory, path.basename(payment.proofImage));
             if (fs.existsSync(previousPath)) removeUploadedFile({ path: previousPath });
         }
-        payment.proofImage = req.file ? `/uploads/temp/${req.file.filename}` : null;
-        payment.hasProof = Boolean(req.file);
+        if (req.file) {
+            payment.proofImage = `/uploads/temp/${req.file.filename}`;
+            payment.hasProof = true;
+        }
         payment.status = 'pending';
         await payment.save();
         return res.json({ success: true, message: 'Payment confirmation submitted.' });
