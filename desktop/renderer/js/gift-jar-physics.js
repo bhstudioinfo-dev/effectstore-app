@@ -620,10 +620,115 @@
                 }
             }, 50);
 
+            // Pre-explosion warning pulse at 550ms
+            setTimeout(() => {
+                if (bombBody) bombBody.preExploding = true;
+            }, 520);
+
+            // Detonate at 680ms
             setTimeout(() => {
                 clearInterval(sparkInterval);
                 this.explodePartial(bombBody, callback);
-            }, 650);
+            }, 680);
+        }
+
+        createBombExplosion(bx, by) {
+            // 1. Screen / Container physical shock shake
+            if (this.canvas) {
+                const origTransform = this.canvas.style.transform || '';
+                let shakeCount = 0;
+                const shakeInterval = setInterval(() => {
+                    shakeCount++;
+                    const shakeX = (Math.random() - 0.5) * 14;
+                    const shakeY = (Math.random() - 0.5) * 12;
+                    this.canvas.style.transform = `translate(${shakeX}px, ${shakeY}px)`;
+                    if (shakeCount > 6) {
+                        clearInterval(shakeInterval);
+                        this.canvas.style.transform = origTransform;
+                    }
+                }, 28);
+            }
+
+            // 2. Fiery expanding shockwave ring
+            this.particles.push({
+                x: bx,
+                y: by,
+                radius: 12,
+                expandSpeed: 7,
+                color: '#f97316',
+                alpha: 1.0,
+                decay: 0.05,
+                shape: 'ring',
+                size: 3.5
+            });
+
+            // 3. Blazing Core Fireballs (Expanding glowing fire cloud)
+            for (let f = 0; f < 5; f++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * 16;
+                this.particles.push({
+                    x: bx + Math.cos(angle) * dist,
+                    y: by + Math.sin(angle) * dist,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: -Math.random() * 4 - 1,
+                    radius: 20 + Math.random() * 16,
+                    expandSpeed: 4.0,
+                    alpha: 1.0,
+                    decay: 0.045,
+                    shape: 'fireball'
+                });
+            }
+
+            // 4. Jagged Comic Explosion Blast Star
+            this.particles.push({
+                x: bx,
+                y: by,
+                vx: 0,
+                vy: 0,
+                size: 48,
+                expandSpeed: 4.5,
+                alpha: 1.0,
+                decay: 0.06,
+                shape: 'spike'
+            });
+
+            // 5. Rolling Volumetric Dark Smoke Puffs drifting upwards
+            const smokeColors = ['#1e293b', '#334155', '#475569', '#64748b'];
+            for (let s = 0; s < 18; s++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 2 + Math.random() * 6;
+                this.particles.push({
+                    x: bx + (Math.random() - 0.5) * 22,
+                    y: by + (Math.random() - 0.5) * 16,
+                    vx: Math.cos(angle) * spd * 0.7,
+                    vy: -Math.abs(Math.sin(angle) * spd) - (2 + Math.random() * 4),
+                    gravity: -0.05,
+                    size: 14 + Math.random() * 16,
+                    expandSpeed: 1.2,
+                    color: smokeColors[Math.floor(Math.random() * smokeColors.length)],
+                    alpha: 0.85,
+                    decay: 0.016 + Math.random() * 0.012,
+                    shape: 'smoke'
+                });
+            }
+
+            // 6. Flying TNT Shrapnel & Burning Embers
+            for (let e = 0; e < 25; e++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 6 + Math.random() * 15;
+                this.particles.push({
+                    x: bx,
+                    y: by,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd - 6,
+                    gravity: 0.45,
+                    size: 3 + Math.random() * 4,
+                    color: Math.random() < 0.65 ? '#ef4444' : '#f59e0b',
+                    alpha: 1.0,
+                    decay: 0.025 + Math.random() * 0.02,
+                    shape: 'ember'
+                });
+            }
         }
 
         explodePartial(bombBody, callback) {
@@ -638,9 +743,8 @@
                 if (bIdx >= 0) this.items.splice(bIdx, 1);
             }
 
-            // 1. Firework burst directly at bomb impact location
-            this.createFireworkBurst(bombX, bombY, 'multi', 40);
-            setTimeout(() => this.createFireworkBurst(bombX, bombY - 25, 'gold', 25), 90);
+            // 1. Fiery Bomb Explosion with Smoke and Fireballs
+            this.createBombExplosion(bombX, bombY);
 
             // 2. Separate gifts: ~40% - 50% nearest gifts get destroyed; remainder survive
             const otherItems = this.items.filter(b => b !== bombBody && !b.exploding);
@@ -1008,17 +1112,29 @@
                 }
 
                 if (type === 'bomb') {
+                    if (b.preExploding) {
+                        ctx.scale(1.35, 1.35);
+                        ctx.shadowColor = '#ef4444';
+                        ctx.shadowBlur = 24;
+                    }
+
                     // Draw Glossy 3D Bomb with burning fuse
                     ctx.beginPath();
                     ctx.arc(0, 4, r * 0.9, 0, Math.PI * 2);
                     const bombGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.2, 1, 0, 4, r * 0.95);
-                    bombGrad.addColorStop(0, '#64748b');
-                    bombGrad.addColorStop(0.3, '#1e293b');
-                    bombGrad.addColorStop(0.8, '#0f172a');
-                    bombGrad.addColorStop(1, '#020617');
+                    if (b.preExploding) {
+                        bombGrad.addColorStop(0, '#fca5a5');
+                        bombGrad.addColorStop(0.4, '#ef4444');
+                        bombGrad.addColorStop(1, '#7f1d1d');
+                    } else {
+                        bombGrad.addColorStop(0, '#64748b');
+                        bombGrad.addColorStop(0.3, '#1e293b');
+                        bombGrad.addColorStop(0.8, '#0f172a');
+                        bombGrad.addColorStop(1, '#020617');
+                    }
                     ctx.fillStyle = bombGrad;
                     ctx.fill();
-                    ctx.strokeStyle = '#334155';
+                    ctx.strokeStyle = b.preExploding ? '#f87171' : '#334155';
                     ctx.lineWidth = 1.5;
                     ctx.stroke();
 
@@ -1246,7 +1362,31 @@
                     ctx.save();
                     ctx.globalAlpha = Math.max(0, p.alpha);
 
-                    if (p.shape === 'ring') {
+                    if (p.shape === 'fireball') {
+                        p.radius = (p.radius || 15) + (p.expandSpeed || 3.5);
+                        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius);
+                        grad.addColorStop(0, '#ffffff');
+                        grad.addColorStop(0.25, '#fef08a');
+                        grad.addColorStop(0.6, '#f97316');
+                        grad.addColorStop(0.9, '#dc2626');
+                        grad.addColorStop(1, 'rgba(220, 38, 38, 0)');
+                        ctx.fillStyle = grad;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (p.shape === 'smoke') {
+                        p.size = (p.size || 15) + (p.expandSpeed || 1.1);
+                        ctx.fillStyle = p.color || '#334155';
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (p.shape === 'spike') {
+                        p.size = (p.size || 40) + (p.expandSpeed || 3.2);
+                        ctx.font = `bold ${Math.round(p.size * 1.4)}px sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('💥', p.x, p.y);
+                    } else if (p.shape === 'ring') {
                         p.radius = (p.radius || 6) + (p.expandSpeed || 4.5);
                         ctx.beginPath();
                         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
