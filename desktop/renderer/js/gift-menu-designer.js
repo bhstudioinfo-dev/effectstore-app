@@ -8058,6 +8058,7 @@
                                     <button class="gmd-btn" style="font-size: 11px; background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.35); color: #fb923c; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'top_donor_3')">🥉 Rơi Huy Hiệu Top 3</button>
                                     <button class="gmd-btn" style="font-size: 11px; background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.35); color: #38bdf8; height: 30px;" onclick="window.giftMenuDesigner.testGiftJarPreset('${selected.id}', 'top_donor_5')">💎 Rơi Huy Hiệu Top 5</button>
                                 </div>
+                                <button class="gmd-btn" style="width: 100%; font-size: 11px; background: linear-gradient(135deg, #f59e0b, #ef4444); color: #ffffff; border: none; height: 32px; margin-bottom: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="window.giftMenuDesigner.testSimulateTopShift('${selected.id}')"><i class="fas fa-bolt"></i> ⚡ Test Mô Phỏng "Giật Top 1" (Tự Động Đổi Rank)</button>
                                 <button class="gmd-btn" style="width: 100%; font-size: 11px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 30px;" onclick="window.giftMenuDesigner.resetGiftJarCoins('${selected.id}')"><i class="fas fa-undo"></i> Reset Hũ về 0 Xu (Làm sạch)</button>
                             </div>
                         </div>
@@ -9258,6 +9259,57 @@
             }
 
             this.testGiftJarDrop(itemId, coins, { giftName, giftIcon, rankBadge });
+        }
+
+        testSimulateTopShift(itemId) {
+            const physics = this.activeGiftJarPhysics;
+            if (!physics) return;
+            if (!this._simTopDonorsStep) this._simTopDonorsStep = 0;
+            this._simTopDonorsStep++;
+
+            const step = ((this._simTopDonorsStep - 1) % 4) + 1;
+            let topList = [];
+            let bannerMsg = '';
+
+            if (step === 1) {
+                topList = [
+                    { userId: 'donor_A', nickname: 'Alex Gamer', avatarUrl: 'assets/gift-icons/lion.png', rank: 1, coins: 15000 }
+                ];
+                bannerMsg = '👑 Alex Gamer vươn lên chiếm 👑 TOP 1!';
+            } else if (step === 2) {
+                topList = [
+                    { userId: 'donor_B', nickname: 'Bella Live', avatarUrl: 'assets/gift-icons/corgi.png', rank: 1, coins: 25000 },
+                    { userId: 'donor_A', nickname: 'Alex Gamer', avatarUrl: 'assets/gift-icons/lion.png', rank: 2, coins: 15000 }
+                ];
+                bannerMsg = '⚡ Bella Live GIẬT TOP 1! (Alex Gamer tụt 🥈 Top 2)';
+            } else if (step === 3) {
+                topList = [
+                    { userId: 'donor_C', nickname: 'Caesar Pro', avatarUrl: 'assets/gift-icons/zeus.png', rank: 1, coins: 38000 },
+                    { userId: 'donor_B', nickname: 'Bella Live', avatarUrl: 'assets/gift-icons/corgi.png', rank: 2, coins: 25000 },
+                    { userId: 'donor_A', nickname: 'Alex Gamer', avatarUrl: 'assets/gift-icons/lion.png', rank: 3, coins: 15000 }
+                ];
+                bannerMsg = '💥 Caesar Pro SOÁN NGÔI TOP 1! (Bella tụt 🥈 Top 2, Alex tụt 🥉 Top 3)';
+            } else {
+                topList = [
+                    { userId: 'donor_A', nickname: 'Alex Gamer', avatarUrl: 'assets/gift-icons/lion.png', rank: 1, coins: 50000 },
+                    { userId: 'donor_C', nickname: 'Caesar Pro', avatarUrl: 'assets/gift-icons/zeus.png', rank: 2, coins: 38000 },
+                    { userId: 'donor_B', nickname: 'Bella Live', avatarUrl: 'assets/gift-icons/corgi.png', rank: 3, coins: 25000 }
+                ];
+                bannerMsg = '🌟 Alex Gamer NẠP KHỦNG GIẬT LẠI 👑 TOP 1! (Caesar tụt 🥈 Top 2, Bella tụt 🥉 Top 3)';
+            }
+
+            physics.syncTopDonors(topList);
+
+            if (this.socket && this.socket.connected) {
+                this.socket.emit('gift_jar_top_donors_sync', { topDonors: topList });
+            }
+
+            this.testGiftJarDrop(itemId, 1000, {
+                giftName: bannerMsg,
+                giftIcon: '👑',
+                rankBadge: '👑 Đua Top 1',
+                topDonors: topList
+            });
         }
 
         animateGiftJarCanvasDrop(item, coins, extra = {}) {

@@ -2163,10 +2163,14 @@
       const coins = Number(data.coins) || 10;
       
       if (physics) {
+        if (Array.isArray(data.topDonors) && data.topDonors.length > 0) {
+          physics.syncTopDonors(data.topDonors);
+        }
         if (data.rankBadge || data.rank) {
           const rank = Number(data.rank) || (data.rankBadge ? (parseInt(String(data.rankBadge).replace(/\D/g, '')) || 1) : 1);
           const avatarUrl = data.avatarUrl || data.profilePictureUrl || data.avatar || '';
-          physics.spawnTopDonorBadge(rank, data.nickname || `Top ${rank} Supporter`, avatarUrl);
+          const userId = data.userId || data.uniqueId || data.nickname || `user_${rank}`;
+          physics.spawnTopDonorBadge(rank, data.nickname || `Top ${rank} Supporter`, avatarUrl, userId);
         } else if (coins > 500) {
           physics.spawnLion();
         } else if (coins > 100) {
@@ -2193,9 +2197,9 @@
         console.log('[DEBUG] socket open');
         syncGiftMenuPlaybackVisibility();
       });
-      socket.addEventListener('message', (message) => {
+      socket.addEventListener('message', (event) => {
         try {
-          const packet = JSON.parse(message.data || '{}');
+          const packet = JSON.parse(event.data || '{}');
           console.log('[DEBUG] socket packet:', packet);
           if (packet.event === 'effect_playback_started' && shouldFadeForPlayback(packet.data)) {
             setGiftMenuPlaybackVisibility(true);
@@ -2209,6 +2213,11 @@
             showChallengeWheel(packet.data || {});
           } else if (packet.event === 'gift_jar_drop') {
             triggerGiftJarDrop(packet.data || {});
+          } else if (packet.event === 'gift_jar_top_donors_sync') {
+            const physics = ensureOverlayGiftJarPhysics();
+            if (physics && Array.isArray(packet.data?.topDonors)) {
+              physics.syncTopDonors(packet.data.topDonors);
+            }
           } else if (packet.event === 'effect_queue_empty') {
             setGiftMenuPlaybackVisibility(false);
           }

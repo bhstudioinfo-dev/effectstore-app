@@ -589,13 +589,49 @@
             });
         }
 
-        spawnTopDonorBadge(rank = 1, nickname = 'Top Fan', avatarUrl = '') {
+        spawnTopDonorBadge(rank = 1, nickname = 'Top Fan', avatarUrl = '', userId = '') {
             const numRank = Number(rank) || 1;
             const radius = numRank === 1 ? 24 : (numRank <= 3 ? 21 : 19);
             this.spawnGiftBody('top_donor', radius, {
                 rank: numRank,
                 nickname: nickname || `Top ${numRank}`,
-                avatarUrl: avatarUrl || ''
+                avatarUrl: avatarUrl || '',
+                userId: userId || nickname || `user_${numRank}`
+            });
+        }
+
+        syncTopDonors(topDonors = []) {
+            if (!Array.isArray(topDonors)) return;
+            const donorBodies = this.items.filter(b => b.giftType === 'top_donor');
+
+            topDonors.forEach((donor, idx) => {
+                const rank = Number(donor.rank || (idx + 1));
+                const userId = String(donor.userId || donor.uniqueId || donor.nickname || `user_${rank}`);
+                const nickname = donor.nickname || donor.name || `Top ${rank}`;
+                const avatarUrl = donor.avatarUrl || donor.profilePictureUrl || '';
+
+                // Check if this donor already has a badge in the jar
+                const existing = donorBodies.find(b => {
+                    const data = b.giftData || {};
+                    return (data.userId && data.userId === userId) || (data.nickname && data.nickname === nickname);
+                });
+
+                if (existing) {
+                    const oldRank = existing.giftData.rank;
+                    existing.giftData.rank = rank;
+                    existing.giftData.nickname = nickname;
+                    if (avatarUrl) existing.giftData.avatarUrl = avatarUrl;
+                    if (oldRank !== rank) {
+                        // Small hop impulse to celebrate or highlight rank shift
+                        Matter.Body.setVelocity(existing, {
+                            x: (Math.random() - 0.5) * 2.5,
+                            y: -4.5
+                        });
+                    }
+                } else if (rank <= 5) {
+                    // Drop a brand new badge if newly entering Top 5
+                    this.spawnTopDonorBadge(rank, nickname, avatarUrl, userId);
+                }
             });
         }
 
