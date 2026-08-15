@@ -74,6 +74,7 @@
             }, options);
 
             this.items = [];
+            this.particles = [];
             this.wallBodies = [];
             this.imageCache = {};
             this.isRunning = false;
@@ -871,6 +872,13 @@
                 ctx.translate(x, y);
                 ctx.rotate(angle);
 
+                if (b.exploding) {
+                    b.opacity = Math.max(0, (b.opacity !== undefined ? b.opacity : 1.0) - 0.035);
+                    b.scale = Math.max(0, (b.scale !== undefined ? b.scale : 1.0) - 0.015);
+                    ctx.globalAlpha = Math.max(0, b.opacity);
+                    ctx.scale(b.scale, b.scale);
+                }
+
                 if (type === 'top_donor') {
                     const rank = Number(data.rank) || 1;
                     const avatarUrl = data.avatarUrl || data.profilePictureUrl || data.avatar || '';
@@ -1053,6 +1061,42 @@
                 ctx.restore();
             }
 
+            // 2.5 Draw Explosion Fireworks & Sparkle Particles
+            if (this.particles && this.particles.length > 0) {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += p.gravity || 0.28;
+                    p.vx *= 0.98;
+                    p.alpha -= p.decay || 0.025;
+                    p.size = Math.max(0.5, p.size * 0.96);
+
+                    if (p.alpha <= 0 || p.size <= 0.5) {
+                        this.particles.splice(i, 1);
+                        continue;
+                    }
+
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, p.alpha);
+                    ctx.fillStyle = p.color || '#fbbf24';
+                    ctx.shadowColor = p.color || '#f59e0b';
+                    ctx.shadowBlur = 6;
+
+                    if (p.shape === 'star') {
+                        ctx.font = `${Math.round(p.size * 2)}px sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('✨', p.x, p.y);
+                    } else {
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            }
+
             // 3. Draw Front Glass Layer (hu-thuong.png) ON TOP OF GIFTS
             if ((theme === 'hu-thuong' || !theme) && jar && jar.w > 0 && jar.h > 0) {
                 const frontImg = this.imageCache['hu-thuong'] || this.loadImage('hu-thuong', this.getAssetUrl('jars', 'hu-thuong.png'));
@@ -1074,19 +1118,96 @@
             ctx.restore();
         }
 
-        reset() {
+        explodeAndReset(callback) {
+            if (!this.world || !this.items.length) {
+                this.reset(false);
+                if (typeof callback === 'function') callback();
+                return;
+            }
+
+            const jar = this.getJarInnerRect();
+            const jarCenterX = jar.x + jar.w / 2;
+            const jarCenterY = jar.y + jar.h * 0.70;
+
+            // 1. Blast every item outward with explosive velocity and spin
+            this.items.forEach(b => {
+                b.collisionFilter.mask = 0; // Disable collision so items fly freely out
+                b.exploding = true;
+                b.opacity = 1.0;
+                b.scale = 1.0;
+
+                const dx = b.position.x - jarCenterX;
+                const dy = b.position.y - jarCenterY;
+                const dist = Math.max(5, Math.hypot(dx, dy));
+                const forceX = (dx / dist) * (14 + Math.random() * 16) + (Math.random() - 0.5) * 10;
+                const forceY = -Math.abs(dy / dist) * (18 + Math.random() * 16) - (14 + Math.random() * 14);
+
+                Matter.Body.setVelocity(b, { x: forceX, y: forceY });
+                Matter.Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.8);
+
+                // Spawn sparkling explosion particles around each gift
+                const pColors = ['#fde047', '#f43f5e', '#38bdf8', '#c084fc', '#4ade80', '#ffffff', '#fb923c'];
+                for (let k = 0; k < 6; k++) {
+                    this.particles.push({
+                        x: b.position.x + (Math.random() - 0.5) * 16,
+                        y: b.position.y + (Math.random() - 0.5) * 16,
+                        vx: (Math.random() - 0.5) * 16,
+                        vy: -Math.random() * 14 - 3,
+                        gravity: 0.35,
+                        size: 3 + Math.random() * 4,
+                        color: pColors[Math.floor(Math.random() * pColors.length)],
+                        alpha: 1.0,
+                        decay: 0.025 + Math.random() * 0.02,
+                        shape: Math.random() < 0.35 ? 'star' : 'circle'
+                    });
+                }
+            });
+
+            // Center explosion shockwave particles
+            const shockColors = ['#ffffff', '#fbbf24', '#f472b6', '#38bdf8'];
+            for (let k = 0; k < 35; k++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 6 + Math.random() * 18;
+                this.particles.push({
+                    x: jarCenterX,
+                    y: jarCenterY,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd - 6,
+                    gravity: 0.3,
+                    size: 4 + Math.random() * 5,
+                    color: shockColors[Math.floor(Math.random() * shockColors.length)],
+                    alpha: 1.0,
+                    decay: 0.02 + Math.random() * 0.02,
+                    shape: Math.random() < 0.4 ? 'star' : 'circle'
+                });
+            }
+
+            // Cleanup after ~700ms when items have faded out
+            setTimeout(() => {
+                this.reset(false);
+                if (typeof callback === 'function') callback();
+            }, 750);
+        }
+
+        reset(animated = true) {
+            if (animated && this.items && this.items.length > 0) {
+                this.explodeAndReset();
+                return;
+            }
             if (!this.world) return;
             const { World } = Matter;
             if (this.items.length) {
                 World.remove(this.world, this.items);
                 this.items = [];
             }
+            this.particles = [];
             if (this.ctx && this.canvas) {
                 this.ctx.save();
                 this.ctx.setTransform(1, 0, 0, 1, 0, 0);
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 this.ctx.restore();
             }
+            this.setupWalls();
         }
 
         destroy() {

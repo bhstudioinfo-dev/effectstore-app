@@ -9295,12 +9295,16 @@
             if (!item) return;
             this.pushHistory('reset-gift-jar');
             item.currentCoins = 0;
-            if (this.giftJarPhysics) {
-                this.giftJarPhysics.reset();
+            const physics = this.activeGiftJarPhysics || this.giftJarPhysics;
+            if (physics) {
+                physics.explodeAndReset();
+            }
+            if (this.socket && this.socket.connected) {
+                this.socket.emit('gift_jar_reset', { itemId, currentCoins: 0 });
             }
             this.renderCanvas();
             this.renderInspector();
-            if (window.app?.showNotification) window.app.showNotification('success', 'Đã đặt lại số Xu của Hũ về 0!');
+            if (window.app?.showNotification) window.app.showNotification('success', '💥 Đã kích hoạt nổ quà và làm sạch Hũ về 0 Xu!');
         }
 
         uploadChallengeResultImage(itemId) {

@@ -2205,6 +2205,11 @@
             showChallengeWheel(packet.data || {});
           } else if (packet.event === 'gift_jar_drop') {
             triggerGiftJarDrop(packet.data || {});
+          } else if (packet.event === 'gift_jar_reset') {
+            const physics = ensureOverlayGiftJarPhysics();
+            if (physics) {
+              physics.explodeAndReset();
+            }
           } else if (packet.event === 'effect_queue_empty') {
             setGiftMenuPlaybackVisibility(false);
           }
