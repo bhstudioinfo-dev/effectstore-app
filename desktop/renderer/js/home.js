@@ -2232,6 +2232,8 @@ class EffectStoreApp {
                 this.saveCart();
                 await this.loadOwnedEffects();
                 await this.loadEffects();
+                this._mappingLibraryLoaded = false;
+                await this.loadEffectsForMapping();
                 this.updateUI();
             }
 
@@ -2515,6 +2517,8 @@ class EffectStoreApp {
         // Quan trọng: Tải lại dữ liệu từ server để cập nhật Rank Pro/Business
         await this.checkAuth();
         await this.loadOwnedEffects();
+        this._mappingLibraryLoaded = false;
+        await this.loadEffectsForMapping();
 
         this.cart = [];
         this.saveCart();
@@ -5817,7 +5821,7 @@ class EffectStoreApp {
         this.loadAiAssistantConfig();
         // Usually already completed by preloadAllAppData; this is a safe
         // fallback for sessions that entered the view before authentication.
-        this.preloadMappingLibrary();
+        this.loadEffectsForMapping();
         this.loadMappings();
         this.startEffectQueueStatusPolling();
         const triggerSelect = document.getElementById('mapping-trigger-type');
@@ -6345,7 +6349,11 @@ class EffectStoreApp {
                 grid.innerHTML = displayEffects.map(e => {
                     const effectId = e._id || e.id;
                     const thumbUrl = resolveMediaUrl(e.thumbUrl);
-                    const videoUrl = resolveMediaUrl(e.previewUrl || e.fileUrl);
+                    let rawVideo = e.previewUrl || e.fileUrl;
+                    if (!rawVideo || rawVideo.startsWith('/uploads/')) {
+                        rawVideo = effectId ? `/api/stream/effect/${effectId}` : '';
+                    }
+                    const videoUrl = rawVideo ? resolveMediaUrl(rawVideo) : '';
                     let previewHTML = '';
 
                     if (e.isChallengeWheel) {
@@ -6399,13 +6407,13 @@ class EffectStoreApp {
                         
                         if (effectiveThumb && videoWithFrame) {
                             previewHTML = `
-                                <img src="${effectiveThumb}" class="mapping-thumb-img" onerror="this.style.display='none'; const v=this.nextElementSibling; if(v && v.tagName==='VIDEO') { v.style.opacity='1'; v.play().catch(e=>{}); }">
-                                <video src="${videoWithFrame}" class="mapping-video" muted loop playsinline preload="metadata"></video>
+                                <img src="${effectiveThumb}" class="mapping-thumb-img" onerror="this.style.display='none'; const v=this.nextElementSibling; if(v) { v.style.opacity='1'; }">
+                                <video src="${videoWithFrame}" class="mapping-video" muted loop playsinline preload="auto" onloadeddata="this.style.opacity='1'"></video>
                             `;
+                        } else if (videoWithFrame) {
+                            previewHTML = `<video src="${videoWithFrame}" class="mapping-video" style="opacity:1;" muted loop playsinline preload="auto"></video>`;
                         } else if (effectiveThumb) {
                             previewHTML = `<img src="${effectiveThumb}" class="mapping-thumb-img" style="opacity:1;" onerror="this.style.display='none';">`;
-                        } else if (videoWithFrame) {
-                            previewHTML = `<video src="${videoWithFrame}" class="mapping-video" style="opacity:1;" muted loop playsinline preload="metadata"></video>`;
                         } else {
                             previewHTML = `<span style="font-size:32px;">🎬</span>`;
                         }
@@ -6414,8 +6422,8 @@ class EffectStoreApp {
                     return `
                 <div class="effect-mapping-item" data-effect-id="${effectId}" data-effect-name="${e.name || ''}" ${e.isChallengeWheel ? `data-wheel-id="${e.challengeWheelId}"` : ''} style="${e.isCustom ? 'border-color:rgba(34,197,94,.35);' : e.isChallengeWheel ? 'border-color:rgba(245,158,11,.55);' : ''}">
                     <div class="effect-mapping-thumb" 
-                        onmouseenter="const v=this.querySelector('video'); if(v) { v.muted=true; const p=v.play(); if(p!==undefined) p.catch(()=>{}); }" 
-                        onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
+                        onmouseenter="const v=this.querySelector('video'); if(v) { v.muted=true; v.style.opacity='1'; const p=v.play(); if(p!==undefined) p.catch(()=>{}); }" 
+                        onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; const img=this.querySelector('.mapping-thumb-img'); if(img && img.style.display!=='none') v.style.opacity='0'; }">
                         ${previewHTML}
                     </div>
                     <div class="effect-mapping-info">
