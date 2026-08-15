@@ -4872,6 +4872,13 @@
                                 ${this.buildTemplatePreviewLayers(t)}
                             </div>
                         </div>`;
+                } else if (t.id === 'tmpl_interactive_gift_jar' || t.category === 'gift-jar') {
+                    previewHTML = `
+                                <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #1b122c 0%, #080514 100%); border: 1px solid rgba(244,114,182,0.4); box-shadow: 0 0 10px rgba(244,114,182,0.25); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; position: relative; overflow: hidden;">
+                                    <img src="assets/jars/hu-thuong.png" onerror="this.onerror=null;this.src='../public/assets/jars/hu-thuong.png';" style="width: 38px; height: 46px; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(244,114,182,0.6));" />
+                                    <div style="position: absolute; bottom: 2px; font-size: 5px; font-weight: 900; color: #fbbf24; background: rgba(0,0,0,0.65); padding: 1px 4px; border-radius: 3px; border: 1px solid rgba(251,191,36,0.35); text-shadow: 0 0 4px #fbbf24;">🏺 HŨ QUÀ</div>
+                                </div>
+                            `;
                 } else if (t.id === 'tmpl_pk_versus_bar') {
                     previewHTML = `
                                 <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #0f172a 0%, #05070f 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box; position: relative;">
