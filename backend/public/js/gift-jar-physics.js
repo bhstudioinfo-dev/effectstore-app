@@ -455,7 +455,10 @@
             const bounds = this.getArtboardBounds();
 
             const mouthCenterX = jar.x + jar.w / 2;
-            const spawnX = mouthCenterX + (Math.random() - 0.5) * (jar.w * 0.15);
+            let spawnX = mouthCenterX + (Math.random() - 0.5) * (jar.w * 0.15);
+            if (data.customSpawnX !== undefined) {
+                spawnX = data.customSpawnX;
+            }
             const spawnY = bounds.top - 20;
 
             const capScale = this.getCapacityScale();
@@ -591,8 +594,23 @@
         }
 
         spawnBombAndExplode(callback) {
+            const bounds = this.getArtboardBounds();
+            const jar = this.getJarInnerRect();
+            const jarCenterX = jar ? (jar.x + jar.w / 2) : (this.width / 2);
+
+            // Random horizontal position: 45% chance near jar mouth, 55% anywhere on screen
+            let randSpawnX;
+            if (Math.random() < 0.45 && jar) {
+                randSpawnX = jarCenterX + (Math.random() - 0.5) * (jar.w * 0.75);
+            } else {
+                const minX = Math.max(30, bounds.left + 30);
+                const maxX = Math.min(this.width - 30, bounds.left + bounds.width - 30);
+                randSpawnX = minX + Math.random() * (maxX - minX);
+            }
+
             const bombBody = this.spawnGiftBody('bomb', 26, {
                 isBomb: true,
+                customSpawnX: randSpawnX,
                 name: 'Bom Nổ Hũ'
             });
 
@@ -733,6 +751,7 @@
 
         explodePartial(bombBody, callback) {
             const { World } = Matter;
+            const jar = this.getJarInnerRect();
             const bombX = bombBody?.position?.x || (this.width / 2);
             const bombY = bombBody?.position?.y || (this.height * 0.7);
 
@@ -746,14 +765,31 @@
             // 1. Fiery Bomb Explosion with Smoke and Fireballs
             this.createBombExplosion(bombX, bombY);
 
-            // 2. Separate gifts: ~40% - 50% nearest gifts get destroyed; remainder survive
             const otherItems = this.items.filter(b => b !== bombBody && !b.exploding);
 
-            if (!otherItems.length) {
-                if (typeof callback === 'function') callback({ destroyedCount: 0, totalCount: 0, ratio: 0.5 });
+            // Check if bomb hit inside or close enough to the jar
+            const isNearJar = jar && (
+                bombX >= jar.x - 30 &&
+                bombX <= jar.x + jar.w + 30 &&
+                bombY >= jar.y - 40 &&
+                bombY <= jar.y + jar.h + 50
+            );
+
+            if (!isNearJar || !otherItems.length) {
+                // Bomb landed outside! Jar is safe!
+                otherItems.forEach(b => {
+                    Matter.Body.setVelocity(b, {
+                        x: b.velocity.x + (Math.random() - 0.5) * 3,
+                        y: b.velocity.y - 2 - Math.random() * 2
+                    });
+                });
+                if (typeof callback === 'function') {
+                    callback({ isHit: false, destroyedCount: 0, totalCount: otherItems.length, ratio: 0 });
+                }
                 return;
             }
 
+            // 2. Separate gifts: ~35% - 45% nearest gifts get destroyed; remainder survive
             const itemsWithDist = otherItems.map(b => {
                 const dx = b.position.x - bombX;
                 const dy = b.position.y - bombY;
@@ -761,8 +797,8 @@
             });
             itemsWithDist.sort((a, b) => a.dist - b.dist);
 
-            // Destroy approximately 40% - 50% of the gifts in the jar
-            const destroyPercent = 0.38 + Math.random() * 0.14;
+            // Destroy approximately 35% - 45% of the gifts in the jar
+            const destroyPercent = 0.35 + Math.random() * 0.12;
             const destroyCount = Math.max(1, Math.min(itemsWithDist.length, Math.ceil(itemsWithDist.length * destroyPercent)));
             const destroyedItems = itemsWithDist.slice(0, destroyCount).map(entry => entry.body);
             const survivingItems = itemsWithDist.slice(destroyCount).map(entry => entry.body);
@@ -817,8 +853,10 @@
                     World.remove(this.world, destroyedItems);
                     this.items = this.items.filter(item => !destroyedItems.includes(item));
                 }
-                const destroyedRatio = otherItems.length > 0 ? (destroyCount / otherItems.length) : 0.5;
-                if (typeof callback === 'function') callback({ destroyedCount: destroyCount, totalCount: otherItems.length, ratio: destroyedRatio });
+                const destroyedRatio = otherItems.length > 0 ? (destroyCount / otherItems.length) : 0.4;
+                if (typeof callback === 'function') {
+                    callback({ isHit: true, destroyedCount: destroyCount, totalCount: otherItems.length, ratio: destroyedRatio });
+                }
             }, 800);
         }
 

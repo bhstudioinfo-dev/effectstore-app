@@ -9369,18 +9369,22 @@
             const physics = this.activeGiftJarPhysics || this.giftJarPhysics;
             if (physics) {
                 physics.spawnBombAndExplode((res) => {
-                    const ratio = res?.ratio || 0.45;
+                    if (res && res.isHit === false) {
+                        if (window.app?.showNotification) window.app.showNotification('info', '😅 Bom rơi trượt ra ngoài! Quà trong hũ an toàn!');
+                        return;
+                    }
+                    const ratio = res?.ratio || 0.40;
                     const oldCoins = Number(item.currentCoins) || 0;
                     item.currentCoins = Math.max(0, Math.round(oldCoins * (1 - ratio)));
                     this.renderCanvas();
                     this.renderInspector();
-                    if (window.app?.showNotification) window.app.showNotification('warning', `💥 Bom nổ tung một phần quà! Xu giảm từ ${oldCoins.toLocaleString()} -> ${item.currentCoins.toLocaleString()} Xu`);
+                    if (window.app?.showNotification) window.app.showNotification('warning', `💥 Bom trúng Hũ nổ tung một phần quà! Xu giảm từ ${oldCoins.toLocaleString()} -> ${item.currentCoins.toLocaleString()} Xu`);
                 });
             }
             if (this.socket && this.socket.connected) {
                 this.socket.emit('gift_jar_bomb_drop', { itemId });
             }
-            if (window.app?.showNotification) window.app.showNotification('info', '💣 Đã thả Bom vào Hũ!');
+            if (window.app?.showNotification) window.app.showNotification('info', '💣 Đã thả Bom ngẫu nhiên từ trên trời xuống!');
         }
 
         uploadChallengeResultImage(itemId) {
