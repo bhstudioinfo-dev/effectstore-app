@@ -129,9 +129,11 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
     }
     if (config.INITIAL_SETUP_TOKEN.length < 32) config.INITIAL_SETUP_TOKEN = crypto.randomBytes(48).toString('hex');
 
-    // Always prefer local 27017 or system Mongo over port 27117
-    if (!config.MONGODB_URI || isPort27117MongoUri(config.MONGODB_URI) || (defaultMongodbUri && isLegacyDefaultMongoUri(config.MONGODB_URI))) {
-        config.MONGODB_URI = defaultMongodbUri || 'mongodb://127.0.0.1:27017/effectstore';
+    // Prefer explicit defaultMongodbUri when bundled mongo is active
+    if (defaultMongodbUri) {
+        config.MONGODB_URI = defaultMongodbUri;
+    } else if (!config.MONGODB_URI || isPort27117MongoUri(config.MONGODB_URI) || isLegacyDefaultMongoUri(config.MONGODB_URI)) {
+        config.MONGODB_URI = 'mongodb://127.0.0.1:27017/effectstore';
     }
 
     fs.mkdirSync(userDataPath, { recursive: true });
@@ -169,7 +171,7 @@ function resolveBackendPath({ isPackaged, resourcesPath, desktopDirectory }) {
 }
 
 async function startManagedBackend(options) {
-    if (await backendHealthCheck()) return { process: null, managed: false, reason: 'already-running' };
+    if (await backendHealthCheck(1500)) return { process: null, managed: false, reason: 'already-running' };
 
     const backendEntry = resolveBackendPath(options);
     if (!fs.existsSync(backendEntry)) throw new Error(`Không tìm thấy backend: ${backendEntry}`);
@@ -226,7 +228,7 @@ async function startManagedBackend(options) {
         child.__effectstoreSpawnError = err;
     });
 
-    const deadline = Date.now() + 30000;
+    const deadline = Date.now() + 60000;
     while (Date.now() < deadline) {
         if (child.__effectstoreExited) {
             if (child.__effectstoreSpawnError) {
@@ -234,10 +236,10 @@ async function startManagedBackend(options) {
             }
             throw new Error(`Backend đã dừng với mã ${child.__effectstoreExitCode}. Xem logs/backend.log.`);
         }
-        if (await backendHealthCheck(1000)) return { process: child, managed: true, reason: 'started' };
+        if (await backendHealthCheck(1500)) return { process: child, managed: true, reason: 'started' };
         await new Promise((resolve) => setTimeout(resolve, 300));
     }
-    const errorMsg = 'Backend không sẵn sàng sau 30 giây. Kiểm tra MongoDB và logs/backend.log.';
+    const errorMsg = 'Backend không sẵn sàng sau 60 giây. Kiểm tra MongoDB và logs/backend.log.';
     try { child.kill('SIGTERM'); } catch (_err) {}
     throw new Error(errorMsg);
 }
