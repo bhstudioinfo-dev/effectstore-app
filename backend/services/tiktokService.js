@@ -660,13 +660,15 @@ class TikTokService {
                 );
 
                 if (isBombMatch) {
-                    layer.currentCoins = 0;
+                    const oldCoins = Number(layer.currentCoins) || 0;
+                    const deductedCoins = Math.max(0, Math.round(oldCoins * 0.55));
+                    layer.currentCoins = deductedCoins;
                     hasUpdates = true;
                     this.broadcast('gift_jar_bomb_drop', {
                         giftName: receivedGiftName,
                         giftIcon: gift.iconUrl || '',
                         nickname: senderNickname,
-                        currentCoins: 0,
+                        currentCoins: layer.currentCoins,
                         theme: layer.theme || 'hu-thuong',
                         jarColor: layer.jarColor || '',
                         timestamp: Date.now()

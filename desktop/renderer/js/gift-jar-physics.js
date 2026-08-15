@@ -622,8 +622,100 @@
 
             setTimeout(() => {
                 clearInterval(sparkInterval);
-                this.explodeAndReset(callback);
+                this.explodePartial(bombBody, callback);
             }, 650);
+        }
+
+        explodePartial(bombBody, callback) {
+            const { World } = Matter;
+            const bombX = bombBody?.position?.x || (this.width / 2);
+            const bombY = bombBody?.position?.y || (this.height * 0.7);
+
+            // Remove bomb itself from physics world
+            if (bombBody && this.world) {
+                World.remove(this.world, bombBody);
+                const bIdx = this.items.indexOf(bombBody);
+                if (bIdx >= 0) this.items.splice(bIdx, 1);
+            }
+
+            // 1. Firework burst directly at bomb impact location
+            this.createFireworkBurst(bombX, bombY, 'multi', 40);
+            setTimeout(() => this.createFireworkBurst(bombX, bombY - 25, 'gold', 25), 90);
+
+            // 2. Separate gifts: ~40% - 50% nearest gifts get destroyed; remainder survive
+            const otherItems = this.items.filter(b => b !== bombBody && !b.exploding);
+
+            if (!otherItems.length) {
+                if (typeof callback === 'function') callback({ destroyedCount: 0, totalCount: 0, ratio: 0.5 });
+                return;
+            }
+
+            const itemsWithDist = otherItems.map(b => {
+                const dx = b.position.x - bombX;
+                const dy = b.position.y - bombY;
+                return { body: b, dist: Math.hypot(dx, dy) };
+            });
+            itemsWithDist.sort((a, b) => a.dist - b.dist);
+
+            // Destroy approximately 40% - 50% of the gifts in the jar
+            const destroyPercent = 0.38 + Math.random() * 0.14;
+            const destroyCount = Math.max(1, Math.min(itemsWithDist.length, Math.ceil(itemsWithDist.length * destroyPercent)));
+            const destroyedItems = itemsWithDist.slice(0, destroyCount).map(entry => entry.body);
+            const survivingItems = itemsWithDist.slice(destroyCount).map(entry => entry.body);
+
+            // 3. Blast and explode only the destroyed items
+            destroyedItems.forEach(b => {
+                b.collisionFilter.mask = 0; // Disable collision so they fly outward
+                b.exploding = true;
+                b.opacity = 1.0;
+                b.scale = 1.0;
+
+                const dx = b.position.x - bombX;
+                const dy = b.position.y - bombY;
+                const dist = Math.max(5, Math.hypot(dx, dy));
+                const forceX = (dx / dist) * (14 + Math.random() * 16) + (Math.random() - 0.5) * 10;
+                const forceY = -Math.abs(dy / dist) * (18 + Math.random() * 16) - (12 + Math.random() * 12);
+
+                Matter.Body.setVelocity(b, { x: forceX, y: forceY });
+                Matter.Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.8);
+
+                for (let k = 0; k < 4; k++) {
+                    this.particles.push({
+                        x: b.position.x,
+                        y: b.position.y,
+                        vx: (Math.random() - 0.5) * 12,
+                        vy: -Math.random() * 12 - 2,
+                        gravity: 0.3,
+                        size: 3 + Math.random() * 3,
+                        color: ['#fde047', '#f43f5e', '#38bdf8', '#c084fc', '#ffffff'][Math.floor(Math.random() * 5)],
+                        alpha: 1.0,
+                        decay: 0.025 + Math.random() * 0.02,
+                        shape: Math.random() < 0.4 ? 'star' : 'circle'
+                    });
+                }
+            });
+
+            // 4. Surviving items receive a realistic shockwave bounce
+            survivingItems.forEach(b => {
+                const dx = b.position.x - bombX;
+                const dy = b.position.y - bombY;
+                const dist = Math.max(10, Math.hypot(dx, dy));
+                const shockForce = Math.max(2, 14 - dist * 0.06);
+                Matter.Body.setVelocity(b, {
+                    x: b.velocity.x + (dx / dist) * shockForce + (Math.random() - 0.5) * 3,
+                    y: b.velocity.y - shockForce * 0.7 - Math.random() * 3
+                });
+            });
+
+            // 5. Cleanup destroyed items from physics world after ~800ms
+            setTimeout(() => {
+                if (this.world && destroyedItems.length) {
+                    World.remove(this.world, destroyedItems);
+                    this.items = this.items.filter(item => !destroyedItems.includes(item));
+                }
+                const destroyedRatio = otherItems.length > 0 ? (destroyCount / otherItems.length) : 0.5;
+                if (typeof callback === 'function') callback({ destroyedCount: destroyCount, totalCount: otherItems.length, ratio: destroyedRatio });
+            }, 800);
         }
 
         spawnTopDonorBadge(rank = 1, nickname = 'Top Fan', avatarUrl = '', userId = '') {

@@ -9368,10 +9368,13 @@
             if (!item) return;
             const physics = this.activeGiftJarPhysics || this.giftJarPhysics;
             if (physics) {
-                physics.spawnBombAndExplode(() => {
-                    item.currentCoins = 0;
+                physics.spawnBombAndExplode((res) => {
+                    const ratio = res?.ratio || 0.45;
+                    const oldCoins = Number(item.currentCoins) || 0;
+                    item.currentCoins = Math.max(0, Math.round(oldCoins * (1 - ratio)));
                     this.renderCanvas();
                     this.renderInspector();
+                    if (window.app?.showNotification) window.app.showNotification('warning', `💥 Bom nổ tung một phần quà! Xu giảm từ ${oldCoins.toLocaleString()} -> ${item.currentCoins.toLocaleString()} Xu`);
                 });
             }
             if (this.socket && this.socket.connected) {
