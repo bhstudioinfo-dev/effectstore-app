@@ -339,7 +339,7 @@ async function startBundledMongo(options) {
             console.error(`⚠️ Bundled MongoDB failed to start (${reason}); falling back to configured MONGODB_URI.`);
             return { process: null, uri: null, reason: 'start-failed' };
         }
-        if (await mongoHealthCheck(500)) {
+        if (await mongoHealthCheck(BUNDLED_MONGO_PORT, 500)) {
             return { process: child, uri: buildLocalMongoUri(), reason: 'started' };
         }
         await new Promise((resolve) => setTimeout(resolve, 300));
