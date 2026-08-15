@@ -1067,7 +1067,7 @@
                     const p = this.particles[i];
                     p.x += p.vx;
                     p.y += p.vy;
-                    p.vy += p.gravity || 0.28;
+                    p.vy += p.gravity || 0;
                     p.vx *= 0.98;
                     p.alpha -= p.decay || 0.025;
                     p.size = Math.max(0.5, p.size * 0.96);
@@ -1079,18 +1079,29 @@
 
                     ctx.save();
                     ctx.globalAlpha = Math.max(0, p.alpha);
-                    ctx.fillStyle = p.color || '#fbbf24';
-                    ctx.shadowColor = p.color || '#f59e0b';
-                    ctx.shadowBlur = 6;
 
-                    if (p.shape === 'star') {
+                    if (p.shape === 'ring') {
+                        p.radius = (p.radius || 6) + (p.expandSpeed || 4.5);
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.strokeStyle = p.color || '#ffffff';
+                        ctx.lineWidth = Math.max(0.8, p.size || 2.5);
+                        ctx.shadowColor = p.color || '#ffffff';
+                        ctx.shadowBlur = 8;
+                        ctx.stroke();
+                    } else if (p.shape === 'star') {
                         ctx.font = `${Math.round(p.size * 2)}px sans-serif`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText('✨', p.x, p.y);
+                        ctx.shadowColor = p.color || '#f59e0b';
+                        ctx.shadowBlur = 6;
+                        ctx.fillText(p.emoji || '✨', p.x, p.y);
                     } else {
                         ctx.beginPath();
                         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fillStyle = p.color || '#fbbf24';
+                        ctx.shadowColor = p.color || '#f59e0b';
+                        ctx.shadowBlur = 6;
                         ctx.fill();
                     }
                     ctx.restore();
@@ -1118,6 +1129,52 @@
             ctx.restore();
         }
 
+        createFireworkBurst(cx, cy, colorTheme = 'gold', count = 30) {
+            const palettes = {
+                gold: ['#fde047', '#f59e0b', '#d97706', '#ffffff', '#fbbf24'],
+                pink: ['#f472b6', '#ec4899', '#db2777', '#ffffff', '#fda4af'],
+                cyan: ['#38bdf8', '#06b6d4', '#0284c7', '#ffffff', '#7dd3fc'],
+                purple: ['#c084fc', '#a855f7', '#7e22ce', '#ffffff', '#e9d5ff'],
+                multi: ['#fde047', '#f43f5e', '#38bdf8', '#c084fc', '#4ade80', '#ffffff', '#fb923c']
+            };
+            const colors = palettes[colorTheme] || palettes.multi;
+
+            // 1. Expanding glowing shockwave ring
+            this.particles.push({
+                x: cx,
+                y: cy,
+                vx: 0,
+                vy: 0,
+                radius: 6,
+                expandSpeed: 4.5,
+                color: colors[0],
+                alpha: 1.0,
+                decay: 0.04,
+                shape: 'ring',
+                size: 2.5
+            });
+
+            // 2. Multi-color radial sparks & sparkles
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 4 + Math.random() * 16;
+                const clr = colors[Math.floor(Math.random() * colors.length)];
+                this.particles.push({
+                    x: cx,
+                    y: cy,
+                    vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 4,
+                    vy: Math.sin(angle) * speed - (3 + Math.random() * 6),
+                    gravity: 0.28,
+                    size: 3 + Math.random() * 4,
+                    color: clr,
+                    alpha: 1.0,
+                    decay: 0.018 + Math.random() * 0.015,
+                    shape: Math.random() < 0.35 ? 'star' : 'circle',
+                    emoji: Math.random() < 0.5 ? '✨' : '⭐'
+                });
+            }
+        }
+
         explodeAndReset(callback) {
             if (!this.world || !this.items.length) {
                 this.reset(false);
@@ -1126,8 +1183,18 @@
             }
 
             const jar = this.getJarInnerRect();
-            const jarCenterX = jar.x + jar.w / 2;
-            const jarCenterY = jar.y + jar.h * 0.70;
+            const jarW = jar.w || 300;
+            const jarH = jar.h || 400;
+
+            // 6 distinct explosion & firework burst points across and above the jar
+            const bursts = [
+                { x: jar.x + jarW * 0.35, y: jar.y + jarH * 0.70, theme: 'gold', delay: 0 },
+                { x: jar.x + jarW * 0.65, y: jar.y + jarH * 0.65, theme: 'pink', delay: 50 },
+                { x: jar.x + jarW * 0.50, y: jar.y + jarH * 0.85, theme: 'multi', delay: 100 },
+                { x: jar.x + jarW * 0.20, y: jar.y + jarH * 0.35, theme: 'cyan', delay: 160 },
+                { x: jar.x + jarW * 0.80, y: jar.y + jarH * 0.30, theme: 'purple', delay: 230 },
+                { x: jar.x + jarW * 0.50, y: jar.y + jarH * 0.12, theme: 'multi', delay: 300 }
+            ];
 
             // 1. Blast every item outward with explosive velocity and spin
             this.items.forEach(b => {
@@ -1136,57 +1203,45 @@
                 b.opacity = 1.0;
                 b.scale = 1.0;
 
-                const dx = b.position.x - jarCenterX;
-                const dy = b.position.y - jarCenterY;
+                const nearestBurst = bursts[Math.floor(Math.random() * 3)];
+                const dx = b.position.x - nearestBurst.x;
+                const dy = b.position.y - nearestBurst.y;
                 const dist = Math.max(5, Math.hypot(dx, dy));
-                const forceX = (dx / dist) * (14 + Math.random() * 16) + (Math.random() - 0.5) * 10;
-                const forceY = -Math.abs(dy / dist) * (18 + Math.random() * 16) - (14 + Math.random() * 14);
+                const forceX = (dx / dist) * (15 + Math.random() * 18) + (Math.random() - 0.5) * 12;
+                const forceY = -Math.abs(dy / dist) * (18 + Math.random() * 18) - (15 + Math.random() * 15);
 
                 Matter.Body.setVelocity(b, { x: forceX, y: forceY });
-                Matter.Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.8);
+                Matter.Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.9);
 
-                // Spawn sparkling explosion particles around each gift
-                const pColors = ['#fde047', '#f43f5e', '#38bdf8', '#c084fc', '#4ade80', '#ffffff', '#fb923c'];
-                for (let k = 0; k < 6; k++) {
+                // Small sparkles from each flying gift
+                for (let k = 0; k < 4; k++) {
                     this.particles.push({
-                        x: b.position.x + (Math.random() - 0.5) * 16,
-                        y: b.position.y + (Math.random() - 0.5) * 16,
-                        vx: (Math.random() - 0.5) * 16,
-                        vy: -Math.random() * 14 - 3,
-                        gravity: 0.35,
-                        size: 3 + Math.random() * 4,
-                        color: pColors[Math.floor(Math.random() * pColors.length)],
+                        x: b.position.x,
+                        y: b.position.y,
+                        vx: (Math.random() - 0.5) * 12,
+                        vy: -Math.random() * 12 - 2,
+                        gravity: 0.3,
+                        size: 3 + Math.random() * 3,
+                        color: ['#fde047', '#f43f5e', '#38bdf8', '#c084fc', '#ffffff'][Math.floor(Math.random() * 5)],
                         alpha: 1.0,
                         decay: 0.025 + Math.random() * 0.02,
-                        shape: Math.random() < 0.35 ? 'star' : 'circle'
+                        shape: Math.random() < 0.4 ? 'star' : 'circle'
                     });
                 }
             });
 
-            // Center explosion shockwave particles
-            const shockColors = ['#ffffff', '#fbbf24', '#f472b6', '#38bdf8'];
-            for (let k = 0; k < 35; k++) {
-                const angle = Math.random() * Math.PI * 2;
-                const spd = 6 + Math.random() * 18;
-                this.particles.push({
-                    x: jarCenterX,
-                    y: jarCenterY,
-                    vx: Math.cos(angle) * spd,
-                    vy: Math.sin(angle) * spd - 6,
-                    gravity: 0.3,
-                    size: 4 + Math.random() * 5,
-                    color: shockColors[Math.floor(Math.random() * shockColors.length)],
-                    alpha: 1.0,
-                    decay: 0.02 + Math.random() * 0.02,
-                    shape: Math.random() < 0.4 ? 'star' : 'circle'
-                });
-            }
+            // 2. Trigger staggered multi-spot fireworks bursts
+            bursts.forEach(bst => {
+                setTimeout(() => {
+                    this.createFireworkBurst(bst.x, bst.y, bst.theme, 32);
+                }, bst.delay);
+            });
 
-            // Cleanup after ~700ms when items have faded out
+            // Cleanup after ~950ms when all fireworks and items have finished blooming and fading
             setTimeout(() => {
                 this.reset(false);
                 if (typeof callback === 'function') callback();
-            }, 750);
+            }, 950);
         }
 
         reset(animated = true) {
