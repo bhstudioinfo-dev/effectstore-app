@@ -63,7 +63,6 @@ function proxyToCloud(req, res, next) {
                 return next();
             }
             const text = await cloudRes.text();
-            const contentType = cloudRes.headers.get('content-type');
 
             // Local-only routes (OBS trigger, TikTok Live) must keep working
             // without a network round-trip, so they check this machine's own
