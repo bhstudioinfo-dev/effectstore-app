@@ -5301,6 +5301,8 @@ class EffectStoreApp {
         } catch (e) {
             this.showNotification('error', 'Lỗi: ' + e.message);
         }
+    }
+
     async deleteEffect(effectId) {
         if (!confirm('⚠️ Bạn có chắc chắn muốn xóa hiệu ứng này?')) return;
         try {
