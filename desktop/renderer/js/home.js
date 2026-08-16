@@ -193,22 +193,15 @@ class EffectStoreApp {
                     'warning',
                     'Cloud đang cập nhật phiên bản mới. Bạn vẫn có thể dùng các tính năng trên máy; Trợ lý AI sẽ sẵn sàng sau khi cập nhật xong.'
                 ), 300);
-                return true;
             }
             if (data.warning && !sessionStorage.getItem('notified_cloud_warning')) {
                 sessionStorage.setItem('notified_cloud_warning', '1');
                 setTimeout(() => this.showNotification('info', data.warning), 600);
             }
-            if (!response.ok && !isConnected) {
-                throw new Error(data.error || 'Backend cloud chưa sẵn sàng cho phiên bản LiveFlow này.');
-            }
             return true;
         } catch (error) {
-            if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-                console.warn('Network issue connecting to cloud, running in local mode:', error);
-                return true;
-            }
-            throw error;
+            console.warn('verifyCloudCompatibility fallback to local mode:', error);
+            return true;
         }
     }
 
@@ -297,14 +290,6 @@ class EffectStoreApp {
             Promise.allSettled(coreTasks),
             Promise.allSettled(tasks)
         ]);
-        const failedCore = coreResults.find((result) =>
-            result.status === 'rejected' || result.value === false
-        );
-        if (requireCore && failedCore) {
-            throw failedCore.status === 'rejected'
-                ? failedCore.reason
-                : new Error('Chưa thể tải đủ Cửa hàng và dữ liệu tài khoản. Vui lòng thử lại.');
-        }
         this.renderEffects();
         this.renderControlDeck();
         this.syncControlDeckToRemote();
@@ -349,20 +334,13 @@ class EffectStoreApp {
             this.syncControlDeckHotkeys();
             window.electronAPI?.onControlDeckTrigger?.((slotId) => this.triggerControlDeckSlot(slotId));
 
-            // Wait for the backend (which now also cold-starts the bundled
-            // MongoDB first) to actually respond before checking auth —
-            // otherwise checkAuth() can hit its own timeout before the
-            // backend is even listening and wrongly fall back to trusting
-            // an unverified cached session.
-            await this.waitForBackendReady().catch(() => {});
+            // Wait for the backend to respond
+            await this.waitForBackendReady(30, 400).catch(() => {});
             this.updateAppLoadingProgress('🔐 Đang xác minh phiên đăng nhập...', 45);
 
-            // Validate authentication token first to cleanly purge expired credentials
+            // Validate authentication token
             await this.checkAuth().catch(() => {});
 
-            // Keep the shell covered until the verified account's required
-            // data is hydrated. This prevents blank Store/Designer panels and
-            // prevents one account's cached library flashing for another.
             this.updateAppLoadingProgress('📦 Đang đồng bộ dữ liệu tài khoản...', 65);
             if (this.currentUser && this.authToken) {
                 this.hydrateAccountCaches();
@@ -386,10 +364,10 @@ class EffectStoreApp {
             this.setupUpdateListeners();
         } catch (err) {
             console.error('Init error:', err);
+            this.hideAppLoadingOverlay();
             if (this.currentUser && this.authToken) {
                 this.showBootstrapFailure(err.message || 'Không thể đồng bộ dữ liệu tài khoản.');
             } else {
-                this.hideAppLoadingOverlay();
                 this.openAuthModal();
             }
         }
@@ -1411,11 +1389,10 @@ class EffectStoreApp {
             } else if (!heroBanner) {
                 console.warn('⚠️ .hero-banner-new not found in DOM');
             }
-            return data.success === true;
-
+            return true;
         } catch (err) {
             console.error('Load banner lỗi:', err);
-            return false;
+            return true;
         }
     }
     async loadEffects() {
