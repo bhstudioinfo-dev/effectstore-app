@@ -244,55 +244,35 @@ class EffectStoreApp {
             this.loadEffects()
         ];
         if (this.authToken) coreTasks.push(this.loadOwnedEffects());
+
+        // Fast core sync (maximum 800ms) so the UI unlocks instantly
+        await Promise.race([
+            Promise.allSettled(coreTasks),
+            new Promise(resolve => setTimeout(resolve, 800))
+        ]);
+
+        this.renderEffects();
+        this.renderControlDeck();
+        this.syncControlDeckToRemote();
+
+        // Heavy auxiliary tasks run purely in the background without holding up the user
         const tasks = [];
-        if (typeof this.loadPersonalEffects === 'function') {
-            tasks.push(this.loadPersonalEffects());
-        }
-        if (typeof this.loadGifts === 'function') {
-            tasks.push(this.loadGifts());
-        }
-        if (typeof this.loadMappings === 'function') {
-            tasks.push(this.loadMappings());
-        }
-        if (typeof this.preloadMappingLibrary === 'function') {
-            // The mapping panel is present in the DOM even while hidden. Load
-            // wheels first, then its effect library, before dismissing the app
-            // loading screen so the panel never opens with an empty column.
-            tasks.push(this.preloadMappingLibrary());
-        }
-        if (typeof this.loadSoundLibrary === 'function') {
-            tasks.push(this.loadSoundLibrary());
-        }
-        if (typeof this.loadAiAssistantConfig === 'function') {
-            tasks.push(this.loadAiAssistantConfig());
-        }
-        if (typeof this.loadSettings === 'function') {
-            // Populates #settings-* fields (account info, OBS, TikTok, sound/TTS
-            // prefs) up front so the Settings view never shows a loading flash
-            // (or stale data left in the static HTML) the first time it's opened.
-            tasks.push(this.loadSettings());
-        }
-        if (typeof this.getTemplateLayout === 'function') {
-            tasks.push(this.getTemplateLayout('preload'));
-        }
+        if (typeof this.loadPersonalEffects === 'function') tasks.push(this.loadPersonalEffects());
+        if (typeof this.loadGifts === 'function') tasks.push(this.loadGifts());
+        if (typeof this.loadMappings === 'function') tasks.push(this.loadMappings());
+        if (typeof this.preloadMappingLibrary === 'function') tasks.push(this.preloadMappingLibrary());
+        if (typeof this.loadSoundLibrary === 'function') tasks.push(this.loadSoundLibrary());
+        if (typeof this.loadAiAssistantConfig === 'function') tasks.push(this.loadAiAssistantConfig());
+        if (typeof this.loadSettings === 'function') tasks.push(this.loadSettings());
+        if (typeof this.getTemplateLayout === 'function') tasks.push(this.getTemplateLayout('preload'));
         if (window.giftMenuDesigner && typeof window.giftMenuDesigner.loadDataIfNeeded === 'function') {
-            // Same idea for the Gift Menu Designer: load its gift library, goal
-            // assets/templates, saved-layouts list and active canvas now, so
-            // switching into "Thiết kế bảng quà" is instant instead of loading
-            // on first visit.
             tasks.push(window.giftMenuDesigner.loadDataIfNeeded());
         }
         if (isAdminUser) {
             if (typeof this.loadAdminDashboard === 'function') tasks.push(this.loadAdminDashboard());
             if (typeof this.loadAdminEffectAcquisitions === 'function') tasks.push(this.loadAdminEffectAcquisitions());
         }
-        const [coreResults] = await Promise.all([
-            Promise.allSettled(coreTasks),
-            Promise.allSettled(tasks)
-        ]);
-        this.renderEffects();
-        this.renderControlDeck();
-        this.syncControlDeckToRemote();
+        Promise.allSettled(tasks).catch(() => {});
     }
     async init() {
         try {
@@ -5088,17 +5068,22 @@ class EffectStoreApp {
     async loadAdminDashboard() {
         console.log('Loading Admin Dashboard...');
         try {
-            // Fetch stats
-            const statsRes = await fetch(`${this.API_URL}/api/admin/stats`, {
-                headers: {
-                    'Authorization': `Bearer ${this.authToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            const stats = await statsRes.json().catch(() => ({}));
-            console.log('Stats loaded:', stats);
+            const token = this.authToken || localStorage.getItem('token') || '';
+            const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-            // ✅ KIỂM TRA NULL TRƯỚC KHI SET
+            const [statsSettled, effectsSettled, paymentsSettled, reqSettled] = await Promise.allSettled([
+                fetch(`${this.API_URL}/api/admin/stats`, { headers }).then(r => r.json().catch(() => ({}))),
+                fetch(`${this.API_URL}/api/admin/effects`, { headers }).then(r => r.json().catch(() => ({}))),
+                fetch(`${this.API_URL}/api/payment/admin/payments`, { headers }).then(r => r.json().catch(() => ({}))),
+                fetch(`${this.API_URL}/api/admin/effect-requests`, { headers }).then(r => r.json().catch(() => ({})))
+            ]);
+
+            const stats = statsSettled.status === 'fulfilled' ? statsSettled.value : {};
+            const effectsData = effectsSettled.status === 'fulfilled' ? effectsSettled.value : {};
+            const paymentsData = paymentsSettled.status === 'fulfilled' ? paymentsSettled.value : {};
+            const reqData = reqSettled.status === 'fulfilled' ? reqSettled.value : {};
+
+            // ✅ Set Stats
             if (stats.success && stats.stats) {
                 const totalEffectsEl = document.getElementById('admin-total-effects');
                 const totalUsersEl = document.getElementById('admin-total-users');
@@ -5117,25 +5102,14 @@ class EffectStoreApp {
                 if (savedEnds) globalEndsEl.value = savedEnds;
             }
 
-            // Fetch effects list
-            const effectsRes = await fetch(`${this.API_URL}/api/admin/effects`, {
-                headers: {
-                    'Authorization': `Bearer ${this.authToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            const effectsData = await effectsRes.json().catch(() => ({}));
-            console.log('Effects loaded:', effectsData);
-
+            // ✅ Set Effects & Trending
             if (effectsData.success && Array.isArray(effectsData.effects)) {
-                // Populate Trending select
                 const trendingSelect = document.getElementById('admin-trending-select');
                 if (trendingSelect) {
                     trendingSelect.innerHTML = '<option value="">-- Chọn Effect --</option>' +
                         effectsData.effects.map(e => `<option value="${e._id}">${e.icon || '🎬'} ${e.name}</option>`).join('');
                 }
 
-                // Render Trending list
                 const trendingList = document.getElementById('admin-trending-list');
                 if (trendingList) {
                     const trendingEffects = effectsData.effects.filter(e => e.isTrending);
@@ -5192,17 +5166,7 @@ class EffectStoreApp {
                 }
             }
 
-            // Fetch pending payments
-            const token = this.authToken || localStorage.getItem('token') || '';
-            const paymentsRes = await fetch(`${this.API_URL}/api/payment/admin/payments`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            const paymentsData = await paymentsRes.json().catch(() => ({}));
-            console.log('Payments loaded:', paymentsData);
-
+            // ✅ Set Pending Payments
             if (paymentsData.success) {
                 const container = document.getElementById('admin-payments-list');
                 if (container) {
@@ -5236,46 +5200,37 @@ class EffectStoreApp {
                 }
             }
 
-            // Fetch custom requests
-            try {
-                const requestsRes = await fetch(`${this.API_URL}/api/admin/effect-requests`, {
-                    headers: { 'Authorization': `Bearer ${this.authToken}` }
-                });
-                const reqData = await requestsRes.json().catch(() => ({}));
-                if (reqData.success) {
-                    const reqContainer = document.getElementById('admin-requests-list');
-                    if (reqContainer) {
-                        if (reqData.requests.length === 0) {
-                            reqContainer.innerHTML = '<div class="empty-state">🎨 Không có yêu cầu thiết kế</div>';
-                        } else {
-                            reqContainer.innerHTML = reqData.requests.map(r => `
-                                        <div class="effect-item-row">
-                                            <div class="effect-info-row">
-                                                <div>
-                                                    <h4 style="margin-bottom:5px;">Khách hàng: ${r.name}</h4>
-                                                    <span style="font-size:12px;color:var(--text-muted);">📞 Zalo/SĐT: ${r.phone}</span>
-                                                    <div style="margin-top:6px; font-size:13px; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; color: #d1d5db;">
-                                                        ${r.description}
-                                                    </div>
-                                                    <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">
-                                                        🕒 Gửi lúc: ${new Date(r.createdAt).toLocaleString('vi-VN')}
-                                                    </div>
+            // ✅ Set Custom Requests
+            if (reqData.success && Array.isArray(reqData.requests)) {
+                const reqContainer = document.getElementById('admin-requests-list');
+                if (reqContainer) {
+                    if (reqData.requests.length === 0) {
+                        reqContainer.innerHTML = '<div class="empty-state">🎨 Không có yêu cầu thiết kế</div>';
+                    } else {
+                        reqContainer.innerHTML = reqData.requests.map(r => `
+                                    <div class="effect-item-row">
+                                        <div class="effect-info-row">
+                                            <div>
+                                                <h4 style="margin-bottom:5px;">Khách hàng: ${r.name}</h4>
+                                                <span style="font-size:12px;color:var(--text-muted);">📞 Zalo/SĐT: ${r.phone}</span>
+                                                <div style="margin-top:6px; font-size:13px; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; color: #d1d5db;">
+                                                    ${r.description}
+                                                </div>
+                                                <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">
+                                                    🕒 Gửi lúc: ${new Date(r.createdAt).toLocaleString('vi-VN')}
                                                 </div>
                                             </div>
-                                            <div class="effect-actions">
-                                                <button class="btn-sm-delete" onclick="app.deleteEffectRequest('${r._id}')">Xóa</button>
-                                            </div>
                                         </div>
-                                    `).join('');
-                        }
+                                        <div class="effect-actions">
+                                            <button class="btn-sm-delete" onclick="app.deleteEffectRequest('${r._id}')">Xóa</button>
+                                        </div>
+                                    </div>
+                                `).join('');
                     }
                 }
-            } catch (err) {
-                console.error('Load custom requests error:', err);
             }
 
-            console.log('Admin Dashboard loaded successfully!');
-            // Load danh sách users
+            console.log('Admin Dashboard loaded in parallel!');
             this.loadAdminUsers();
             this.loadAdminEffectAcquisitions();
             this.loadAiAssistantConfig();
