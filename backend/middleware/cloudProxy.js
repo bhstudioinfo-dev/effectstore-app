@@ -8,7 +8,7 @@
 // Opt-in and zero-risk when unconfigured: if CLOUD_API_URL isn't set, none of
 // this is mounted and every route keeps working exactly as it did before.
 
-const DEFAULT_CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com';
+const DEFAULT_CLOUD_API_URL = 'https://effectstore-app.onrender.com';
 const CLOUD_API_URL = String(process.env.CLOUD_API_URL || DEFAULT_CLOUD_API_URL).trim().replace(/\/+$/, '');
 const { mirrorUserLocally } = require('../services/localUserMirror');
 const { forgetCloudSessionToken, rememberCloudSessionToken, getCloudSessionToken, getAnyCloudSessionToken } = require('../services/cloudSessionTokenStore');

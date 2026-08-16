@@ -56,7 +56,7 @@ function getManagedBackendOptions(defaultMongodbUri = '') {
         defaultMongodbUri,
         // Central server that accounts/Store/purchases sync through — same
         // URL for every install, not a per-user secret (docs/COMMERCIAL_CLOUD_ROADMAP.md).
-        cloudApiUrl: process.env.LIVEFLOW_CLOUD_API_URL || 'https://liveflow-backend-iafw.onrender.com',
+        cloudApiUrl: process.env.LIVEFLOW_CLOUD_API_URL || 'https://effectstore-app.onrender.com',
         // Public verification key is safe to distribute. The matching private
         // signing key remains only on the central server.
         cloudJwtPublicKey: getCloudJwtPublicKey(),

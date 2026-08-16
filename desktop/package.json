@@ -92,7 +92,7 @@
     },
     "publish": {
       "provider": "generic",
-      "url": "https://liveflow-backend-iafw.onrender.com/updates/stable",
+      "url": "https://effectstore-app.onrender.com/updates/stable",
       "channel": "latest"
     },
     "nsis": {

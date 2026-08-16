@@ -42,7 +42,7 @@ if (fs.existsSync(rceditPath) && fs.existsSync(iconPath) && fs.existsSync(unpack
 // config explicitly so installed test builds do not fail with ENOENT.
 fs.writeFileSync(
     unpackedUpdateConfigPath,
-    'provider: generic\nurl: https://liveflow-backend-iafw.onrender.com/updates/stable\nchannel: latest\n',
+    'provider: generic\nurl: https://effectstore-app.onrender.com/updates/stable\nchannel: latest\n',
     'utf8'
 );
 

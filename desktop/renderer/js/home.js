@@ -71,7 +71,7 @@ class EffectStoreApp {
         // Public, non-secret central origin. Catalog JSON is requested through
         // the local backend, but media paths returned by that cloud response
         // live on the central host rather than on each customer's machine.
-        this.CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com';
+        this.CLOUD_API_URL = 'https://effectstore-app.onrender.com';
         this.selectedGift = null;
         this.selectedEffect = null;
         this.giftMappings = [];

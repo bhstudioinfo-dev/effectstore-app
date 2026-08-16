@@ -17,7 +17,7 @@ const mappingBody = homeSource.slice(
 
 assert.ok(homeSource.includes('this.storeEffects = []'));
 assert.ok(homeSource.includes('this._renderGrid(storeGrid, visibleStoreEffects'));
-assert.ok(homeSource.includes("this.CLOUD_API_URL = 'https://liveflow-backend-iafw.onrender.com'"));
+assert.ok(homeSource.includes("this.CLOUD_API_URL = 'https://effectstore-app.onrender.com'"));
 assert.ok(homeSource.includes('const primaryUrl = normalizeBannerUrl(this.CLOUD_API_URL, data.banner.url)'));
 assert.ok(homeSource.includes('const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value)'));
 assert.ok(homeSource.includes('const isLocalPlaybackRoute = /^\\/api\\/(?:stream\\/effect\\/|obs\\/effect-player-media\\/)/i.test(raw)'));
