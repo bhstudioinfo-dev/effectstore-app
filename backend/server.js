@@ -496,7 +496,7 @@ if (isCloudProxyEnabled()) {
         // effect requests, gift-coin config, payment review...) is shared.
         const localOnlyInAdmin = [/^\/gift-icons\/(upload|add)$/, /^\/database\//];
         if (localOnlyInAdmin.some((re) => re.test(req.path))) return next();
-        return proxyToCloud(req, res);
+        return proxyToCloud(req, res, next);
     });
 }
 

@@ -5095,11 +5095,11 @@ class EffectStoreApp {
                     'Content-Type': 'application/json'
                 }
             });
-            const stats = await statsRes.json();
+            const stats = await statsRes.json().catch(() => ({}));
             console.log('Stats loaded:', stats);
 
             // ✅ KIỂM TRA NULL TRƯỚC KHI SET
-            if (stats.success) {
+            if (stats.success && stats.stats) {
                 const totalEffectsEl = document.getElementById('admin-total-effects');
                 const totalUsersEl = document.getElementById('admin-total-users');
                 const totalRevenueEl = document.getElementById('admin-total-revenue');
@@ -5124,10 +5124,10 @@ class EffectStoreApp {
                     'Content-Type': 'application/json'
                 }
             });
-            const effectsData = await effectsRes.json();
+            const effectsData = await effectsRes.json().catch(() => ({}));
             console.log('Effects loaded:', effectsData);
 
-            if (effectsData.success) {
+            if (effectsData.success && Array.isArray(effectsData.effects)) {
                 // Populate Trending select
                 const trendingSelect = document.getElementById('admin-trending-select');
                 if (trendingSelect) {
@@ -5241,7 +5241,7 @@ class EffectStoreApp {
                 const requestsRes = await fetch(`${this.API_URL}/api/admin/effect-requests`, {
                     headers: { 'Authorization': `Bearer ${this.authToken}` }
                 });
-                const reqData = await requestsRes.json();
+                const reqData = await requestsRes.json().catch(() => ({}));
                 if (reqData.success) {
                     const reqContainer = document.getElementById('admin-requests-list');
                     if (reqContainer) {
@@ -5301,8 +5301,26 @@ class EffectStoreApp {
         } catch (e) {
             this.showNotification('error', 'Lỗi: ' + e.message);
         }
+    async deleteEffect(effectId) {
+        if (!confirm('⚠️ Bạn có chắc chắn muốn xóa hiệu ứng này?')) return;
+        try {
+            const res = await fetch(`${this.API_URL}/api/effects/${effectId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${this.authToken}` }
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success !== false) {
+                this.showNotification('success', '✅ Đã xóa hiệu ứng thành công!');
+                localStorage.removeItem('es_cache_store_effects');
+                this.loadAdminDashboard();
+                this.loadEffects();
+            } else {
+                this.showNotification('error', '❌ Lỗi xóa: ' + (data.error || data.message || 'Không thể xóa'));
+            }
+        } catch (error) {
+            this.showNotification('error', '❌ Lỗi kết nối: ' + error.message);
+        }
     }
-    async deleteEffect(effectId) { if (!confirm('⚠️ Xóa effect?')) return; try { const res = await fetch(`${this.API_URL}/api/effects/${effectId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.authToken}` } }); const data = await res.json(); if (data.success) { this.showNotification('success', '✅ Đã xóa'); this.loadAdminDashboard(); this.loadEffects(); } } catch (error) { this.showNotification('error', '❌ ' + error.message); } }
     async approvePendingPayment(paymentId, fromReviewModal = false) {
         if (!fromReviewModal && !confirm('Xác nhận đã nhận được tiền và duyệt đơn nạp này?')) return;
         await this.approvePayment(paymentId, fromReviewModal);
@@ -5484,8 +5502,10 @@ class EffectStoreApp {
             const res = await fetch(`${this.API_URL}/api/admin/users`, {
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
             });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success || !Array.isArray(data.users)) {
+                throw new Error(data.error || 'Không thể tải danh sách người dùng.');
+            }
 
                         const planBadge = (u) => {
                 const plan = resolvePlanDisplay(u);
