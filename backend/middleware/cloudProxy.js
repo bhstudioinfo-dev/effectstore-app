@@ -58,14 +58,8 @@ function proxyToCloud(req, res, next) {
     })
         .then(async (cloudRes) => {
             clearTimeout(timeout);
-            if (!cloudRes.ok && typeof next === 'function') {
-                const contentType = cloudRes.headers.get('content-type') || '';
-                // If cloud is suspended (HTML error) or unavailable, fallback to local backend seamlessly
-                if (!contentType.includes('application/json') || cloudRes.status >= 500 || cloudRes.status === 403) {
-                    return next();
-                }
-            }
-            if (!cloudRes.ok && typeof next === 'function' && (req.path === '/user/effects' || req.originalUrl.includes('/user/effects'))) {
+            const contentType = cloudRes.headers.get('content-type') || '';
+            if ((!cloudRes.ok || !contentType.includes('application/json')) && typeof next === 'function') {
                 return next();
             }
             const text = await cloudRes.text();

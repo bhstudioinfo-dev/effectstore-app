@@ -2412,25 +2412,38 @@ class EffectStoreApp {
     async confirmPaymentWithProof(orderId, total) {
         const input = document.getElementById('payment-proof-input');
         const hasProof = input && input.files && input.files[0];
+        const btn = document.querySelector('#payment-status-indicator + div button') || event?.target;
+        const originalBtnText = btn ? btn.textContent : '✅ Xác nhận đã chuyển khoản';
+        if (btn) {
+            btn.textContent = '⏳ Đang xác nhận...';
+            btn.disabled = true;
+        }
         try {
-            const btn = event.target;
-            const formData = new FormData();
-            if (hasProof) {
-                formData.append('proof', input.files[0]);
-            } else {
-                // 1x1 transparent PNG fallback for instant cloud compatibility
-                const fallbackPngBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 10, 73, 68, 65, 84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1, 13, 10, 45, 180, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130]);
-                formData.append('proof', new Blob([fallbackPngBytes], { type: 'image/png' }), 'manual_transfer_proof.png');
-            }
-            formData.append('orderId', orderId);
-            formData.append('noProof', hasProof ? 'false' : 'true');
             const headers = {};
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
-            const res = await fetch(this.API_URL + '/api/payment/confirm', {
-                method: 'POST', body: formData, headers
-            });
-            const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.error || data.message || 'Không thể xác nhận thanh toán.');
+            
+            let res;
+            if (hasProof) {
+                const formData = new FormData();
+                formData.append('proof', input.files[0]);
+                formData.append('orderId', orderId);
+                formData.append('noProof', 'false');
+                res = await fetch(this.API_URL + '/api/payment/confirm', {
+                    method: 'POST', body: formData, headers
+                });
+            } else {
+                headers['Content-Type'] = 'application/json';
+                res = await fetch(this.API_URL + '/api/payment/confirm', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ orderId, noProof: true })
+                });
+            }
+            
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || data.message || ('Không thể xác nhận thanh toán (Mã: ' + res.status + ')'));
+            }
             const indicator = document.getElementById('payment-status-indicator');
             if (indicator) {
                 indicator.style.background = 'rgba(16,185,129,0.15)';
@@ -2439,7 +2452,7 @@ class EffectStoreApp {
                     ? '✅ Đã gửi kèm ảnh! Admin sẽ duyệt trong 5-30 phút.'
                     : '✅ Đã gửi yêu cầu! Admin sẽ kiểm tra sao kê trong 1-24h.';
             }
-            btn.textContent = '✅ Đã gửi thành công!';
+            if (btn) btn.textContent = '✅ Đã gửi thành công!';
             const msg = hasProof
                 ? '✅ Gửi kèm ảnh! Admin duyệt trong 5-30 phút.'
                 : '✅ Đã gửi! Admin kiểm tra sao kê trong 1-24h.';
@@ -2463,7 +2476,12 @@ class EffectStoreApp {
             }, 2500);
 
         } catch (err) {
+            console.error('Confirm payment error:', err);
             this.showNotification('error', '❌ Lỗi gửi: ' + err.message);
+            if (btn) {
+                btn.textContent = originalBtnText;
+                btn.disabled = false;
+            }
         }
     }
 

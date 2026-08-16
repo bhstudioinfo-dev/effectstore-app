@@ -90,7 +90,12 @@ router.post('/claim-free', authMiddleware, async (req, res) => {
     }
 });
 
-router.post('/confirm', authMiddleware, upload.single('proof'), async (req, res) => {
+router.post('/confirm', authMiddleware, (req, res, next) => {
+    if (req.is('multipart/form-data')) {
+        return upload.single('proof')(req, res, next);
+    }
+    next();
+}, async (req, res) => {
     try {
         const orderId = String(req.body?.orderId || '').trim();
         const payment = await Payment.findOne({ orderId, userId: String(req.userId) });
