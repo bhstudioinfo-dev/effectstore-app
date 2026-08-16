@@ -1033,16 +1033,22 @@ class EffectStoreApp {
     async login() {
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
+        const loginBtn = document.querySelector('#login-form button') || event?.target;
+        const originalBtnText = loginBtn ? loginBtn.innerHTML : '🔑 Đăng nhập';
         if (!email || !password) {
             this.showNotification('error', 'Vui lòng nhập email và mật khẩu!');
             return;
+        }
+        if (loginBtn) {
+            loginBtn.innerHTML = '⏳ Đang đăng nhập...';
+            loginBtn.disabled = true;
         }
         try {
             const res = await fetch(this.API_URL + '/api/auth/login', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, machineId: this.machineId })
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             if (data.success) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('currentUser', JSON.stringify(data.user));
@@ -1067,14 +1073,19 @@ class EffectStoreApp {
                 setTimeout(() => this.hideAppLoadingOverlay(), 300);
                 this.showNotification('success', `✅ Chào mừng ${data.user.name || data.user.email}!`);
             } else {
-                this.showNotification('error', data.error || data.message || 'Đăng nhập thất bại');
+                this.showNotification('error', data.error || data.message || 'Đăng nhập thất bại. Vui lòng kiểm tra email/mật khẩu.');
             }
         } catch (e) {
             console.error('Login exception:', e);
             if (this.currentUser && this.authToken) {
                 this.showBootstrapFailure(e.message || 'Đăng nhập thành công nhưng chưa thể đồng bộ dữ liệu.');
             } else {
-                this.showNotification('error', 'Lỗi kết nối server');
+                this.showNotification('error', e.message || 'Lỗi kết nối server');
+            }
+        } finally {
+            if (loginBtn) {
+                loginBtn.innerHTML = originalBtnText;
+                loginBtn.disabled = false;
             }
         }
     }
@@ -1085,13 +1096,19 @@ class EffectStoreApp {
         const password = document.getElementById('register-password').value;
         const phone = document.getElementById('register-phone').value.trim();
         const termsAccepted = document.getElementById('register-terms').checked;
+        const registerBtn = document.querySelector('#register-form button') || event?.target;
+        const originalBtnText = registerBtn ? registerBtn.innerHTML : 'Tạo tài khoản';
         if (!name || !email || password.length < 8 || !phone) {
-            this.showNotification('error', 'Vui lòng điền tên, email, mật khẩu và số điện thoại/Zalo.');
+            this.showNotification('error', 'Vui lòng điền tên, email, mật khẩu (tối thiểu 8 ký tự) và số điện thoại/Zalo.');
             return;
         }
         if (!termsAccepted) {
             this.showNotification('error', 'Bạn cần đồng ý với điều khoản và chính sách bảo mật.');
             return;
+        }
+        if (registerBtn) {
+            registerBtn.innerHTML = '⏳ Đang tạo tài khoản...';
+            registerBtn.disabled = true;
         }
         const supportProfile = {
             tiktokUsername: document.getElementById('register-tiktok').value.trim(),
@@ -1111,7 +1128,7 @@ class EffectStoreApp {
                     machineId: this.machineId
                 })
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             if (data.success) {
                 localStorage.setItem('token', data.token);
                 if (data.user) {
@@ -1140,7 +1157,12 @@ class EffectStoreApp {
             if (this.currentUser && this.authToken) {
                 this.showBootstrapFailure(e.message || 'Đăng ký thành công nhưng chưa thể đồng bộ dữ liệu.');
             } else {
-                this.showNotification('error', 'Lỗi kết nối server');
+                this.showNotification('error', e.message || 'Lỗi kết nối server');
+            }
+        } finally {
+            if (registerBtn) {
+                registerBtn.innerHTML = originalBtnText;
+                registerBtn.disabled = false;
             }
         }
     }

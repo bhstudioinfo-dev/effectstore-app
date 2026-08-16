@@ -30,7 +30,7 @@ const registerRateLimiter = createRateLimiter({
 });
 const loginRateLimiter = createRateLimiter({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: 60,
     message: 'Quá nhiều lần đăng nhập. Vui lòng thử lại sau.'
 });
 const setupRateLimiter = createRateLimiter({

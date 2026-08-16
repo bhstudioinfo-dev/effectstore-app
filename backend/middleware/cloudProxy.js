@@ -47,7 +47,7 @@ function proxyToCloud(req, res, next) {
     const body = hasJsonBody ? JSON.stringify(req.body) : (isRawStreamBody ? req : undefined);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60_000);
+    const timeout = setTimeout(() => controller.abort(), 10_000);
 
     fetch(target, {
         method: req.method,
