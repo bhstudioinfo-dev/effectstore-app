@@ -20,10 +20,10 @@
 
     <style>
         :root {
-            --bg-dark: #070913;
-            --bg-surface: #0c1020;
-            --bg-card: rgba(15, 20, 36, 0.75);
-            --bg-card-hover: rgba(22, 30, 54, 0.9);
+            --bg-dark: #060814;
+            --bg-surface: #0a0e22;
+            --bg-card: rgba(14, 19, 38, 0.8);
+            --bg-card-hover: rgba(22, 30, 58, 0.95);
             --primary: #ec4899;
             --primary-glow: rgba(236, 72, 153, 0.4);
             --primary-gradient: linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #3b82f6 100%);
@@ -34,8 +34,8 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --text-sub: #64748b;
-            --border-glass: rgba(255, 255, 255, 0.08);
-            --border-focus: rgba(236, 72, 153, 0.4);
+            --border-glass: rgba(255, 255, 255, 0.09);
+            --border-focus: rgba(236, 72, 153, 0.45);
             --radius-xl: 24px;
             --radius-lg: 16px;
             --radius-md: 12px;
@@ -66,8 +66,8 @@
             pointer-events: none;
         }
         .glow-1 { top: -200px; left: 50%; transform: translateX(-50%); width: 900px; height: 600px; background: radial-gradient(circle, rgba(236, 72, 153, 0.22) 0%, rgba(139, 92, 246, 0.15) 50%, transparent 80%); }
-        .glow-2 { top: 1200px; right: -100px; width: 700px; height: 700px; background: radial-gradient(circle, rgba(0, 210, 242, 0.12) 0%, rgba(16, 185, 129, 0.08) 60%, transparent 80%); }
-        .glow-3 { top: 2600px; left: -150px; width: 750px; height: 750px; background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.1) 60%, transparent 80%); }
+        .glow-2 { top: 1300px; right: -100px; width: 700px; height: 700px; background: radial-gradient(circle, rgba(0, 210, 242, 0.12) 0%, rgba(16, 185, 129, 0.08) 60%, transparent 80%); }
+        .glow-3 { top: 2800px; left: -150px; width: 750px; height: 750px; background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.1) 60%, transparent 80%); }
 
         .container {
             max-width: 1240px;
@@ -84,7 +84,7 @@
             z-index: 100;
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
-            background: rgba(7, 9, 19, 0.82);
+            background: rgba(6, 8, 20, 0.85);
             border-bottom: 1px solid var(--border-glass);
         }
 
@@ -217,11 +217,11 @@
         }
 
         .hero-title {
-            font-size: 60px;
+            font-size: 58px;
             line-height: 1.15;
             font-weight: 900;
             letter-spacing: -1.8px;
-            max-width: 1000px;
+            max-width: 1020px;
             margin: 0 auto 24px;
         }
 
@@ -233,9 +233,9 @@
         }
 
         .hero-subtitle {
-            font-size: 19.5px;
+            font-size: 19px;
             color: var(--text-muted);
-            max-width: 780px;
+            max-width: 800px;
             margin: 0 auto 42px;
             font-weight: 400;
             line-height: 1.65;
@@ -376,7 +376,7 @@
             border-top-right-radius: 12px;
             color: #f472b6;
             font-size: 18px;
-            width: 38%;
+            width: 40%;
         }
 
         .comp-table th.others-col {
@@ -422,22 +422,22 @@
         .badge-win { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
         .badge-lose { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); }
 
-        /* 🖥️ REAL APP STUDIO PREVIEW (TABBED UI) */
+        /* 🖥️ REAL APP SCREENSHOT SHOWCASE */
         .app-studio-section {
             padding: 90px 0;
         }
 
         .app-window-frame {
-            background: #090d1c;
+            background: #080b1a;
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: var(--radius-xl);
             overflow: hidden;
-            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8), 0 0 50px rgba(161, 60, 255, 0.15);
+            box-shadow: 0 35px 100px rgba(0, 0, 0, 0.85), 0 0 50px rgba(161, 60, 255, 0.2);
         }
 
         .app-window-topbar {
-            background: #050711;
-            padding: 14px 24px;
+            background: #04060f;
+            padding: 16px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -456,35 +456,34 @@
         }
 
         .window-title {
-            font-size: 13px;
+            font-size: 13.5px;
             color: var(--text-muted);
-            font-weight: 600;
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        /* App Tab Navigation */
         .app-tabs-header {
             display: flex;
-            background: #0d1226;
+            background: #0a0e22;
             border-bottom: 1px solid var(--border-glass);
             overflow-x: auto;
         }
 
         .app-tab-btn {
-            padding: 16px 24px;
+            padding: 16px 26px;
             background: none;
             border: none;
             color: var(--text-muted);
-            font-size: 14px;
+            font-size: 14.5px;
             font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 10px;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s ease;
+            border-bottom: 3px solid transparent;
+            transition: all 0.25s ease;
             white-space: nowrap;
         }
 
@@ -496,12 +495,11 @@
         .app-tab-btn.active {
             color: #f472b6;
             border-bottom-color: #ec4899;
-            background: rgba(236, 72, 153, 0.08);
+            background: rgba(236, 72, 153, 0.09);
         }
 
         .app-tab-content {
-            padding: 30px;
-            min-height: 480px;
+            padding: 24px;
             display: none;
         }
 
@@ -515,68 +513,69 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* App Mockup Inner Components */
-        .store-metrics-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 24px;
+        /* Real Screenshot Container */
+        .real-screenshot-box {
+            position: relative;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #02040a;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
         }
 
-        .metric-mini-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-md);
-            padding: 16px;
+        .real-screenshot-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: var(--radius-lg);
+            transition: transform 0.4s ease;
+        }
+
+        .screenshot-caption-bar {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 14px;
+            padding: 16px 20px;
+            background: rgba(10, 14, 30, 0.9);
+            border-top: 1px solid var(--border-glass);
+            font-size: 13.5px;
         }
 
-        .metric-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            display: flex;
+        .caption-tag {
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
-            font-size: 18px;
+            gap: 6px;
+            font-weight: 800;
+            color: #f472b6;
         }
 
-        .store-effects-grid {
+        .feature-bullets-row {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
+            gap: 16px;
+            margin-top: 20px;
         }
 
-        .effect-preview-card {
+        .feature-bullet-card {
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border-glass);
             border-radius: var(--radius-md);
-            padding: 18px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 200px;
-            position: relative;
-            transition: all 0.3s ease;
+            padding: 16px;
         }
 
-        .effect-preview-card:hover {
-            border-color: rgba(236, 72, 153, 0.4);
-            transform: translateY(-3px);
-        }
-
-        .effect-badge {
-            position: absolute;
-            top: 14px;
-            right: 14px;
-            background: #ef4444;
-            color: #fff;
-            font-size: 10px;
+        .feature-bullet-card h4 {
+            font-size: 14.5px;
             font-weight: 800;
-            padding: 2px 8px;
-            border-radius: 4px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feature-bullet-card p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
         }
 
         /* Interactive Simulator Section */
@@ -857,8 +856,7 @@
 
         @media (max-width: 992px) {
             .hero-title { font-size: 42px; }
-            .store-metrics-row { grid-template-columns: 1fr 1fr; }
-            .store-effects-grid { grid-template-columns: 1fr; }
+            .feature-bullets-row { grid-template-columns: 1fr; }
             .sim-grid { grid-template-columns: 1fr; }
             .pricing-grid { grid-template-columns: 1fr; }
             .pricing-card.featured { transform: none; }
@@ -886,7 +884,7 @@
                 </a>
                 <ul class="nav-links">
                     <li><a href="#comparison"><i class="fas fa-bolt"></i> So sánh vượt trội</a></li>
-                    <li><a href="#studio"><i class="fas fa-desktop"></i> Trực quan App</a></li>
+                    <li><a href="#studio"><i class="fas fa-desktop"></i> Ảnh thực tế App</a></li>
                     <li><a href="#simulator"><i class="fas fa-play"></i> Demo Tương tác</a></li>
                     <li><a href="#pricing"><i class="fas fa-tags"></i> Bảng giá</a></li>
                     <li><a href="#faq"><i class="fas fa-circle-question"></i> Hỏi đáp</a></li>
@@ -914,8 +912,8 @@
                 Tự động nhận diện quà tặng TikTok theo thời gian thực, kích hoạt hiệu ứng 3D trong suốt 4K, tích hợp trợ lý ảo <strong>Gemini AI</strong> thông minh & Giọng đọc cảm xúc <strong>ElevenLabs</strong> độc quyền. Cài đặt 1-Click trên OBS Studio dưới 60 giây.
             </p>
             <div class="hero-buttons">
-                <a href="#simulator" class="btn-primary-lg">
-                    <i class="fas fa-play-circle"></i> Trải Nghiệm Demo Trực Tiếp
+                <a href="#studio" class="btn-primary-lg">
+                    <i class="fas fa-eye"></i> Xem Ảnh Giao Diện Thực Tế
                 </a>
                 <a href="#pricing" class="btn-secondary-lg">
                     <i class="fas fa-download"></i> Tải Bản Cài Windows (.exe)
@@ -997,7 +995,7 @@
                                 </div>
                             </td>
                             <td class="liveflow-col">
-                                <span class="status-badge badge-win"><i class="fas fa-check"></i> Kéo thả đa dạng: Vòng quay, Hũ quà rơi, Goal bar, BXH Top</span>
+                                <span class="status-badge badge-win"><i class="fas fa-check"></i> Kéo thả đa dạng: Hũ quà rơi vật lý, Goal bar, BXH Top</span>
                             </td>
                             <td>
                                 <span class="status-badge badge-lose"><i class="fas fa-times"></i> Rất hạn chế, chỉ có widget mục tiêu cơ bản</span>
@@ -1051,12 +1049,12 @@
         </div>
     </section>
 
-    <!-- 🖥️ REAL APP STUDIO PREVIEW (TABBED INTERACTIVE UI) -->
+    <!-- 🖥️ REAL APP SCREENSHOT SHOWCASE (100% THỰC TẾ) -->
     <section class="app-studio-section" id="studio">
         <div class="container">
-            <span class="section-tag">TRỰC QUAN GIAO DIỆN THỰC TẾ</span>
-            <h2 class="section-title">Khám Phá Toàn Diện Phần Mềm LiveFlow</h2>
-            <p class="section-desc">Giao diện Dark Mode Glassmorphism cao cấp, bố cục trực quan giúp bạn làm chủ mọi tính năng chỉ trong 5 phút.</p>
+            <span class="section-tag">ẢNH CHỤP MÀN HÌNH 100% THỰC TẾ</span>
+            <h2 class="section-title">Giao Diện Thực Tế Ứng Dụng LiveFlow</h2>
+            <p class="section-desc">Toàn bộ hình ảnh dưới đây được chụp trực tiếp từ phiên bản LiveFlow Desktop đang vận hành.</p>
 
             <div class="app-window-frame">
                 <div class="app-window-topbar">
@@ -1066,184 +1064,101 @@
                         <div class="window-dot" style="background:#10b981;"></div>
                     </div>
                     <div class="window-title">
-                        <i class="fas fa-bolt" style="color:#ec4899;"></i> LiveFlow - Premium Livestream Studio (Desktop App)
+                        <i class="fas fa-bolt" style="color:#ec4899;"></i> LiveFlow - Premium Livestream Effects (Windows App)
                     </div>
                     <div style="font-size:12px; color:var(--emerald-accent); font-weight:700;">
-                        <i class="fas fa-circle-check"></i> OBS Connected: Port 4455
+                        <i class="fas fa-circle-check"></i> ĐÃ KẾT NỐI OBS STUDIO
                     </div>
                 </div>
 
-                <!-- Tabs -->
+                <!-- Tabs Navigation -->
                 <div class="app-tabs-header">
                     <button class="app-tab-btn active" onclick="switchAppTab('store', this)">
-                        <i class="fas fa-store"></i> 🛍️ Cửa Hàng & Hiệu Ứng
-                    </button>
-                    <button class="app-tab-btn" onclick="switchAppTab('mapping', this)">
-                        <i class="fas fa-link"></i> 🔗 Gắn Hiệu Ứng Quà
+                        <i class="fas fa-store"></i> 🛍️ Cửa Hàng & Kho Hiệu Ứng
                     </button>
                     <button class="app-tab-btn" onclick="switchAppTab('designer', this)">
-                        <i class="fas fa-wand-magic-sparkles"></i> 🎨 Thiết Kế Bảng Quà
+                        <i class="fas fa-wand-magic-sparkles"></i> 🎨 Trình Thiết Kế Bảng Quà
                     </button>
-                    <button class="app-tab-btn" onclick="switchAppTab('ai', this)">
-                        <i class="fas fa-robot"></i> 🤖 Trợ Lý AI & ElevenLabs
-                    </button>
-                    <button class="app-tab-btn" onclick="switchAppTab('remote', this)">
-                        <i class="fas fa-mobile-screen-button"></i> 📱 Remote Deck Không Dây
+                    <button class="app-tab-btn" onclick="switchAppTab('admin', this)">
+                        <i class="fas fa-shield-halved"></i> 🛡️ Quản Trị & Bảo Mật AI
                     </button>
                 </div>
 
-                <!-- Tab 1: Cửa Hàng -->
+                <!-- Tab 1: Cửa hàng thực tế -->
                 <div class="app-tab-content active" id="tab-store">
-                    <div class="store-metrics-row">
-                        <div class="metric-mini-card">
-                            <div class="metric-icon" style="background:rgba(236,72,153,0.15); color:#ec4899;"><i class="fas fa-bag-shopping"></i></div>
-                            <div>
-                                <div style="font-size:18px; font-weight:900;">1</div>
-                                <div style="font-size:11px; color:var(--text-muted);">Hiệu ứng đã mua</div>
-                            </div>
-                        </div>
-                        <div class="metric-mini-card">
-                            <div class="metric-icon" style="background:rgba(245,158,11,0.15); color:#f59e0b;"><i class="fas fa-wallet"></i></div>
-                            <div>
-                                <div style="font-size:18px; font-weight:900;">10.000đ</div>
-                                <div style="font-size:11px; color:var(--text-muted);">Tổng đã chi</div>
-                            </div>
-                        </div>
-                        <div class="metric-mini-card">
-                            <div class="metric-icon" style="background:rgba(59,130,246,0.15); color:#3b82f6;"><i class="fas fa-play"></i></div>
-                            <div>
-                                <div style="font-size:18px; font-weight:900;">1,248</div>
-                                <div style="font-size:11px; color:var(--text-muted);">Lượt kích hoạt live</div>
-                            </div>
-                        </div>
-                        <div class="metric-mini-card">
-                            <div class="metric-icon" style="background:rgba(16,185,129,0.15); color:#10b981;"><i class="fas fa-piggy-bank"></i></div>
-                            <div>
-                                <div style="font-size:18px; font-weight:900;">150.000đ</div>
-                                <div style="font-size:11px; color:var(--text-muted);">Tiết kiệm cùng gói Pro</div>
-                            </div>
+                    <div class="real-screenshot-box">
+                        <img src="assets/images/liveflow_store_real.png" alt="LiveFlow Real Store Screen" class="real-screenshot-img">
+                        <div class="screenshot-caption-bar">
+                            <span class="caption-tag"><i class="fas fa-check-circle"></i> Giao diện Cửa Hàng (Store) & Kho Hiệu Ứng WebM Alpha</span>
+                            <span style="color:var(--text-muted);">Tích hợp 4 Card thống kê, danh mục xu hướng và nút "Xem thử trên OBS"</span>
                         </div>
                     </div>
 
-                    <div class="store-effects-grid">
-                        <div class="effect-preview-card">
-                            <span class="effect-badge" style="background:#ec4899;">MIỄN PHÍ</span>
-                            <div>
-                                <div style="font-size:36px; margin-bottom:10px;">🌹</div>
-                                <h4 style="font-size:16px; font-weight:800;">Hiệu Ứng Hoa Hồng 3D</h4>
-                                <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Cánh hoa hồng bay tỏa màn hình khi nhận quà Rose.</p>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; border-top:1px solid rgba(255,255,255,0.06); padding-top:12px;">
-                                <span style="font-weight:800; color:#34d399;">0đ</span>
-                                <button style="background:rgba(255,255,255,0.08); border:none; color:#fff; padding:6px 14px; border-radius:6px; font-weight:700; font-size:12px;">Đã sở hữu</button>
-                            </div>
+                    <div class="feature-bullets-row">
+                        <div class="feature-bullet-card">
+                            <h4><i class="fas fa-infinity" style="color:#ec4899;"></i> Mua 1 Lần Sở Hữu Vĩnh Viễn</h4>
+                            <p>Toàn bộ hiệu ứng đã mua được lưu vĩnh viễn trong tài khoản, không bị mất khi hết hạn gói cước.</p>
                         </div>
-
-                        <div class="effect-preview-card">
-                            <span class="effect-badge">🔥 HOT TREND</span>
-                            <div>
-                                <div style="font-size:36px; margin-bottom:10px;">🎵</div>
-                                <h4 style="font-size:16px; font-weight:800;">Logo TikTok Hologram</h4>
-                                <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Logo TikTok xoay 3D phát sáng neon cực kỳ bắt mắt.</p>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; border-top:1px solid rgba(255,255,255,0.06); padding-top:12px;">
-                                <span style="font-weight:800; color:#f472b6;">10.000đ</span>
-                                <button style="background:var(--primary-gradient); border:none; color:#fff; padding:6px 14px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer;">▶ Xem trên OBS</button>
-                            </div>
+                        <div class="feature-bullet-card">
+                            <h4><i class="fas fa-bolt" style="color:#00d2f2;"></i> Tích Hợp OBS 1-Click</h4>
+                            <p>Chỉ cần 1 nút bấm để đồng bộ luồng video trong suốt sang OBS Studio với độ trễ 0 giây.</p>
                         </div>
-
-                        <div class="effect-preview-card">
-                            <span class="effect-badge" style="background:#8b5cf6;">MẪU ĐẦY ĐỦ</span>
-                            <div>
-                                <div style="font-size:36px; margin-bottom:10px;">🎡</div>
-                                <h4 style="font-size:16px; font-weight:800;">Vòng Quay Thử Thách</h4>
-                                <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Tự động quay và dừng ngẫu nhiên theo điều kiện quà tặng.</p>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; border-top:1px solid rgba(255,255,255,0.06); padding-top:12px;">
-                                <span style="font-weight:800; color:#34d399;">0đ</span>
-                                <button style="background:rgba(255,255,255,0.08); border:none; color:#fff; padding:6px 14px; border-radius:6px; font-weight:700; font-size:12px;">Đã sở hữu</button>
-                            </div>
+                        <div class="feature-bullet-card">
+                            <h4><i class="fas fa-sparkles" style="color:#f59e0b;"></i> Cập Nhật Trend Mỗi Ngày</h4>
+                            <p>Kho hiệu ứng liên tục bổ sung các mẫu meme, quà tặng mới nhất theo xu hướng TikTok Live.</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab 2: Mapping -->
-                <div class="app-tab-content" id="tab-mapping">
-                    <h3 style="font-size:18px; margin-bottom:16px;">🔗 Danh Sách Gắn Quà Tự Động (Auto Trigger Rules)</h3>
-                    <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border-glass); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:12px 16px; border-radius:8px;">
-                            <div style="display:flex; align-items:center; gap:12px;">
-                                <span style="font-size:24px;">🌹</span>
-                                <div>
-                                    <div style="font-weight:700;">Quà: Hoa Hồng (1 Xu)</div>
-                                    <div style="font-size:12px; color:var(--text-muted);">Trigger hiệu ứng: Hoa Hồng 3D (Thời lượng: 3.3s)</div>
-                                </div>
-                            </div>
-                            <span style="color:#10b981; font-weight:700; font-size:12px;"><i class="fas fa-check-circle"></i> Đang kích hoạt</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:12px 16px; border-radius:8px;">
-                            <div style="display:flex; align-items:center; gap:12px;">
-                                <span style="font-size:24px;">🎵</span>
-                                <div>
-                                    <div style="font-weight:700;">Quà: TikTok (1 Xu)</div>
-                                    <div style="font-size:12px; color:var(--text-muted);">Trigger hiệu ứng: Logo TikTok Hologram (Thời lượng: 5.0s)</div>
-                                </div>
-                            </div>
-                            <span style="color:#10b981; font-weight:700; font-size:12px;"><i class="fas fa-check-circle"></i> Đang kích hoạt</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 3: Designer -->
+                <!-- Tab 2: Trình thiết kế bảng quà thực tế -->
                 <div class="app-tab-content" id="tab-designer">
-                    <h3 style="font-size:18px; margin-bottom:8px;">🎨 Trình Thiết Kế Bảng Quà Trực Quan (Gift Menu Designer)</h3>
-                    <p style="font-size:13.5px; color:var(--text-muted); margin-bottom:20px;">Tự do kéo thả các Widget Gamification để tăng tương tác phòng livestream:</p>
-                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;">
-                        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:12px; padding:18px; text-align:center;">
-                            <div style="font-size:36px; margin-bottom:8px;">🏺</div>
-                            <div style="font-weight:800; margin-bottom:4px;">Hũ Quà Thần Tài (Gift Jar)</div>
-                            <div style="font-size:12px; color:var(--text-muted);">Quà rơi tích lũy trực tiếp vào bình thủy tinh 3D vật lý cực vui nhộn.</div>
+                    <div class="real-screenshot-box">
+                        <img src="assets/images/liveflow_designer_real.png" alt="LiveFlow Real Designer Screen" class="real-screenshot-img">
+                        <div class="screenshot-caption-bar">
+                            <span class="caption-tag"><i class="fas fa-check-circle"></i> Trình Thiết Kế Bảng Quà Kéo Thả (Gift Menu Designer)</span>
+                            <span style="color:var(--text-muted);">Hỗ trợ Hũ quà rơi bánh donut 3D vật lý, tỷ lệ 9:16, 16:9, 1:1 và đồng bộ OBS</span>
                         </div>
-                        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:12px; padding:18px; text-align:center;">
-                            <div style="font-size:36px; margin-bottom:8px;">🏆</div>
-                            <div style="font-weight:800; margin-bottom:4px;">BXH Top Cống Hiến (Podium)</div>
-                            <div style="font-size:12px; color:var(--text-muted);">Vinh danh Top 1, Top 2, Top 3 đại gia tặng quà nhiều nhất phiên live.</div>
+                    </div>
+
+                    <div class="feature-bullets-row">
+                        <div class="feature-bullet-card">
+                            <h4><i class="fas fa-jar" style="color:#10b981;"></i> Hũ Quà Rơi Thần Tài (Gift Jar)</h4>
+                            <p>Khi người xem tặng quà, từng icon quà tặng rơi vào bình thủy tinh 3D vật lý cực kỳ cuốn hút.</p>
                         </div>
-                        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:12px; padding:18px; text-align:center;">
-                            <div style="font-size:36px; margin-bottom:8px;">🎯</div>
-                            <div style="font-weight:800; margin-bottom:4px;">Thanh Mục Tiêu (Goal Bar)</div>
-                            <div style="font-size:12px; color:var(--text-muted);">Tự động tích lũy phần trăm quà tặng đạt cột mốc thử thách.</div>
+                        <div class="feature-bullet-card">
+                            <h4><i class="fas fa-sliders" style="color:#a855f7;"></i> Tùy Chỉnh Kích Thước & Vị Trí</h4>
+                            <p>Tự do kéo dãn, căn chỉnh lề, độ mờ nền và màu sắc khung viền chuyên nghiệp như Photoshop.</p>
+                        </div>
+                        <div class="feature-bullet-card">
+                            <h4><i class="fas fa-tv" style="color:#3b82f6;"></i> Xuất Thẳng Sang OBS</h4>
+                            <p>Bấm nút "Xuất sang OBS" để hiển thị ngay bảng quà lên khung hình phát sóng trực tiếp.</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab 4: AI -->
-                <div class="app-tab-content" id="tab-ai">
-                    <h3 style="font-size:18px; margin-bottom:8px;">🤖 Bảo Mật & Cấu Hình Dịch Vụ AI</h3>
-                    <p style="font-size:13.5px; color:var(--text-muted); margin-bottom:20px;">Hệ thống AI xử lý bảo mật trên Cloud Atlas, không bao giờ lộ API Key xuống máy khách:</p>
-                    <div style="display:flex; gap:16px; margin-bottom:20px;">
-                        <span style="background:rgba(16,185,129,0.15); color:#34d399; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700;">
-                            <i class="fas fa-check"></i> Gemini AI đã cấu hình
-                        </span>
-                        <span style="background:rgba(16,185,129,0.15); color:#34d399; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700;">
-                            <i class="fas fa-check"></i> ElevenLabs TTS đã cấu hình
-                        </span>
+                <!-- Tab 3: Quản trị thực tế -->
+                <div class="app-tab-content" id="tab-admin">
+                    <div class="real-screenshot-box">
+                        <img src="assets/images/liveflow_admin_real.png" alt="LiveFlow Real Admin Screen" class="real-screenshot-img">
+                        <div class="screenshot-caption-bar">
+                            <span class="caption-tag"><i class="fas fa-check-circle"></i> Trang Quản Trị Hệ Thống & Cấu Hình Bảo Mật AI</span>
+                            <span style="color:var(--text-muted);">Theo dõi khách hàng, doanh thu và lưu trữ Secret Key Gemini / ElevenLabs an toàn trên Atlas</span>
+                        </div>
                     </div>
-                    <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:12px; padding:18px;">
-                        <div style="font-size:13px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">KỊCH BẢN PHẢN HỒI MẪU:</div>
-                        <div style="font-style:italic; font-size:14px; color:#cbd5e1;">"Dạ em cảm ơn anh/chị [Tên người xem] đã ghé phòng live! Mẫu áo mã 01 bên em đang sale chỉ còn 189k, miễn ship toàn quốc ạ!"</div>
-                    </div>
-                </div>
 
-                <!-- Tab 5: Remote Deck -->
-                <div class="app-tab-content" id="tab-remote">
-                    <h3 style="font-size:18px; margin-bottom:8px;">📱 Bàn Phím Không Dây (Mobile Remote Deck)</h3>
-                    <p style="font-size:13.5px; color:var(--text-muted); margin-bottom:20px;">Mở camera điện thoại quét mã QR để điều khiển phòng live từ xa:</p>
-                    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px;">
-                        <button style="background:rgba(236,72,153,0.15); border:1px solid rgba(236,72,153,0.3); color:#fff; padding:16px; border-radius:10px; font-weight:700;">👏 Tiếng Vỗ Tay</button>
-                        <button style="background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); color:#fff; padding:16px; border-radius:10px; font-weight:700;">🎉 Bắn Pháo Hoa</button>
-                        <button style="background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.3); color:#fff; padding:16px; border-radius:10px; font-weight:700;">❤️ Cảm Ơn Quà</button>
-                        <button style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#fff; padding:16px; border-radius:10px; font-weight:700;">⚡ Flash Sale</button>
+                    <div class="feature-bullets-row">
+                        <div class="feature-bullet-card">
+                            <h4><i class="fas fa-shield-check" style="color:#10b981;"></i> Bảo Mật Dịch Vụ AI Tuyệt Đối</h4>
+                            <p>API Key Gemini và ElevenLabs được mã hóa trên Cloud MongoDB Atlas, không bao giờ lộ xuống client.</p>
+                        </div>
+                        <div class="feature-bullet-card">
+                            <h4><i class="fas fa-users" style="color:#00d2f2;"></i> Quản Lý Khách Hàng Realtime</h4>
+                            <p>Theo dõi lượt sở hữu hiệu ứng miễn phí, trả phí và lịch sử kích hoạt của từng tài khoản.</p>
+                        </div>
+                        <div class="feature-bullet-card">
+                            <h4><i class="fas fa-rotate" style="color:#ec4899;"></i> Cập Nhật Key Nhanh Chóng</h4>
+                            <p>Dễ dàng thay đổi hoặc xoay vòng API Key AI khi cần thiết chỉ với 1 click lưu an toàn.</p>
+                        </div>
                     </div>
                 </div>
             </div>
