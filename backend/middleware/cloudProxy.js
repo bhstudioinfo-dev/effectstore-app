@@ -92,7 +92,7 @@ function proxyToCloud(req, res, next) {
                     if (userId) {
                         await mirrorUserLocally(parsed.user);
                         if (effectiveToken) rememberCloudSessionToken(userId, effectiveToken);
-                    } else if (parsed?.effects && Array.isArray(parsed.effects)) {
+                    } else if (req.originalUrl.split('?')[0] === '/api/user/effects' && parsed?.effects && Array.isArray(parsed.effects)) {
                         if (effectiveToken) {
                             const { verifyUserToken } = require('../services/userToken');
                             const decoded = verifyUserToken(effectiveToken);

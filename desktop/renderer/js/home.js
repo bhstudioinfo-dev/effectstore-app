@@ -1875,7 +1875,7 @@ class EffectStoreApp {
         const totalEl = document.getElementById('cart-total-price');
         if (totalEl) totalEl.textContent = this.formatPrice(total);
         const checkoutButton = document.getElementById('cart-checkout-button');
-        if (checkoutButton) checkoutButton.textContent = total === 0 ? '🎁 Nhận miễn phí' : '💳 Thanh toán ngay';
+        if (checkoutButton) checkoutButton.textContent = '💳 Thanh toán ngay';
         // Xóa items cũ
         Array.from(list.children).forEach(c => { if (c.id !== 'cart-empty') c.remove(); });
         this.cart.forEach(effect => {
@@ -2260,16 +2260,8 @@ class EffectStoreApp {
                 const freeIds = new Set(freeItems.map(effect => String(effect._id || effect.id)));
                 this.cart = this.cart.filter(effect => !freeIds.has(String(effect._id || effect.id)));
                 this.saveCart();
+                await this.loadOwnedEffects();
                 await this.loadEffects();
-                const ownershipLoaded = await this.loadOwnedEffects();
-                const confirmedIds = new Set([
-                    ...(this.ownedEffects || []).map(effect => String(effect.id || effect._id)),
-                    ...this.ownedProductIds
-                ]);
-                const unconfirmedIds = [...freeIds].filter(id => !confirmedIds.has(id));
-                if (!ownershipLoaded || unconfirmedIds.length) {
-                    throw new Error('Máy chủ chưa xác nhận quyền sở hữu. Vui lòng thử lại sau ít giây.');
-                }
                 this._mappingLibraryLoaded = false;
                 await this.loadEffectsForMapping();
                 this.updateUI();
@@ -2968,13 +2960,6 @@ class EffectStoreApp {
                     borderCol = '#ef4444';
                     btnClass = 'btn-flash-sale';
                     btnText = '⚡ MUA NGAY (GIÁ SỐC)';
-                }
-
-                const displayedPrice = effect.isFlashSale && Number(effect.flashSalePrice) >= 0
-                    ? Number(effect.flashSalePrice)
-                    : Number(effect.price || 0);
-                if (!isOwned && !isPending && !isInCart && displayedPrice === 0) {
-                    btnText = '🎁 Nhận miễn phí';
                 }
 
                 if (effect.isCustom) {

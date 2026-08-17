@@ -60,11 +60,11 @@ assert.ok(!unresolvedPurchaseBody.includes('normalizePurchasedEffect'), 'Catalog
 assert.ok(!effectsRouteSource.includes("const user = await User.findById(req.userId).select('isAdmin')"));
 assert.ok(paymentServiceSource.includes("'purchasedEffects.effectId': { $ne: effectId }"));
 assert.ok(!paymentServiceSource.includes('await user.save().catch(() => {})'));
-assert.ok(homeSource.includes('Máy chủ chưa xác nhận quyền sở hữu'));
 assert.ok(homeSource.includes('!wheel.sourceTemplateId || catalogWheelIds.has(String(wheel.sourceTemplateId))'));
 assert.ok(effectsRouteSource.includes('ownedProductIds'));
 assert.ok(homeSource.includes('this.ownedProductIds = new Set()'));
-assert.ok(homeSource.includes("checkoutButton.textContent = total === 0 ? '🎁 Nhận miễn phí'"));
+assert.ok(homeSource.includes("checkoutButton.textContent = '💳 Thanh toán ngay'"));
+assert.ok(!homeSource.includes('🎁 Nhận miễn phí'));
 assert.ok(!homeSource.includes('const hasPurchased = effect.isOwned === true'));
 assert.ok(effectLibrarySource.includes('!isCentralCloudRuntime()'));
 

@@ -13,6 +13,7 @@ const proxySource = fs.readFileSync(path.join(__dirname, '../middleware/cloudPro
 assert(verifierSource.includes('const mirrored = await mirrorUserLocally(user)'));
 assert(verifierSource.includes("error.code = 'CLOUD_USER_MIRROR_FAILED'"));
 assert(proxySource.indexOf('await mirrorUserLocally(parsed.user)') < proxySource.indexOf('res.send(text)'));
+assert(proxySource.includes("req.originalUrl.split('?')[0] === '/api/user/effects'"));
 
 const cloudProxy = require('../middleware/cloudProxy');
 const originalRender = process.env.RENDER;
