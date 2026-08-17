@@ -76,11 +76,23 @@ function proxyToCloud(req, res, next) {
                 try {
                     const parsed = JSON.parse(text);
                     const userId = parsed?.user?.id || parsed?.user?._id;
+                    const responseToken = parsed.token;
+                    const requestToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+                    const effectiveToken = responseToken || requestToken;
+
                     if (userId) {
                         await mirrorUserLocally(parsed.user);
-                        const responseToken = parsed.token;
-                        const requestToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
-                        rememberCloudSessionToken(userId, responseToken || requestToken);
+                        if (effectiveToken) rememberCloudSessionToken(userId, effectiveToken);
+                    } else if (parsed?.effects && Array.isArray(parsed.effects)) {
+                        if (effectiveToken) {
+                            const { verifyUserToken } = require('../services/userToken');
+                            const decoded = verifyUserToken(effectiveToken);
+                            if (decoded?.userId) {
+                                rememberCloudSessionToken(decoded.userId, effectiveToken);
+                                const { mirrorUserPurchasedEffectsLocally } = require('../services/localUserMirror');
+                                await mirrorUserPurchasedEffectsLocally(decoded.userId, parsed.effects);
+                            }
+                        }
                     }
                 } catch (_error) { /* not a mirrorable JSON body */ }
             }

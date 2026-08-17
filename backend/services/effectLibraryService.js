@@ -24,11 +24,19 @@ async function mirrorEffectFromCentral(effectId) {
     if (!cloudApiUrl) return null;
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 600);
+    const timer = setTimeout(() => controller.abort(), 8000);
     timer.unref?.();
 
     try {
-        const response = await fetch(`${cloudApiUrl}/api/effects/item/${effectId}`, { signal: controller.signal });
+        const { getCloudSessionToken, getAnyCloudSessionToken } = require('./cloudSessionTokenStore');
+        const token = getAnyCloudSessionToken();
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${cloudApiUrl}/api/effects/item/${effectId}`, {
+            headers,
+            signal: controller.signal
+        });
         if (!response.ok) return null;
         const data = await response.json();
         if (!data?.success || !data.effect) return null;
@@ -41,7 +49,7 @@ async function mirrorEffectFromCentral(effectId) {
                     name: e.name, category: e.category, price: e.price,
                     originalPrice: e.originalPrice, description: e.description,
                     icon: e.icon, isActive: e.isActive, isComposite: e.isComposite,
-                    duration: e.duration, uses: e.uses, isTrending: e.isTrending,
+                    duration: Number(e.duration) || 5, uses: e.uses, isTrending: e.isTrending,
                     isFlashSale: e.isFlashSale, flashSalePrice: e.flashSalePrice,
                     flashSaleEndsAt: e.flashSaleEndsAt, thumbUrl: e.thumbUrl
                 }
@@ -198,17 +206,20 @@ async function isCustomEffectMediaAvailable(effect, options = {}) {
     }
 }
 
-async function getUserRecord(userId) {
+async function getUserRecord(userId, { forceRefresh = false } = {}) {
     if (!userId) return null;
-    let user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
-    if (!user) {
+    let user = null;
+    if (!forceRefresh) {
+        user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+    }
+    if (!user || forceRefresh) {
         try {
             const { getCloudSessionToken, getAnyCloudSessionToken } = require('./cloudSessionTokenStore');
             const cloudToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
             const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
             if (cloudToken && cloudApiUrl) {
                 const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 600);
+                const timer = setTimeout(() => controller.abort(), 6000);
                 timer.unref?.();
                 try {
                     const res = await fetch(`${cloudApiUrl}/api/auth/me`, {
@@ -228,6 +239,9 @@ async function getUserRecord(userId) {
                 }
             }
         } catch (_e) {}
+    }
+    if (!user) {
+        user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
     }
     if (!user) {
         user = {
@@ -308,7 +322,7 @@ async function resolveEffectForUser(userId, effectId) {
     const id = toEffectId(effectId);
     if (!id) return null;
 
-    const user = await getUserRecord(userId);
+    let user = await getUserRecord(userId);
     if (!user) return null;
 
     if (id.startsWith('custom-')) {
@@ -318,9 +332,7 @@ async function resolveEffectForUser(userId, effectId) {
             // Control remote, which never had a userId to register ownership
             // with) but were never added to this user's customEffects. Self-
             // heal it here from the on-disk metadata.json instead of only
-            // ever returning a name-only stub with no duration — this is
-            // exactly what made "Không đọc được thời lượng..." show up for
-            // an effect that actually had a perfectly valid duration.
+            // ever returning a name-only stub with no duration.
             let healedDuration = null;
             let healedName = 'Hiệu ứng cá nhân';
             if (dataPaths?.customEffectsDir) {
@@ -346,16 +358,28 @@ async function resolveEffectForUser(userId, effectId) {
         return normalizeCustomEffect(customEffect, user);
     }
 
-    if (isAdminUser(user)) {
+    const isBusiness = user && ['pro', 'studio', 'business'].includes(String(user.subscription || '').toLowerCase());
+    if (isAdminUser(user) || isBusiness) {
         let effect = await Effect.findById(id).lean().catch(() => null);
         if (!effect) effect = await mirrorEffectFromCentral(id);
         if (effect && effect.category === 'menu_template') return null;
-        return normalizePurchasedEffect(effect, user._id, true);
+        return effect ? normalizePurchasedEffect(effect, user._id, true) : null;
     }
 
-    const purchased = (user.purchasedEffects || []).find((item) => {
+    let purchased = (user.purchasedEffects || []).find((item) => {
         return toEffectId(item?.effectId?._id || item?.effectId) === id;
     });
+
+    // If not found in local user cache, force refresh from Cloud to pick up newly approved orders
+    if (!purchased) {
+        user = await getUserRecord(userId, { forceRefresh: true });
+        if (user) {
+            purchased = (user.purchasedEffects || []).find((item) => {
+                return toEffectId(item?.effectId?._id || item?.effectId) === id;
+            });
+        }
+    }
+
     if (!purchased) {
         let effect = await Effect.findById(id).lean().catch(() => null);
         if (!effect) effect = await mirrorEffectFromCentral(id);
@@ -367,7 +391,8 @@ async function resolveEffectForUser(userId, effectId) {
 
     let purchasedEffect = purchased.effectId;
     if (!purchasedEffect || typeof purchasedEffect !== 'object' || !purchasedEffect.name) {
-        purchasedEffect = await mirrorEffectFromCentral(id);
+        purchasedEffect = await Effect.findById(id).lean().catch(() => null)
+            || await mirrorEffectFromCentral(id);
     }
     if (purchasedEffect?.category === 'menu_template') return null;
     return purchasedEffect ? normalizePurchasedEffect(purchasedEffect, user._id, true) : null;
@@ -399,8 +424,9 @@ async function resolveEffectDurationForUser(userId, effectId) {
         return 15;
     }
 
-    const freshEffect = await Effect.findById(id).select('duration').lean().catch(() => null);
-    return toDuration(freshEffect?.duration);
+    let freshEffect = await Effect.findById(id).select('duration').lean().catch(() => null);
+    if (!freshEffect) freshEffect = await mirrorEffectFromCentral(id);
+    return toDuration(freshEffect?.duration) || 5;
 }
 
 // Registers lightweight custom-effect metadata (name/duration/machineId) onto

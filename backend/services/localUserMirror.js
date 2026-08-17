@@ -60,4 +60,57 @@ async function mirrorUserLocally(userPayload) {
     }
 }
 
-module.exports = { mirrorUserLocally, normalizeSubscription };
+async function mirrorUserPurchasedEffectsLocally(userId, effectsList) {
+    const id = String(userId || '').trim();
+    if (!id || !Array.isArray(effectsList)) return false;
+
+    try {
+        const purchasedEffects = effectsList
+            .filter((e) => !e?.isCustom && (e?._id || e?.id))
+            .map((e) => ({
+                effectId: String(e._id || e.id),
+                purchasedAt: e.purchasedAt || new Date(),
+                useCount: Number(e.useCount || 0)
+            }));
+
+        await User.findByIdAndUpdate(
+            id,
+            {
+                $set: {
+                    purchasedEffects,
+                    isActive: true
+                }
+            },
+            { upsert: false }
+        );
+
+        // Also upsert basic metadata into local Effect collection so local queries find it instantly
+        const Effect = require('../models/Effect');
+        for (const e of effectsList) {
+            const effectId = String(e._id || e.id || '').trim();
+            if (!effectId || e.isCustom) continue;
+            await Effect.findByIdAndUpdate(
+                effectId,
+                {
+                    $setOnInsert: { _id: effectId },
+                    $set: {
+                        name: e.name || 'Effect',
+                        category: e.category || '',
+                        price: Number(e.price) || 0,
+                        duration: Number(e.duration) || 5,
+                        icon: e.icon || '🎬',
+                        thumbUrl: e.thumbUrl || '',
+                        isActive: true
+                    }
+                },
+                { upsert: true, setDefaultsOnInsert: true, runValidators: false }
+            ).catch(() => {});
+        }
+        return true;
+    } catch (error) {
+        console.warn('[local-user-mirror-purchases] failed:', error.message);
+        return false;
+    }
+}
+
+module.exports = { mirrorUserLocally, mirrorUserPurchasedEffectsLocally, normalizeSubscription };
