@@ -255,6 +255,12 @@ class EffectStoreApp {
             this.ownedEffects = [];
             this.pendingPaymentEffects = [];
         }
+        try {
+            const cachedTemplates = localStorage.getItem('es_cache_templates');
+            if (cachedTemplates && (!this._templatesCache || !this._templatesCache.length)) {
+                this._templatesCache = JSON.parse(cachedTemplates);
+            }
+        } catch (_error) {}
         // Retired global keys could expose the previous account's state on a
         // shared PC. Never migrate ambiguous ownership/payment data.
         localStorage.removeItem('es_cache_owned_effects');
@@ -1455,6 +1461,11 @@ class EffectStoreApp {
                 }
                 const templateData = await templateResponse.json().catch(() => ({}));
                 if (templateData.success && Array.isArray(templateData.templates)) {
+                    this._templatesCache = templateData.templates;
+                    try {
+                        localStorage.setItem('es_cache_templates', JSON.stringify(templateData.templates));
+                    } catch (_e) {}
+                    if (window.giftMenuDesigner) window.giftMenuDesigner.serverTemplates = templateData.templates;
                     templateData.templates.forEach(template => {
                         this.menuTemplateUsage.set(String(template._id), Boolean(template.isUsed));
                         if (template.usedLayoutId) {
@@ -2881,9 +2892,14 @@ class EffectStoreApp {
                 const effectiveVideo = effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
 
                 if (effect.category === 'menu_template') {
+                    const fallbackWheelPreview = `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at center, #1e1b4b 0%, #0b0f1a 100%);color:#f59e0b;"><span style="font-size:40px;filter:drop-shadow(0 0 10px rgba(245,158,11,0.5));margin-bottom:4px;">🎡</span><span style="font-size:10px;font-weight:800;color:#e2e8f0;letter-spacing:0.5px;">VÒNG QUAY THỬ THÁCH</span></div>`;
+                    const instantFallback = thumbUrl
+                        ? `<img src="${thumbUrl}" class="effect-thumb-img" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';">`
+                        : fallbackWheelPreview;
+
                     previewHTML = `
                                 <div id="store-template-preview-${effect.fileUrl}" class="store-template-preview-card" onclick="app.showEffectDetail('${effectId}')" style="position: absolute; inset: 0; background:#090d16; display:flex; align-items:center; justify-content:center; overflow: hidden; cursor: pointer; border-radius: 12px 12px 0 0;">
-                                    <div style="font-size:12px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></div>
+                                    ${instantFallback}
                                 </div>
                             `;
                 } else if (thumbUrl) {
