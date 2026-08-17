@@ -5,6 +5,8 @@ const path = require('path');
 const homeSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/js/home.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/index.html'), 'utf8');
 const effectsRouteSource = fs.readFileSync(path.join(__dirname, '../routes/effects.js'), 'utf8');
+const effectLibrarySource = fs.readFileSync(path.join(__dirname, '../services/effectLibraryService.js'), 'utf8');
+const paymentServiceSource = fs.readFileSync(path.join(__dirname, '../services/paymentService.js'), 'utf8');
 
 const loadOwnedBody = homeSource.slice(
     homeSource.indexOf('async loadOwnedEffects()'),
@@ -49,6 +51,21 @@ assert.ok(indexSource.includes("filterCategory('all')"));
 assert.ok(indexSource.includes('🛍️ Tất cả'));
 
 assert.ok(effectsRouteSource.includes("Effect.find({ isActive: true, isTrending: true })"));
+const unresolvedPurchaseBody = effectLibrarySource.slice(
+    effectLibrarySource.indexOf('    if (!purchased) {', effectLibrarySource.indexOf('async function resolveEffectForUser')),
+    effectLibrarySource.indexOf('    let purchasedEffect = purchased.effectId;')
+);
+assert.ok(unresolvedPurchaseBody.includes('return null;'), 'Unowned effects must fail closed');
+assert.ok(!unresolvedPurchaseBody.includes('normalizePurchasedEffect'), 'Catalog existence must not grant ownership');
+assert.ok(!effectsRouteSource.includes("const user = await User.findById(req.userId).select('isAdmin')"));
+assert.ok(paymentServiceSource.includes("'purchasedEffects.effectId': { $ne: effectId }"));
+assert.ok(!paymentServiceSource.includes('await user.save().catch(() => {})'));
+assert.ok(homeSource.includes('Máy chủ chưa xác nhận quyền sở hữu'));
+assert.ok(homeSource.includes('!wheel.sourceTemplateId || catalogWheelIds.has(String(wheel.sourceTemplateId))'));
+assert.ok(effectsRouteSource.includes('ownedProductIds'));
+assert.ok(homeSource.includes('this.ownedProductIds = new Set()'));
+assert.ok(homeSource.includes("checkoutButton.textContent = total === 0 ? '🎁 Nhận miễn phí'"));
+assert.ok(!homeSource.includes('const hasPurchased = effect.isOwned === true'));
 
 console.log('store regression tests passed');
 

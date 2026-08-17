@@ -28,7 +28,7 @@ const PLAN_DISPLAY = Object.freeze({
 // expiry check, so a stale/expired paid plan never displays as active.
 function resolvePlanKey(user) {
     if (!user) return 'free';
-    if (user.isAdmin === true || user.role === 'admin' || user.email === 'admin@effectstore.vn') return 'admin';
+    if (user.isAdmin === true) return 'admin';
     if (user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt).getTime() < Date.now()) return 'free';
     const raw = String(user.subscription || user.plan || 'free').toLowerCase();
     if (raw === 'basic') return 'basic';
@@ -53,6 +53,7 @@ class EffectStoreApp {
         this.storeEffects = cachedStore;
         this.mappingEffects = [];
         this.ownedEffects = [];
+        this.ownedProductIds = new Set();
         this.personalEffects = [];
         this.pendingPersonalEffectFiles = null;
         this.cart = [];
@@ -246,13 +247,16 @@ class EffectStoreApp {
     }
 
     hydrateAccountCaches() {
-        const ownedKey = this.accountStorageKey('es_cache_owned_effects');
         const pendingKey = this.accountStorageKey('es_pending_payments');
         try {
-            this.ownedEffects = ownedKey ? JSON.parse(localStorage.getItem(ownedKey) || '[]') : [];
+            // Ownership is security-sensitive and must be confirmed by the
+            // current server session. Never hydrate it from stale localStorage.
+            this.ownedEffects = [];
+            this.ownedProductIds = new Set();
             this.pendingPaymentEffects = pendingKey ? JSON.parse(localStorage.getItem(pendingKey) || '[]') : [];
         } catch (_error) {
             this.ownedEffects = [];
+            this.ownedProductIds = new Set();
             this.pendingPaymentEffects = [];
         }
         try {
@@ -273,12 +277,7 @@ class EffectStoreApp {
     }
 
     async preloadAllAppData({ requireCore = true } = {}) {
-        const isAdminUser = Boolean(
-            this.currentUser?.isAdmin ||
-            this.currentUser?.role === 'admin' ||
-            this.currentUser?.email === 'admin@effectstore.vn' ||
-            document.querySelector('.user-card .plan')?.textContent?.trim() === 'ADMIN'
-        );
+        const isAdminUser = this.currentUser?.isAdmin === true;
         const coreTasks = [
             this.verifyCloudCompatibility(),
             this.loadBanner(),
@@ -549,7 +548,7 @@ class EffectStoreApp {
                 this.closeAuthModal();
                 this.updateUserUI();
                 if (loadDependentData) this.loadAiAssistantConfig();
-                if (this.currentView === 'admin' || data.user.isAdmin || data.user.email === 'admin@effectstore.vn') {
+                if (this.currentView === 'admin' || data.user.isAdmin === true) {
                     this.loadAdminDashboard();
                 }
                 this.startAdminPendingPaymentsPoll();
@@ -1247,6 +1246,7 @@ class EffectStoreApp {
         this.selectedAdminPaymentId = null;
         this.effects = [];
         this.ownedEffects = [];
+        this.ownedProductIds = new Set();
         this.pendingPaymentEffects = [];
         this.cart = [];
         this.personalEffects = [];
@@ -1548,8 +1548,8 @@ class EffectStoreApp {
             const response = await fetch(this.API_URL + '/api/user/effects', {
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
             });
-            const data = await response.json();
-            if (data.success) {
+            const data = await response.json().catch(() => ({}));
+            if (response.ok && data.success) {
                 if (data.libraryType === 'all_with_ownership') {
                     // API mới: tất cả effects có flag isOwned
                     this.ownedEffects = (data.effects || []).filter(e => e.isOwned);
@@ -1560,6 +1560,7 @@ class EffectStoreApp {
                     // Fallback cÅ©
                     this.ownedEffects = data.effects || [];
                 }
+                this.ownedProductIds = new Set((data.ownedProductIds || this.ownedEffects.map(e => e.id || e._id)).map(String));
                 try {
                     const ownedKey = this.accountStorageKey('es_cache_owned_effects');
                     if (ownedKey) localStorage.setItem(ownedKey, JSON.stringify(this.ownedEffects));
@@ -1580,11 +1581,13 @@ class EffectStoreApp {
                 return true;
             } else {
                 this.ownedEffects = [];
+                this.ownedProductIds = new Set();
                 return false;
             }
         } catch (error) {
             console.error('Load owned effects error:', error);
             this.ownedEffects = [];
+            this.ownedProductIds = new Set();
             return false;
         }
     } // ✅ Đóng loadOwnedEffects ở đây
@@ -1780,7 +1783,7 @@ class EffectStoreApp {
         this.updateUserUI();
         this.loadTrending();
 
-        const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
+        const isAdmin = this.currentUser?.isAdmin === true;
 
         // Nếu là admin, số lượng sở hữu thực tế có thể khác với danh sách hiển thị (vì admin thấy tất cả)
         // Tuy nhiên để đẹp thì admin vẫn hiện số lượng toàn bộ kho
@@ -1871,6 +1874,8 @@ class EffectStoreApp {
         }, 0);
         const totalEl = document.getElementById('cart-total-price');
         if (totalEl) totalEl.textContent = this.formatPrice(total);
+        const checkoutButton = document.getElementById('cart-checkout-button');
+        if (checkoutButton) checkoutButton.textContent = total === 0 ? '🎁 Nhận miễn phí' : '💳 Thanh toán ngay';
         // Xóa items cũ
         Array.from(list.children).forEach(c => { if (c.id !== 'cart-empty') c.remove(); });
         this.cart.forEach(effect => {
@@ -1895,7 +1900,7 @@ class EffectStoreApp {
     addToCart(effectId) {
         const effect = this.effects.find(e => (e.id || e._id) === effectId);
         if (!effect) return;
-        if (this.ownedEffects.find(e => (e.id || e._id) === effectId)) { this.showNotification('warning', '⚠️ Bạn đã sở hữu effect này!'); return; }
+        if (this.ownedProductIds.has(String(effectId)) || this.ownedEffects.find(e => String(e.id || e._id) === String(effectId))) { this.showNotification('warning', '⚠️ Bạn đã sở hữu effect này!'); return; }
         if (this.pendingPaymentEffects && this.pendingPaymentEffects.includes(effectId)) { this.showNotification('warning', '⏳ Đang chờ admin duyệt thanh toán!'); return; }
         if (this.cart.find(e => (e.id || e._id) === effectId)) { this.showNotification('warning', '⚠️ Đã có trong giỏ!'); return; }
         this.cart.push(effect);
@@ -2255,8 +2260,16 @@ class EffectStoreApp {
                 const freeIds = new Set(freeItems.map(effect => String(effect._id || effect.id)));
                 this.cart = this.cart.filter(effect => !freeIds.has(String(effect._id || effect.id)));
                 this.saveCart();
-                await this.loadOwnedEffects();
                 await this.loadEffects();
+                const ownershipLoaded = await this.loadOwnedEffects();
+                const confirmedIds = new Set([
+                    ...(this.ownedEffects || []).map(effect => String(effect.id || effect._id)),
+                    ...this.ownedProductIds
+                ]);
+                const unconfirmedIds = [...freeIds].filter(id => !confirmedIds.has(id));
+                if (!ownershipLoaded || unconfirmedIds.length) {
+                    throw new Error('Máy chủ chưa xác nhận quyền sở hữu. Vui lòng thử lại sau ít giây.');
+                }
                 this._mappingLibraryLoaded = false;
                 await this.loadEffectsForMapping();
                 this.updateUI();
@@ -2537,12 +2550,6 @@ class EffectStoreApp {
         // Xóa khỏi danh sách chờ duyệt
         this.pendingPaymentEffects = this.pendingPaymentEffects.filter(id => !effectIds.includes(id));
         this.savePendingPaymentEffects();
-
-        // Thêm vào ownedEffects từ danh sách tổng (vì cart đã bị xóa trước đó)
-        effectIds.forEach(id => {
-            const effect = this.effects.find(e => (e._id || e.id) === id);
-            if (effect) this.addOwnedEffect(effect);
-        });
 
         // Xử lý Setup OBS nếu có
         if (this.pendingEffects && this.pendingEffects.length > 0) {
@@ -2839,13 +2846,14 @@ class EffectStoreApp {
             : '';
         const contentSignature = (effects || []).map(effect => {
             if (!effect || typeof effect !== 'object') return String(effect || '');
-            return [effect._id || effect.id, effect.category, effect.price, effect.previewUrl, effect.thumbUrl, effect.fileUrl, effect.isOwned === true ? 'owned' : 'available'].join(':');
+            return [effect._id || effect.id, effect.category, effect.price, effect.previewUrl, effect.thumbUrl, effect.fileUrl].join(':');
         }).join('|');
         const ownershipSignature = (this.ownedEffects || [])
             .map(effect => String(effect?._id || effect?.id || ''))
             .filter(Boolean)
             .sort()
             .join(',');
+        const ownedProductSignature = Array.from(this.ownedProductIds || []).sort().join(',');
         const cartSignature = (this.cart || [])
             .map(effect => String(effect?._id || effect?.id || ''))
             .filter(Boolean)
@@ -2855,7 +2863,7 @@ class EffectStoreApp {
             .map(String)
             .sort()
             .join(',');
-        const cacheKey = `_hasRendered_${viewName}_${contentSignature}_${usageSignature}_${ownershipSignature}_${cartSignature}_${pendingSignature}`;
+        const cacheKey = `_hasRendered_${viewName}_${contentSignature}_${usageSignature}_${ownershipSignature}_${ownedProductSignature}_${cartSignature}_${pendingSignature}`;
         
         if (!grid[cacheKey]) {
             grid[cacheKey] = true;
@@ -2877,9 +2885,9 @@ class EffectStoreApp {
                             </div>`;
                 }
 
-                const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
+                const isAdmin = this.currentUser?.isAdmin === true;
                 const isBusiness = this.currentUser && ['pro', 'studio'].includes(resolvePlanKey(this.currentUser));
-                const hasPurchased = effect.isOwned === true ||
+                const hasPurchased = this.ownedProductIds.has(String(effectId)) ||
                     this.ownedEffects.some(e => String(e.id || e._id) === String(effectId));
 
                 const isOwned = isAdmin || isBusiness || hasPurchased;
@@ -2960,6 +2968,13 @@ class EffectStoreApp {
                     borderCol = '#ef4444';
                     btnClass = 'btn-flash-sale';
                     btnText = '⚡ MUA NGAY (GIÁ SỐC)';
+                }
+
+                const displayedPrice = effect.isFlashSale && Number(effect.flashSalePrice) >= 0
+                    ? Number(effect.flashSalePrice)
+                    : Number(effect.price || 0);
+                if (!isOwned && !isPending && !isInCart && displayedPrice === 0) {
+                    btnText = '🎁 Nhận miễn phí';
                 }
 
                 if (effect.isCustom) {
@@ -3193,9 +3208,9 @@ class EffectStoreApp {
             this.effects.find(e => String(e.id || e._id) === String(effectId));
         if (!effect) return;
 
-        const isAdmin = this.currentUser && (this.currentUser.isAdmin || this.currentUser.hasAdminUI);
+        const isAdmin = this.currentUser?.isAdmin === true;
         const isBusiness = this.currentUser && this.currentUser.subscription === 'business';
-        const hasPurchased = effect.isOwned === true ||
+        const hasPurchased = this.ownedProductIds.has(String(effectId)) ||
             this.ownedEffects.some(e => String(e.id || e._id) === String(effectId));
         const isOwned = isAdmin || isBusiness || hasPurchased;
         const videoUrl = effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
@@ -5417,12 +5432,7 @@ class EffectStoreApp {
     startAdminPendingPaymentsPoll() {
         if (this._adminPollInterval) clearInterval(this._adminPollInterval);
         const poll = async () => {
-            const isAdmin = Boolean(
-                this.currentUser?.isAdmin ||
-                this.currentUser?.role === 'admin' ||
-                this.currentUser?.email === 'admin@effectstore.vn' ||
-                document.querySelector('.user-card .plan')?.textContent?.trim() === 'ADMIN'
-            );
+            const isAdmin = this.currentUser?.isAdmin === true;
             if (!isAdmin) return;
             const token = this.authToken || localStorage.getItem('token');
             if (!token) return;
@@ -5687,7 +5697,7 @@ class EffectStoreApp {
         modal.classList.add('show');
 
         const u = this.currentUser;
-        const isAdmin = u && (u.isAdmin || u.hasAdminUI || u.role === 'admin' || u.email === 'admin@effectstore.vn');
+        const isAdmin = u?.isAdmin === true;
         const rawSub = (u && (u.subscription || u.plan)) ? String(u.subscription || u.plan).toLowerCase() : 'free';
         const currentPlan = isAdmin ? 'admin' : (rawSub === 'basic' ? 'basic' : ((rawSub === 'pro' || rawSub === 'business') ? 'pro' : (rawSub === 'studio' ? 'studio' : 'free')));
 
@@ -6354,12 +6364,9 @@ class EffectStoreApp {
             const catalogWheelIds = this.challengeWheelTemplateIds instanceof Set
                 ? this.challengeWheelTemplateIds
                 : new Set();
-            const catalogWheels = catalogWheelIds.size
-                ? uniqueWheels.filter((wheel) => wheel.sourceTemplateId && catalogWheelIds.has(String(wheel.sourceTemplateId)))
-                : uniqueWheels;
-            const visibleWheels = catalogWheels.length
-                ? catalogWheels
-                : (this.challengeWheelTemplateCount > 0 ? uniqueWheels.slice(0, this.challengeWheelTemplateCount) : uniqueWheels);
+            const visibleWheels = uniqueWheels.filter((wheel) =>
+                !wheel.sourceTemplateId || catalogWheelIds.has(String(wheel.sourceTemplateId))
+            );
             const wheelEffects = visibleWheels.map((wheel) => ({
                 _id: `challenge-wheel:${wheel._id}`,
                 name: wheel.displayName || wheel.name || 'Vòng quay thử thách',
@@ -7342,23 +7349,30 @@ class EffectStoreApp {
                     const catalogData = catalogRes ? await catalogRes.json().catch(() => ({})) : {};
                     catalogEffects = Array.isArray(catalogData.effects) ? catalogData.effects : [];
                 }
-                const catalogTemplateIds = new Set(catalogEffects
-                    .filter((effect) => effect?.category === 'menu_template' && effect.fileUrl)
-                    .map((effect) => String(effect.fileUrl)));
-                const catalogWheelTemplates = templates.filter((template) => {
+                const isAdmin = this.currentUser?.isAdmin === true;
+                const isBusiness = this.currentUser && ['pro', 'studio'].includes(resolvePlanKey(this.currentUser));
+                const templateByFileUrl = new Map(catalogEffects.filter(e => e.category === 'menu_template' && e.fileUrl).map(e => [String(e.fileUrl), e]));
+                const isUserTemplatePurchased = (template) => {
+                    if (isAdmin || isBusiness) return true;
+                    const effect = templateByFileUrl.get(String(template._id));
+                    if (effect) {
+                        return this.ownedProductIds.has(String(effect._id || effect.id));
+                    }
+                    return Boolean(template.isPurchased && Number(template.price || 0) > 0);
+                };
+
+                const purchasedWheelTemplates = templates.filter((template) => {
                     const templateItems = [...(template.items || []), ...(template.exportedItems || [])];
                     const isWheel = template.productType === 'challenge-wheel' || templateItems.some((item) => item?.type === 'challenge-wheel');
-                    return isWheel && catalogTemplateIds.has(String(template._id));
+                    return isWheel && isUserTemplatePurchased(template);
                 });
-                this.challengeWheelTemplateIds = catalogTemplateIds.size
-                    ? new Set(catalogWheelTemplates.map((template) => String(template._id)))
-                    : new Set();
-                this.challengeWheelTemplateCount = catalogWheelTemplates.length;
+                this.challengeWheelTemplateIds = new Set(purchasedWheelTemplates.map((template) => String(template._id)));
+                this.challengeWheelTemplateCount = purchasedWheelTemplates.length;
                 const existingSourceIds = new Set((this.challengeWheels || []).map((wheel) => String(wheel.sourceTemplateId || '')));
                 const eligible = templates.filter((template) => {
                     const templateItems = [...(template.items || []), ...(template.exportedItems || [])];
                     const isWheel = template.productType === 'challenge-wheel' || templateItems.some((item) => item?.type === 'challenge-wheel');
-                    return isWheel && !existingSourceIds.has(String(template._id)) && (template.isPurchased || this.currentUser?.isAdmin);
+                    return isWheel && !existingSourceIds.has(String(template._id)) && isUserTemplatePurchased(template);
                 });
                 for (const template of eligible) {
                     const item = [...(template.items || []), ...(template.exportedItems || [])].find((entry) => entry?.type === 'challenge-wheel');
@@ -7395,12 +7409,9 @@ class EffectStoreApp {
             const catalogWheelIds = this.challengeWheelTemplateIds instanceof Set
                 ? this.challengeWheelTemplateIds
                 : new Set();
-            const catalogMappingWheels = catalogWheelIds.size
-                ? uniqueMappingWheels.filter((wheel) => wheel.sourceTemplateId && catalogWheelIds.has(String(wheel.sourceTemplateId)))
-                : uniqueMappingWheels;
-            const mappingWheels = catalogMappingWheels.length
-                ? catalogMappingWheels
-                : (this.challengeWheelTemplateCount > 0 ? uniqueMappingWheels.slice(0, this.challengeWheelTemplateCount) : uniqueMappingWheels);
+            const mappingWheels = uniqueMappingWheels.filter((wheel) =>
+                !wheel.sourceTemplateId || catalogWheelIds.has(String(wheel.sourceTemplateId))
+            );
             const select = document.getElementById('mapping-wheel-id');
             if (select) select.innerHTML = mappingWheels.length
                 ? mappingWheels.map((wheel) => `<option value="${wheel._id}">${wheel.displayName || wheel.name} (${(wheel.segments || []).length} thử thách)</option>`).join('')
@@ -7662,7 +7673,7 @@ class EffectStoreApp {
             if (data.success && data.usage) {
                 this.renderAiUsageUI(data.usage);
             }
-            if (this.currentUser?.isAdmin === true || this.currentUser?.email === 'admin@effectstore.vn') {
+            if (this.currentUser?.isAdmin === true) {
                 this.loadSystemAiSecretStatus();
             }
             return data.success === true;
@@ -7725,12 +7736,10 @@ class EffectStoreApp {
         const meterText = document.getElementById('ai-usage-meter-text');
         const systemGiftMeterText = document.getElementById('ai-system-gift-meter-text');
         const planBadge = document.getElementById('ai-usage-plan-badge');
-        const isUserCardAdmin = document.querySelector('.user-card .plan')?.textContent?.trim() === 'ADMIN';
         const isAdmin = Boolean(
-            (this.currentUser && (this.currentUser.isAdmin === true || this.currentUser.role === 'admin' || this.currentUser.email === 'admin@effectstore.vn')) ||
+            this.currentUser?.isAdmin === true ||
             usage.isAdmin === true ||
-            usage.totalLimit >= 999000000 ||
-            isUserCardAdmin
+            usage.totalLimit >= 999000000
         );
         const hasQuota = isAdmin || usage.hasQuota || usage.hasSystemVoiceGift || (usage.remaining > 0) || (usage.systemVoiceGiftRemaining > 0);
 

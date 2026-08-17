@@ -114,7 +114,7 @@ function getCharacterUsage(userOrPlan = 'free', userDoc = null) {
         runtimeConfig.usedCharactersThisMonth = 0;
     }
     
-    if (userPlan === 'admin' || userPlan === 'ADMIN' || user?.isAdmin === true || user?.role === 'admin' || user?.email === 'admin@effectstore.vn') {
+    if (user?.isAdmin === true) {
         return {
             used: Number((user ? user.usedCharactersThisMonth : runtimeConfig.usedCharactersThisMonth) || 0),
             baseLimit: 999999999,

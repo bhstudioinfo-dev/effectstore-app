@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { rememberCloudSessionToken } = require('../services/cloudSessionTokenStore');
 const { verifyUserWithCloud } = require('../services/cloudUserVerifier');
 const { mirrorUserLocally } = require('../services/localUserMirror');
+const { isAdminUser } = require('../config/security');
 
 async function resolveUserIdFromToken(token) {
     try {
@@ -64,7 +65,7 @@ const authMiddleware = async (req, res, next) => {
         }
         req.userId = decoded.userId;
         req.user = user;
-        req.isAdmin = Boolean(user.isAdmin === true || user.email === 'admin@effectstore.vn');
+        req.isAdmin = isAdminUser(user);
         req.machineId = decoded.machineId || null;
         // The central RS256 bearer already lives in the signed-in renderer.
         // Rehydrate the local backend's RAM-only cloud session on every
@@ -107,7 +108,7 @@ const optionalAuthMiddleware = async (req, res, next) => {
         if (user && user.isActive !== false) {
             req.userId = decoded.userId;
             req.user = user;
-            req.isAdmin = Boolean(user.isAdmin === true || user.email === 'admin@effectstore.vn');
+            req.isAdmin = isAdminUser(user);
             req.machineId = decoded.machineId || null;
             const algorithm = require('jsonwebtoken').decode(token, { complete: true })?.header?.alg;
             if (algorithm === 'RS256' || verifiedByCloud) rememberCloudSessionToken(decoded.userId, token);

@@ -78,32 +78,39 @@ async function claimFreeEffects(effectIds, user) {
 
     const userId = user._id || user.id;
     const ownedIds = new Set((user.purchasedEffects || []).map((item) => String(item.effectId?._id || item.effectId || '')));
-    const claimedIds = effects.map((effect) => String(effect._id)).filter((id) => !ownedIds.has(id));
+    if (!userId) throw Object.assign(new Error('Free claim account is unavailable.'), { status: 409 });
 
-    if (claimedIds.length) {
-        const newPurchases = claimedIds.map((effectId) => ({
+    // Persist each entitlement atomically. Never swallow a database error and
+    // report success: the renderer must only celebrate after ownership truly
+    // exists in the central User document. The $ne filter also makes retries
+    // idempotent and prevents duplicate purchasedEffects entries.
+    const claimedIds = [];
+    const alreadyOwnedIds = ids.filter((id) => ownedIds.has(id));
+    for (const effect of effects) {
+        const effectId = String(effect._id);
+        if (ownedIds.has(effectId)) continue;
+        const purchase = {
             effectId,
             purchasedAt: new Date(),
             acquisitionType: 'free',
             acquisitionPrice: 0,
             useCount: 0
-        }));
-
-        if (!Array.isArray(user.purchasedEffects)) user.purchasedEffects = [];
-        user.purchasedEffects.push(...newPurchases);
-
-        if (typeof user.save === 'function') {
-            await user.save().catch(() => {});
-        }
-        if (userId) {
-            await User.updateOne(
-                { _id: userId },
-                { $push: { purchasedEffects: { $each: newPurchases } } }
-            ).catch(() => {});
+        };
+        const result = await User.updateOne(
+            { _id: userId, 'purchasedEffects.effectId': { $ne: effectId } },
+            { $push: { purchasedEffects: purchase } }
+        );
+        if (result.modifiedCount === 1) {
+            claimedIds.push(effectId);
+            ownedIds.add(effectId);
+        } else {
+            const exists = await User.exists({ _id: userId, 'purchasedEffects.effectId': effectId });
+            if (!exists) throw Object.assign(new Error('Unable to persist free effect ownership.'), { status: 500 });
+            alreadyOwnedIds.push(effectId);
         }
     }
 
-    return { claimedIds, alreadyOwnedIds: ids.filter((id) => ownedIds.has(id)) };
+    return { claimedIds, alreadyOwnedIds };
 }
 
 async function grantPayment(payment) {

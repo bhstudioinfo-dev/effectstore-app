@@ -3,9 +3,11 @@ const {
     SUBSCRIPTION_PRODUCTS,
     normalizeEffectIds,
     effectiveEffectPrice,
+    claimFreeEffects,
     grantPayment
 } = require('../services/paymentService');
 const User = require('../models/User');
+const Effect = require('../models/Effect');
 const paymentRoutes = require('../routes/payment');
 
 assert.deepStrictEqual(normalizeEffectIds([' a ', 'a', '', null, 'b']), ['a', 'b']);
@@ -98,6 +100,36 @@ webhookHandler({ headers: {}, body: {} }, webhookResponse)
             assert.strictEqual(fakeUser.saveCount, 1);
         } finally {
             User.findById = originalFindById;
+        }
+
+        const originalEffectFind = Effect.find;
+        const originalUpdateOne = User.updateOne;
+        const originalExists = User.exists;
+        const freeEffectId = '66aa00000000000000000003';
+        let persisted = false;
+        Effect.find = () => ({
+            lean: async () => [{ _id: freeEffectId, price: 0, isActive: true }]
+        });
+        User.updateOne = async (filter) => {
+            assert.strictEqual(String(filter._id), '66aa00000000000000000002');
+            assert.deepStrictEqual(filter['purchasedEffects.effectId'], { $ne: freeEffectId });
+            if (persisted) return { modifiedCount: 0 };
+            persisted = true;
+            return { modifiedCount: 1 };
+        };
+        User.exists = async () => persisted;
+        try {
+            const freeUser = { _id: '66aa00000000000000000002', purchasedEffects: [] };
+            const firstClaim = await claimFreeEffects([freeEffectId], freeUser);
+            const retryClaim = await claimFreeEffects([freeEffectId], freeUser);
+            assert.deepStrictEqual(firstClaim.claimedIds, [freeEffectId]);
+            assert.deepStrictEqual(firstClaim.alreadyOwnedIds, []);
+            assert.deepStrictEqual(retryClaim.claimedIds, []);
+            assert.deepStrictEqual(retryClaim.alreadyOwnedIds, [freeEffectId]);
+        } finally {
+            Effect.find = originalEffectFind;
+            User.updateOne = originalUpdateOne;
+            User.exists = originalExists;
         }
         console.log('payment tests passed');
     })

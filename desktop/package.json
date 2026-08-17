@@ -50,8 +50,7 @@
         "filter": [
           "**/*",
           "!.env",
-          "!uploads/temp/**/*",
-          "!uploads/effects/**/*",
+          "!uploads/**/*",
           "!tests/**/*",
           "!scripts/**/*",
           "!node_modules/**/*"

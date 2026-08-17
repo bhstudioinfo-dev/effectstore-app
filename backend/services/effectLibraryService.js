@@ -319,6 +319,14 @@ async function getUserAvailableEffects(userId) {
     return dedupeEffects([...custom, ...purchased]).map((effect) => addProtectedMediaUrl(effect, user._id));
 }
 
+async function getUserOwnedProductIds(userId) {
+    const user = await getUserRecord(userId);
+    if (!user) return [];
+    return [...new Set((user.purchasedEffects || [])
+        .map((item) => toEffectId(item?.effectId?._id || item?.effectId))
+        .filter(Boolean))];
+}
+
 async function resolveEffectForUser(userId, effectId) {
     const id = toEffectId(effectId);
     if (!id) return null;
@@ -382,11 +390,8 @@ async function resolveEffectForUser(userId, effectId) {
     }
 
     if (!purchased) {
-        let effect = await Effect.findById(id).lean().catch(() => null);
-        if (!effect) effect = await mirrorEffectFromCentral(id);
-        if (effect && effect.category !== 'menu_template') {
-            return normalizePurchasedEffect(effect, user._id, true);
-        }
+        // A catalog record proves that the product exists, not that this
+        // account owns it. Fail closed after the Cloud refresh above.
         return null;
     }
 
@@ -493,6 +498,7 @@ module.exports = {
     normalizeCustomEffect,
     isCustomEffectMediaAvailable,
     getUserAvailableEffects,
+    getUserOwnedProductIds,
     resolveEffectForUser,
     resolveEffectDurationForUser,
     registerCustomEffectOwnership

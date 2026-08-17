@@ -14,7 +14,7 @@ const { encryptVideo, streamDecryptedVideo } = require('../utils/encrypt-video')
 const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
 const { planQuotaLock } = require('../middleware/planQuotaLock');
 const { isValidResourceId } = require('../utils/accessControl');
-const { getUserAvailableEffects, resolveEffectForUser, registerCustomEffectOwnership } = require('../services/effectLibraryService');
+const { getUserAvailableEffects, getUserOwnedProductIds, resolveEffectForUser, registerCustomEffectOwnership } = require('../services/effectLibraryService');
 const { issueEffectAccessToken, buildEffectStreamUrl, verifyEffectAccessToken } = require('../services/effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
 const { isAssetStoreConfigured, uploadEncryptedEffect, downloadEncryptedEffect, uploadThumbnail } = require('../services/effectAssetStore');
@@ -121,13 +121,17 @@ router.get('/effects/item/:id', async (req, res) => {
 // Get user effects
 router.get('/user/effects', authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.userId).select('isAdmin');
-        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        // authMiddleware may have verified a central account whose local
+        // mirror has not been created yet. getUserAvailableEffects performs
+        // the authoritative /auth/me refresh and mirror, so do not block that
+        // recovery with a second local-only User lookup.
         const effects = await getUserAvailableEffects(req.userId);
+        const ownedProductIds = await getUserOwnedProductIds(req.userId);
         return res.json({
             success: true,
             effects,
-            libraryType: user.isAdmin === true ? 'admin_all' : 'purchased'
+            ownedProductIds,
+            libraryType: req.isAdmin === true ? 'admin_all' : 'purchased'
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
