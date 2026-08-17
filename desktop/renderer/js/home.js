@@ -7358,7 +7358,7 @@ class EffectStoreApp {
                 const eligible = templates.filter((template) => {
                     const templateItems = [...(template.items || []), ...(template.exportedItems || [])];
                     const isWheel = template.productType === 'challenge-wheel' || templateItems.some((item) => item?.type === 'challenge-wheel');
-                    return isWheel && !existingSourceIds.has(String(template._id)) && (template.isPurchased || this.currentUser?.isAdmin || ['pro', 'studio'].includes(resolvePlanKey(this.currentUser)));
+                    return isWheel && !existingSourceIds.has(String(template._id)) && (template.isPurchased || this.currentUser?.isAdmin);
                 });
                 for (const template of eligible) {
                     const item = [...(template.items || []), ...(template.exportedItems || [])].find((entry) => entry?.type === 'challenge-wheel');
