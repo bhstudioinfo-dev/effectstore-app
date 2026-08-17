@@ -127,39 +127,74 @@ class EffectStoreApp {
 
     showAppLoadingOverlay(statusText = 'Đang chuẩn bị hệ thống...', percent = 15) {
         const overlay = document.getElementById('app-loading-overlay');
-        const status = document.getElementById('app-loading-status');
-        const progress = document.getElementById('app-loading-progress-fill');
-        const percentEl = document.getElementById('app-loading-percent');
+        const retry = document.getElementById('app-loading-retry');
         if (overlay) {
             overlay.style.display = 'flex';
             overlay.style.opacity = '1';
         }
-        if (status) status.textContent = statusText;
-        if (progress) progress.style.width = `${percent}%`;
-        if (percentEl) percentEl.textContent = `${percent}%`;
-        const retry = document.getElementById('app-loading-retry');
         if (retry) retry.style.display = 'none';
+        this._currentLoadingPercent = percent;
+        this.updateAppLoadingProgress(statusText, percent);
     }
 
-    updateAppLoadingProgress(statusText, percent) {
+    updateAppLoadingProgress(statusText, targetPercent) {
         const status = document.getElementById('app-loading-status');
         const progress = document.getElementById('app-loading-progress-fill');
         const percentEl = document.getElementById('app-loading-percent');
-        if (status) status.textContent = statusText;
-        if (progress) progress.style.width = `${percent}%`;
-        if (percentEl) percentEl.textContent = `${percent}%`;
+        if (status && statusText) status.textContent = statusText;
+
+        const target = Math.min(100, Math.max(0, targetPercent));
+        if (this._currentLoadingPercent === undefined) {
+            this._currentLoadingPercent = target;
+        } else if (target > this._currentLoadingPercent) {
+            this._currentLoadingPercent = target;
+        }
+
+        if (progress) progress.style.width = `${this._currentLoadingPercent}%`;
+        if (percentEl) percentEl.textContent = `${Math.round(this._currentLoadingPercent)}%`;
+
+        // Continuous smooth live ticker so the percentage never freezes or stands still
+        if (this._loadingTickerInterval) clearInterval(this._loadingTickerInterval);
+        if (this._currentLoadingPercent < 95) {
+            this._loadingTickerInterval = setInterval(() => {
+                if (this._currentLoadingPercent < 95) {
+                    this._currentLoadingPercent += 1;
+                    if (progress) progress.style.width = `${this._currentLoadingPercent}%`;
+                    if (percentEl) percentEl.textContent = `${Math.round(this._currentLoadingPercent)}%`;
+                }
+            }, 110);
+        }
     }
 
     hideAppLoadingOverlay() {
+        if (this._loadingTickerInterval) {
+            clearInterval(this._loadingTickerInterval);
+            this._loadingTickerInterval = null;
+        }
         const overlay = document.getElementById('app-loading-overlay');
+        const progress = document.getElementById('app-loading-progress-fill');
+        const percentEl = document.getElementById('app-loading-percent');
+        const status = document.getElementById('app-loading-status');
+
+        if (status) status.textContent = '✨ Đã sẵn sàng!';
+        if (progress) progress.style.width = '100%';
+        if (percentEl) percentEl.textContent = '100%';
+        this._currentLoadingPercent = 100;
+
         if (!overlay) return;
-        overlay.style.opacity = '0';
         setTimeout(() => {
-            overlay.style.display = 'none';
-        }, 300);
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 300);
+        }, 200);
     }
 
     showBootstrapFailure(message = 'Không thể đồng bộ dữ liệu. Vui lòng kiểm tra mạng và thử lại.') {
+        if (this._loadingTickerInterval) {
+            clearInterval(this._loadingTickerInterval);
+            this._loadingTickerInterval = null;
+        }
         this.showAppLoadingOverlay(message, 65);
         const retry = document.getElementById('app-loading-retry');
         if (retry) retry.style.display = 'block';
