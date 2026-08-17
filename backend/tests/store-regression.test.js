@@ -66,6 +66,7 @@ assert.ok(effectsRouteSource.includes('ownedProductIds'));
 assert.ok(homeSource.includes('this.ownedProductIds = new Set()'));
 assert.ok(homeSource.includes("checkoutButton.textContent = total === 0 ? '🎁 Nhận miễn phí'"));
 assert.ok(!homeSource.includes('const hasPurchased = effect.isOwned === true'));
+assert.ok(effectLibrarySource.includes('!isCentralCloudRuntime()'));
 
 console.log('store regression tests passed');
 

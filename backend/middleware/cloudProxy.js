@@ -15,8 +15,17 @@ const { forgetCloudSessionToken, rememberCloudSessionToken, getCloudSessionToken
 const { verifyUserToken } = require('../services/userToken');
 const Effect = require('../models/Effect');
 
+function isCentralCloudRuntime() {
+    if (String(process.env.RENDER || '').toLowerCase() === 'true') return true;
+    const externalUrl = String(process.env.RENDER_EXTERNAL_URL || '').trim().replace(/\/+$/, '');
+    return Boolean(externalUrl && externalUrl === CLOUD_API_URL);
+}
+
 function isCloudProxyEnabled() {
-    return Boolean(CLOUD_API_URL);
+    // The Render service is the source of truth. Proxying it back to its own
+    // public URL creates a recursive request chain and stale/empty ownership
+    // responses. Only installed/local backends should forward to Cloud.
+    return Boolean(CLOUD_API_URL) && !isCentralCloudRuntime();
 }
 
 // Headers that must not be forwarded verbatim between hops.
@@ -133,4 +142,4 @@ function proxyToCloud(req, res, next) {
         });
 }
 
-module.exports = { isCloudProxyEnabled, proxyToCloud };
+module.exports = { isCentralCloudRuntime, isCloudProxyEnabled, proxyToCloud };

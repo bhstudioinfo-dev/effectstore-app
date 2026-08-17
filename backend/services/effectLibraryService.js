@@ -213,7 +213,8 @@ async function getUserRecord(userId, { forceRefresh = false } = {}) {
         user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
     }
     const hasPurchases = user && Array.isArray(user.purchasedEffects) && user.purchasedEffects.length > 0;
-    if (!user || forceRefresh || !hasPurchases) {
+    const { isCentralCloudRuntime } = require('../middleware/cloudProxy');
+    if ((!user || forceRefresh || !hasPurchases) && !isCentralCloudRuntime()) {
         try {
             const { getCloudSessionToken, getAnyCloudSessionToken } = require('./cloudSessionTokenStore');
             const cloudToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
