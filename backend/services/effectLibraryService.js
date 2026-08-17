@@ -212,7 +212,8 @@ async function getUserRecord(userId, { forceRefresh = false } = {}) {
     if (!forceRefresh) {
         user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
     }
-    if (!user || forceRefresh) {
+    const hasPurchases = user && Array.isArray(user.purchasedEffects) && user.purchasedEffects.length > 0;
+    if (!user || forceRefresh || !hasPurchases) {
         try {
             const { getCloudSessionToken, getAnyCloudSessionToken } = require('./cloudSessionTokenStore');
             const cloudToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
@@ -257,7 +258,7 @@ async function getUserRecord(userId, { forceRefresh = false } = {}) {
 }
 
 async function getUserAvailableEffects(userId) {
-    const user = await getUserRecord(userId);
+    const user = await getUserRecord(userId, { forceRefresh: true });
     if (!user) return [];
 
     const purchased = [];
@@ -292,7 +293,7 @@ async function getUserAvailableEffects(userId) {
         try {
             const dirs = fs.readdirSync(dataPaths.customEffectsDir, { withFileTypes: true });
             for (const d of dirs) {
-                if (!d.isDirectory()) continue;
+                if (!d.isDirectory() || !d.name.startsWith('custom-')) continue;
                 const effectId = d.name;
                 if (custom.some(c => c._id === effectId || c.id === effectId)) continue;
                 const metaPath = path.join(dataPaths.customEffectsDir, effectId, 'metadata.json');

@@ -56,7 +56,7 @@ router.get('/effects', optionalAuthMiddleware, async (req, res) => {
             Effect.find(query).sort({ uses: -1 }),
             User.findById(req.userId).select('isAdmin purchasedEffects.effectId').lean()
         ]);
-        const ownedIds = new Set((user?.purchasedEffects || []).map((entry) => String(entry.effectId || '')));
+        const ownedIds = new Set((user?.purchasedEffects || []).map((entry) => String(entry?.effectId?._id || entry?.effectId || '')));
 
         // menu_template products can be a full ready-to-use layout, or a smaller
         // packaged widget (e.g. a goal board) meant to be added into an existing
