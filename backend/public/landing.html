@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveFlow - Nền Tảng Tự Động Hóa & Tối Ưu Doanh Thu Livestream Thế Hệ Mới</title>
+    <meta name="description" content="LiveFlow (EffectStore) - Phần mềm tự động kích hoạt hiệu ứng quà tặng TikTok, trợ lý ảo Gemini AI và giọng đọc cảm xúc ElevenLabs cho OBS Studio & TikTok Live Studio.">
+    <meta name="keywords" content="LiveFlow, EffectStore, hiệu ứng tiktok live, auto trigger quà tiktok, trợ lý ai livestream, vòng quay thử thách, hũ quà tiktok, obs livestream">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-dark: #070913;
+            --bg-card: rgba(18, 22, 38, 0.7);
+            --bg-card-hover: rgba(26, 32, 54, 0.85);
+            --primary: #ec4899;
+            --primary-gradient: linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%);
+            --secondary-gradient: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+            --ai-gradient: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            --accent: #8b5cf6;
+            --accent-glow: rgba(139, 92, 246, 0.35);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --border-focus: rgba(236, 72, 153, 0.4);
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Ambient Glow Backgrounds */
+        .ambient-glow-1 {
+            position: absolute;
+            top: -150px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.18) 0%, rgba(139, 92, 246, 0.12) 50%, transparent 80%);
+            filter: blur(100px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .ambient-glow-2 {
+            position: absolute;
+            top: 1400px;
+            right: -100px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(16, 185, 129, 0.1) 60%, transparent 80%);
+            filter: blur(120px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header Navigation */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(7, 9, 19, 0.75);
+            border-bottom: 1px solid var(--border-glass);
+            transition: all 0.3s ease;
+        }
+
+        .nav-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 80px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: var(--primary-gradient);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 20px;
+            box-shadow: 0 8px 24px rgba(236, 72, 153, 0.35);
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff 40%, #e2e8f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text span {
+            color: #ec4899;
+            -webkit-text-fill-color: #ec4899;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: #fff;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-header-cta {
+            background: var(--primary-gradient);
+            color: #fff;
+            padding: 10px 22px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.35);
+            transition: all 0.3s ease;
+        }
+
+        .btn-header-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(236, 72, 153, 0.5);
+        }
+
+        /* Hero Section */
+        .hero-section {
+            padding: 90px 0 60px;
+            text-align: center;
+            position: relative;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(236, 72, 153, 0.1);
+            border: 1px solid rgba(236, 72, 153, 0.25);
+            border-radius: 50px;
+            color: #f472b6;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            animation: pulse-border 2.5s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(236, 72, 153, 0.25); }
+            50% { border-color: rgba(236, 72, 153, 0.6); box-shadow: 0 0 15px rgba(236, 72, 153, 0.2); }
+        }
+
+        .hero-title {
+            font-size: 56px;
+            line-height: 1.15;
+            font-weight: 900;
+            letter-spacing: -1.5px;
+            max-width: 950px;
+            margin: 0 auto 20px;
+        }
+
+        .hero-title .gradient-text {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        .hero-subtitle {
+            font-size: 19px;
+            color: var(--text-muted);
+            max-width: 720px;
+            margin: 0 auto 40px;
+            font-weight: 400;
+        }
+
+        .hero-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary-lg {
+            background: var(--primary-gradient);
+            color: #fff;
+            font-size: 17px;
+            font-weight: 700;
+            padding: 16px 36px;
+            border-radius: 50px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 12px 35px rgba(236, 72, 153, 0.4);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-primary-lg:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 16px 45px rgba(236, 72, 153, 0.6);
+        }
+
+        .btn-secondary-lg {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 16px 32px;
+            border-radius: 50px;
+            text-decoration: none;
+            border: 1px solid var(--border-glass);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary-lg:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .trust-badges {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 36px;
+            font-size: 14px;
+            color: #cbd5e1;
+            margin-top: 10px;
+        }
+
+        .trust-badges span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .trust-badges i {
+            color: #10b981;
+        }
+
+        /* Interactive Stream Simulator Mockup */
+        .simulator-section {
+            margin: 50px auto 100px;
+            max-width: 1080px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 40px rgba(139, 92, 246, 0.15);
+            backdrop-filter: blur(20px);
+            position: relative;
+        }
+
+        .simulator-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-glass);
+            margin-bottom: 20px;
+        }
+
+        .simulator-window-dots {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .dot-red { background: #ef4444; }
+        .dot-yellow { background: #f59e0b; }
+        .dot-green { background: #10b981; }
+
+        .simulator-title-bar {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .live-tag {
+            background: #ef4444;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 4px;
+            animation: pulse-live 1.5s infinite;
+        }
+
+        @keyframes pulse-live {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .simulator-body {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            min-height: 480px;
+        }
+
+        .stream-view {
+            background: radial-gradient(circle at center, #1e1b4b 0%, #090a16 100%);
+            border-radius: var(--radius-md);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* In-Stream Overlays */
+        .stream-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .streamer-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 6px 14px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+        }
+
+        .streamer-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f43f5e, #fb923c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .goal-bar-widget {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 12px;
+            padding: 10px 16px;
+            backdrop-filter: blur(10px);
+            width: 220px;
+        }
+
+        .goal-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fbbf24;
+            margin-bottom: 5px;
+        }
+
+        .goal-progress-bg {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .goal-progress-fill {
+            width: 68%;
+            height: 100%;
+            background: linear-gradient(90deg, #f59e0b, #ec4899);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        /* Centered Active Effect Canvas */
+        .active-effect-canvas {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .effect-pop {
+            font-size: 90px;
+            filter: drop-shadow(0 0 30px rgba(236, 72, 153, 0.8));
+            animation: zoom-bounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .effect-title-pop {
+            font-size: 22px;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 6px 18px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-top: 10px;
+        }
+
+        @keyframes zoom-bounce {
+            0% { transform: scale(0.2); opacity: 0; }
+            70% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* AI Floating Response Speech Bubble */
+        .ai-speech-toast {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(15px);
+            max-width: 85%;
+            margin-top: auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            animation: slide-up 0.4s ease;
+        }
+
+        @keyframes slide-up {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .ai-icon-pulse {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--ai-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* Simulator Control Panel (Right Column) */
+        .simulator-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .control-panel-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 16px;
+        }
+
+        .control-box-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .interactive-buttons-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .sim-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            color: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .sim-btn:hover {
+            background: rgba(236, 72, 153, 0.15);
+            border-color: rgba(236, 72, 153, 0.4);
+            transform: scale(1.02);
+        }
+
+        .sim-btn i, .sim-btn span {
+            font-size: 16px;
+        }
+
+        .sim-logs-container {
+            height: 140px;
+            overflow-y: auto;
+            font-size: 11px;
+            color: #94a3b8;
+            font-family: monospace;
+            background: #04060c;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .log-entry {
+            line-height: 1.4;
+        }
+        .log-highlight { color: #ec4899; }
+        .log-success { color: #10b981; }
+
+        /* Feature Cards Grid */
+        .features-section {
+            padding: 80px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 650px;
+            margin: 0 auto 60px;
+        }
+
+        .section-tag {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .section-title {
+            font-size: 38px;
+            font-weight: 800;
+            line-height: 1.25;
+            letter-spacing: -0.8px;
+            margin-bottom: 16px;
+        }
+
+        .section-desc {
+            font-size: 17px;
+            color: var(--text-muted);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            padding: 36px 28px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-6px);
+            border-color: rgba(236, 72, 153, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(236, 72, 153, 0.1);
+        }
+
+        .feature-icon-wrapper {
+            width: 58px;
+            height: 58px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 24px;
+        }
+
+        .icon-magenta { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
+        .icon-purple { background: rgba(139, 92, 246, 0.15); color: #a855f7; }
+        .icon-emerald { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .icon-amber { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .icon-cyan { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+        .icon-blue { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+
+        .feature-card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* Pricing Section */
+        .pricing-section {
+            padding: 100px 0;
+            background: radial-gradient(circle at 50% 30%, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+            max-width: 1100px;
+            margin: 0 auto;
+            align-items: stretch;
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            padding: 40px 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .pricing-card.featured {
+            background: linear-gradient(180deg, rgba(30, 27, 75, 0.9) 0%, rgba(15, 18, 38, 0.95) 100%);
+            border: 2px solid #ec4899;
+            box-shadow: 0 20px 60px rgba(236, 72, 153, 0.25);
+            transform: scale(1.03);
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary-gradient);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 4px 16px;
+            border-radius: 50px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
+        }
+
+        .plan-name {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .plan-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .plan-price {
+            font-size: 42px;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .plan-price span {
+            font-size: 15px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .plan-features {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-bottom: 36px;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        .plan-features li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .plan-features li i {
+            color: #10b981;
+            font-size: 14px;
+        }
+
+        .btn-pricing {
+            width: 100%;
+            padding: 14px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 15px;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            border: 1px solid var(--border-glass);
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            transition: all 0.3s ease;
+            display: block;
+        }
+
+        .btn-pricing:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .pricing-card.featured .btn-pricing {
+            background: var(--primary-gradient);
+            border: none;
+            box-shadow: 0 8px 25px rgba(236, 72, 153, 0.4);
+        }
+
+        .pricing-card.featured .btn-pricing:hover {
+            box-shadow: 0 12px 35px rgba(236, 72, 153, 0.6);
+            transform: scale(1.02);
+        }
+
+        /* FAQ Accordion */
+        .faq-section {
+            padding: 80px 0 120px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-accordion {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .faq-question {
+            padding: 20px 24px;
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .faq-answer {
+            padding: 0 24px 20px;
+            font-size: 14.5px;
+            color: var(--text-muted);
+            display: none;
+            line-height: 1.6;
+        }
+
+        .faq-item.active {
+            border-color: rgba(236, 72, 153, 0.3);
+            background: var(--bg-card-hover);
+        }
+
+        .faq-item.active .faq-answer {
+            display: block;
+        }
+
+        .faq-item.active .faq-question i {
+            transform: rotate(180deg);
+            color: var(--primary);
+        }
+
+        /* CTA Banner */
+        .cta-bottom-banner {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(139, 92, 246, 0.2) 100%);
+            border: 1px solid rgba(236, 72, 153, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 60px 40px;
+            text-align: center;
+            margin-bottom: 80px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px);
+        }
+
+        .cta-bottom-banner h2 {
+            font-size: 36px;
+            font-weight: 900;
+            margin-bottom: 16px;
+        }
+
+        .cta-bottom-banner p {
+            font-size: 17px;
+            color: #cbd5e1;
+            max-width: 600px;
+            margin: 0 auto 30px;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border-glass);
+            padding: 40px 0;
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .hero-title { font-size: 40px; }
+            .simulator-body { grid-template-columns: 1fr; }
+            .features-grid { grid-template-columns: 1fr; }
+            .pricing-grid { grid-template-columns: 1fr; }
+            .pricing-card.featured { transform: none; }
+            .nav-links { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow-1"></div>
+    <div class="ambient-glow-2"></div>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="container">
+            <div class="nav-wrapper">
+                <a href="#" class="logo">
+                    <div class="logo-icon"><i class="fas fa-bolt"></i></div>
+                    <div class="logo-text">LIVE<span>FLOW</span></div>
+                </a>
+                <ul class="nav-links">
+                    <li><a href="#features">Tính năng</a></li>
+                    <li><a href="#simulator">Trải nghiệm Live</a></li>
+                    <li><a href="#pricing">Bảng giá</a></li>
+                    <li><a href="#faq">Hỏi đáp</a></li>
+                </ul>
+                <div class="nav-actions">
+                    <a href="#pricing" class="btn-header-cta">
+                        <i class="fab fa-windows"></i> Tải App Miễn Phí
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <div class="badge-pill">
+                <i class="fas fa-sparkles"></i> Nền Tảng Tự Động Hóa Livestream #1 Việt Nam
+            </div>
+            <h1 class="hero-title">
+                Biến Mọi Phòng Livestream Thành <br>
+                <span class="gradient-text">Show Truyền Hình Tương Tác</span>
+            </h1>
+            <p class="hero-subtitle">
+                Tự động nhận diện quà tặng TikTok kích hoạt hiệu ứng 3D siêu thực, trợ lý ảo Gemini AI thông minh và giọng đọc cảm xúc ElevenLabs giúp giữ chân người xem và bùng nổ doanh số.
+            </p>
+            <div class="hero-buttons">
+                <a href="#simulator" class="btn-primary-lg">
+                    <i class="fas fa-play-circle"></i> Trải Nghiệm Demo Ngay
+                </a>
+                <a href="#pricing" class="btn-secondary-lg">
+                    <i class="fas fa-download"></i> Tải LiveFlow Cho Windows
+                </a>
+            </div>
+            <div class="trust-badges">
+                <span><i class="fas fa-check-circle"></i> Kết nối OBS chỉ 1-Click</span>
+                <span><i class="fas fa-check-circle"></i> 100% An toàn không vi phạm</span>
+                <span><i class="fas fa-check-circle"></i> Cài đặt trong 60 giây</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Stream Simulator -->
+    <div class="container" id="simulator">
+        <div class="simulator-section">
+            <div class="simulator-header">
+                <div class="simulator-window-dots">
+                    <div class="dot dot-red"></div>
+                    <div class="dot dot-yellow"></div>
+                    <div class="dot dot-green"></div>
+                </div>
+                <div class="simulator-title-bar">
+                    <span class="live-tag">● LIVE</span>
+                    <span>Màn Hình Livestream Trực Tiếp (Live Simulation)</span>
+                </div>
+                <div style="font-size:12px; color:var(--text-muted);">
+                    <i class="fas fa-eye"></i> 1,420 người xem
+                </div>
+            </div>
+
+            <div class="simulator-body">
+                <!-- Live Screen View -->
+                <div class="stream-view" id="streamScreen">
+                    <div class="stream-top-bar">
+                        <div class="streamer-profile">
+                            <div class="streamer-avatar">👑</div>
+                            <span style="font-size:13px; font-weight:700;">LiveFlow Official</span>
+                        </div>
+                        <div class="goal-bar-widget">
+                            <div class="goal-text">
+                                <span>🎯 Mục tiêu: 500 Hoa Hồng</span>
+                                <span id="goalCountText">340/500</span>
+                            </div>
+                            <div class="goal-progress-bg">
+                                <div class="goal-progress-fill" id="goalBarFill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Dynamic Overlay Area -->
+                    <div class="active-effect-canvas" id="activeEffectArea">
+                        <div class="effect-pop" id="effectIcon">🌹</div>
+                        <div class="effect-title-pop" id="effectTitle">Bạn Mai Anh đã tặng Hoa Hồng!</div>
+                    </div>
+
+                    <!-- AI Speech Bubble Toast -->
+                    <div class="ai-speech-toast" id="aiToast">
+                        <div class="ai-icon-pulse"><i class="fas fa-robot"></i></div>
+                        <div>
+                            <div style="font-size:11px; font-weight:800; color:#34d399; margin-bottom:2px;">TRỢ LÝ AI (ELEVENLABS VOICE)</div>
+                            <div style="font-size:13px; color:#fff;" id="aiSpeechText">"Dạ em cảm ơn chị Mai Anh đã gửi tặng Hoa hồng ạ! Chúc chị một buổi tối vui vẻ!"</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulator Interactive Controls -->
+                <div class="simulator-controls">
+                    <div class="control-panel-box">
+                        <div class="control-box-title">
+                            <span>🎮 Thử kích hoạt tương tác</span>
+                            <span style="color:#ec4899;">Bấm thử</span>
+                        </div>
+                        <div class="interactive-buttons-grid">
+                            <button class="sim-btn" onclick="triggerSimEffect('rose')">
+                                <span>🌹</span> Thả Hoa Hồng
+                            </button>
+                            <button class="sim-btn" onclick="triggerSimEffect('tiktok')">
+                                <span>🎵</span> Tặng Logo TikTok
+                            </button>
+                            <button class="sim-btn" onclick="triggerSimEffect('wheel')">
+                                <span>🎡</span> Vòng Quay Thưởng
+                            </button>
+                            <button class="sim-btn" onclick="triggerSimEffect('lion')">
+                                <span>🦁</span> Thả Siêu Quà Sư Tử
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="control-panel-box">
+                        <div class="control-box-title">
+                            <span>🤖 Test Trợ lý Gemini AI</span>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <input type="text" id="simChatInput" placeholder="Ví dụ: Áo này giá bao nhiêu shop?" 
+                                   style="flex:1; background:rgba(255,255,255,0.06); border:1px solid var(--border-glass); padding:8px 12px; border-radius:8px; color:#fff; font-size:12px;">
+                            <button onclick="triggerSimAiChat()" 
+                                    style="background:var(--primary-gradient); color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer;">
+                                Hỏi AI
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="control-panel-box" style="flex:1; display:flex; flex-direction:column;">
+                        <div class="control-box-title">
+                            <span>⚡ Nhật ký sự kiện thời gian thực</span>
+                        </div>
+                        <div class="sim-logs-container" id="simLogs">
+                            <div class="log-entry log-success">● [00:00:01] Kết nối WebSocket OBS thành công.</div>
+                            <div class="log-entry">● [00:00:05] Trợ lý Gemini AI & ElevenLabs TTS đã sẵn sàng.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Features Grid -->
+    <section class="features-section" id="features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">HỆ SINH THÁI ĐỘT PHÁ</span>
+                <h2 class="section-title">Mọi Công Cụ Bạn Cần Để Thống Trị Livestream</h2>
+                <p class="section-desc">Không còn những buổi live đơn điệu. LiveFlow tự động hóa 100% đồ họa và tương tác để bạn tập trung bán hàng và giải trí.</p>
+            </div>
+
+            <div class="features-grid">
+                <!-- Card 1 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper icon-magenta">
+                        <i class="fas fa-gift"></i>
+                    </div>
+                    <h3>Auto Trigger Quà Tặng Realtime</h3>
+                    <p>Nhận diện chính xác 100% quà tặng TikTok theo thời gian thực. Tự động kích hoạt đồ họa 3D Alpha WebM trong suốt kèm âm thanh hào hứng.</p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper icon-emerald">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>Trợ Lý Gemini AI & Giọng Đọc ElevenLabs</h3>
+                    <p>Tự động đọc bình luận, trả lời câu hỏi và tư vấn sản phẩm với ngữ điệu tự nhiên như người thật. Tích hợp màng lọc an toàn chống chửi bậy.</p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper icon-amber">
+                        <i class="fas fa-dharmachakra"></i>
+                    </div>
+                    <h3>Vòng Quay & Hũ Quà Thần Tài</h3>
+                    <p>Gamification đỉnh cao với Vòng quay thử thách, Hũ quà rơi trực tiếp và Thanh mục tiêu donate giúp kích thích người xem nạp quà liên tục.</p>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper icon-purple">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Bàn Điều Khiển Không Dây (Remote Deck)</h3>
+                    <p>Cầm điện thoại hoặc iPad điều khiển hiệu ứng, âm thanh vỗ tay, chuyển cảnh từ xa qua mạng LAN / 4G mà không cần chạm vào máy tính.</p>
+                </div>
+
+                <!-- Card 5 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper icon-cyan">
+                        <i class="fas fa-palette"></i>
+                    </div>
+                    <h3>Trình Thiết Kế Bảng Quà Kéo Thả</h3>
+                    <p>Tự do sáng tạo hàng trăm mẫu bảng quà độc quyền theo phong cách cá nhân với giao diện kéo thả trực quan như Canva.</p>
+                </div>
+
+                <!-- Card 6 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper icon-blue">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Tối Ưu Hiệu Năng & An Toàn 100%</h3>
+                    <p>Hoạt động mượt mà không làm tụt FPS máy tính hay giật lag luồng livestream. Tuân thủ 100% chính sách của TikTok Live và OBS Studio.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing-section" id="pricing">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">BẢNG GIÁ DỊCH VỤ</span>
+                <h2 class="section-title">Chi Phí Cực Nhỏ - Doanh Thu Cực Lớn</h2>
+                <p class="section-desc">Chỉ từ 6.000đ mỗi ngày để nâng cấp toàn diện chất lượng phòng live của bạn.</p>
+            </div>
+
+            <div class="pricing-grid">
+                <!-- Free Plan -->
+                <div class="pricing-card">
+                    <div>
+                        <div class="plan-name">Gói Miễn Phí</div>
+                        <div class="plan-desc">Trải nghiệm tính năng cơ bản cho người mới bắt đầu livestream.</div>
+                        <div class="plan-price">0đ <span>/ vĩnh viễn</span></div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check"></i> 5 hiệu ứng gắn cơ bản</li>
+                            <li><i class="fas fa-check"></i> 1 mẫu bảng quà thiết kế</li>
+                            <li><i class="fas fa-check"></i> Kết nối OBS 1-Click</li>
+                            <li><i class="fas fa-check"></i> Tự động nhận diện quà</li>
+                        </ul>
+                    </div>
+                    <a href="javascript:alert('Bạn có thể tải và dùng thử gói Miễn phí trực tiếp trên ứng dụng LiveFlow!');" class="btn-pricing">Dùng Thử Miễn Phí</a>
+                </div>
+
+                <!-- Pro Plan (Featured) -->
+                <div class="pricing-card featured">
+                    <div class="featured-badge">🔥 Phổ Biến Nhất</div>
+                    <div>
+                        <div class="plan-name">Gói Pro</div>
+                        <div class="plan-desc">Dành cho Streamer, KOC bán hàng chuyên nghiệp muốn tối đa doanh thu.</div>
+                        <div class="plan-price">299.000đ <span>/ tháng</span></div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check"></i> <strong>Không giới hạn</strong> hiệu ứng gắn</li>
+                            <li><i class="fas fa-check"></i> <strong>Mở khóa toàn bộ</strong> Vòng quay & Hũ quà</li>
+                            <li><i class="fas fa-check"></i> <strong>Trợ lý Gemini AI</strong> trả lời bình luận</li>
+                            <li><i class="fas fa-check"></i> <strong>Giọng đọc cảm xúc ElevenLabs</strong></li>
+                            <li><i class="fas fa-check"></i> Bàn điều khiển không dây Remote Deck</li>
+                            <li><i class="fas fa-check"></i> Hỗ trợ kỹ thuật ưu tiên 24/7</li>
+                        </ul>
+                    </div>
+                    <a href="javascript:alert('Mở app LiveFlow -> Chọn Xem Gói Basic/Pro để quét mã QR nâng cấp ngay trong 30 giây!');" class="btn-pricing">Nâng Cấp Gói Pro</a>
+                </div>
+
+                <!-- Studio Plan -->
+                <div class="pricing-card">
+                    <div>
+                        <div class="plan-name">Gói Studio / MCN</div>
+                        <div class="plan-desc">Dành cho Agency, Doanh nghiệp quản lý nhiều luồng live cùng lúc.</div>
+                        <div class="plan-price">599.000đ <span>/ tháng</span></div>
+                        <ul class="plan-features">
+                            <li><i class="fas fa-check"></i> Tất cả tính năng của gói Pro</li>
+                            <li><i class="fas fa-check"></i> Điều khiển đa thiết bị (Multi-device)</li>
+                            <li><i class="fas fa-check"></i> Thiết kế hiệu ứng độc quyền theo logo nhãn hàng</li>
+                            <li><i class="fas fa-check"></i> Setup kịch bản AI bán hàng riêng</li>
+                            <li><i class="fas fa-check"></i> Hỗ trợ kỹ thuật 1-1 chuyên sâu</li>
+                        </ul>
+                    </div>
+                    <a href="javascript:alert('Liên hệ hỗ trợ để được tư vấn gói Doanh nghiệp & Custom hiệu ứng riêng!');" class="btn-pricing">Liên Hệ Doanh Nghiệp</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section" id="faq">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">HỎI ĐÁP</span>
+                <h2 class="section-title">Câu Hỏi Thường Gặp</h2>
+            </div>
+
+            <div class="faq-accordion">
+                <div class="faq-item active">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>LiveFlow cài đặt có phức tạp không?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Cực kỳ đơn giản! Bạn chỉ cần tải file cài đặt về máy Windows, bấm cài trong 30 giây. Sau đó app có sẵn nút "Tích hợp OBS 1-Click", tự động tạo Browser Source trên OBS Studio của bạn mà không cần chỉnh sửa thủ công phức tạp.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Dùng LiveFlow có bị TikTok khóa tài khoản hay đánh vi phạm không?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Hoàn toàn an toàn 100%! LiveFlow hoạt động qua giao thức Browser Overlay của OBS Studio và đọc sự kiện công khai của phiên live, không can thiệp sâu hay hack vào tài khoản TikTok của bạn.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Máy tính cấu hình yếu có dùng mượt không?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        LiveFlow được tối ưu hóa bằng công nghệ phần cứng tăng tốc đồ họa (GPU Acceleration) và chuẩn nén Alpha WebM thế hệ mới, tiêu tốn chưa đến 3% CPU, đảm bảo luồng livestream không bao giờ bị giật lag hay tụt FPS.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Thanh toán và kích hoạt gói như thế nào?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Hệ thống tích hợp cổng thanh toán mã VietQR tự động 24/7. Ngay khi bạn quét mã chuyển khoản trên app, hệ thống sẽ tự động kích hoạt tài khoản của bạn chỉ sau 5 đến 15 giây.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom CTA Banner -->
+    <div class="container">
+        <div class="cta-bottom-banner">
+            <h2>Sẵn Sàng Bùng Nổ Doanh Số Livestream Của Bạn?</h2>
+            <p>Gia nhập cùng hàng ngàn Streamer & KOC chuyên nghiệp đang sử dụng LiveFlow mỗi ngày.</p>
+            <a href="#pricing" class="btn-primary-lg">
+                <i class="fab fa-windows"></i> Tải LiveFlow Cho Windows Ngay
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>© 2026 LiveFlow by EffectStore. Nền tảng tự động hóa Livestream hàng đầu Việt Nam.</p>
+        </div>
+    </footer>
+
+    <!-- Interactive Simulation Scripts -->
+    <script>
+        let currentGoal = 340;
+        const maxGoal = 500;
+
+        function addLog(msg, type = '') {
+            const logs = document.getElementById('simLogs');
+            const now = new Date().toTimeString().split(' ')[0];
+            const div = document.createElement('div');
+            div.className = 'log-entry ' + (type === 'highlight' ? 'log-highlight' : (type === 'success' ? 'log-success' : ''));
+            div.textContent = `● [${now}] ${msg}`;
+            logs.appendChild(div);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function triggerSimEffect(type) {
+            const effectArea = document.getElementById('activeEffectArea');
+            const icon = document.getElementById('effectIcon');
+            const title = document.getElementById('effectTitle');
+            const aiToast = document.getElementById('aiToast');
+            const aiText = document.getElementById('aiSpeechText');
+
+            if (type === 'rose') {
+                icon.textContent = '🌹';
+                title.textContent = 'Khách hàng "Thu Trang" vừa tặng 10 Hoa Hồng!';
+                aiText.textContent = '"Cảm ơn bạn Thu Trang đã gửi tặng 10 bông hồng rực rỡ nha!"';
+                currentGoal = Math.min(maxGoal, currentGoal + 10);
+                addLog('Nhận sự kiện: 10x Hoa Hồng -> Kích hoạt WebM Alpha 4K.', 'highlight');
+            } else if (type === 'tiktok') {
+                icon.textContent = '🎵';
+                title.textContent = 'Khách hàng "Hoàng Nam" vừa tặng Logo TikTok!';
+                aiText.textContent = '"Cảm ơn anh Hoàng Nam đã ủng hộ live ạ! Chúc anh buổi tối may mắn!"';
+                currentGoal = Math.min(maxGoal, currentGoal + 20);
+                addLog('Nhận sự kiện: TikTok Logo -> Phát âm thanh chúc mừng.', 'highlight');
+            } else if (type === 'wheel') {
+                icon.textContent = '🎡';
+                title.textContent = 'Vòng quay may mắn đang quay... TRÚNG VOUCHER 50K!';
+                aiText.textContent = '"Chúc mừng bạn đã trúng Voucher giảm giá 50k trong giỏ hàng nha!"';
+                addLog('Trigger: Vòng quay may mắn kích hoạt tự động.', 'success');
+            } else if (type === 'lion') {
+                icon.textContent = '🦁';
+                title.textContent = '🔥 ĐẠI GIA "MINH TRÍ" VỪA THẢ SIÊU QUÀ SƯ TỬ!';
+                aiText.textContent = '"Ôi đỉnh quá! Cảm ơn anh Minh Trí đã thả Sư Tử cực kỳ đẳng cấp ạ!"';
+                currentGoal = maxGoal;
+                addLog('🔥 SIÊU SỰ KIỆN: 1x Sư Tử -> Bắn pháo hoa toàn màn hình!', 'highlight');
+            }
+
+            // Update Goal Bar
+            const percent = Math.min(100, Math.round((currentGoal / maxGoal) * 100));
+            document.getElementById('goalCountText').textContent = `${currentGoal}/${maxGoal}`;
+            document.getElementById('goalBarFill').style.width = `${percent}%`;
+
+            // Trigger Animation Re-flow
+            icon.classList.remove('effect-pop');
+            void icon.offsetWidth;
+            icon.classList.add('effect-pop');
+            
+            aiToast.style.animation = 'none';
+            void aiToast.offsetWidth;
+            aiToast.style.animation = 'slide-up 0.4s ease';
+        }
+
+        function triggerSimAiChat() {
+            const input = document.getElementById('simChatInput');
+            const q = input.value.trim() || 'Áo này giá bao nhiêu shop?';
+            const aiText = document.getElementById('aiSpeechText');
+            
+            aiText.textContent = `"Dạ mẫu áo này đang có giá ưu đãi là 189k trong giỏ hàng số 1, miễn phí giao hàng toàn quốc nha bạn!"`;
+            addLog(`Khách hỏi: "${q}" -> Gemini AI xử lý trong 0.2s -> Phát ElevenLabs TTS.`, 'success');
+            input.value = '';
+
+            const aiToast = document.getElementById('aiToast');
+            aiToast.style.animation = 'none';
+            void aiToast.offsetWidth;
+            aiToast.style.animation = 'slide-up 0.4s ease';
+        }
+
+        function toggleFaq(btn) {
+            const item = btn.parentElement;
+            const isActive = item.classList.contains('active');
+            document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('active'));
+            if (!isActive) item.classList.add('active');
+        }
+    </script>
+</body>
+</html>
