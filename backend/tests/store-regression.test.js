@@ -8,6 +8,10 @@ const effectsRouteSource = fs.readFileSync(path.join(__dirname, '../routes/effec
 const effectLibrarySource = fs.readFileSync(path.join(__dirname, '../services/effectLibraryService.js'), 'utf8');
 const paymentServiceSource = fs.readFileSync(path.join(__dirname, '../services/paymentService.js'), 'utf8');
 const authSource = fs.readFileSync(path.join(__dirname, '../middleware/auth.js'), 'utf8');
+const paymentRouteSource = fs.readFileSync(path.join(__dirname, '../routes/payment.js'), 'utf8');
+const tiktokRouteSource = fs.readFileSync(path.join(__dirname, '../routes/tiktok.js'), 'utf8');
+const designerSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/js/gift-menu-designer.js'), 'utf8');
+const publicDesignerSource = fs.readFileSync(path.join(__dirname, '../public/js/gift-menu-designer.js'), 'utf8');
 
 const loadOwnedBody = homeSource.slice(
     homeSource.indexOf('async loadOwnedEffects()'),
@@ -73,6 +77,17 @@ assert.ok(!homeSource.includes('const hasPurchased = effect.isOwned === true'));
 assert.ok(effectLibrarySource.includes('!isCentralCloudRuntime()'));
 assert.ok(authSource.includes('await verifyUserWithCloud(token);'));
 assert.ok(!authSource.includes('user = new User({'));
+assert.ok(paymentRouteSource.includes("await User.findById(req.userId).select('purchasedEffects isActive')"));
+assert.ok(!paymentRouteSource.includes('const user = req.user ||'));
+assert.ok(tiktokRouteSource.includes('if (correspondingEffect && !hasPurchased)'));
+assert.ok(designerSource.includes('const isOwned = Boolean(t.isPurchased);'));
+assert.ok(!designerSource.includes('Boolean(t.isPurchased) || price === 0'));
+assert.ok(homeSource.includes('if (this._checkoutInProgress) return;'));
+assert.ok(homeSource.includes('getEffectiveCartPrice(effect, now = Date.now())'));
+assert.ok(homeSource.includes('this.cart.reduce((sum, effect) => sum + this.getEffectiveCartPrice(effect), 0)'));
+assert.ok(homeSource.includes('const cartItemPrice = this.getEffectiveCartPrice(effect);'));
+assert.ok(!homeSource.includes('effect.flashSalePrice > 0'));
+assert.ok(publicDesignerSource.includes('const isOwned = Boolean(t.isPurchased);'));
 
 console.log('store regression tests passed');
 

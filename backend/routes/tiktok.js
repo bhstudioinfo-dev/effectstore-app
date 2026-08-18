@@ -1266,9 +1266,7 @@ router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
                     const cloudTemplate = cloudById.get(String(t._id));
                     return {
                         ...t,
-                        isPurchased: cloudTemplate
-                            ? Boolean(cloudTemplate.isPurchased)
-                            : Number(t.price || 0) <= 0,
+                        isPurchased: false,
                         isUsed: false,
                         usedLayoutId: null
                     };
@@ -1828,7 +1826,10 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, planQuotaLoc
             hasPurchased = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
         }
 
-        if (price > 0 && !hasPurchased) {
+        // A 0đ Store product is still acquired through cart/checkout. Price
+        // controls payment amount, never ownership. Built-in templates with
+        // no corresponding Store product remain available as before.
+        if (correspondingEffect && !hasPurchased) {
             return res.status(403).json({
                 success: false,
                 purchaseRequired: true,

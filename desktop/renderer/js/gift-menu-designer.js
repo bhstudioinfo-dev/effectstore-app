@@ -685,7 +685,7 @@
                     }
                     listEl.innerHTML = purchasedOnly.map(t => {
                         const price = Math.max(0, Number(t.price) || 0);
-                        const isOwned = Boolean(t.isPurchased) || price === 0;
+                        const isOwned = Boolean(t.isPurchased);
                         const actionText = t.isUsed ? 'Mở tùy chỉnh' : (isOwned ? 'Sử dụng' : `Mua ${price.toLocaleString('vi-VN')}đ`);
                         const bgStyle = isOwned ? 'background:#10b981;' : 'background:#8b5cf6;';
                         return `
@@ -3580,9 +3580,7 @@
 
         async saveAndExport() {
             try {
-                const unpaidTemplateLayer = this.items.find((item) =>
-                    item?.sourceTemplateOwned === false && Number(item?.sourceTemplatePrice) > 0
-                );
+                const unpaidTemplateLayer = this.items.find((item) => item?.sourceTemplateOwned === false);
                 if (unpaidTemplateLayer) {
                     window.app?.showNotification?.(
                         'warning',

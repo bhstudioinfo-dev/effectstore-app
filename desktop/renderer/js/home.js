@@ -1872,6 +1872,14 @@ class EffectStoreApp {
         }
         this.updateCartUI();
     }
+    getEffectiveCartPrice(effect, now = Date.now()) {
+        const regularPrice = Math.max(0, Number(effect?.price) || 0);
+        const salePrice = Number(effect?.flashSalePrice);
+        const saleEndsAt = effect?.flashSaleEndsAt ? new Date(effect.flashSaleEndsAt).getTime() : null;
+        const saleIsActive = effect?.isFlashSale === true && Number.isFinite(salePrice) && salePrice >= 0 &&
+            (!saleEndsAt || saleEndsAt > now);
+        return saleIsActive ? salePrice : regularPrice;
+    }
     openCart() {
         const sidebar = document.getElementById('cart-sidebar');
         const overlay = document.getElementById('cart-overlay');
@@ -1901,10 +1909,7 @@ class EffectStoreApp {
         if (empty) empty.style.display = 'none';
         if (footer) footer.style.display = 'block';
         // Render items
-        const total = this.cart.reduce((s, e) => {
-            const actualPrice = (e.isFlashSale && e.flashSalePrice > 0) ? e.flashSalePrice : (e.price || 0);
-            return s + actualPrice;
-        }, 0);
+        const total = this.cart.reduce((sum, effect) => sum + this.getEffectiveCartPrice(effect), 0);
         const totalEl = document.getElementById('cart-total-price');
         if (totalEl) totalEl.textContent = this.formatPrice(total);
         const checkoutButton = document.getElementById('cart-checkout-button');
@@ -1916,8 +1921,8 @@ class EffectStoreApp {
             const item = document.createElement('div');
             item.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;';
 
-            const cartItemPrice = (effect.isFlashSale && effect.flashSalePrice > 0) ? effect.flashSalePrice : effect.price;
-            const priceColor = effect.isFlashSale ? '#ef4444' : '#d4af37';
+            const cartItemPrice = this.getEffectiveCartPrice(effect);
+            const priceColor = cartItemPrice < Math.max(0, Number(effect.price) || 0) ? '#ef4444' : '#d4af37';
 
             item.innerHTML = `
                         <div style="width:48px;height:48px;border-radius:8px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${effect.icon || '🎬'}</div>
@@ -2268,9 +2273,14 @@ class EffectStoreApp {
     removeFromCart(effectId) { this.cart = this.cart.filter(e => (e.id || e._id) !== effectId); this.saveCart(); this.renderEffects(); this.showNotification('success', '✅ Đã xóa khỏi giỏ!'); }
     async checkout() {
         if (this.cart.length === 0) { this.showNotification('warning', '⚠️ Giỏ trống!'); return; }
-        const itemPrice = (effect) => (effect.isFlashSale && Number(effect.flashSalePrice) >= 0)
-            ? Number(effect.flashSalePrice)
-            : Number(effect.price || 0);
+        if (this._checkoutInProgress) return;
+        this._checkoutInProgress = true;
+        const checkoutButton = document.getElementById('cart-checkout-button');
+        if (checkoutButton) {
+            checkoutButton.disabled = true;
+            checkoutButton.textContent = '⏳ Đang xử lý...';
+        }
+        const itemPrice = (effect) => this.getEffectiveCartPrice(effect);
         const freeItems = this.cart.filter(effect => itemPrice(effect) === 0);
         const paidItems = this.cart.filter(effect => itemPrice(effect) > 0);
         const total = paidItems.reduce((sum, effect) => sum + itemPrice(effect), 0);
@@ -2435,6 +2445,10 @@ class EffectStoreApp {
         } catch (error) {
             console.error('Checkout error:', error);
             this.showNotification('error', '❌ Lỗi thanh toán: ' + error.message);
+        } finally {
+            this._checkoutInProgress = false;
+            if (checkoutButton) checkoutButton.disabled = false;
+            this.updateCartUI();
         }
     }
     previewPaymentProof(input) {
@@ -3005,11 +3019,11 @@ class EffectStoreApp {
                 let origPrice = effect.originalPrice || effect.price;
 
                 if (isFlashSaleActive) {
-                    if (effect.flashSalePrice > 0) {
+                    if (Number.isFinite(Number(effect.flashSalePrice)) && Number(effect.flashSalePrice) >= 0) {
                         currentPrice = effect.flashSalePrice;
                         origPrice = effect.price;
                     }
-                    const discount = Math.round((1 - currentPrice / origPrice) * 100);
+                    const discount = Number(origPrice) > 0 ? Math.round((1 - currentPrice / origPrice) * 100) : 0;
                     const endsAt = effect.flashSaleEndsAt;
 
                     let countdownHTML = '';

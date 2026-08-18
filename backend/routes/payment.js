@@ -55,7 +55,10 @@ function safeProofUrl(payment) {
 
 router.post('/create-qr', authMiddleware, async (req, res) => {
     try {
-        const user = req.user || (await User.findById(req.userId).select('purchasedEffects isActive'));
+        // authMiddleware intentionally selects a lightweight profile. Orders
+        // must read the complete, current ownership list from the database or
+        // an already-owned item can be ordered again.
+        const user = await User.findById(req.userId).select('purchasedEffects isActive');
         if (!user || user.isActive === false) return res.status(404).json({ success: false, error: 'User not found' });
         const order = await calculateOrder(req.body?.effectIds, user);
         const orderId = createOrderId();
@@ -78,7 +81,7 @@ router.post('/create-qr', authMiddleware, async (req, res) => {
 
 router.post('/claim-free', authMiddleware, async (req, res) => {
     try {
-        const user = req.user || (await User.findById(req.userId).select('purchasedEffects isActive'));
+        const user = await User.findById(req.userId).select('purchasedEffects isActive');
         if (!user || user.isActive === false) return res.status(404).json({ success: false, error: 'User not found' });
         const result = await claimFreeEffects(req.body?.effectIds, user);
         return res.json({ success: true, ...result });
