@@ -17,6 +17,7 @@ const { isValidResourceId } = require('../utils/accessControl');
 const { getUserAvailableEffects, getUserOwnedProductIds, resolveEffectForUser, registerCustomEffectOwnership } = require('../services/effectLibraryService');
 const { issueEffectAccessToken, buildEffectStreamUrl, verifyEffectAccessToken } = require('../services/effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
+const { deleteCatalogEffectCascade } = require('../services/catalogDeletionService');
 const { isAssetStoreConfigured, uploadEncryptedEffect, downloadEncryptedEffect, uploadThumbnail } = require('../services/effectAssetStore');
 const { getCloudSessionToken } = require('../services/cloudSessionTokenStore');
 
@@ -680,8 +681,8 @@ router.delete('/effects/:id', authMiddleware, adminMiddleware, async (req, res) 
             if (effect.previewFilePath && fs.existsSync(effect.previewFilePath)) fs.unlinkSync(effect.previewFilePath);
             if (effect.encryptedFilePath && fs.existsSync(effect.encryptedFilePath)) fs.unlinkSync(effect.encryptedFilePath);
         }
-        await Effect.findByIdAndDelete(req.params.id);
-        res.json({ success: true });
+        const result = await deleteCatalogEffectCascade(req.params.id);
+        res.json({ success: true, ...result });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 

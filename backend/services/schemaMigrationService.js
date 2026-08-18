@@ -2,8 +2,10 @@ const User = require('../models/User');
 const SystemState = require('../models/SystemState');
 const Effect = require('../models/Effect');
 const GiftMenuLayout = require('../models/GiftMenuLayout');
+const ChallengeWheel = require('../models/ChallengeWheel');
+const { detachWheelMappings } = require('./catalogDeletionService');
 
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 4;
 
 async function migration1BootstrapState() {
     const admin = await User.findOne({ isAdmin: true }).select('_id').lean();
@@ -45,9 +47,42 @@ async function migration2SyncPublishedMenuProducts() {
     }
 }
 
+async function migration3RemoveDeletedLegacyWheels() {
+    const templateIds = new Set(
+        (await GiftMenuLayout.find({ isTemplate: true }).select('_id').lean()).map((template) => String(template._id))
+    );
+    const wheels = await ChallengeWheel.find({}).select('_id sourceTemplateId name').lean();
+    const staleWheelIds = wheels
+        .filter((wheel) => {
+            if (wheel.sourceTemplateId) return !templateIds.has(String(wheel.sourceTemplateId));
+            return /vòng quay thử thách.*bản cũ/i.test(String(wheel.name || ''));
+        })
+        .map((wheel) => wheel._id);
+    if (!staleWheelIds.length) return;
+    await detachWheelMappings(staleWheelIds);
+    await ChallengeWheel.deleteMany({ _id: { $in: staleWheelIds } });
+}
+
+async function migration4RestoreTikTokCatalogPrice() {
+    await Effect.updateOne(
+        { _id: '69f07a15bd815bb0cc729db8', name: /^tiktok$/i },
+        {
+            $set: {
+                price: 10000,
+                originalPrice: 49000,
+                isFlashSale: false,
+                flashSalePrice: 0,
+                flashSaleEndsAt: null
+            }
+        }
+    );
+}
+
 const migrations = new Map([
     [1, migration1BootstrapState],
-    [2, migration2SyncPublishedMenuProducts]
+    [2, migration2SyncPublishedMenuProducts],
+    [3, migration3RemoveDeletedLegacyWheels],
+    [4, migration4RestoreTikTokCatalogPrice]
 ]);
 
 async function runSchemaMigrations() {

@@ -2132,7 +2132,9 @@ router.get('/goal-board/templates', authMiddleware, async (req, res) => {
                 originalPrice: Math.max(price, Number(template.originalPrice) || 0),
                 requiredPlan: template.requiredPlan || 'free',
                 editableSchema: Array.isArray(template.editableSchema) ? template.editableSchema : [],
-                owned: privileged || price === 0 || Boolean(product && purchasedIds.has(String(product._id))),
+                // A 0đ Store product still requires cart/checkout ownership.
+                // Only built-in templates without a Store product are free to use directly.
+                owned: privileged || !product || purchasedIds.has(String(product._id)),
                 purchaseCount: product ? (purchaseCountByProduct.get(String(product._id)) || 0) : 0,
                 layers: Array.isArray(template.items) ? template.items : []
             };

@@ -12,6 +12,7 @@ const paymentRouteSource = fs.readFileSync(path.join(__dirname, '../routes/payme
 const tiktokRouteSource = fs.readFileSync(path.join(__dirname, '../routes/tiktok.js'), 'utf8');
 const designerSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/js/gift-menu-designer.js'), 'utf8');
 const publicDesignerSource = fs.readFileSync(path.join(__dirname, '../public/js/gift-menu-designer.js'), 'utf8');
+const catalogDeletionSource = fs.readFileSync(path.join(__dirname, '../services/catalogDeletionService.js'), 'utf8');
 
 const loadOwnedBody = homeSource.slice(
     homeSource.indexOf('async loadOwnedEffects()'),
@@ -80,6 +81,7 @@ assert.ok(!authSource.includes('user = new User({'));
 assert.ok(paymentRouteSource.includes("await User.findById(req.userId).select('purchasedEffects isActive')"));
 assert.ok(!paymentRouteSource.includes('const user = req.user ||'));
 assert.ok(tiktokRouteSource.includes('if (correspondingEffect && !hasPurchased)'));
+assert.ok(tiktokRouteSource.includes('owned: privileged || !product || purchasedIds.has(String(product._id))'));
 assert.ok(designerSource.includes('const isOwned = Boolean(t.isPurchased);'));
 assert.ok(!designerSource.includes('Boolean(t.isPurchased) || price === 0'));
 assert.ok(homeSource.includes('if (this._checkoutInProgress) return;'));
@@ -93,6 +95,9 @@ assert.ok(homeSource.includes("this.switchAuthTab('login');"));
 const authTabBody = homeSource.slice(homeSource.indexOf('switchAuthTab(tab, trigger = null)'), homeSource.indexOf('async login()'));
 assert.ok(!authTabBody.includes('event.target'));
 assert.ok(indexSource.includes("app.switchAuthTab('register', this)"));
+assert.ok(catalogDeletionSource.includes("$pull: { purchasedEffects: { effectId: effect._id } }"));
+assert.ok(catalogDeletionSource.includes('await ChallengeWheel.deleteMany({ sourceTemplateId: deletedTemplateId })'));
+assert.ok(catalogDeletionSource.includes('{ parentTemplateId: deletedTemplateId }'));
 
 console.log('store regression tests passed');
 

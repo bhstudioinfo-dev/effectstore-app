@@ -18,7 +18,7 @@ try {
     tampered[tampered.length - 1] ^= 1;
     assert.throws(() => backupService.decryptBackup(tampered));
 
-    assert.strictEqual(CURRENT_SCHEMA_VERSION, 2);
+    assert.strictEqual(CURRENT_SCHEMA_VERSION, 4);
     assert.strictEqual(authRoutes.setupTokenMatches(process.env.INITIAL_SETUP_TOKEN), true);
     assert.strictEqual(authRoutes.setupTokenMatches('invalid'), false);
     assert.strictEqual(authRoutes.stack.some((layer) => layer.route?.path === '/setup-status'), true);

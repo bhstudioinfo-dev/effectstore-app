@@ -129,7 +129,10 @@ function proxyToCloud(req, res, next) {
             // showing a "ghost" effect forever after it was deleted elsewhere.
             if (cloudRes.ok && req.method === 'DELETE') {
                 const match = req.path.match(/^\/api\/effects\/([a-f0-9]{24})$/);
-                if (match) Effect.findByIdAndDelete(match[1]).catch(() => {});
+                if (match) {
+                    const { deleteCatalogEffectCascade } = require('../services/catalogDeletionService');
+                    deleteCatalogEffectCascade(match[1]).catch(() => {});
+                }
             }
         })
         .catch((err) => {
