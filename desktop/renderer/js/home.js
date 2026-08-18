@@ -285,15 +285,15 @@ class EffectStoreApp {
         ];
         if (this.authToken) coreTasks.push(this.loadOwnedEffects());
 
-        // Fast core sync (maximum 800ms) so the UI unlocks instantly
-        await Promise.race([
-            Promise.allSettled(coreTasks),
-            new Promise(resolve => setTimeout(resolve, 800))
-        ]);
+        // The loading screen must cover the complete core sync. Releasing it
+        // after a fixed delay causes an empty banner/card flash on slower
+        // cloud connections and can briefly render stale ownership state.
+        await Promise.allSettled(coreTasks);
 
         this.renderEffects();
         this.renderControlDeck();
         this.syncControlDeckToRemote();
+        await this.preloadStoreVisualAssets();
 
         // Heavy auxiliary tasks run purely in the background without holding up the user
         const tasks = [];
@@ -313,6 +313,39 @@ class EffectStoreApp {
             if (typeof this.loadAdminEffectAcquisitions === 'function') tasks.push(this.loadAdminEffectAcquisitions());
         }
         Promise.allSettled(tasks).catch(() => {});
+    }
+
+    async preloadStoreVisualAssets() {
+        const urls = new Set();
+        if (this.bannerUrl) urls.add(this.bannerUrl);
+        (this.storeEffects || []).forEach(effect => {
+            if (!effect || typeof effect !== 'object' || !effect.thumbUrl) return;
+            const url = this.resolveCatalogMediaUrl(effect.thumbUrl);
+            if (url) urls.add(url);
+        });
+
+        const loadImage = (url) => new Promise(resolve => {
+            const img = new Image();
+            let settled = false;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                resolve();
+            };
+            const timer = setTimeout(finish, 10000);
+            img.onload = async () => {
+                try {
+                    if (typeof img.decode === 'function') await img.decode();
+                } catch (_error) {}
+                finish();
+            };
+            img.onerror = finish;
+            img.src = url;
+            if (img.complete) img.onload();
+        });
+
+        await Promise.all([...urls].map(loadImage));
     }
     async init() {
         try {
