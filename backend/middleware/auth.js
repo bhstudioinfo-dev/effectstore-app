@@ -34,30 +34,18 @@ const authMiddleware = async (req, res, next) => {
         let user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
         if (!user && decoded.userId) {
             try {
-                const fallbackEmail = decoded.email || `${decoded.userId}@local.user`;
-                await mirrorUserLocally({ id: decoded.userId, email: fallbackEmail, isAdmin: Boolean(decoded.isAdmin) });
+                // A centrally signed token may verify locally while its User
+                // document has not yet been mirrored to this installation.
+                // Fetch the authoritative cloud profile before inventing any
+                // local fallback identity.
+                await verifyUserWithCloud(token);
                 user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
-                if (!user) {
-                    user = await User.create({
-                        _id: decoded.userId,
-                        email: fallbackEmail,
-                        password: 'local-auto-created',
-                        name: decoded.email ? decoded.email.split('@')[0] : 'User',
-                        isAdmin: Boolean(decoded.isAdmin),
-                        isActive: true
-                    }).catch(() => null);
-                }
             } catch (_e) {}
         }
         if (!user && decoded.userId) {
-            user = new User({
-                _id: decoded.userId,
-                email: decoded.email || `${decoded.userId}@local.user`,
-                name: decoded.email ? decoded.email.split('@')[0] : 'User',
-                isAdmin: Boolean(decoded.isAdmin),
-                isActive: true
-            });
-            try { await user.save(); } catch (_e) {}
+            const fallbackEmail = decoded.email || `${decoded.userId}@local.user`;
+            await mirrorUserLocally({ id: decoded.userId, email: fallbackEmail, isAdmin: Boolean(decoded.isAdmin) });
+            user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
         }
         if (!user || user.isActive === false) {
             console.warn(`[authMiddleware] rejected: decoded.userId=${decoded.userId} found=${Boolean(user)} isActive=${user?.isActive}`);

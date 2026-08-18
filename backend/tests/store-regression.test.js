@@ -7,6 +7,7 @@ const indexSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer
 const effectsRouteSource = fs.readFileSync(path.join(__dirname, '../routes/effects.js'), 'utf8');
 const effectLibrarySource = fs.readFileSync(path.join(__dirname, '../services/effectLibraryService.js'), 'utf8');
 const paymentServiceSource = fs.readFileSync(path.join(__dirname, '../services/paymentService.js'), 'utf8');
+const authSource = fs.readFileSync(path.join(__dirname, '../middleware/auth.js'), 'utf8');
 
 const loadOwnedBody = homeSource.slice(
     homeSource.indexOf('async loadOwnedEffects()'),
@@ -70,6 +71,8 @@ assert.ok(homeSource.includes("checkoutButton.textContent = '💳 Thanh toán ng
 assert.ok(!homeSource.includes('🎁 Nhận miễn phí'));
 assert.ok(!homeSource.includes('const hasPurchased = effect.isOwned === true'));
 assert.ok(effectLibrarySource.includes('!isCentralCloudRuntime()'));
+assert.ok(authSource.includes('await verifyUserWithCloud(token);'));
+assert.ok(!authSource.includes('user = new User({'));
 
 console.log('store regression tests passed');
 

@@ -98,6 +98,11 @@ function proxyToCloud(req, res, next) {
                             const decoded = verifyUserToken(effectiveToken);
                             if (decoded?.userId) {
                                 rememberCloudSessionToken(decoded.userId, effectiveToken);
+                                // Ownership mirroring uses upsert:false by
+                                // design, so guarantee the authoritative cloud
+                                // account exists locally before applying it.
+                                const { verifyUserWithCloud } = require('../services/cloudUserVerifier');
+                                await verifyUserWithCloud(effectiveToken);
                                 const { mirrorUserPurchasedEffectsLocally } = require('../services/localUserMirror');
                                 await mirrorUserPurchasedEffectsLocally(decoded.userId, parsed.effects);
                             }

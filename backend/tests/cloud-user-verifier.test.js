@@ -14,6 +14,8 @@ assert(verifierSource.includes('const mirrored = await mirrorUserLocally(user)')
 assert(verifierSource.includes("error.code = 'CLOUD_USER_MIRROR_FAILED'"));
 assert(proxySource.indexOf('await mirrorUserLocally(parsed.user)') < proxySource.indexOf('res.send(text)'));
 assert(proxySource.includes("req.originalUrl.split('?')[0] === '/api/user/effects'"));
+assert(proxySource.includes('await verifyUserWithCloud(effectiveToken)'));
+assert(verifierSource.includes('await User.exists({ _id: cached.userId })'));
 
 const cloudProxy = require('../middleware/cloudProxy');
 const originalRender = process.env.RENDER;

@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { mirrorUserLocally } = require('./localUserMirror');
+const User = require('../models/User');
 
 const CLOUD_API_URL = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
 const CACHE_TTL_MS = 60_000;
@@ -13,7 +14,14 @@ async function verifyUserWithCloud(token) {
     if (!CLOUD_API_URL || !token) throw new Error('Cloud token verification is unavailable.');
     const key = tokenCacheKey(token);
     const cached = verifiedTokens.get(key);
-    if (cached && cached.expiresAt > Date.now()) return cached.userId;
+    if (cached && cached.expiresAt > Date.now()) {
+        const localUserExists = await User.exists({ _id: cached.userId });
+        if (localUserExists) return cached.userId;
+        // A local database restart can outlive this in-memory token cache.
+        // Re-fetch the cloud profile below instead of returning an ID whose
+        // local User document no longer exists.
+        verifiedTokens.delete(key);
+    }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
