@@ -1049,9 +1049,20 @@ class EffectStoreApp {
     }
 
 
-    switchAuthTab(tab) {
+    resetAuthForms() {
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        if (loginForm) loginForm.reset();
+        if (registerForm) registerForm.reset();
+        const profileDetails = registerForm?.querySelector('.auth-profile-details');
+        if (profileDetails) profileDetails.open = false;
+    }
+
+    switchAuthTab(tab, trigger = null) {
         document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-        event.target.classList.add('active');
+        const tabs = Array.from(document.querySelectorAll('.auth-tab'));
+        const activeTab = trigger || tabs[tab === 'login' ? 0 : 1];
+        if (activeTab) activeTab.classList.add('active');
         if (tab === 'login') {
             document.getElementById('login-form').style.display = 'block';
             document.getElementById('register-form').style.display = 'none';
@@ -1085,6 +1096,8 @@ class EffectStoreApp {
                 localStorage.setItem('currentUser', JSON.stringify(data.user));
                 this.currentUser = data.user;
                 this.authToken = data.token;
+                const loginPassword = document.getElementById('login-password');
+                if (loginPassword) loginPassword.value = '';
                 this.hydrateAccountCaches();
                 this.closeAuthModal();
                 this.showAppLoadingOverlay('🔓 Đăng nhập thành công! Đang đồng bộ hệ thống...', 25);
@@ -1167,6 +1180,7 @@ class EffectStoreApp {
                     this.currentUser = data.user;
                 }
                 this.authToken = data.token;
+                document.getElementById('register-form')?.reset();
                 this.hydrateAccountCaches();
                 this.closeAuthModal();
                 this.showAppLoadingOverlay('🔓 Đăng ký thành công! Đang đồng bộ hệ thống...', 25);
@@ -1270,6 +1284,8 @@ class EffectStoreApp {
         localStorage.removeItem('user');
         this.authToken = null;
         this.currentUser = null;
+        this.resetAuthForms();
+        this.switchAuthTab('login');
         if (this._adminPollInterval) {
             clearInterval(this._adminPollInterval);
             this._adminPollInterval = null;

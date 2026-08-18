@@ -88,6 +88,11 @@ assert.ok(homeSource.includes('this.cart.reduce((sum, effect) => sum + this.getE
 assert.ok(homeSource.includes('const cartItemPrice = this.getEffectiveCartPrice(effect);'));
 assert.ok(!homeSource.includes('effect.flashSalePrice > 0'));
 assert.ok(publicDesignerSource.includes('const isOwned = Boolean(t.isPurchased);'));
+assert.ok(homeSource.includes('resetAuthForms()'));
+assert.ok(homeSource.includes("this.switchAuthTab('login');"));
+const authTabBody = homeSource.slice(homeSource.indexOf('switchAuthTab(tab, trigger = null)'), homeSource.indexOf('async login()'));
+assert.ok(!authTabBody.includes('event.target'));
+assert.ok(indexSource.includes("app.switchAuthTab('register', this)"));
 
 console.log('store regression tests passed');
 
