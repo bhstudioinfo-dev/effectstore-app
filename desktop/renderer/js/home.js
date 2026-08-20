@@ -1833,9 +1833,11 @@ class EffectStoreApp {
 
         const isAdmin = this.currentUser?.isAdmin === true;
 
-        // Nếu là admin, số lượng sở hữu thực tế có thể khác với danh sách hiển thị (vì admin thấy tất cả)
-        // Tuy nhiên để đẹp thì admin vẫn hiện số lượng toàn bộ kho
-        document.getElementById('owned-count').textContent = this.ownedEffects.length;
+        // Templates are separate Store products, so include them in the
+        // dashboard total instead of showing an admin "0" while the library
+        // correctly grants access to a published board.
+        const ownedTemplates = this.getOwnedTemplateProducts();
+        document.getElementById('owned-count').textContent = this.ownedEffects.length + ownedTemplates.length;
 
         // Sử dụng giá trị thực tế từ DB thay vì cộng dồn giá tiền (đặc biệt quan trọng với Admin)
         const displaySpent = this.currentUser ? (this.currentUser.totalSpent || 0) : 0;
@@ -1844,7 +1846,7 @@ class EffectStoreApp {
         const displayUses = this.currentUser ? (this.currentUser.totalUses || 0) : 0;
         document.getElementById('total-uses').textContent = displayUses;
 
-        const totalSavings = this.ownedEffects.reduce((sum, e) => {
+        const totalSavings = [...this.ownedEffects, ...ownedTemplates].reduce((sum, e) => {
             const orig = e.originalPrice || e.price || 0;
             const current = e.price || 0;
             return sum + (orig - current);
@@ -1852,6 +1854,21 @@ class EffectStoreApp {
         document.getElementById('savings').textContent = this.formatPrice(totalSavings);
         this.renderEffects();
     } // ✅ Đóng updateUI ở đây
+
+    getOwnedTemplateProducts() {
+        const isPrivileged = this.currentUser?.isAdmin === true ||
+            (this.currentUser && ['pro', 'studio'].includes(resolvePlanKey(this.currentUser)));
+        return (this._templatesCache || [])
+            .filter(template => template && template.isActive === true && (isPrivileged || template.isPurchased === true))
+            .map(template => ({
+                ...template,
+                _id: String(template._id || template.id),
+                id: String(template._id || template.id),
+                category: 'menu_template',
+                fileUrl: String(template._id || template.id),
+                isOwned: true
+            }));
+    }
 
     addOwnedEffect(effect) {
         const owned = { ...effect, purchasedAt: new Date().toISOString(), machineId: this.machineId, useCount: 0 };
@@ -2837,18 +2854,7 @@ class EffectStoreApp {
             // Template products have their own endpoint and their own IDs.
             // Map them into the card shape only for rendering; never mix them
             // into the effect-video entitlement collection.
-            const isPrivileged = this.currentUser?.isAdmin === true ||
-                (this.currentUser && ['pro', 'studio'].includes(resolvePlanKey(this.currentUser)));
-            const templateEffects = (this._templatesCache || [])
-                .filter(template => template && template.isActive === true && (isPrivileged || template.isPurchased === true))
-                .map(template => ({
-                    ...template,
-                    _id: String(template._id || template.id),
-                    id: String(template._id || template.id),
-                    category: 'menu_template',
-                    fileUrl: String(template._id || template.id),
-                    isOwned: true
-                }));
+            const templateEffects = this.getOwnedTemplateProducts();
 
             const countEffectsEl = document.getElementById('lib-tab-effects-count');
             if (countEffectsEl) countEffectsEl.textContent = videoEffects.length;

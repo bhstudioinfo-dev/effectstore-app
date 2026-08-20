@@ -101,6 +101,8 @@ assert.ok(catalogDeletionSource.includes('await ChallengeWheel.deleteMany({ sour
 assert.ok(catalogDeletionSource.includes('{ parentTemplateId: deletedTemplateId }'));
 assert.ok(loadOwnedBody.includes('await this.loadOwnedTemplates();'));
 assert.ok(homeSource.includes(".filter(template => template && template.isActive === true && (isPrivileged || template.isPurchased === true))"));
+assert.ok(homeSource.includes('const ownedTemplates = this.getOwnedTemplateProducts();'));
+assert.ok(homeSource.includes('this.ownedEffects.length + ownedTemplates.length'));
 assert.ok(homeSource.includes("category: 'menu_template',"));
 assert.ok(tiktokRouteSource.includes('const activeTemplateProductIds = new Set'));
 assert.ok(tiktokRouteSource.includes('isActive: template.isActive === true || activeTemplateProductIds.has(String(template._id))'));
