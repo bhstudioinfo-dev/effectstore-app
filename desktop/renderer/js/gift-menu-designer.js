@@ -4925,6 +4925,21 @@
                                     </div>
                                 </div>
                             `;
+                } else if (t.id === 'tmpl_interactive_gift_jar') {
+                    // Keep the Goal-library card visually aligned with the
+                    // actual Physics Jar on the canvas.  It used to fall into
+                    // the generic 📊 fallback, which made a working jar look
+                    // like an unrelated goal widget.
+                    previewHTML = `
+                                <div class="gmd-mini-widget" style="position:relative;width:100%;height:100%;overflow:hidden;border-radius:6px;background:radial-gradient(circle at 50% 78%,rgba(250,204,21,.2),transparent 34%),linear-gradient(145deg,#071525,#0a0d19);border:1px solid rgba(45,212,191,.56);display:grid;place-items:center;box-sizing:border-box;">
+                                    <div style="position:absolute;top:6px;left:0;right:0;text-align:center;font-size:6px;font-weight:900;color:#fef3c7;text-shadow:0 0 5px rgba(250,204,21,.65);">🏺 HŨ QUÀ TẶNG</div>
+                                    <div style="position:relative;width:33px;height:38px;margin-top:7px;border:2px solid rgba(226,232,240,.92);border-top:5px solid rgba(241,245,249,.95);border-radius:5px 5px 11px 11px;background:linear-gradient(90deg,rgba(125,211,252,.08),rgba(255,255,255,.22),rgba(125,211,252,.08));box-shadow:inset 0 0 8px rgba(255,255,255,.28),0 0 8px rgba(45,212,191,.33);">
+                                        <span style="position:absolute;bottom:2px;left:5px;font-size:14px;line-height:1;filter:drop-shadow(0 0 3px #facc15);">🪙</span>
+                                        <span style="position:absolute;bottom:1px;right:4px;font-size:10px;line-height:1;">✨</span>
+                                    </div>
+                                    <div style="position:absolute;bottom:5px;left:8px;right:8px;height:3px;border-radius:99px;background:rgba(255,255,255,.15);overflow:hidden;"><i style="display:block;width:38%;height:100%;background:linear-gradient(90deg,#facc15,#f97316);"></i></div>
+                                </div>
+                            `;
                 } else if (t.id === 'tmpl_pk_versus_bar') {
                     previewHTML = `
                                 <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #0f172a 0%, #05070f 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box; position: relative;">
