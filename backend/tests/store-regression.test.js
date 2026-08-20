@@ -13,6 +13,7 @@ const tiktokRouteSource = fs.readFileSync(path.join(__dirname, '../routes/tiktok
 const designerSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/js/gift-menu-designer.js'), 'utf8');
 const publicDesignerSource = fs.readFileSync(path.join(__dirname, '../public/js/gift-menu-designer.js'), 'utf8');
 const catalogDeletionSource = fs.readFileSync(path.join(__dirname, '../services/catalogDeletionService.js'), 'utf8');
+const cloudTemplateCatalogSource = fs.readFileSync(path.join(__dirname, '../services/cloudTemplateCatalog.js'), 'utf8');
 
 const loadOwnedBody = homeSource.slice(
     homeSource.indexOf('async loadOwnedEffects()'),
@@ -98,6 +99,13 @@ assert.ok(indexSource.includes("app.switchAuthTab('register', this)"));
 assert.ok(catalogDeletionSource.includes("$pull: { purchasedEffects: { effectId: effect._id } }"));
 assert.ok(catalogDeletionSource.includes('await ChallengeWheel.deleteMany({ sourceTemplateId: deletedTemplateId })'));
 assert.ok(catalogDeletionSource.includes('{ parentTemplateId: deletedTemplateId }'));
+assert.ok(loadOwnedBody.includes('await this.loadOwnedTemplates();'));
+assert.ok(homeSource.includes(".filter(template => template && template.isActive === true && (isPrivileged || template.isPurchased === true))"));
+assert.ok(homeSource.includes("category: 'menu_template',"));
+assert.ok(tiktokRouteSource.includes('const activeTemplateProductIds = new Set'));
+assert.ok(tiktokRouteSource.includes('isActive: template.isActive === true || activeTemplateProductIds.has(String(template._id))'));
+assert.ok(tiktokRouteSource.includes('isActive: true,\n            isTemplate: true,'));
+assert.ok(cloudTemplateCatalogSource.includes('isActive: template.isActive === true'));
 
 console.log('store regression tests passed');
 

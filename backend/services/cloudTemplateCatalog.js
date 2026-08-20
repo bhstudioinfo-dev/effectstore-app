@@ -52,7 +52,10 @@ function templateFields(template) {
         exportSize: template.exportSize || {},
         items: Array.isArray(template.items) ? template.items : [],
         exportedItems: Array.isArray(template.exportedItems) ? template.exportedItems : [],
-        isActive: false,
+        // A catalogue template is not a user's active OBS layout.  This flag
+        // means that the Store product is available.  Copy the cloud value so
+        // the Desktop mirror does not turn every published template off.
+        isActive: template.isActive === true,
         isTemplate: true,
         category: template.category || 'all',
         productType: template.productType || 'standard',

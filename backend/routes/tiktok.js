@@ -1260,10 +1260,24 @@ router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
         });
         const cloudById = new Map((cloudTemplates || []).map((template) => [String(template._id || template.id), template]));
         const templates = await GiftMenuLayout.find({ isTemplate: true, category: { $ne: 'goal_board' } }).sort({ updatedAt: -1 }).lean();
+        // Older published templates were written with GiftMenuLayout.isActive
+        // false even though their Store Effect is active.  The Store product
+        // is the canonical publication state, so expose it here and let every
+        // client (Desktop, Designer and mapping) agree on availability.
+        const activeTemplateProductIds = new Set((await Effect.find({
+            category: 'menu_template',
+            isActive: true,
+            fileUrl: { $in: templates.map((template) => String(template._id)) }
+        }).select('fileUrl').lean()).map((effect) => String(effect.fileUrl)));
+        const normalizeTemplatePublication = (template) => ({
+            ...template,
+            isActive: template.isActive === true || activeTemplateProductIds.has(String(template._id))
+        });
+        const publishedTemplates = templates.map(normalizeTemplatePublication);
         if (!req.userId) {
             return res.json({
                 success: true,
-                templates: templates.map(t => {
+                templates: publishedTemplates.map(t => {
                     const cloudTemplate = cloudById.get(String(t._id));
                     return {
                         ...t,
@@ -1290,15 +1304,15 @@ router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
         const usedTemplateNames = new Set(userLayouts.map(layout => String(layout.name || '').trim().toLowerCase()));
 
         const templateEffectByLayoutId = new Map();
-        if (!isAdmin && !hasLegacyBundledProducts && templates.length) {
+        if (!isAdmin && !hasLegacyBundledProducts && publishedTemplates.length) {
             const templateEffects = await Effect.find({
                 category: 'menu_template',
-                fileUrl: { $in: templates.map((template) => String(template._id)) }
+                fileUrl: { $in: publishedTemplates.map((template) => String(template._id)) }
             }).select('_id fileUrl').lean();
             templateEffects.forEach((effect) => templateEffectByLayoutId.set(String(effect.fileUrl), String(effect._id)));
         }
 
-        const mappedTemplates = templates.map((t) => {
+        const mappedTemplates = publishedTemplates.map((t) => {
             const normalizedName = String(t.name || '').trim().toLowerCase();
             const usedLayout = userLayouts.find(layout =>
                 String(layout.parentTemplateId || '') === String(t._id) ||
@@ -1746,6 +1760,7 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
             exportedItems: Array.isArray(sourceLayout.exportedItems) && sourceLayout.exportedItems.length
                 ? sourceLayout.exportedItems
                 : sourceLayout.items,
+            isActive: true,
             isTemplate: true,
             productType: sourceLayout.items.some((item) => item && item.type === 'challenge-wheel') ? 'challenge-wheel' : 'standard',
             category: String(payload.category || sourceLayout.category || 'all'),

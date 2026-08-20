@@ -1631,6 +1631,10 @@ class EffectStoreApp {
                     if (pendingKey) localStorage.setItem(pendingKey, JSON.stringify(this.pendingPaymentEffects));
                 }
 
+                // Menu templates are a separate catalogue from video effects.
+                // Do not infer their ownership from /api/user/effects: that
+                // endpoint deliberately returns only playable effects.
+                await this.loadOwnedTemplates();
                 await this.loadPersonalEffects();
                 this.renderEffects();
                 return true;
@@ -1644,6 +1648,27 @@ class EffectStoreApp {
             this.ownedEffects = [];
             this.ownedProductIds = new Set();
             return false;
+        }
+    }
+
+    async loadOwnedTemplates() {
+        if (!this.authToken) {
+            this._templatesCache = [];
+            return [];
+        }
+        try {
+            const response = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, {
+                headers: { Authorization: `Bearer ${this.authToken}` }
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || data.success !== true || !Array.isArray(data.templates)) return this._templatesCache || [];
+            this._templatesCache = data.templates;
+            try { localStorage.setItem('es_cache_templates', JSON.stringify(data.templates)); } catch (_error) {}
+            if (window.giftMenuDesigner) window.giftMenuDesigner.serverTemplates = data.templates;
+            return data.templates;
+        } catch (error) {
+            console.warn('Load owned templates error:', error.message);
+            return this._templatesCache || [];
         }
     }
 
@@ -2809,7 +2834,21 @@ class EffectStoreApp {
         }
         if (this.currentView === 'library') {
             const videoEffects = (this.ownedEffects || []).filter(e => e && e.category !== 'menu_template');
-            const templateEffects = (this.ownedEffects || []).filter(e => e && e.category === 'menu_template');
+            // Template products have their own endpoint and their own IDs.
+            // Map them into the card shape only for rendering; never mix them
+            // into the effect-video entitlement collection.
+            const isPrivileged = this.currentUser?.isAdmin === true ||
+                (this.currentUser && ['pro', 'studio'].includes(resolvePlanKey(this.currentUser)));
+            const templateEffects = (this._templatesCache || [])
+                .filter(template => template && template.isActive === true && (isPrivileged || template.isPurchased === true))
+                .map(template => ({
+                    ...template,
+                    _id: String(template._id || template.id),
+                    id: String(template._id || template.id),
+                    category: 'menu_template',
+                    fileUrl: String(template._id || template.id),
+                    isOwned: true
+                }));
 
             const countEffectsEl = document.getElementById('lib-tab-effects-count');
             if (countEffectsEl) countEffectsEl.textContent = videoEffects.length;
