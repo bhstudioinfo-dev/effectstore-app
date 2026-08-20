@@ -5303,12 +5303,26 @@ class EffectStoreApp {
             const token = this.authToken || localStorage.getItem('token') || '';
             const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-            const [statsSettled, effectsSettled, paymentsSettled, reqSettled] = await Promise.allSettled([
-                fetch(`${this.API_URL}/api/admin/stats`, { headers }).then(r => r.json().catch(() => ({}))),
-                fetch(`${this.API_URL}/api/admin/effects`, { headers }).then(r => r.json().catch(() => ({}))),
-                fetch(`${this.API_URL}/api/payment/admin/payments`, { headers }).then(r => r.json().catch(() => ({}))),
-                fetch(`${this.API_URL}/api/admin/effect-requests`, { headers }).then(r => r.json().catch(() => ({})))
+            const requests = await Promise.allSettled([
+                fetch(`${this.API_URL}/api/admin/stats`, { headers }),
+                fetch(`${this.API_URL}/api/admin/effects`, { headers }),
+                fetch(`${this.API_URL}/api/payment/admin/payments`, { headers }),
+                fetch(`${this.API_URL}/api/admin/effect-requests`, { headers })
             ]);
+            // A cached admin badge is never authority. Once the reachable
+            // backend returns 401, let checkAuth clear that stale session
+            // instead of rendering an empty dashboard as if it were loaded.
+            const unauthorized = requests.find(result => result.status === 'fulfilled' && result.value.status === 401);
+            if (unauthorized) {
+                await this.retryUnauthorized(unauthorized.value);
+                return;
+            }
+            const [statsSettled, effectsSettled, paymentsSettled, reqSettled] = await Promise.all(
+                requests.map(async (result) => result.status === 'fulfilled'
+                    ? { status: 'fulfilled', value: await result.value.json().catch(() => ({})) }
+                    : { status: 'rejected', value: {} }
+                )
+            );
 
             const stats = statsSettled.status === 'fulfilled' ? statsSettled.value : {};
             const effectsData = effectsSettled.status === 'fulfilled' ? effectsSettled.value : {};
@@ -6566,13 +6580,16 @@ class EffectStoreApp {
 
                 grid.innerHTML = displayEffects.map(e => {
                     const effectId = e._id || e.id;
-                    const thumbUrl = resolveMediaUrl(e.thumbUrl);
-                    const videoUrl = effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
+                    const isChallengeWheel = e.isChallengeWheel === true;
+                    const thumbUrl = isChallengeWheel ? '' : resolveMediaUrl(e.thumbUrl);
+                    const videoUrl = !isChallengeWheel && effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
                     let previewHTML = '';
-                    const effectiveThumb = thumbUrl || (effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
+                    const effectiveThumb = thumbUrl || (!isChallengeWheel && effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
                         const videoWithFrame = videoUrl ? (videoUrl.includes('#') ? videoUrl : `${videoUrl}#t=0.001`) : '';
                         
-                        if (effectiveThumb && videoWithFrame) {
+                        if (isChallengeWheel) {
+                            previewHTML = '<span style="font-size:46px;filter:drop-shadow(0 0 10px rgba(245,158,11,.65));">🎡</span>';
+                        } else if (effectiveThumb && videoWithFrame) {
                             previewHTML = `
                                 <img src="${effectiveThumb}" class="mapping-thumb-img" onerror="this.style.display='none'; const v=this.nextElementSibling; if(v) { v.style.opacity='1'; }">
                                 <video src="${videoWithFrame}" class="mapping-video" muted loop playsinline preload="auto" onloadeddata="this.style.opacity='1'"></video>
