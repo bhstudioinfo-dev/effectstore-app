@@ -424,6 +424,43 @@ router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
     }
 });
 
+// Hide the currently rendered board when its desktop account signs out.
+// The browser source and the saved layout deliberately remain in OBS/Mongo:
+// a later "Xuất sang OBS" can enable the same source again.  This prevents a
+// shared computer from leaving the previous account's Gift Menu visible while
+// never deleting a customer's OBS configuration.
+router.post('/hide-gift-menu', authMiddleware, async (_req, res) => {
+    try {
+        if (!obsService.isConnected()) {
+            return res.json({ success: true, hidden: false, reason: 'obs-offline' });
+        }
+
+        const sceneName = 'EffectStore';
+        const { scenes } = await obsService.obs.call('GetSceneList');
+        if (!scenes.some((scene) => scene.sceneName === sceneName)) {
+            return res.json({ success: true, hidden: false, reason: 'scene-missing' });
+        }
+
+        const { sceneItems } = await obsService.obs.call('GetSceneItemList', { sceneName });
+        const giftMenuSourceNames = new Set(['gift_menu_overlay', 'gift_menu']);
+        const giftMenuItems = sceneItems.filter((item) =>
+            giftMenuSourceNames.has(item.sourceName) && typeof item.sceneItemId === 'number'
+        );
+
+        await Promise.all(giftMenuItems.map((item) => obsService.obs.call('SetSceneItemEnabled', {
+            sceneName,
+            sceneItemId: item.sceneItemId,
+            sceneItemEnabled: false
+        })));
+
+        return res.json({ success: true, hidden: giftMenuItems.length > 0, count: giftMenuItems.length });
+    } catch (error) {
+        // Logging out must never be blocked by an OBS connection that closed
+        // while the request was in flight.
+        return res.status(503).json({ success: false, message: error.message || 'Không thể ẩn Gift Menu trên OBS.' });
+    }
+});
+
 // Trigger
 router.post('/trigger', authMiddleware, async (req, res) => {
     try {

@@ -1346,6 +1346,13 @@ class EffectStoreApp {
     async logout() {
         try {
             if (this.authToken) {
+                // OBS is a machine-level output, while the login is an
+                // account-level session. Hide the active Gift Menu before we
+                // discard this account's token so the previous account's
+                // board can never remain on stream after logout. This only
+                // disables the OBS scene item; it does not delete its source
+                // or the saved cloud layout.
+                await this.hideGiftMenuOverlayOnLogout();
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 3000);
                 await fetch(`${this.API_URL}/api/auth/logout`, {
@@ -1384,6 +1391,28 @@ class EffectStoreApp {
         this.updateUserUI();
         this.openAuthModal();
         this.showNotification('info', '👋 Đã đăng xuất thành công!');
+    }
+
+    async hideGiftMenuOverlayOnLogout() {
+        if (!this.authToken) return;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2500);
+        try {
+            const response = await fetch(`${this.API_URL}/api/obs/hide-gift-menu`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${this.authToken}` },
+                signal: controller.signal
+            });
+            if (!response.ok) {
+                console.warn('Could not hide Gift Menu overlay during logout:', response.status);
+            }
+        } catch (error) {
+            // The local backend/OBS may already be closed. Do not make that
+            // prevent the account from signing out.
+            console.warn('Gift Menu overlay cleanup skipped during logout:', error?.message || error);
+        } finally {
+            clearTimeout(timeout);
+        }
     }
 
     openAuthModal() {
