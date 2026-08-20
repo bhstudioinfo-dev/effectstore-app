@@ -1924,12 +1924,56 @@
     function renderChallengeWheel(item, options) {
         const ctx = createContext(options);
         const segments = Array.isArray(item.segments) && item.segments.length >= 2 ? item.segments : [
-            { label: 'Hát một đoạn', color: '#8b5cf6' }, { label: 'Nhảy 10 giây', color: '#ec4899' },
-            { label: 'Kể chuyện vui', color: '#f59e0b' }, { label: 'Tạo dáng', color: '#06b6d4' }
+            { label: 'Hát một đoạn', color: '#ef2029' }, { label: 'Nhảy 10 giây', color: '#1455a0' },
+            { label: 'Kể chuyện vui', color: '#f97316' }, { label: 'Tạo dáng', color: '#facc15' }
         ];
         const step = 360 / segments.length;
-        const gradient = segments.map((segment, index) => `${segment.color || '#8b5cf6'} ${index * step}deg ${(index + 1) * step}deg`).join(',');
-        return `<div class="gmd-challenge-wheel-widget" style="width:100%;height:100%;box-sizing:border-box;padding:${roundPx(28,ctx.scale)}px;background:linear-gradient(145deg,#0f766e,#082f49);border:3px solid #5eead4;border-radius:${roundPx(34,ctx.scale)}px;color:#fff;text-align:center;box-shadow:0 0 ${roundPx(30,ctx.scale)}px #22d3ee88;overflow:hidden;"><div style="font-size:${font(ctx,item.titleFontSize,34)}px;font-weight:1000;color:#fef08a;text-shadow:0 0 14px #f59e0b;">🎡 ${text(ctx,item.title || 'VÒNG QUAY THỬ THÁCH')}</div><div style="font-size:${font(ctx,item.subtitleFontSize,18)}px;color:#ccfbf1;margin:${roundPx(8,ctx.scale)}px 0;">Donate đúng quà để kích hoạt</div><div style="position:relative;width:78%;aspect-ratio:1;margin:${roundPx(20,ctx.scale)}px auto 0;border:${roundPx(14,ctx.scale)}px solid #f8fafc;border-radius:50%;background:conic-gradient(${gradient});box-shadow:0 0 0 ${roundPx(10,ctx.scale)}px #ef4444,0 0 ${roundPx(28,ctx.scale)}px #fbbf24aa;"><div style="position:absolute;inset:0;display:grid;place-items:center;"><div style="width:26%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:#2563eb;border:${roundPx(8,ctx.scale)}px solid #fbbf24;font-size:${font(ctx,24,24)}px;font-weight:1000;">QUAY</div></div></div></div>`;
+        const colors = segments.map((segment, index) => segment.color || ['#ef2029','#1455a0','#f97316','#facc15','#22c55e','#8b5cf6','#06b6d4','#ec4899'][index % 8]);
+        const gradient = colors.map((color, index) => `${color} ${index * step}deg ${(index + 1) * step}deg`).join(',');
+        
+        const ringEffect = item.ringEffect || 'fire';
+        const ringShadow = ringEffect === 'gold'
+            ? `0 0 0 ${roundPx(4, ctx.scale)}px #fef08a, 0 0 0 ${roundPx(12, ctx.scale)}px #d97706, 0 0 0 ${roundPx(16, ctx.scale)}px #facc15, 0 0 ${roundPx(32, ctx.scale)}px rgba(250,204,21,0.7)`
+            : ringEffect === 'neon'
+                ? `0 0 0 ${roundPx(4, ctx.scale)}px #fbcfe8, 0 0 0 ${roundPx(12, ctx.scale)}px #c026d3, 0 0 0 ${roundPx(16, ctx.scale)}px #f472b6, 0 0 ${roundPx(32, ctx.scale)}px rgba(217,70,239,0.7)`
+                : ringEffect === 'electric'
+                    ? `0 0 0 ${roundPx(4, ctx.scale)}px #a5f3fc, 0 0 0 ${roundPx(12, ctx.scale)}px #0284c7, 0 0 0 ${roundPx(16, ctx.scale)}px #38bdf8, 0 0 ${roundPx(32, ctx.scale)}px rgba(14,165,233,0.7)`
+                    : ringEffect === 'rainbow'
+                        ? `0 0 0 ${roundPx(4, ctx.scale)}px #f43f5e, 0 0 0 ${roundPx(12, ctx.scale)}px #8b5cf6, 0 0 0 ${roundPx(16, ctx.scale)}px #06b6d4, 0 0 ${roundPx(32, ctx.scale)}px rgba(139,92,246,0.7)`
+                        : `0 0 0 ${roundPx(4, ctx.scale)}px #fbbf24, 0 0 0 ${roundPx(12, ctx.scale)}px #ef2029, 0 0 0 ${roundPx(16, ctx.scale)}px #fbbf24, 0 0 ${roundPx(32, ctx.scale)}px rgba(239,68,68,0.7)`;
+
+        const ringBorder = `${roundPx(12, ctx.scale)}px solid #ffffff`;
+        const dropShadow = 'filter: drop-shadow(0 0 16px rgba(251,191,36,0.6));';
+        const labelSize = Math.max(8, roundPx(Number(item.labelFontSize) || 16, ctx.scale));
+        const textColor = item.textColor || '#ffffff';
+
+        const spokeLines = segments.map((_, index) => {
+            const angle = index * step;
+            return `<div style="position:absolute;top:0;left:50%;width:${roundPx(3, ctx.scale)}px;height:50%;transform-origin:50% 100%;transform:translateX(-50%) rotate(${angle}deg);background:linear-gradient(to top, rgba(251,191,36,0.95), rgba(255,255,255,0.85) 60%, rgba(0,0,0,0.6) 100%);box-shadow:0 0 5px rgba(0,0,0,0.8);pointer-events:none;z-index:2;"></div>`;
+        }).join('');
+
+        const labels = segments.map((segment, index) => {
+            const angle = index * step + step / 2;
+            const radians = (angle - 90) * Math.PI / 180;
+            const radialAngle = angle + 90;
+            const readableAngle = radialAngle > 180 && radialAngle < 360 ? radialAngle + 180 : radialAngle;
+            const radius = 33.5;
+            return `<span style="position:absolute;left:${50 + Math.cos(radians) * radius}%;top:${50 + Math.sin(radians) * radius}%;width:28%;max-width:28%;transform:translate(-50%,-50%) rotate(${readableAngle}deg);font-size:${labelSize}px;font-weight:900;line-height:1.1;color:${textColor};text-shadow:0 1px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.8);text-align:center;white-space:normal;pointer-events:none;z-index:3;">${text(ctx, segment.label)}</span>`;
+        }).join('');
+
+        const isHidden = item.hideBorder === true || item.hideBorder === 'true' || item.hideBorder === 1 || item.hideBg === true || item.hideBg === 'true';
+        const showBorder = !isHidden && item.showBorder === true;
+        return `
+        <div class="gmd-challenge-wheel-widget" style="width:100%;height:100%;box-sizing:border-box;position:relative;display:flex;align-items:center;justify-content:center;overflow:visible;background:transparent !important;border:none !important;box-shadow:none !important;padding:0 !important;">
+            <div style="position:relative;width:86%;aspect-ratio:1;border-radius:50%;background:conic-gradient(${gradient});border:${ringBorder};box-shadow:${ringShadow};${dropShadow}display:grid;place-items:center;will-change:transform;overflow:hidden;">
+                ${spokeLines}
+                <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle, transparent 35%, rgba(0,0,0,0.15) 70%, rgba(0,0,0,0.55) 100%);pointer-events:none;z-index:1;"></div>
+                <div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.04) 40%, transparent 60%);pointer-events:none;z-index:1;"></div>
+                ${labels}
+                <div style="position:absolute;inset:37.5%;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#3b82f6 0%,#1e40af 60%,#172554 100%);border:${roundPx(5, ctx.scale)}px solid #fbbf24;color:#fff;font-size:${font(ctx, 17, 17)}px;font-weight:1000;text-shadow:0 2px 4px rgba(0,0,0,0.8);box-shadow:0 4px 16px rgba(0,0,0,0.8), inset 0 2px 4px rgba(255,255,255,0.6), inset 0 -2px 6px rgba(0,0,0,0.6);z-index:4;pointer-events:none;">QUAY</div>
+            </div>
+            <div style="position:absolute;top:-${roundPx(4, ctx.scale)}px;left:50%;transform:translateX(-50%);color:#fef08a;font-size:${font(ctx, 28, 28)}px;text-shadow:0 0 10px #f59e0b,0 2px 4px rgba(0,0,0,0.9);z-index:10;pointer-events:none;">▼</div>
+        </div>`;
     }
 
     function renderGiftJar(item, options = {}) {
@@ -1991,18 +2035,7 @@
         const renderer = map[type];
         if (!renderer) return '';
         const rendered = renderer(item, options);
-        if (type !== 'challenge-wheel') return fadeWidgetBackgroundHtml(rendered, item);
-        const segments = Array.isArray(item.segments) ? item.segments.filter((segment) => segment && segment.label) : [];
-        const step = segments.length ? 360 / segments.length : 90;
-        const labelFontSize = Number(item.labelFontSize) > 0 ? Number(item.labelFontSize) : Math.max(10, Math.min(18, 90 / Math.max(1, segments.length)));
-        const labels = `<div class="gmd-wheel-static-labels">${segments.map((segment, index) => { const angle = index * step + step / 2; const radians = (angle - 90) * Math.PI / 180; const left = 50 + Math.cos(radians) * 29; const top = 50 + Math.sin(radians) * 29; const radial = angle + 90; const readable = radial > 180 && radial < 360 ? radial + 180 : radial; return `<span style="left:${left}%;top:${top}%;width:22%;max-width:22%;white-space:normal;font-size:${labelFontSize}px;line-height:1.02;--label-angle:${readable}deg;">${safeText(segment.label)}</span>`; }).join('')}</div>`;
-        // Re-rendering the designer can reuse the same widget node. Strip any
-        // previously injected label layer before adding the current one so a
-        // refresh never leaves two copies of each challenge text stacked.
-        const cleanRendered = rendered.replace(/<div class="gmd-wheel-static-labels">[\s\S]*?<\/div>/g, '');
-        const withLabels = cleanRendered.replace('<div style="position:absolute;inset:0;display:grid;place-items:center;">', `${labels}<div style="position:absolute;inset:0;display:grid;place-items:center;">`);
-        const finalHtml = withLabels.replace('class="gmd-challenge-wheel-widget"', `class="gmd-challenge-wheel-widget" data-ring-effect="${safeText(item.ringEffect || 'gold')}" data-hide-border="${item.hideBorder ? 'true' : 'false'}" data-hide-bg="${item.hideBg ? 'true' : 'false'}"`).replace('style="', `style="--gmd-wheel-border:${safeText(item.borderColor || '#d6a84f')};--gmd-wheel-text:${safeText(item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff')};--gmd-wheel-bg:${safeText(fadeBackground(item.hideBg ? 'transparent' : (item.useCustomBg ? (item.useCustomBgGradient ? 'linear-gradient(135deg,' + (item.bgColorGradientFrom || item.bgColor || '#0f172a') + ',' + (item.bgColorGradientTo || '#1e1b4b') + ')' : (item.bgColor || '#0f172a')) : 'linear-gradient(145deg,#0f766e,#082f49)'), item))};`);
-        return fadeWidgetBackgroundHtml(finalHtml, item);
+        return fadeWidgetBackgroundHtml(rendered, item);
     }
 
     window.MenuDesignerSharedRenderEngine = Object.freeze({

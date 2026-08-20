@@ -68,6 +68,13 @@ function proxyToCloud(req, res, next) {
         .then(async (cloudRes) => {
             clearTimeout(timeout);
             const contentType = cloudRes.headers.get('content-type') || '';
+            const isAuthRoute = req.originalUrl.startsWith('/api/auth');
+            if (!cloudRes.ok && isAuthRoute) {
+                const text = await cloudRes.text();
+                res.status(cloudRes.status);
+                if (contentType) res.set('content-type', contentType);
+                return res.send(text);
+            }
             if ((!cloudRes.ok || !contentType.includes('application/json')) && typeof next === 'function') {
                 return next();
             }

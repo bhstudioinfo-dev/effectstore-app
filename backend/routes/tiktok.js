@@ -1696,15 +1696,17 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
         if (!isAdmin) return res.status(403).json({ success: false, error: 'Unauthorized' });
         const payload = req.body || {};
         const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
-        const cloudPublish = await fetchCloudTemplateJson(
-            '/api/tiktok/gift-menu-layout/publish',
-            bearerToken,
-            { method: 'POST', body: payload }
-        ).catch((error) => {
-            if (process.env.EFFECTSTORE_DESKTOP_MANAGED === 'true') throw error;
-            return null;
-        });
-        if (cloudPublish) {
+        let cloudPublish = null;
+        try {
+            cloudPublish = await fetchCloudTemplateJson(
+                '/api/tiktok/gift-menu-layout/publish',
+                bearerToken,
+                { method: 'POST', body: payload }
+            );
+        } catch (cloudErr) {
+            console.warn('[publish] Cloud template publish skipped/failed; saving locally to MongoDB:', cloudErr.message);
+        }
+        if (cloudPublish && cloudPublish.success) {
             if (cloudPublish.template) {
                 await mirrorCloudTemplates([cloudPublish.template]);
             }

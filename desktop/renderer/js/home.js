@@ -59,6 +59,7 @@ class EffectStoreApp {
         this.cart = [];
         this.machineId = null;
         this.currentView = 'store';
+        this.currentLibraryTab = 'effects';
         this.currentUser = null;
         this.authToken = null;
         this.pendingEffects = null;
@@ -99,9 +100,13 @@ class EffectStoreApp {
         this.currentAudio = null;
 
         // Load danh sách giọng khi thay đổi
-        window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis) {
+            try {
+                window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
+            } catch (_e) {}
+        }
 
-                // Thêm lắng nghe phím Enter để mapping
+        // Thêm lắng nghe phím Enter để mapping
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && this.currentView === 'gift-mapping') {
                 if (this.selectedGift && this.selectedEffects && this.selectedEffects.length > 0) {
@@ -123,7 +128,12 @@ class EffectStoreApp {
             if (followTempMenu) followTempMenu.style.display = 'none';
         });
 
-        this.init();
+        try {
+            this.init();
+        } catch (initErr) {
+            console.error('App init error:', initErr);
+            this.hideAppLoadingOverlay();
+        }
     }
 
     showAppLoadingOverlay(statusText = 'Đang chuẩn bị hệ thống...', percent = 15) {
@@ -1600,13 +1610,10 @@ class EffectStoreApp {
             const data = await response.json().catch(() => ({}));
             if (response.ok && data.success) {
                 if (data.libraryType === 'all_with_ownership') {
-                    // API mới: tất cả effects có flag isOwned
                     this.ownedEffects = (data.effects || []).filter(e => e.isOwned);
                 } else if (data.libraryType === 'admin_all') {
-                    // Admin: thấy tất cả
-                    this.ownedEffects = data.effects || []; // admin "sở hữu" tất cả
+                    this.ownedEffects = data.effects || [];
                 } else {
-                    // Fallback cÅ©
                     this.ownedEffects = data.effects || [];
                 }
                 this.ownedProductIds = new Set((data.ownedProductIds || this.ownedEffects.map(e => e.id || e._id)).map(String));
@@ -1615,7 +1622,6 @@ class EffectStoreApp {
                     if (ownedKey) localStorage.setItem(ownedKey, JSON.stringify(this.ownedEffects));
                 } catch (_e) {}
 
-                // TỰ ĐỘNG DỌN DẸP: Nếu đã sở hữu thì xóa khỏi danh sách chờ duyệt
                 const ownedIds = this.ownedEffects.map(e => (e.id || e._id));
                 const oldPendingCount = (this.pendingPaymentEffects || []).length;
                 this.pendingPaymentEffects = (this.pendingPaymentEffects || []).filter(id => !ownedIds.includes(id));
@@ -1639,7 +1645,7 @@ class EffectStoreApp {
             this.ownedProductIds = new Set();
             return false;
         }
-    } // ✅ Đóng loadOwnedEffects ở đây
+    }
 
     async loadPersonalEffects() {
         try {
@@ -1649,46 +1655,14 @@ class EffectStoreApp {
             }
             const result = await window.electronAPI.invoke('custom-effects:list');
             const localEffects = result?.success ? (result.effects || []) : [];
-            const registeredEffects = this.currentUser?.customEffects || [];
-            const registeredIds = new Set(registeredEffects.map(effect => String(effect.localId || effect._id || effect.id || '')));
-            const repairs = localEffects.filter((localEffect) => {
-                const id = String(localEffect._id || localEffect.id || localEffect.localId || '');
-                const localDuration = Number(localEffect.duration);
-                const registered = registeredEffects.find(effect => String(effect.localId || effect._id || effect.id || '') === id);
-                const serverDuration = Number(registered?.duration);
-                return registered && Number.isFinite(localDuration) && localDuration > 0
-                    && (!Number.isFinite(serverDuration) || serverDuration <= 0);
-            });
-            for (const effect of repairs) {
-                const id = String(effect._id || effect.id || effect.localId || '');
-                try {
-                    const response = await fetch(`${this.API_URL}/api/user/custom-effects/register`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` },
-                        body: JSON.stringify({
-                            localId: id,
-                            name: effect.name || 'Hiệu ứng cá nhân',
-                            machineId: this.machineId,
-                            duration: Number(effect.duration)
-                        })
-                    });
-                    if (response.ok) {
-                        const registered = registeredEffects.find(item => String(item.localId || item._id || item.id || '') === id);
-                        if (registered) registered.duration = Number(effect.duration);
-                    } else {
-                        console.warn(`Không thể đồng bộ thời lượng cho hiệu ứng cá nhân ${id}`);
-                    }
-                } catch (_error) {
-                    console.warn(`Không thể đồng bộ thời lượng cho hiệu ứng cá nhân ${id}`);
-                }
-            }
-            this.personalEffects = localEffects.filter(effect => registeredIds.has(String(effect._id || effect.id || effect.localId || '')));
+            this.personalEffects = localEffects;
             this.ownedEffects = [...this.personalEffects, ...this.ownedEffects.filter(effect => !effect?.isCustom)];
         } catch (error) {
             if (this.isCustomEffectBridgeMissing(error)) return;
             console.error('Load personal effects error:', error);
         }
     }
+
 
     isCustomEffectBridgeMissing(error) {
         const message = String(error?.message || error || '');
@@ -2833,10 +2807,61 @@ class EffectStoreApp {
             }
             this.startMiniFlashSaleTimers();
         }
-        if (this.currentView === 'library' && libraryGrid) {
-            console.log('📚 Rendering Library:', this.ownedEffects);
-            this._renderGrid(libraryGrid, this.ownedEffects, filter, search, 'library');
+        if (this.currentView === 'library') {
+            const videoEffects = (this.ownedEffects || []).filter(e => e && e.category !== 'menu_template');
+            const templateEffects = (this.ownedEffects || []).filter(e => e && e.category === 'menu_template');
+
+            const countEffectsEl = document.getElementById('lib-tab-effects-count');
+            if (countEffectsEl) countEffectsEl.textContent = videoEffects.length;
+            const countTemplatesEl = document.getElementById('lib-tab-templates-count');
+            if (countTemplatesEl) countTemplatesEl.textContent = templateEffects.length;
+
+            const libraryTemplatesGrid = document.getElementById('library-templates-grid');
+
+            if (libraryGrid) {
+                this._renderGrid(libraryGrid, videoEffects, filter, search, 'library');
+            }
+            if (libraryTemplatesGrid) {
+                this._renderGrid(libraryTemplatesGrid, templateEffects, filter, search, 'library');
+            }
         }
+    }
+
+    switchLibraryTab(tab) {
+        this.currentLibraryTab = tab;
+        const effectsBtn = document.getElementById('lib-tab-effects-btn');
+        const templatesBtn = document.getElementById('lib-tab-templates-btn');
+        const effectsContent = document.getElementById('library-tab-effects-content');
+        const templatesContent = document.getElementById('library-tab-templates-content');
+
+        if (tab === 'effects') {
+            if (effectsBtn) {
+                effectsBtn.style.border = '1px solid rgba(139,92,246,0.4)';
+                effectsBtn.style.background = 'linear-gradient(135deg,rgba(139,92,246,0.2),rgba(236,72,153,0.1))';
+                effectsBtn.style.color = '#fff';
+            }
+            if (templatesBtn) {
+                templatesBtn.style.border = '1px solid rgba(255,255,255,0.08)';
+                templatesBtn.style.background = 'rgba(255,255,255,0.03)';
+                templatesBtn.style.color = '#94a3b8';
+            }
+            if (effectsContent) effectsContent.style.display = 'block';
+            if (templatesContent) templatesContent.style.display = 'none';
+        } else {
+            if (templatesBtn) {
+                templatesBtn.style.border = '1px solid rgba(236,72,153,0.4)';
+                templatesBtn.style.background = 'linear-gradient(135deg,rgba(236,72,153,0.2),rgba(139,92,246,0.1))';
+                templatesBtn.style.color = '#fff';
+            }
+            if (effectsBtn) {
+                effectsBtn.style.border = '1px solid rgba(255,255,255,0.08)';
+                effectsBtn.style.background = 'rgba(255,255,255,0.03)';
+                effectsBtn.style.color = '#94a3b8';
+            }
+            if (effectsContent) effectsContent.style.display = 'none';
+            if (templatesContent) templatesContent.style.display = 'block';
+        }
+        this.renderEffects();
     }
 
     startMiniFlashSaleTimers() {
@@ -2928,6 +2953,31 @@ class EffectStoreApp {
                     delete grid[k];
                 }
             });
+
+            if (!effects || effects.length === 0) {
+                if (grid.id === 'library-templates-grid') {
+                    grid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.08); border-radius: 16px;">
+                            <div style="font-size: 36px; margin-bottom: 12px;">📋</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">Chưa sở hữu mẫu bảng quà nào</div>
+                            <p style="font-size: 12px; color: #94a3b8; max-width: 420px; margin: 0 auto 18px; line-height: 1.5;">Bạn có thể khám phá các mẫu thiết kế Menu độc quyền tại Cửa hàng hoặc tự tạo bảng quà mới trong Trình thiết kế.</p>
+                            <button onclick="switchView('store')" class="pro-btn" style="padding: 10px 20px;"><i class="fas fa-shopping-bag"></i> Khám phá Cửa hàng</button>
+                        </div>
+                    `;
+                    return;
+                }
+                if (grid.id === 'library-grid') {
+                    grid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.08); border-radius: 16px;">
+                            <div style="font-size: 36px; margin-bottom: 12px;">🎬</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">Chưa có hiệu ứng quà tặng nào</div>
+                            <p style="font-size: 12px; color: #94a3b8; max-width: 420px; margin: 0 auto 18px; line-height: 1.5;">Bạn có thể tải lên hiệu ứng video cá nhân hoặc mua hiệu ứng cao cấp từ Cửa hàng.</p>
+                            <button onclick="app.openPersonalEffectUpload()" class="pro-btn" style="padding: 10px 20px;"><i class="fas fa-upload"></i> Tải hiệu ứng cá nhân</button>
+                        </div>
+                    `;
+                    return;
+                }
+            }
 
             grid.innerHTML = (effects || []).map(effect => {
                 if (!effect) return '';
@@ -3121,8 +3171,12 @@ class EffectStoreApp {
                                 <div class="effect-name">${effect.name || 'Hiệu ứng không tên'}</div>
                                 ${viewName === 'library' ? `
                                 <div class="effect-price-row" style="margin-bottom: 5px;">
-                                    <div style="display: flex; align-items: baseline;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
                                         <span class="price-current" style="color: var(--success); font-weight: 600; font-size: 13px;"><i class="fas fa-check-circle" style="margin-right: 4px;"></i> Đã sở hữu</span>
+                                        ${effect.isCustom 
+                                            ? '<span style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">💻 Cá nhân</span>'
+                                            : '<span style="background:rgba(124,58,237,0.15);color:#c4b5fd;border:1px solid rgba(124,58,237,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">🏬 Cửa hàng</span>'
+                                        }
                                     </div>
                                     <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
                                 </div>
@@ -3205,6 +3259,67 @@ class EffectStoreApp {
             }
         } else {
             if (emptyState) emptyState.style.display = 'none';
+        }
+    }
+
+    async renderTemplatePreviewInCard(container, templateId) {
+        if (!container) return;
+        try {
+            let template = (this._templatesCache || []).find(t => String(t._id || t.id) === String(templateId));
+            if (!template) {
+                const headers = this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {};
+                const res = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates/${encodeURIComponent(templateId)}`, { headers }).catch(() => null);
+                if (res && res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    if (data.template) template = data.template;
+                }
+            }
+
+            const isWheel = (template?.items || []).some(item => item && item.type === 'challenge-wheel') || template?.productType === 'challenge-wheel' || String(template?.name || '').toLowerCase().includes('vòng quay');
+
+            if (isWheel) {
+                container.innerHTML = `
+                    <div style="position:relative; width:100%; height:100%; background: radial-gradient(circle at center, #1e1b4b 0%, #090d16 80%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:12px; box-sizing:border-box;">
+                        <div style="position:relative; width:92px; height:92px; display:flex; align-items:center; justify-content:center; margin-bottom:6px;">
+                            <svg viewBox="0 0 100 100" style="width:100%; height:100%; filter: drop-shadow(0 0 10px rgba(99,102,241,0.5));">
+                                <circle cx="50" cy="50" r="48" fill="#18181b" stroke="#f59e0b" stroke-width="3" />
+                                <path d="M 50 50 L 50 4 A 46 46 0 0 1 96 50 Z" fill="#ef4444" />
+                                <path d="M 50 50 L 96 50 A 46 46 0 0 1 50 96 Z" fill="#0284c7" />
+                                <path d="M 50 50 L 50 96 A 46 46 0 0 1 4 50 Z" fill="#eab308" />
+                                <path d="M 50 50 L 4 50 A 46 46 0 0 1 50 4 Z" fill="#10b981" />
+                                <circle cx="50" cy="50" r="16" fill="#1e1b4b" stroke="#fff" stroke-width="2" />
+                                <text x="50" y="54" font-size="10" font-weight="900" fill="#fff" text-anchor="middle">SPIN</text>
+                                <polygon points="50,0 44,14 56,14" fill="#fbbf24" stroke="#78350f" stroke-width="1" />
+                            </svg>
+                        </div>
+                        <div style="font-size:11px; font-weight:800; color:#f8fafc; text-align:center; text-shadow:0 1px 4px rgba(0,0,0,0.8); max-width:90%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            🎯 Vòng Quay Thử Thách
+                        </div>
+                        <div style="font-size:9px; color:#94a3b8; margin-top:2px;">Tương tác donate quay số</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Default Template Mock UI
+            const name = template?.name || 'Mẫu thiết kế bảng quà';
+            const icon = template?.icon || '📋';
+            container.innerHTML = `
+                <div style="position:relative; width:100%; height:100%; background: linear-gradient(135deg, #1e1e38 0%, #0b0f19 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:12px; box-sizing:border-box;">
+                    <div style="font-size:32px; margin-bottom:8px; filter:drop-shadow(0 4px 10px rgba(0,0,0,0.4));">${icon}</div>
+                    <div style="font-size:11px; font-weight:800; color:#fff; text-align:center; max-width:90%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${name}</div>
+                    <div style="margin-top:6px; display:inline-flex; align-items:center; gap:4px; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#a5b4fc; padding:2px 8px; border-radius:12px; font-size:9px; font-weight:700;">
+                        <i class="fas fa-layer-group"></i> Template OBS
+                    </div>
+                </div>
+            `;
+        } catch (_err) {
+            container.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#64748b; font-size:10px;">
+                    <div style="font-size:24px; margin-bottom:4px;">📋</div>
+                    <div>Mẫu Menu</div>
+                </div>
+            `;
         }
     }
     getCategoryName(cat) {
@@ -3356,37 +3471,28 @@ class EffectStoreApp {
     async useMenuTemplateFromStore(templateId) {
         try {
             this.switchView('gift-menu-designer');
-            if (window.giftMenuDesigner) {
-                const usedLayoutId = this.menuTemplateLayoutIds?.get(String(templateId));
-                const result = usedLayoutId
-                    ? await window.giftMenuDesigner.openLibraryLayout(usedLayoutId)
-                    : await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
-                if (result && result.success) {
-                    if (!this.menuTemplateUsage) this.menuTemplateUsage = new Map();
-                    this.menuTemplateUsage.set(String(templateId), true);
-                    if (result.layout?._id) {
-                        if (!this.menuTemplateLayoutIds) this.menuTemplateLayoutIds = new Map();
-                        this.menuTemplateLayoutIds.set(String(templateId), String(result.layout._id));
+            const tryOpen = async (retries = 5) => {
+                if (window.giftMenuDesigner && typeof window.giftMenuDesigner.buyOrUseTemplateFromSidebar === 'function') {
+                    const usedLayoutId = this.menuTemplateLayoutIds?.get(String(templateId));
+                    let result = usedLayoutId
+                        ? await window.giftMenuDesigner.openLibraryLayout(usedLayoutId)
+                        : await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
+                    if (!result || !result.success) {
+                        result = await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
                     }
-                }
-            } else {
-                setTimeout(async () => {
-                    if (window.giftMenuDesigner) {
-                        const usedLayoutId = this.menuTemplateLayoutIds?.get(String(templateId));
-                        const result = usedLayoutId
-                            ? await window.giftMenuDesigner.openLibraryLayout(usedLayoutId)
-                            : await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
-                        if (result && result.success) {
-                            if (!this.menuTemplateUsage) this.menuTemplateUsage = new Map();
-                            this.menuTemplateUsage.set(String(templateId), true);
-                            if (result.layout?._id) {
-                                if (!this.menuTemplateLayoutIds) this.menuTemplateLayoutIds = new Map();
-                                this.menuTemplateLayoutIds.set(String(templateId), String(result.layout._id));
-                            }
+                    if (result && result.success) {
+                        if (!this.menuTemplateUsage) this.menuTemplateUsage = new Map();
+                        this.menuTemplateUsage.set(String(templateId), true);
+                        if (result.layout?._id) {
+                            if (!this.menuTemplateLayoutIds) this.menuTemplateLayoutIds = new Map();
+                            this.menuTemplateLayoutIds.set(String(templateId), String(result.layout._id));
                         }
                     }
-                }, 500);
-            }
+                } else if (retries > 0) {
+                    setTimeout(() => tryOpen(retries - 1), 250);
+                }
+            };
+            setTimeout(() => tryOpen(5), 100);
         } catch (error) {
             this.showNotification('error', 'Lỗi: ' + error.message);
         }
@@ -4745,8 +4851,17 @@ class EffectStoreApp {
                 document.getElementById('upload-icon').value = '';
                 fileInput.value = '';
                 if (thumbInput) thumbInput.value = ''; // ✅ Reset thumb input
+                
+                localStorage.removeItem('es_cache_store_effects');
+                try {
+                    const ownedKey = this.accountStorageKey('es_cache_owned_effects');
+                    if (ownedKey) localStorage.removeItem(ownedKey);
+                } catch (_e) {}
                 this.loadAdminDashboard();
-                this.loadEffects();
+                await this.loadEffects();
+                await this.loadOwnedEffects();
+                if (typeof this.loadEffectsForMapping === 'function') await this.loadEffectsForMapping().catch(() => {});
+                if (typeof this.loadTrending === 'function') await this.loadTrending().catch(() => {});
             } else {
                 throw new Error(data.error);
             }
@@ -4836,8 +4951,16 @@ class EffectStoreApp {
             if (data.success) {
                 this.showNotification('success', '✅ Cập nhật thành công!');
                 this.closeEditModal();
+                localStorage.removeItem('es_cache_store_effects');
+                try {
+                    const ownedKey = this.accountStorageKey('es_cache_owned_effects');
+                    if (ownedKey) localStorage.removeItem(ownedKey);
+                } catch (_e) {}
                 this.loadAdminDashboard();
-                this.loadEffects();
+                await this.loadEffects();
+                await this.loadOwnedEffects();
+                if (typeof this.loadEffectsForMapping === 'function') await this.loadEffectsForMapping().catch(() => {});
+                if (typeof this.loadTrending === 'function') await this.loadTrending().catch(() => {});
             } else {
                 this.showNotification('error', 'Lỗi: ' + (data.error || data.message));
             }
@@ -5378,8 +5501,15 @@ class EffectStoreApp {
             if (res.ok && data.success !== false) {
                 this.showNotification('success', '✅ Đã xóa hiệu ứng thành công!');
                 localStorage.removeItem('es_cache_store_effects');
+                try {
+                    const ownedKey = this.accountStorageKey('es_cache_owned_effects');
+                    if (ownedKey) localStorage.removeItem(ownedKey);
+                } catch (_e) {}
                 this.loadAdminDashboard();
-                this.loadEffects();
+                await this.loadEffects();
+                await this.loadOwnedEffects();
+                if (typeof this.loadChallengeWheels === 'function') await this.loadChallengeWheels().catch(() => {});
+                if (typeof this.loadEffectsForMapping === 'function') await this.loadEffectsForMapping().catch(() => {});
             } else {
                 this.showNotification('error', '❌ Lỗi xóa: ' + (data.error || data.message || 'Không thể xóa'));
             }
@@ -5531,8 +5661,10 @@ class EffectStoreApp {
             const data = await res.json();
             if (data.success) {
                 this.showNotification('success', isTrending ? '🔥 Đã thêm vào xu hướng' : '✅ Đã gỡ khỏi xu hướng');
+                localStorage.removeItem('es_cache_store_effects');
                 this.loadAdminDashboard();
-                this.loadTrending();
+                await this.loadTrending();
+                await this.loadEffects();
             }
         } catch (e) { this.showNotification('error', e.message); }
     }
@@ -6399,42 +6531,8 @@ class EffectStoreApp {
                 ? [...data.effects]
                 : (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0 ? [...this.ownedEffects] : []);
             this.precacheOwnedEffectsMedia(displayEffects);
-            // Gộp bản sao theo template hoặc nội dung. Các vòng quay cũ có thể
-            // chưa có sourceTemplateId nên không được lọc mất khỏi thư viện.
-            const seenWheelKeys = new Set();
-            const uniqueWheels = (this.challengeWheels || []).filter((wheel) => {
-                const contentKey = (wheel.segments || []).map((segment) => segment.label).join('|');
-                const key = wheel.sourceTemplateId ? `source:${wheel.sourceTemplateId}` : `content:${wheel.name}|${contentKey}`;
-                if (seenWheelKeys.has(key)) return false;
-                seenWheelKeys.add(key);
-                return true;
-            });
-            const catalogWheelIds = this.challengeWheelTemplateIds instanceof Set
-                ? this.challengeWheelTemplateIds
-                : new Set();
-            const visibleWheels = uniqueWheels.filter((wheel) =>
-                !wheel.sourceTemplateId || catalogWheelIds.has(String(wheel.sourceTemplateId))
-            );
-            const wheelEffects = visibleWheels.map((wheel) => ({
-                _id: `challenge-wheel:${wheel._id}`,
-                name: wheel.displayName || wheel.name || 'Vòng quay thử thách',
-                icon: '🎡',
-                isChallengeWheel: true,
-                challengeWheelId: String(wheel._id),
-                segments: Array.isArray(wheel.segments) ? wheel.segments : [],
-                presentation: wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {}
-            }));
-            displayEffects.push(...wheelEffects);
-            if (wheelEffects.length && !document.getElementById('gift-menu-renderer-css')) {
-                const rendererCss = document.createElement('link');
-                rendererCss.id = 'gift-menu-renderer-css';
-                rendererCss.rel = 'stylesheet';
-                rendererCss.href = `${this.API_URL}/gift-menu-renderer.css?v=11`;
-                document.head.appendChild(rendererCss);
-            }
-            const customEffects = displayEffects.filter(effect => effect?.isCustom);
-            const purchasedEffects = displayEffects.filter(effect => !effect?.isCustom && !effect?.isChallengeWheel);
 
+            const customEffects = displayEffects.filter(effect => effect?.isCustom);
             this.personalEffects = customEffects;
             this.mappingEffects = displayEffects;
 
@@ -6446,54 +6544,7 @@ class EffectStoreApp {
                     const thumbUrl = resolveMediaUrl(e.thumbUrl);
                     const videoUrl = effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
                     let previewHTML = '';
-
-                    if (e.isChallengeWheel) {
-                        const segments = (e.segments || []).filter(segment => segment && segment.label).slice(0, 8);
-                        const presentation = e.presentation || {};
-                        const savedRenderItem = presentation.renderItem && typeof presentation.renderItem === 'object'
-                            ? presentation.renderItem
-                            : null;
-                        const sharedRenderer = window.MenuDesignerSharedRenderEngine;
-                        if (savedRenderItem && sharedRenderer && typeof sharedRenderer.renderByType === 'function') {
-                            const renderItem = {
-                                ...savedRenderItem,
-                                type: 'challenge-wheel',
-                                segments: segments.length ? segments : savedRenderItem.segments
-                            };
-                            const refW = Math.max(1, Number(renderItem.lockedW || renderItem.w || renderItem.width || presentation.boardWidth) || 720);
-                            const refH = Math.max(1, Number(renderItem.lockedH || renderItem.h || renderItem.height || presentation.boardHeight) || 760);
-                            const previewSize = 128;
-                            const previewScale = Math.min(previewSize / refW, previewSize / refH);
-                            const renderedWheel = sharedRenderer.renderByType(renderItem, {
-                                mode: 'overlay',
-                                scale: 1,
-                                apiBase: this.API_URL,
-                                escapeText: true
-                            });
-                            previewHTML = `<div style="width:${previewSize}px;height:${previewSize}px;position:relative;overflow:hidden;"><div style="position:absolute;left:50%;top:50%;width:${refW}px;height:${refH}px;transform:translate(-50%,-50%) scale(${previewScale});transform-origin:center;pointer-events:none;">${renderedWheel}</div></div>`;
-                        } else {
-                        const colors = segments.map((segment, index) => segment.color || ['#4c00ff','#ec4899','#f59e0b','#06b6d4','#22c55e'][index % 5]);
-                        const borderColor = presentation.borderColor || '#d6a84f';
-                        const ringEffect = presentation.ringEffect || 'gold';
-                        const ringShadow = ringEffect === 'fire'
-                            ? '0 0 0 6px #ef2029,0 0 18px #f97316,0 0 28px #ef4444aa'
-                            : ringEffect === 'electric'
-                                ? '0 0 0 6px #22d3ee,0 0 18px #3b82f6,0 0 28px #22d3eeaa'
-                                : ringEffect === 'neon'
-                                    ? '0 0 0 6px #ec4899,0 0 18px #8b5cf6,0 0 28px #ec4899aa'
-                                    : '0 0 0 6px #ef4444,0 0 18px #fbbf24';
-                        const gradient = colors.length > 1
-                            ? `conic-gradient(${colors.map((color, index) => `${color} ${(index / colors.length) * 100}% ${((index + 1) / colors.length) * 100}%`).join(',')})`
-                            : 'conic-gradient(#8b5cf6 0 25%,#ec4899 25% 50%,#f59e0b 50% 75%,#06b6d4 75% 100%)';
-                        const labels = segments.map((segment, index) => {
-                            const angle = index * (360 / Math.max(segments.length, 1)) + (180 / Math.max(segments.length, 1));
-                            const radians = (angle - 90) * Math.PI / 180;
-                            return `<span style="position:absolute;left:${50 + Math.cos(radians) * 29}%;top:${50 + Math.sin(radians) * 29}%;width:28%;transform:translate(-50%,-50%) rotate(${angle + 90 > 180 && angle + 90 < 360 ? angle + 270 : angle + 90}deg);font-size:6px;line-height:1;color:#fff;text-shadow:0 1px 2px #000;text-align:center;white-space:normal;">${String(segment.label).replace(/[&<>"']/g, '')}</span>`;
-                        }).join('');
-                        previewHTML = `<div style="width:128px;height:128px;position:relative;display:grid;place-items:center;"><div style="position:absolute;inset:12px;border-radius:50%;background:${gradient};border:5px solid ${borderColor};box-shadow:${ringShadow};">${labels}<span style="position:absolute;inset:35%;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#60a5fa,#1d4ed8);border:4px solid #fbbf24;color:#fff;font-size:9px;font-weight:900;">QUAY</span></div><span style="position:absolute;top:0;left:50%;transform:translateX(-50%);color:#fef3c7;font-size:14px;text-shadow:0 0 6px #fbbf24;">▼</span></div>`;
-                        }
-                    } else {
-                        const effectiveThumb = thumbUrl || (effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
+                    const effectiveThumb = thumbUrl || (effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
                         const videoWithFrame = videoUrl ? (videoUrl.includes('#') ? videoUrl : `${videoUrl}#t=0.001`) : '';
                         
                         if (effectiveThumb && videoWithFrame) {
@@ -6508,10 +6559,9 @@ class EffectStoreApp {
                         } else {
                             previewHTML = `<span style="font-size:32px;">🎬</span>`;
                         }
-                    }
 
                     return `
-                <div class="effect-mapping-item" data-effect-id="${effectId}" data-effect-name="${e.name || ''}" ${e.isChallengeWheel ? `data-wheel-id="${e.challengeWheelId}"` : ''} style="${e.isCustom ? 'border-color:rgba(34,197,94,.35);' : e.isChallengeWheel ? 'border-color:rgba(245,158,11,.55);' : ''}">
+                <div class="effect-mapping-item" data-effect-id="${effectId}" data-effect-name="${e.name || ''}" style="${e.isCustom ? 'border-color:rgba(34,197,94,.35);' : ''}">
                     <div class="effect-mapping-thumb" 
                         onmouseenter="const v=this.querySelector('video'); if(v) { v.muted=true; v.style.opacity='1'; const p=v.play(); if(p!==undefined) p.catch(()=>{}); }" 
                         onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; const img=this.querySelector('.mapping-thumb-img'); if(img && img.style.display!=='none') v.style.opacity='0'; }">
@@ -6519,7 +6569,10 @@ class EffectStoreApp {
                     </div>
                     <div class="effect-mapping-info">
                         <div class="effect-mapping-name">${e.icon || '🎬'} ${e.name}</div>
-                        ${e.isCustom ? '<div style="margin-top:3px;color:#34d399;font-size:10px;font-weight:800;">Hiệu ứng cá nhân</div>' : ''}
+                        ${e.isCustom 
+                            ? '<div style="margin-top:3px;color:#34d399;font-size:10px;font-weight:800;">💻 Cá nhân</div>' 
+                            : '<div style="margin-top:3px;color:#a78bfa;font-size:10px;font-weight:800;">🏬 Cửa hàng</div>'
+                        }
                     </div>
                 </div>
             `}).join('');
@@ -6542,17 +6595,11 @@ class EffectStoreApp {
                             });
                         }
 
-                                                item.addEventListener('click', () => {
-                            const wheelId = item.getAttribute('data-wheel-id');
-                            if (wheelId) {
-                                this.selectChallengeWheel(wheelId, item.getAttribute('data-effect-name') || 'Vòng quay thử thách', item);
-                                return;
-                            }
+                        item.addEventListener('click', () => {
                             const effectId = item.getAttribute('data-effect-id');
                             const effectName = item.getAttribute('data-effect-name') || item.querySelector('.effect-mapping-name').textContent.trim();
                             this.selectEffect(effectId, effectName, item);
                         });
-
                     });
                 }, 100);
             } else {
@@ -7458,7 +7505,7 @@ class EffectStoreApp {
                 ? this.challengeWheelTemplateIds
                 : new Set();
             const mappingWheels = uniqueMappingWheels.filter((wheel) =>
-                !wheel.sourceTemplateId || catalogWheelIds.has(String(wheel.sourceTemplateId))
+                wheel.sourceTemplateId && catalogWheelIds.has(String(wheel.sourceTemplateId))
             );
             const select = document.getElementById('mapping-wheel-id');
             if (select) select.innerHTML = mappingWheels.length
@@ -8226,8 +8273,19 @@ class EffectStoreApp {
 
 // ===== INITIALIZE APP =====
 function bootstrapApp() {
-    window.app = new EffectStoreApp();
-    globalThis.app = window.app;
+    if (window._appBootstrapped) return;
+    window._appBootstrapped = true;
+    try {
+        window.app = new EffectStoreApp();
+        globalThis.app = window.app;
+    } catch (err) {
+        console.error('Fatal bootstrap error:', err);
+        const overlay = document.getElementById('app-loading-overlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => { overlay.style.display = 'none'; }, 300);
+        }
+    }
 }
 
 if (document.readyState === 'loading') {
@@ -8235,6 +8293,17 @@ if (document.readyState === 'loading') {
 } else {
     bootstrapApp();
 }
+
+// Watchdog: Ensure loading splash never hangs forever
+setTimeout(() => {
+    const overlay = document.getElementById('app-loading-overlay');
+    const retryBtn = document.getElementById('app-loading-retry');
+    if (overlay && overlay.style.display !== 'none' && (!retryBtn || retryBtn.style.display !== 'block')) {
+        console.warn('Loading overlay watchdog timeout reached. Forcing dismissal.');
+        overlay.style.opacity = '0';
+        setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    }
+}, 5000);
 
 // ===== HELPER FUNCTIONS =====
 function toggleCart() {

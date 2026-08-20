@@ -1568,7 +1568,7 @@
         return el;
       }
 
-      if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text'].includes(item.type)) {
+      if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text', 'gift-stack-group', 'template-bundle'].includes(item.type)) {
             // Keep the OBS reference sizes identical to the Designer. These
             // values describe the widget's native design space and must not
             // change when the saved board width/height changes.
@@ -1582,22 +1582,30 @@
               'talent-live': [900, 300],
               'talent-leaderboard': [900, 430],
               'challenge-wheel': [720, 760],
-              'goal-circle': [280, 320]
+              'goal-circle': [280, 320],
+              'gift-stack-group': [Number(item.lockedW || item.w || item.width || 900), Number(item.lockedH || item.h || item.height || 140)],
+              'media-asset': [Number(item.lockedW || item.w || item.width || 1080), Number(item.lockedH || item.h || item.height || 1920)]
             };
             const referenceSize = item.type === 'goal-bar'
               ? [900, item.barStyle === 'pk' ? 180 : 160]
               : widgetReferenceSizes[item.type];
-            let refW = referenceSize ? referenceSize[0] : (item.lockedW || item.w || 900);
-            let refH = referenceSize ? referenceSize[1] : (item.lockedH || item.h || 160);
+            let refW = referenceSize ? referenceSize[0] : (item.lockedW || item.w || item.width || 900);
+            let refH = referenceSize ? referenceSize[1] : (item.lockedH || item.h || item.height || 160);
+            if (item.type === 'challenge-wheel') {
+              el.classList.add('gmd-static-challenge-wheel');
+            }
 
-            el.style.left = `${Math.round(offsetX + (item.x || 0) * s)}px`;
-            el.style.top = `${Math.round(offsetY + (item.y || 0) * s)}px`;
-            el.style.width = `${Math.round((item.width || refW / 3) * s)}px`;
-            el.style.height = `${Math.round((item.height || refH / 3) * s)}px`;
+            const boardWidth = Number(item.width || item.w || item.lockedW) || refW;
+            const boardHeight = Number(item.height || item.h || item.lockedH) || refH;
+
+            el.style.left = `${Math.round(offsetX + (Number(item.x) || 0) * s)}px`;
+            el.style.top = `${Math.round(offsetY + (Number(item.y) || 0) * s)}px`;
+            el.style.width = `${Math.round(boardWidth * s)}px`;
+            el.style.height = `${Math.round(boardHeight * s)}px`;
             el.style.zIndex = String(Number(item.zIndex) || 1);
 
-            const scaleX = (item.width || refW / 3) / refW;
-            const scaleY = (item.height || refH / 3) / refH;
+            const scaleX = boardWidth / refW;
+            const scaleY = boardHeight / refH;
             // Match Designer semantics: an unlocked board may use independent width/height.
             const isPodiumBoard = item.type === 'top-contributors' || item.type === 'podium-contributors';
             const isPkBoard = item.type === 'goal-bar' && item.barStyle === 'pk';
@@ -1929,7 +1937,7 @@
       const host = document.createElement('div');
       host.id = 'gmd-challenge-wheel-live';
       document.body.classList.add('gmd-live-wheel-active');
-      const colors = segments.map((segment, index) => segment.color || ['#8b5cf6','#ec4899','#f59e0b','#06b6d4','#22c55e'][index % 5]);
+      const colors = segments.map((segment, index) => segment.color || ['#4c00ff','#ec4899','#f59e0b','#06b6d4','#22c55e','#ef4444','#eab308','#8b5cf6'][index % 8]);
       const step = 360 / segments.length;
       const gradient = segments.map((_, index) => `${colors[index]} ${index * step}deg ${(index + 1) * step}deg`).join(',');
       const resultIndex = Math.max(0, segments.findIndex((segment) => String(segment.id) === String(data.resultId)));
@@ -1937,73 +1945,86 @@
       const safe = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
       const duration = Math.max(1500, Number(data.durationMs) || 6500);
       const hideAfter = Math.max(duration, Number(data.autoHideMs) || 7000);
-      const resultVisual = data.resultImage ? `<img src="${safe(data.resultImage)}" alt="Kết quả" style="max-width:220px;max-height:140px;display:block;margin:0 auto 6px;border-radius:12px;object-fit:contain;">` : '';
+      const resultVisual = data.resultImage ? `<img src="${safe(data.resultImage)}" alt="Kết quả" style="max-width:180px;max-height:100px;display:block;margin:0 auto 4px;border-radius:8px;object-fit:contain;">` : '';
       const presentation = data.presentation && typeof data.presentation === 'object' ? data.presentation : {};
+      const exportW = 1080;
+      const exportH = 1920;
+      const scale = Math.min(window.innerWidth / exportW, window.innerHeight / exportH) || 1;
+      const offsetX = Math.round((window.innerWidth - (exportW * scale)) / 2);
+      const offsetY = Math.round((window.innerHeight - (exportH * scale)) / 2);
+
+      let item = presentation.renderItem || {};
+      item = {
+        ...item,
+        segments,
+        title: data.title || item.title,
+        ringEffect: presentation.ringEffect || item.ringEffect || 'fire',
+        textColor: presentation.textColor || item.textColor || '#ffffff',
+        borderColor: presentation.borderColor || item.borderColor || '#d6a84f',
+        hideBorder: Boolean(presentation.hideBorder ?? item.hideBorder),
+        hideBg: Boolean(presentation.hideBg ?? item.hideBg),
+        labelFontSize: Number(presentation.labelFontSize || item.labelFontSize || 16),
+        titleFontSize: Number(presentation.titleFontSize || item.titleFontSize || 34),
+        subtitleFontSize: Number(presentation.subtitleFontSize || item.subtitleFontSize || 18),
+      };
+
+      const posX = Number(presentation.boardX !== undefined ? presentation.boardX : item.x) || 0;
+      const posY = Number(presentation.boardY !== undefined ? presentation.boardY : item.y) || 0;
+      const refW = Math.max(1, Number(item.lockedW || item.w || item.width || 720));
+      const refH = Math.max(1, Number(item.lockedH || item.h || item.height || 760));
+      const boardWidth = Number(presentation.boardWidth || item.width || item.w) || refW;
+      const boardHeight = Number(presentation.boardHeight || item.height || item.h) || refH;
+      const wrapperScaleX = (boardWidth / refW) * scale;
+      const wrapperScaleY = (boardHeight / refH) * scale;
+
+      const liveWheel = document.createElement('div');
+      liveWheel.className = 'gmd-item gmd-export-item gmd-live-wheel-clone';
+      liveWheel.style.position = 'absolute';
+      liveWheel.style.left = `${Math.round(offsetX + posX * scale)}px`;
+      liveWheel.style.top = `${Math.round(offsetY + posY * scale)}px`;
+      liveWheel.style.width = `${Math.round(boardWidth * scale)}px`;
+      liveWheel.style.height = `${Math.round(boardHeight * scale)}px`;
+      liveWheel.style.zIndex = '999999';
+      liveWheel.style.visibility = 'visible';
+      liveWheel.style.opacity = '1';
+
       let staticWheel = document.querySelector('#overlay-root .gmd-static-challenge-wheel');
-      if (!staticWheel && presentation.renderItem && window.MenuDesignerSharedRenderEngine?.renderByType) {
-        // The active menu may not contain a wheel. Rebuild the saved mapping
-        // snapshot with the exact same wrapper math used by the static overlay.
-        const item = { ...presentation.renderItem, segments };
-        const exportW = 1080;
-        const exportH = 1920;
-        const scale = Math.min(window.innerWidth / exportW, window.innerHeight / exportH) || 1;
-        const offsetX = Math.round((window.innerWidth - (exportW * scale)) / 2);
-        const offsetY = Math.round((window.innerHeight - (exportH * scale)) / 2);
-        const refW = 720;
-        const refH = 760;
-        const boardWidth = Number(item.width || item.w) || refW;
-        const boardHeight = Number(item.height || item.h) || refH;
-        const wrapperScaleX = (boardWidth / refW) * scale;
-        const wrapperScaleY = (boardHeight / refH) * scale;
-        const savedWheel = document.createElement('div');
-        savedWheel.className = 'gmd-item gmd-export-item';
-        savedWheel.style.position = 'absolute';
-        savedWheel.style.left = `${Math.round(offsetX + (Number(item.x) || 0) * scale)}px`;
-        savedWheel.style.top = `${Math.round(offsetY + (Number(item.y) || 0) * scale)}px`;
-        savedWheel.style.width = `${Math.round(boardWidth * scale)}px`;
-        savedWheel.style.height = `${Math.round(boardHeight * scale)}px`;
-        savedWheel.style.zIndex = String(Number(item.zIndex) || 1);
-        const widgetHTML = window.MenuDesignerSharedRenderEngine.renderByType(
-          item,
-          { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary }
-        );
-        savedWheel.innerHTML = `<div class="gmd-visual-scaled-wrapper" style="width:${refW}px;height:${refH}px;transform:scale(${wrapperScaleX},${wrapperScaleY});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">${widgetHTML}</div>`;
-        staticWheel = savedWheel;
-      }
-      if (staticWheel) {
-        // Reuse the exact element already rendered from the saved OBS layout.
-        // Rebuilding it with a second geometry calculation caused the mapping
-        // test to appear smaller and at a different position.
-        const liveWheel = staticWheel.cloneNode(true);
-        liveWheel.classList.remove('gmd-static-challenge-wheel');
-        liveWheel.classList.add('gmd-live-wheel-clone');
-        liveWheel.style.visibility = 'visible';
-        liveWheel.style.opacity = '1';
+      if (staticWheel) staticWheel.style.visibility = 'hidden';
+
+      const widgetHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
+        ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary })
+        : '';
+      liveWheel.innerHTML = `<div class="gmd-visual-scaled-wrapper" style="width:${refW}px;height:${refH}px;transform:scale(${wrapperScaleX},${wrapperScaleY});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">${widgetHTML}</div>`;
         const widget = liveWheel.querySelector('.gmd-challenge-wheel-widget');
-        const disc = widget?.querySelector(':scope > div:last-child');
-        const staticLabels = liveWheel.querySelectorAll('.gmd-wheel-static-labels span');
+        // Tìm chính xác đĩa quay tròn chứa conic-gradient
+        const disc = widget?.querySelector('div[style*="conic-gradient"], div[style*="border-radius: 50%"], div[style*="border-radius:50%"]') || widget?.querySelector(':scope > div:first-child');
+        
         if (disc) {
-          disc.style.background = `conic-gradient(${gradient})`;
           disc.style.setProperty('transition', `transform ${duration}ms cubic-bezier(.12,.72,.08,1)`, 'important');
-          disc.style.setProperty('transform', 'rotateX(12deg) rotateZ(0deg)', 'important');
+          disc.style.setProperty('transform', 'rotate(0deg)', 'important');
         }
-        staticLabels.forEach((label, index) => {
-          if (segments[index]) label.textContent = segments[index].label;
-        });
+        
         const resultBox = document.createElement('div');
         resultBox.className = 'gmd-wheel-result';
-        resultBox.innerHTML = `${resultVisual}Kết quả: <b>${safe(data.resultLabel || '')}</b>`;
+        resultBox.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#0f172a; border:3px solid #fbbf24; border-radius:14px; padding:14px 28px; box-shadow:0 10px 30px rgba(0,0,0,0.9), 0 0 20px rgba(251,191,36,0.6); z-index:100; text-align:center; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.4s ease;';
+        resultBox.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:16px;font-weight:800;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:6px;"><span>🎡</span><span>KẾT QUẢ:</span></div>${resultVisual}<div style="font-size:24px;font-weight:900;color:#facc15;text-shadow:0 2px 8px rgba(0,0,0,0.9);">${safe(data.resultLabel || '')}</div>`;
         liveWheel.appendChild(resultBox);
         host.appendChild(liveWheel);
         document.body.appendChild(host);
-        document.body.classList.add('gmd-live-wheel-active');
+        
         window.setTimeout(() => {
           host.classList.add('is-spinning');
-          disc?.style.setProperty('transform', `rotateX(12deg) rotateZ(${targetRotation}deg)`, 'important');
-        }, 30);
-        window.setTimeout(() => host.classList.add('is-finished'), duration);
+          if (disc) {
+            disc.style.setProperty('transform', `rotate(${targetRotation}deg)`, 'important');
+          }
+        }, 50);
+        window.setTimeout(() => {
+          host.classList.add('is-finished');
+          resultBox.style.opacity = '1';
+        }, duration);
         window.setTimeout(() => {
           host.remove();
+          if (staticWheel) staticWheel.style.visibility = 'visible';
           document.body.classList.remove('gmd-live-wheel-active');
         }, hideAfter + 500);
         return;

@@ -303,7 +303,7 @@ function createWindow() {
         show: true
     });
 
-    if (!app.isPackaged && process.env.OPEN_DEVTOOLS === 'true') {
+    if (!app.isPackaged) {
         mainWindow.webContents.openDevTools({ mode: 'detach' });
     }
     console.log('Loading HTML file...');
@@ -321,6 +321,13 @@ function createWindow() {
         mainWindow.webContents.session.clearCache().catch(e => console.error('Failed to clear cache:', e));
     }
 
+    // Catch all renderer console errors and print to terminal
+    mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+        if (level >= 2) {
+            console.error(`[Renderer Error] ${message} (line ${line} in ${path.basename(sourceId || '')})`);
+        }
+    });
+
     mainWindow.webContents.on('before-input-event', (event, input) => {
         if (input.key?.toLowerCase() === 'r' && (input.control || input.meta)) {
             event.preventDefault();
@@ -329,6 +336,9 @@ function createWindow() {
             }).catch(() => {
                 mainWindow.webContents.reloadIgnoringCache();
             });
+        }
+        if (input.key === 'F12' || (input.key?.toLowerCase() === 'i' && (input.control || input.meta) && input.shift)) {
+            mainWindow.webContents.toggleDevTools();
         }
     });
 

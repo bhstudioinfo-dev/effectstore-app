@@ -635,8 +635,8 @@ router.post('/effects/:id/update', authMiddleware, adminMiddleware, upload.any()
 
         if (name) effect.name = name;
         if (category) effect.category = category;
-        if (price) effect.price = parseFloat(price);
-        if (originalPrice) effect.originalPrice = parseFloat(originalPrice);
+        if (price !== undefined && price !== '') effect.price = parseFloat(price);
+        if (originalPrice !== undefined && originalPrice !== '') effect.originalPrice = parseFloat(originalPrice);
         if (duration !== undefined && !isNaN(parseFloat(duration))) effect.duration = parseFloat(duration);
         if (fakeUses) effect.uses = parseInt(fakeUses) || 0;
         if (description) effect.description = description;
@@ -678,8 +678,23 @@ router.delete('/effects/:id', authMiddleware, adminMiddleware, async (req, res) 
         }
         const effect = await Effect.findById(req.params.id);
         if (effect) {
-            if (effect.previewFilePath && fs.existsSync(effect.previewFilePath)) fs.unlinkSync(effect.previewFilePath);
-            if (effect.encryptedFilePath && fs.existsSync(effect.encryptedFilePath)) fs.unlinkSync(effect.encryptedFilePath);
+            if (effect.previewFilePath && fs.existsSync(effect.previewFilePath)) {
+                try { fs.unlinkSync(effect.previewFilePath); } catch (_e) {}
+            }
+            if (effect.encryptedFilePath && fs.existsSync(effect.encryptedFilePath)) {
+                try { fs.unlinkSync(effect.encryptedFilePath); } catch (_e) {}
+            }
+            if (effect.thumbFilePath && fs.existsSync(effect.thumbFilePath)) {
+                try { fs.unlinkSync(effect.thumbFilePath); } catch (_e) {}
+            }
+            const defaultThumb = path.join(thumbsDir, `${effect._id}.png`);
+            if (fs.existsSync(defaultThumb)) {
+                try { fs.unlinkSync(defaultThumb); } catch (_e) {}
+            }
+            const cloudCacheFile = path.join(encryptedEffectsDir, `cloud_cache_${effect._id}.webm`);
+            if (fs.existsSync(cloudCacheFile)) {
+                try { fs.unlinkSync(cloudCacheFile); } catch (_e) {}
+            }
         }
         const result = await deleteCatalogEffectCascade(req.params.id);
         res.json({ success: true, ...result });

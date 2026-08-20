@@ -254,6 +254,45 @@ async function getUserRecord(userId, { forceRefresh = false } = {}) {
             purchasedEffects: [],
             customEffects: []
         };
+        try {
+            const { getCloudSessionToken, getAnyCloudSessionToken } = require('./cloudSessionTokenStore');
+            const cloudToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
+            const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
+            if (cloudToken && cloudApiUrl) {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 6000);
+                timer.unref?.();
+                try {
+                    const res = await fetch(`${cloudApiUrl}/api/auth/me`, {
+                        headers: { 'Authorization': `Bearer ${cloudToken}` },
+                        signal: controller.signal
+                    });
+                    if (res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        if (data.success && data.user) {
+                            const { mirrorUserLocally } = require('./localUserMirror');
+                            await mirrorUserLocally(data.user);
+                            user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+                        }
+                    }
+                } finally {
+                    clearTimeout(timer);
+                }
+            }
+        } catch (_e) {}
+    }
+    if (!user) {
+        user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+    }
+    if (!user) {
+        user = {
+            _id: String(userId),
+            email: 'user@local',
+            isAdmin: false,
+            subscription: 'free',
+            purchasedEffects: [],
+            customEffects: []
+        };
     }
     return user;
 }
@@ -264,7 +303,7 @@ async function getUserAvailableEffects(userId) {
 
     const purchased = [];
     if (isAdminUser(user)) {
-        const allEffects = await Effect.find({ isActive: true, category: { $ne: 'menu_template' } }).sort({ uses: -1 }).lean().catch(() => []);
+        const allEffects = await Effect.find({ isActive: true }).sort({ uses: -1 }).lean().catch(() => []);
         purchased.push(...allEffects.map((effect) => normalizePurchasedEffect(effect, user._id, true)).filter(Boolean));
     } else {
         for (const item of (user.purchasedEffects || [])) {
@@ -278,7 +317,7 @@ async function getUserAvailableEffects(userId) {
                 rawEffect = await Effect.findById(effectIdStr).lean().catch(() => null)
                     || await mirrorEffectFromCentral(effectIdStr);
             }
-            if (rawEffect && rawEffect.category !== 'menu_template') {
+            if (rawEffect) {
                 const norm = normalizePurchasedEffect(rawEffect, user._id, true);
                 if (norm) purchased.push(norm);
             }
@@ -289,40 +328,16 @@ async function getUserAvailableEffects(userId) {
         .map((effect) => normalizeCustomEffect(effect, user))
         .filter(Boolean);
 
-    // Auto-discover local custom effects from disk (only if owned by this user or if user is admin)
-    if (dataPaths?.customEffectsDir && fs.existsSync(dataPaths.customEffectsDir)) {
-        try {
-            const dirs = fs.readdirSync(dataPaths.customEffectsDir, { withFileTypes: true });
-            for (const d of dirs) {
-                if (!d.isDirectory() || !d.name.startsWith('custom-')) continue;
-                const effectId = d.name;
-                if (custom.some(c => c._id === effectId || c.id === effectId)) continue;
-                const metaPath = path.join(dataPaths.customEffectsDir, effectId, 'metadata.json');
-                if (fs.existsSync(metaPath)) {
-                    try {
-                        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-                        const isOwner = meta.userId && String(meta.userId) === String(user._id || user.id);
-                        if (isAdminUser(user) || isOwner) {
-                            custom.push(normalizeCustomEffect({
-                                localId: effectId,
-                                name: meta.name || 'Hiệu ứng cá nhân',
-                                duration: meta.duration || 5,
-                                fileUrl: meta.fileUrl || `/uploads/custom-effects/${effectId}/video.webm`,
-                                thumbUrl: meta.thumbUrl || ''
-                            }, user));
-                        }
-                    } catch (_e) {}
-                }
-            }
-        } catch (_e) {}
-    }
-
     return dedupeEffects([...custom, ...purchased]).map((effect) => addProtectedMediaUrl(effect, user._id));
 }
 
 async function getUserOwnedProductIds(userId) {
     const user = await getUserRecord(userId);
     if (!user) return [];
+    if (isAdminUser(user)) {
+        const all = await Effect.find({ isActive: true }).select('_id').lean().catch(() => []);
+        return all.map(e => toEffectId(e._id));
+    }
     return [...new Set((user.purchasedEffects || [])
         .map((item) => toEffectId(item?.effectId?._id || item?.effectId))
         .filter(Boolean))];

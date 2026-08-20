@@ -449,10 +449,6 @@
                                 </div>
                             </section>
                             <section class="gmd-panel gmd-my-library">
-                                <div class="gmd-lib-tabs" style="display:flex; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:6px;">
-                                    <button class="gmd-lib-tab-btn active" data-tab-name="my-library" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid #3b82f6; color:#fff; cursor:pointer; font-weight:600; font-size:12px;">Thư viện</button>
-                                    <button class="gmd-lib-tab-btn" data-tab-name="templates" style="flex:1; padding:8px; background:none; border:none; border-bottom:2px solid transparent; color:#888; cursor:pointer; font-weight:600; font-size:12px;">Mẫu đã mua</button>
-                                </div>
                                 <div id="gmd-my-library-content">
                                     <div class="gmd-my-library-top">
                                         <h4>Thư viện của tôi</h4>
@@ -460,13 +456,6 @@
                                     </div>
                                     <div class="gmd-subline">Menu đã lưu</div>
                                     <div class="gmd-my-library-list" id="gmd-my-library-list"></div>
-                                </div>
-                                <div id="gmd-templates-content" style="display:none;">
-                                    <div class="gmd-my-library-top">
-                                        <h4>Mẫu đã mua</h4>
-                                    </div>
-                                    <div class="gmd-subline">Click để dùng</div>
-                                    <div class="gmd-templates-list" id="gmd-templates-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;"></div>
                                 </div>
                             </section>
                         </aside>
@@ -665,10 +654,48 @@
             }
         }
 
-        async loadTemplatesList() {
-            const listEl = this.mount.querySelector('#gmd-templates-list');
+        renderPurchasedTemplatesList(templates) {
+            const listEl = this.mount ? this.mount.querySelector('#gmd-templates-list') : document.querySelector('#gmd-templates-list');
             if (!listEl) return;
-            listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+            const purchasedOnly = Array.isArray(templates) ? templates.filter(t => t && t.isPurchased === true) : [];
+            if (purchasedOnly.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;">Không có mẫu đã mua nào</div>';
+                return;
+            }
+            listEl.innerHTML = purchasedOnly.map(t => {
+                const price = Math.max(0, Number(t.price) || 0);
+                const isOwned = Boolean(t.isPurchased);
+                const actionText = t.isUsed ? 'Mở tùy chỉnh' : (isOwned ? 'Sử dụng' : `Mua ${price.toLocaleString('vi-VN')}đ`);
+                const bgStyle = isOwned ? 'background:#10b981;' : 'background:#8b5cf6;';
+                return `
+                    <div class="gmd-tmpl-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px; gap:8px;">
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                            <span style="font-size:12px; color:#fff; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:110px;" title="${this.escapeHtml(t.name)}">${this.escapeHtml(t.name)}</span>
+                            <span style="font-size:10px; color:#888;">Tỷ lệ: ${t.aspectRatio || '9:16'}</span>
+                        </div>
+                        <button class="gmd-btn-use-tmpl" data-template-id="${t._id}" style="font-size:10px; ${bgStyle} border:none; color:#fff; padding:4px 8px; border-radius:4px; cursor:pointer; font-weight:700; white-space:nowrap;">
+                            ${actionText}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async loadTemplatesList() {
+            const listEl = this.mount ? this.mount.querySelector('#gmd-templates-list') : document.querySelector('#gmd-templates-list');
+            // 1. Nếu đã có dữ liệu trong bộ nhớ hoặc cache từ app, render ngay lập tức (0ms)
+            const cachedTemplates = (Array.isArray(this.serverTemplates) && this.serverTemplates.length > 0)
+                ? this.serverTemplates
+                : (window.app && Array.isArray(window.app._templatesCache) && window.app._templatesCache.length > 0 ? window.app._templatesCache : null);
+
+            if (cachedTemplates) {
+                this.serverTemplates = cachedTemplates;
+                this.renderPurchasedTemplatesList(cachedTemplates);
+            } else if (listEl && !listEl.children.length) {
+                listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+            }
+
+            // 2. Fetch dữ liệu mới nhất từ server
             try {
                 const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
                 let res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-templates`, { headers });
@@ -678,35 +705,27 @@
                 const data = await res.json().catch(() => ({ success: true, templates: [] }));
                 if (data.success && Array.isArray(data.templates)) {
                     this.serverTemplates = data.templates;
-                    const purchasedOnly = data.templates.filter(t => t.isPurchased === true);
-                    if (purchasedOnly.length === 0) {
-                        listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#888;">Không có mẫu đã mua nào</div>';
-                        return;
-                    }
-                    listEl.innerHTML = purchasedOnly.map(t => {
-                        const price = Math.max(0, Number(t.price) || 0);
-                        const isOwned = Boolean(t.isPurchased);
-                        const actionText = t.isUsed ? 'Mở tùy chỉnh' : (isOwned ? 'Sử dụng' : `Mua ${price.toLocaleString('vi-VN')}đ`);
-                        const bgStyle = isOwned ? 'background:#10b981;' : 'background:#8b5cf6;';
-                        return `
-                            <div class="gmd-tmpl-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px; gap:8px;">
-                                <div style="display:flex; flex-direction:column; gap:2px;">
-                                    <span style="font-size:12px; color:#fff; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:110px;" title="${this.escapeHtml(t.name)}">${this.escapeHtml(t.name)}</span>
-                                    <span style="font-size:10px; color:#888;">Tỷ lệ: ${t.aspectRatio || '9:16'}</span>
-                                </div>
-                                <button class="gmd-btn-use-tmpl" data-template-id="${t._id}" style="font-size:10px; ${bgStyle} border:none; color:#fff; padding:4px 8px; border-radius:4px; cursor:pointer; font-weight:700; white-space:nowrap;">
-                                    ${actionText}
-                                </button>
-                            </div>
-                        `;
-                    }).join('');
-                } else {
+                    if (window.app) window.app._templatesCache = data.templates;
+                    this.renderPurchasedTemplatesList(data.templates);
+                } else if (!cachedTemplates && listEl) {
                     listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#ef4444;">Lỗi tải mẫu đã mua</div>';
                 }
             } catch (err) {
                 console.error(err);
-                listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#ef4444;">Lỗi kết nối máy chủ</div>';
+                if (!cachedTemplates && listEl) {
+                    listEl.innerHTML = '<div style="text-align:center; padding:12px; font-size:11px; color:#ef4444;">Lỗi kết nối máy chủ</div>';
+                }
             }
+        }
+
+        async loadDataIfNeeded() {
+            try {
+                await Promise.allSettled([
+                    this.loadGiftLibrary(),
+                    this.loadLayoutsList(),
+                    this.loadTemplatesList()
+                ]);
+            } catch (_e) {}
         }
 
         async legacyBuyOrUseTemplateFromSidebar(templateId) {
@@ -1544,7 +1563,6 @@
                     // field (position, size, color, text...). Snapshot every field so
                     // ANY edit made while "entered" invalidates the cached HTML and the
                     // collapsed view repaints with the latest design instead of stale
-                    // content from whenever the bundle was first built.
                     bundleChildren: item.type === 'template-bundle' && Array.isArray(item.children)
                         ? item.children.map((child) => ({ ...child }))
                         : undefined,
@@ -1554,9 +1572,18 @@
                     theme: item.theme,
                     customJarImageUrl: item.customJarImageUrl,
                     title: item.title,
+                    subtitle: item.subtitle,
                     capacityLevel: item.capacityLevel,
                     dropItemType: item.dropItemType,
                     targetCoins: item.targetCoins,
+                    segments: Array.isArray(item.segments) ? item.segments.map(s => ({ id: s.id, label: s.label, color: s.color, resultImage: s.resultImage })) : undefined,
+                    ringEffect: item.ringEffect,
+                    labelFontSize: item.labelFontSize,
+                    titleFontSize: item.titleFontSize,
+                    subtitleFontSize: item.subtitleFontSize,
+                    borderColor: item.borderColor,
+                    textColor: item.textColor,
+                    hideBorder: item.hideBorder,
                 };
                 const contentSignature = JSON.stringify(structuralState);
 
@@ -4847,7 +4874,8 @@
             standardTemplates.forEach((template) => (template.layers || []).forEach((layer) => {
                 if (layer.talentCompetition && layer.talentCompetition.showTop3 === true) layer.talentCompetition.showTop3 = false;
             }));
-            const allTemplates = [...(this.customTemplates || []), ...standardTemplates];
+            const isAdmin = Boolean(window.app?.currentUser?.isAdmin === true || this.currentUser?.isAdmin === true || this.isAdmin === true);
+            const allTemplates = [...(this.customTemplates || []), ...standardTemplates].filter((t) => !t.adminOnly || isAdmin);
 
             listEl.innerHTML = `
                 <div class="gmd-template-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;height:100%;min-width:0;min-height:0;max-height:none;overflow-x:hidden;overflow-y:auto;box-sizing:border-box;padding-right:4px;align-content:start;">
@@ -4870,6 +4898,15 @@
                                 ${this.buildTemplatePreviewLayers(t)}
                             </div>
                         </div>`;
+                } else if (t.id === 'tmpl_challenge_wheel') {
+                    previewHTML = `
+                                <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #1e112a 0%, #090314 100%); border: 1px solid #ef4444; border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; position: relative;">
+                                    <div style="font-size: 6px; font-weight: 900; color: #fbbf24; text-align: center; margin-bottom: 2px; line-height: 1;">🎡 VÒNG QUAY</div>
+                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: conic-gradient(#ef2029 0deg 90deg, #1455a0 90deg 180deg, #f97316 180deg 270deg, #facc15 270deg 360deg); border: 2px solid #fff; box-shadow: 0 0 6px #ef4444; position: relative; display: grid; place-items: center;">
+                                        <div style="width: 10px; height: 10px; border-radius: 50%; background: #2563eb; border: 1px solid #fbbf24;"></div>
+                                    </div>
+                                </div>
+                            `;
                 } else if (t.id === 'tmpl_pk_versus_bar') {
                     previewHTML = `
                                 <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #0f172a 0%, #05070f 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box; position: relative;">
@@ -8612,55 +8649,12 @@
         }
 
         async resetGoalBoardItem(itemId) {
-            const item = this.items.find(x => x.id === itemId);
+            const item = this.items.find((x) => x.id === itemId);
             if (!item) return;
-
-            if (item.type === 'goal-bar' || item.type === 'boss-bar' || item.type === 'mystery-chests' || item.type === 'goal-circle') {
-                if (item._originalCurrentCount === undefined) item._originalCurrentCount = item.currentCount || 0;
-                item.currentCount = item._originalCurrentCount;
-            } else if (item.type === 'goal-list' && Array.isArray(item.goals)) {
-                item.goals.forEach(g => {
-                    if (g._originalCurrent === undefined) g._originalCurrent = g.current || 0;
-                    g.current = g._originalCurrent;
-                });
-            } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
-                if (item._originalContributors === undefined) item._originalContributors = Array.isArray(item.contributors) ? item.contributors.map(c => ({ ...c })) : [];
-                item.contributors = item._originalContributors.map(c => ({ ...c }));
-            } else if (item.type === 'talent-live' || item.type === 'talent-leaderboard') {
-                this.updateTalentCompetition(itemId, (competition) => {
-                    competition.status = 'idle';
-                    competition.startedAt = null;
-                    competition.remainingSeconds = Number(competition.durationSeconds) || 180;
-                    competition.eventFeed = [];
-                    (competition.participants || []).forEach((person) => {
-                        person.score = 0;
-                        person.roundScore = 0;
-                    });
-                }, 'reset-talent-competition');
-                return;
-            } else if (item.type === 'combo') {
-                if (item._originalComboCount === undefined) item._originalComboCount = item.comboCount || 0;
-                item.comboCount = item._originalComboCount;
-            }
-
-            if (!this.trySelectiveContributorUpdate(item)) {
-                this.invalidateItemVisual(item);
-                this.renderCanvas();
-            }
-            this.renderInspector();
-
-        }
-
-        async _oldResetGoalBoardItem_disabled(itemId) {
-            const item = this.items.find(x => x.id === itemId);
-            if (!item) return;
-
-            if (item.type === 'goal-bar' || item.type === 'boss-bar' || item.type === 'mystery-chests' || item.type === 'goal-circle') {
+            if (['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests'].includes(item.type)) {
                 item.currentCount = 0;
             } else if (item.type === 'goal-list' && Array.isArray(item.goals)) {
-                item.goals.forEach(g => {
-                    g.current = 0;
-                });
+                item.goals.forEach((g) => { g.current = 0; });
             } else if (item.type === 'top-contributors' || item.type === 'podium-contributors') {
                 item.contributors = [];
             } else if (item.type === 'combo') {
@@ -8742,9 +8736,9 @@
         updateChallengeWheelField(itemId, key, value, live = false) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
             if (!item) return;
-            const numeric = ['titleFontSize', 'subtitleFontSize', 'durationMs', 'autoHideMs'];
+            const numeric = ['titleFontSize', 'subtitleFontSize', 'durationMs', 'autoHideMs', 'labelFontSize'];
             const boolean = ['hideBorder'];
-            item[key] = numeric.includes(key) ? Math.max(8, Number(value) || 8) : (boolean.includes(key) ? Boolean(value) : String(value || ''));
+            item[key] = numeric.includes(key) ? Math.max(1, Number(value) || 0) : (boolean.includes(key) ? Boolean(value) : String(value || ''));
             this.invalidateItemVisual(item);
             this.renderCanvas();
             if (live) return;
@@ -8776,6 +8770,16 @@
                 }
             }
             try {
+                const renderItem = {
+                    ...item,
+                    x: Number(logical.x) || Number(item.x) || 0,
+                    y: Number(logical.y) || Number(item.y) || 0,
+                    w: Number(logical.w) || Number(item.width) || Number(item.w) || 720,
+                    h: Number(logical.h) || Number(item.height) || Number(item.h) || 760,
+                    width: Number(logical.w) || Number(item.width) || Number(item.w) || 720,
+                    height: Number(logical.h) || Number(item.height) || Number(item.h) || 760,
+                    segments: item.segments || []
+                };
                 const res = await fetch(`${this.apiBase}/api/tiktok/challenge-wheels/${wheelId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) },
@@ -8793,24 +8797,24 @@
                             bgColor: item.bgColor || '',
                             bgColorGradientFrom: item.bgColorGradientFrom || '',
                             bgColorGradientTo: item.bgColorGradientTo || '',
-                            ringEffect: item.ringEffect || 'gold',
+                            ringEffect: item.ringEffect || 'fire',
                             borderColor: item.borderColor || '#d6a84f',
                             useCustomTextColor: Boolean(item.useCustomTextColor),
                             textColor: item.textColor || '#ffffff',
                             labelFontSize: Number(item.labelFontSize) || 16,
                             titleFontSize: Number(item.titleFontSize) || 34,
                             subtitleFontSize: Number(item.subtitleFontSize) || 18,
-                            // OBS uses the same 1080x1920 export-logical
-                            // coordinate space as the static layout.
-                            boardX: Number(logical.x) || 0,
-                            boardY: Number(logical.y) || 0,
-                            boardWidth: Number(logical.w) || Number(item.w) || 0,
-                            boardHeight: Number(logical.h) || Number(item.h) || 0
+                            boardX: Number(logical.x) || Number(item.x) || 0,
+                            boardY: Number(logical.y) || Number(item.y) || 0,
+                            boardWidth: Number(logical.w) || Number(item.width) || Number(item.w) || 720,
+                            boardHeight: Number(logical.h) || Number(item.height) || Number(item.h) || 760,
+                            renderItem
                         }
                     })
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || !data.success) throw new Error(data.error || 'Không thể lưu vòng quay');
+                await this.saveLayout(false, false);
                 window.app?.showNotification?.('success', 'Đã lưu cấu hình vòng quay cho Gift Mapping.');
             } catch (error) {
                 window.app?.showNotification?.('error', error.message);
@@ -8854,52 +8858,45 @@
 
         previewChallengeWheelSpin(itemId) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'challenge-wheel');
-            const wheel = this.mount?.querySelector('.gmd-challenge-wheel-widget > div:nth-child(3)')
-                || this.mount?.querySelector('.gmd-challenge-wheel-widget > div:last-child');
+            const widget = this.mount?.querySelector('.gmd-challenge-wheel-widget');
+            const wheel = widget?.querySelector('div[style*="conic-gradient"], div[style*="border-radius: 50%"], div[style*="border-radius:50%"]')
+                || widget?.querySelector(':scope > div:first-child');
             if (!item || !wheel) return;
             const segments = Array.isArray(item.segments) ? item.segments.filter((segment) => segment && segment.label) : [];
             if (segments.length < 2) return;
             const resultIndex = Math.floor(Math.random() * segments.length);
             const resultSegment = segments[resultIndex];
             const resultLabel = resultSegment.label;
-            const previousResult = this.mount?.querySelector('.gmd-wheel-preview-result');
-            if (previousResult) previousResult.classList.remove('is-visible');
-            wheel.classList.remove('gmd-wheel-preview-spin');
-            wheel.style.animation = 'none';
-            void wheel.offsetWidth;
+            const previousResult = widget.querySelector('.gmd-wheel-preview-result');
+            if (previousResult) previousResult.remove();
+
             const startRotation = Number(wheel.dataset.rotation || 0);
             const step = 360 / segments.length;
             const currentAngle = ((startRotation % 360) + 360) % 360;
             const alignToPointer = (360 - (resultIndex * step + step / 2) - currentAngle + 360) % 360;
-            const fullSpins = 5 + Math.floor(Math.random() * 2);
+            const fullSpins = 6;
             const finalRotation = startRotation + fullSpins * 360 + alignToPointer;
             const duration = Math.max(1800, Number(item.durationMs) || 6500);
-            wheel.style.setProperty('--gmd-wheel-start-rotation', `${startRotation}deg`);
-            wheel.style.setProperty('--gmd-wheel-final-rotation', `${finalRotation}deg`);
-            wheel.style.setProperty('--gmd-wheel-duration', `${duration}ms`);
-            wheel.style.animation = `gmdWheelPreviewSpin ${duration}ms cubic-bezier(.12,.72,.08,1) both`;
-            wheel.classList.add('gmd-wheel-preview-spin');
+
+            wheel.style.setProperty('transition', `transform ${duration}ms cubic-bezier(.12,.72,.08,1)`, 'important');
+            wheel.style.setProperty('transform', `rotate(${finalRotation}deg)`, 'important');
+            wheel.dataset.rotation = String(finalRotation);
+
             window.setTimeout(() => {
-                wheel.classList.remove('gmd-wheel-preview-spin');
-                wheel.style.animation = 'none';
-                wheel.dataset.rotation = String(finalRotation);
-                wheel.style.transform = `rotateX(12deg) rotateZ(${finalRotation}deg)`;
-                const widget = wheel.closest('.gmd-challenge-wheel-widget');
-                if (widget) {
-                    let result = widget.querySelector('.gmd-wheel-preview-result');
-                    if (!result) {
-                        result = document.createElement('span');
-                        result.className = 'gmd-wheel-preview-result';
-                        widget.appendChild(result);
-                    }
-                    if (resultSegment.resultImage || item.resultImage) {
-                        result.innerHTML = `<img src="${this.escapeHtml(resultSegment.resultImage || item.resultImage)}" alt="Kết quả" style="max-width:220px;max-height:140px;display:block;margin:0 auto 6px;border-radius:12px;object-fit:contain;"><span>🎉 ${this.escapeHtml(resultLabel)}</span>`;
-                    } else {
-                        result.textContent = `🎉 KẾT QUẢ: ${resultLabel}`;
-                    }
-                    result.classList.add('is-visible');
+                let result = widget.querySelector('.gmd-wheel-preview-result');
+                if (!result) {
+                    result = document.createElement('div');
+                    result.className = 'gmd-wheel-preview-result';
+                    result.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#0f172a; border:3px solid #fbbf24; border-radius:12px; padding:12px 24px; box-shadow:0 10px 30px rgba(0,0,0,0.9), 0 0 20px rgba(251,191,36,0.5); z-index:100; text-align:center; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.3s ease;';
+                    widget.appendChild(result);
                 }
-            }, duration + 40);
+                if (resultSegment.resultImage || item.resultImage) {
+                    result.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:800;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:6px;"><span>🎡</span><span>KẾT QUẢ:</span></div><img src="${this.escapeHtml(resultSegment.resultImage || item.resultImage)}" alt="Kết quả" style="max-width:180px;max-height:100px;display:block;margin:0 auto 6px;border-radius:8px;object-fit:contain;"><div style="font-size:22px;font-weight:900;color:#facc15;text-shadow:0 2px 8px rgba(0,0,0,0.9);">${this.escapeHtml(resultLabel)}</div>`;
+                } else {
+                    result.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:800;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:4px;"><span>🎡</span><span>KẾT QUẢ:</span></div><div style="font-size:22px;font-weight:900;color:#facc15;text-shadow:0 2px 8px rgba(0,0,0,0.9);">${this.escapeHtml(resultLabel)}</div>`;
+                }
+                result.style.opacity = '1';
+            }, duration);
         }
 
 
@@ -9400,15 +9397,16 @@
         }
 
         resetChallengeWheelPreview(itemId) {
-            const wheel = this.mount?.querySelector('.gmd-challenge-wheel-widget > div:nth-child(3)') || this.mount?.querySelector('.gmd-challenge-wheel-widget > div:last-child');
-            const result = this.mount?.querySelector('.gmd-wheel-preview-result');
+            const widget = this.mount?.querySelector('.gmd-challenge-wheel-widget');
+            const wheel = widget?.querySelector('div[style*="conic-gradient"], div[style*="border-radius: 50%"], div[style*="border-radius:50%"]')
+                || widget?.querySelector(':scope > div:first-child');
+            const result = widget?.querySelector('.gmd-wheel-preview-result');
             if (wheel) {
-                wheel.classList.remove('gmd-wheel-preview-spin');
-                wheel.style.animation = 'none';
-                wheel.style.transform = 'rotateX(12deg) rotateZ(0deg)';
+                wheel.style.setProperty('transition', 'none', 'important');
+                wheel.style.setProperty('transform', 'rotate(0deg)', 'important');
                 wheel.dataset.rotation = '0';
             }
-            if (result) result.classList.remove('is-visible');
+            if (result) result.remove();
         }
 
         uploadChallengeSegmentImage(itemId, index) {
@@ -9516,6 +9514,45 @@
 
         getDefaultTemplates() {
             return [
+                {
+                    id: 'tmpl_challenge_wheel',
+                    name: '🎡 Vòng quay thử thách',
+                    tag: 'Tương tác',
+                    category: 'challenge-wheel',
+                    tags: ['wheel', 'challenge', 'donate'],
+                    isPremium: false,
+                    adminOnly: true,
+                    layers: [
+                        {
+                            id: 'challenge_wheel_widget',
+                            name: '🎡 Vòng quay thử thách',
+                            type: 'challenge-wheel',
+                            x: 180,
+                            y: 580,
+                            w: 720,
+                            h: 760,
+                            width: 720,
+                            height: 760,
+                            zIndex: 1,
+                            visible: true,
+                            locked: false,
+                            lockRatio: true,
+                            lockedW: 720,
+                            lockedH: 760,
+                            ringEffect: 'fire',
+                            hideBorder: true,
+                            hideBg: true,
+                            durationMs: 6500,
+                            autoHideMs: 7000,
+                            segments: [
+                                { id: 'challenge-1', label: 'Hát một đoạn', color: '#ef2029', weight: 1 },
+                                { id: 'challenge-2', label: 'Nhảy 10 giây', color: '#1455a0', weight: 1 },
+                                { id: 'challenge-3', label: 'Kể chuyện vui', color: '#f97316', weight: 1 },
+                                { id: 'challenge-4', label: 'Tạo dáng', color: '#facc15', weight: 1 }
+                            ]
+                        }
+                    ]
+                },
                 {
                     id: 'tmpl_interactive_gift_jar',
                     name: '🏺 Hũ Quà Tặng (Physics Jar)',

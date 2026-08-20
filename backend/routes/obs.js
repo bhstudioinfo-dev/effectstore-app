@@ -509,25 +509,25 @@ router.post('/repair-sources', authMiddleware, async (req, res) => {
 
         // 3. Check and repair gift_menu_overlay / gift_menu
         const giftMenuSourceNames = ['gift_menu_overlay', 'gift_menu'];
-        const giftMenuExists = sceneItems.some((x) => giftMenuSourceNames.includes(x.sourceName));
+        const existingGiftMenu = sceneItems.find((x) => giftMenuSourceNames.includes(x.sourceName));
 
-        if (!giftMenuExists) {
-            const PORT = process.env.PORT || 9000;
-            const wsToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
-            const url = `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}&t=${Date.now()}`;
-            let sourceWidth = 1080;
-            let sourceHeight = 1920;
-            try {
-                const layoutPath = dataPaths.giftMenuLayoutPath;
-                const layout = JSON.parse(fs.readFileSync(layoutPath, 'utf8'));
-                const width = Number(layout?.exportSize?.width);
-                const height = Number(layout?.exportSize?.height);
-                if (width >= 320 && width <= 7680 && height >= 320 && height <= 7680) {
-                    sourceWidth = Math.round(width);
-                    sourceHeight = Math.round(height);
-                }
-            } catch (_e) {}
+        const PORT = process.env.PORT || 9000;
+        const wsToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
+        const url = `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}&t=${Date.now()}`;
+        let sourceWidth = 1080;
+        let sourceHeight = 1920;
+        try {
+            const layoutPath = dataPaths.giftMenuLayoutPath;
+            const layout = JSON.parse(fs.readFileSync(layoutPath, 'utf8'));
+            const width = Number(layout?.exportSize?.width);
+            const height = Number(layout?.exportSize?.height);
+            if (width >= 320 && width <= 7680 && height >= 320 && height <= 7680) {
+                sourceWidth = Math.round(width);
+                sourceHeight = Math.round(height);
+            }
+        } catch (_e) {}
 
+        if (!existingGiftMenu) {
             await obsService.obs.call('CreateInput', {
                 sceneName,
                 inputName: 'gift_menu_overlay',
@@ -545,6 +545,29 @@ router.post('/repair-sources', authMiddleware, async (req, res) => {
             });
             report.gift_menu_overlay.status = 'repaired';
             report.gift_menu_overlay.repaired = true;
+        } else {
+            const targetName = existingGiftMenu.sourceName;
+            try {
+                await obsService.obs.call('SetInputSettings', {
+                    inputName: targetName,
+                    inputSettings: {
+                        url,
+                        width: sourceWidth,
+                        height: sourceHeight,
+                        shutdown: false,
+                        restart_when_active: true
+                    },
+                    overlay: true
+                });
+                await obsService.obs.call('PressInputPropertiesButton', {
+                    inputName: targetName,
+                    propertyName: 'refreshnocache'
+                });
+                report.gift_menu_overlay.status = 'repaired';
+                report.gift_menu_overlay.repaired = true;
+            } catch (err) {
+                console.warn('Unable to refresh existing gift_menu source in repair:', err.message || err);
+            }
         }
 
         res.json({ success: true, report });

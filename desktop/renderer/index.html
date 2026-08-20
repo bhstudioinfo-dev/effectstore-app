@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LiveFlow - Premium Livestream Effects</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <!-- Thêm Font Awesome để có icon đẹp -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <!-- Link đến file CSS chính -->
@@ -920,14 +919,53 @@
                 </div>
             </div>
 
-            <!-- VIEW: LIBRARY -->
+            <!-- VIEW: LIBRARY (HIỆU ỨNG CỦA TÔI - 2 TABS) -->
             <div id="library-view" class="hidden">
-                <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:16px;">
-                    <h2>📁 Hiệu ứng của tôi</h2>
-                    <button onclick="app.openPersonalEffectUpload()" class="pro-btn" style="padding:10px 16px;"><i class="fas fa-upload"></i> Tải hiệu ứng cá nhân</button>
+                <!-- Tabs Header -->
+                <div class="library-tabs-nav" style="display:flex; gap:12px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
+                    <button id="lib-tab-effects-btn" class="lib-tab-btn active" onclick="app.switchLibraryTab('effects')" style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:12px; border:1px solid rgba(139,92,246,0.4); background:linear-gradient(135deg,rgba(139,92,246,0.2),rgba(236,72,153,0.1)); color:#fff; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s;">
+                        <i class="fas fa-play-circle" style="color:#a78bfa;"></i>
+                        <span>Hiệu ứng quà tặng</span>
+                        <span id="lib-tab-effects-count" style="font-size:11px; background:rgba(255,255,255,0.12); padding:2px 8px; border-radius:10px; color:#cbd5e1;">0</span>
+                    </button>
+                    <button id="lib-tab-templates-btn" class="lib-tab-btn" onclick="app.switchLibraryTab('templates')" style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); color:#94a3b8; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s;">
+                        <i class="fas fa-wand-magic-sparkles" style="color:#f472b6;"></i>
+                        <span>Mẫu thiết kế bảng quà</span>
+                        <span id="lib-tab-templates-count" style="font-size:11px; background:rgba(255,255,255,0.12); padding:2px 8px; border-radius:10px; color:#cbd5e1;">0</span>
+                    </button>
                 </div>
-                <div style="margin:0 0 16px;padding:10px 14px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#93c5fd;font-size:12px;">🔒 Hiệu ứng cá nhân được lưu trên máy này, chỉ dùng trong mục Gán quà với hiệu ứng và không tự đồng bộ sang thiết bị khác.</div>
-                <div class="effects-grid-new" id="library-grid"> </div>
+
+                <!-- Tab 1: Effects Content -->
+                <div id="library-tab-effects-content">
+                    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;">
+                        <div>
+                            <h2 style="margin:0;font-size:20px;">🎬 Hiệu ứng quà tặng đã sở hữu</h2>
+                            <p style="margin:4px 0 0;font-size:12px;color:#94a3b8;">Hiệu ứng video/hoạt ảnh xuất hiện trên màn hình khi người xem tặng quà.</p>
+                        </div>
+                        <button onclick="app.openPersonalEffectUpload()" class="pro-btn" style="padding:10px 16px;"><i class="fas fa-upload"></i> Tải hiệu ứng cá nhân</button>
+                    </div>
+                    <div style="margin:0 0 16px;padding:10px 14px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#93c5fd;font-size:12px;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-info-circle" style="font-size:14px;"></i>
+                        <span>Quản lý tất cả hiệu ứng bạn sở hữu: <b>🏬 Hiệu ứng Cửa hàng</b> (đồng bộ theo tài khoản) và <b>💻 Hiệu ứng cá nhân</b> (lưu trên máy tính này).</span>
+                    </div>
+                    <div class="effects-grid-new" id="library-grid"> </div>
+                </div>
+
+                <!-- Tab 2: Templates Content -->
+                <div id="library-tab-templates-content" style="display:none;">
+                    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;">
+                        <div>
+                            <h2 style="margin:0;font-size:20px;">📋 Mẫu thiết kế bảng quà đã sở hữu</h2>
+                            <p style="margin:4px 0 0;font-size:12px;color:#94a3b8;">Các gói thiết kế Menu & Bảng quà bạn đã mua hoặc sở hữu từ Cửa hàng.</p>
+                        </div>
+                        <button onclick="switchView('gift-menu-designer')" class="pro-btn" style="padding:10px 16px;background:linear-gradient(135deg,#7c3aed,#ec4899);"><i class="fas fa-plus"></i> Vào Trình thiết kế</button>
+                    </div>
+                    <div style="margin:0 0 16px;padding:10px 14px;border-radius:10px;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);color:#d8b4fe;font-size:12px;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-sparkles" style="font-size:14px;"></i>
+                        <span>Bấm <b>🛠️ Mở thiết kế</b> trên bất kỳ mẫu nào để tải trực tiếp lên Trình thiết kế bảng quà và xuất OBS!</span>
+                    </div>
+                    <div class="effects-grid-new" id="library-templates-grid"> </div>
+                </div>
             </div>
 
             <!-- VIEW: ADMIN (RESTORED TRADITIONAL LAYOUT) -->
@@ -979,8 +1017,7 @@
                     <div class="admin-card-full"
                         style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px;">
                         <div class="card-header" style="margin-bottom:20px;">
-                            <h2 style="font-size:18px; margin:0;"><i class="fas fa-cloud-upload-alt"></i> Thêm hiệu ứng cá nhân
-                                Mới</h2>
+                            <h2 style="font-size:18px; margin:0;"><i class="fas fa-cloud-upload-alt"></i> Thêm hiệu ứng Cửa hàng mới</h2>
                         </div>
                         <div class="admin-form">
                             <div class="form-grid"
@@ -2545,23 +2582,14 @@
     </div>
 
     <!-- Load JavaScript -->
-
-
-    <script>
-        const scripts = [
-            'js/matter.min.js',
-            'js/gift-jar-physics.js',
-            'js/home.js',
-            'js/item-registry.js',
-            'js/coordinate-engine.js',
-            'js/shared-render-engine.js',
-            'js/inspector-engine.js',
-            'js/gift-menu-designer.js'
-        ];
-        scripts.forEach(src => {
-            document.write('<script src="' + src + '?v=' + Date.now() + '"' + (src.includes('gift-menu-designer') ? ' charset="UTF-8"' : '') + '><\/script>');
-        });
-    </script>
+    <script src="js/matter.min.js"></script>
+    <script src="js/gift-jar-physics.js"></script>
+    <script src="js/home.js"></script>
+    <script src="js/item-registry.js"></script>
+    <script src="js/coordinate-engine.js"></script>
+    <script src="js/shared-render-engine.js"></script>
+    <script src="js/inspector-engine.js"></script>
+    <script src="js/gift-menu-designer.js" charset="UTF-8"></script>
 </body>
 
 </html>
