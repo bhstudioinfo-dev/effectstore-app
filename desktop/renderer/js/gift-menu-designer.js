@@ -4932,7 +4932,7 @@
                     previewHTML = `
                                 <div class="gmd-mini-widget" style="position:relative;width:100%;height:100%;overflow:hidden;border-radius:6px;background:radial-gradient(circle at 50% 80%,rgba(250,204,21,.18),transparent 37%),linear-gradient(145deg,#071525,#0a0d19);border:1px solid rgba(45,212,191,.56);display:grid;place-items:center;box-sizing:border-box;">
                                     <div style="position:absolute;top:5px;left:0;right:0;text-align:center;font-size:6px;font-weight:900;color:#fef3c7;text-shadow:0 0 5px rgba(250,204,21,.65);">HŨ QUÀ TẶNG</div>
-                                    <img src="assets/jars/hu-thuong.png" alt="" draggable="false" style="position:absolute;left:50%;top:51%;width:46px;height:57px;object-fit:contain;transform:translate(-50%,-50%);filter:drop-shadow(0 2px 5px rgba(45,212,191,.42));">
+                                    <img src="assets/jars/thum-hu-qua.png" alt="" draggable="false" style="position:absolute;left:50%;top:51%;width:46px;height:57px;object-fit:contain;transform:translate(-50%,-50%);filter:drop-shadow(0 2px 5px rgba(45,212,191,.42));">
                                     <span style="position:absolute;left:calc(50% - 16px);bottom:10px;font-size:12px;line-height:1;filter:drop-shadow(0 0 3px #facc15);">🪙</span>
                                     <span style="position:absolute;right:calc(50% - 18px);bottom:12px;font-size:8px;line-height:1;">✨</span>
                                     <div style="position:absolute;bottom:4px;left:8px;right:8px;height:3px;border-radius:99px;background:rgba(255,255,255,.15);overflow:hidden;"><i style="display:block;width:38%;height:100%;background:linear-gradient(90deg,#facc15,#f97316);"></i></div>
