@@ -9321,6 +9321,19 @@
             // Handled with 2D Rigid-Body Physics in GiftJarPhysics
         }
 
+        scheduleGiftJarUiRefresh() {
+            // Rapid test clicks can produce a gift burst. Rebuilding the full
+            // Designer for every individual click competes with Matter.js and
+            // is the main source of perceived input lag. Coalesce visual UI
+            // refreshes; coin totals and socket events still update per gift.
+            if (this._giftJarUiRefreshTimer) return;
+            this._giftJarUiRefreshTimer = setTimeout(() => {
+                this._giftJarUiRefreshTimer = null;
+                this.renderCanvas();
+                this.renderInspector();
+            }, 90);
+        }
+
         testGiftJarDrop(itemId, coins = 50, extra = {}) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
@@ -9336,8 +9349,7 @@
             } else {
                 if (window.app?.showNotification) window.app.showNotification('info', `🧪 Nhận +${coins.toLocaleString()} Xu (${extra.giftName || 'Quà TikTok'}) -> Tổng: ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu`);
             }
-            this.renderCanvas();
-            this.renderInspector();
+            this.scheduleGiftJarUiRefresh();
 
             if (this.socket && this.socket.connected) {
                 this.socket.emit('gift_jar_drop', {

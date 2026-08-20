@@ -109,6 +109,27 @@
             return 1.10; // Trung bình (~60 - 70 món quà - Mặc định)
         }
 
+        getVisibleItemLimit() {
+            let level = 'medium';
+            if (typeof this.options.getCapacityLevel === 'function') {
+                level = this.options.getCapacityLevel() || 'medium';
+            }
+            // Physics cost grows quickly when rapid gift bursts add hundreds
+            // of Matter bodies. The jar may keep counting every coin, while
+            // its visual pile remains a representative, smooth sample.
+            if (level === 'small') return 42;
+            if (level === 'large') return 96;
+            return 68;
+        }
+
+        trimVisibleItemsForSpawn() {
+            const limit = this.getVisibleItemLimit();
+            const excess = Math.max(0, this.items.length - limit + 1);
+            if (!excess) return;
+            const expired = this.items.splice(0, excess);
+            if (expired.length && this.world) Matter.World.remove(this.world, expired);
+        }
+
         getAssetUrl(subfolder, filename) {
             if (!filename) return '';
             if (filename.startsWith('http://') || filename.startsWith('https://') || filename.startsWith('data:')) {
@@ -490,6 +511,7 @@
                 this.loadImage(data.imageUrl, data.imageUrl);
             }
 
+            this.trimVisibleItemsForSpawn();
             World.add(this.world, body);
             this.items.push(body);
 
