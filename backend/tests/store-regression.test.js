@@ -28,10 +28,10 @@ const mappingBody = homeSource.slice(
 assert.ok(homeSource.includes('this.storeEffects = []'));
 assert.ok(homeSource.includes('this._renderGrid(storeGrid, visibleStoreEffects'));
 assert.ok(homeSource.includes("this.CLOUD_API_URL = 'https://effectstore-app.onrender.com'"));
-assert.ok(homeSource.includes('const primaryUrl = normalizeBannerUrl(this.CLOUD_API_URL, data.banner.url)'));
+assert.ok(homeSource.includes('const primaryUrl = normalizeBannerUrl(this.API_URL, data.banner.url)'));
 assert.ok(homeSource.includes('const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value)'));
-assert.ok(homeSource.includes('const isLocalPlaybackRoute = /^\\/api\\/(?:stream\\/effect\\/|obs\\/effect-player-media\\/)/i.test(raw)'));
-assert.ok(homeSource.includes('const baseUrl = isLocalPlaybackRoute ? this.API_URL : this.CLOUD_API_URL'));
+assert.ok(homeSource.includes('const isLocalMediaRoute = /^\\/api\\/(?:stream\\/effect\\/|obs\\/effect-player-media\\/)/i.test(raw)'));
+assert.ok(homeSource.includes('const baseUrl = isLocalMediaRoute ? this.API_URL : this.CLOUD_API_URL'));
 assert.ok(homeSource.includes('return `system_vi_v2_${text}`'));
 assert.ok(homeSource.includes('clearLegacySystemPreviewVoiceCache(text)'));
 assert.ok(homeSource.includes("['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO'].forEach"));

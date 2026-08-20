@@ -1468,8 +1468,12 @@ class EffectStoreApp {
                 const bannerVersion = encodeURIComponent(
                     String(data.banner.updatedAt || data.banner.filename || data.banner.id || '1')
                 );
-                const primaryUrl = normalizeBannerUrl(this.CLOUD_API_URL, data.banner.url);
-                const fallbackUrl = normalizeBannerUrl(this.API_URL, data.banner.url);
+                // Route public artwork through the desktop backend first. It
+                // keeps a local cache backed by R2, while a direct Render URL
+                // can be cold/slow and leaves the Store visually blank even
+                // though the catalog data has already loaded.
+                const primaryUrl = normalizeBannerUrl(this.API_URL, data.banner.url);
+                const fallbackUrl = normalizeBannerUrl(this.CLOUD_API_URL, data.banner.url);
                 const bannerUrl = `${encodeURI(primaryUrl)}?v=${bannerVersion}`;
                 this.bannerUrl = bannerUrl;
                 try {
@@ -3425,12 +3429,14 @@ class EffectStoreApp {
         const raw = String(value || '').trim();
         if (!raw || /^data:|^blob:/i.test(raw)) return raw;
         if (/^https?:\/\//i.test(raw)) return raw;
-        // Protected playback routes read media from the desktop backend's local
-        // library. Render's ephemeral filesystem does not contain these files,
-        // so resolving them against CLOUD_API_URL produces a 404.
-        const isLocalPlaybackRoute = /^\/api\/(?:stream\/effect\/|obs\/effect-player-media\/)/i.test(raw)
-            || /^\/effects\//i.test(raw);
-        const baseUrl = isLocalPlaybackRoute ? this.API_URL : this.CLOUD_API_URL;
+        // Public artwork is served via the desktop backend too: it caches R2
+        // thumbnails locally. Prefer that stable local cache over Render so
+        // cold/cloud asset responses cannot leave otherwise-ready cards blank.
+        // Protected playback routes must also remain local because Render does
+        // not have their per-machine effect files.
+        const isLocalMediaRoute = /^\/api\/(?:stream\/effect\/|obs\/effect-player-media\/)/i.test(raw)
+            || /^\/(?:effects\/|uploads\/(?:thumbs|banners)\/)/i.test(raw);
+        const baseUrl = isLocalMediaRoute ? this.API_URL : this.CLOUD_API_URL;
         try {
             return new URL(raw, baseUrl).toString();
         } catch (_error) {
