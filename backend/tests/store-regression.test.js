@@ -101,7 +101,8 @@ assert.ok(homeSource.includes('this.cart.reduce((sum, effect) => sum + this.getE
 assert.ok(homeSource.includes('const cartItemPrice = this.getEffectiveCartPrice(effect);'));
 assert.ok(!homeSource.includes('effect.flashSalePrice > 0'));
 assert.ok(publicDesignerSource.includes('const isOwned = Boolean(t.isPurchased);'));
-assert.ok(designerSource.includes('await window.app.preloadMappingLibrary({ force: true });'));
+assert.ok(designerSource.includes('await app.loadEffectsForMapping?.();'));
+assert.ok(homeSource.includes("const templateEntitlement = effect.category === 'menu_template' && effect.isOwned === true"));
 assert.ok(homeSource.includes('resetAuthForms()'));
 assert.ok(homeSource.includes("this.switchAuthTab('login');"));
 const authTabBody = homeSource.slice(homeSource.indexOf('switchAuthTab(tab, trigger = null)'), homeSource.indexOf('async login()'));

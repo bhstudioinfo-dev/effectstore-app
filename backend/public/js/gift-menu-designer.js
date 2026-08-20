@@ -8887,13 +8887,13 @@
                 if (!result) {
                     result = document.createElement('div');
                     result.className = 'gmd-wheel-preview-result';
-                    result.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#0f172a; border:3px solid #fbbf24; border-radius:12px; padding:12px 24px; box-shadow:0 10px 30px rgba(0,0,0,0.9), 0 0 20px rgba(251,191,36,0.5); z-index:100; text-align:center; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.3s ease;';
+                    result.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); min-width:210px; background:#0f172a; border:4px solid #fbbf24; border-radius:16px; padding:18px 30px; box-shadow:0 12px 36px rgba(0,0,0,0.9), 0 0 28px rgba(251,191,36,0.6); z-index:100; text-align:center; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.3s ease;';
                     widget.appendChild(result);
                 }
                 if (resultSegment.resultImage || item.resultImage) {
-                    result.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:800;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:6px;"><span>🎡</span><span>KẾT QUẢ:</span></div><img src="${this.escapeHtml(resultSegment.resultImage || item.resultImage)}" alt="Kết quả" style="max-width:180px;max-height:100px;display:block;margin:0 auto 6px;border-radius:8px;object-fit:contain;"><div style="font-size:22px;font-weight:900;color:#facc15;text-shadow:0 2px 8px rgba(0,0,0,0.9);">${this.escapeHtml(resultLabel)}</div>`;
+                    result.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:18px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:8px;"><span>🎡</span><span>KẾT QUẢ:</span></div><img src="${this.escapeHtml(resultSegment.resultImage || item.resultImage)}" alt="Kết quả" style="max-width:230px;max-height:130px;display:block;margin:0 auto 8px;border-radius:10px;object-fit:contain;"><div style="font-size:30px;font-weight:900;color:#facc15;text-shadow:0 2px 8px rgba(0,0,0,0.9);">${this.escapeHtml(resultLabel)}</div>`;
                 } else {
-                    result.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:800;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:4px;"><span>🎡</span><span>KẾT QUẢ:</span></div><div style="font-size:22px;font-weight:900;color:#facc15;text-shadow:0 2px 8px rgba(0,0,0,0.9);">${this.escapeHtml(resultLabel)}</div>`;
+                    result.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:18px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:6px;"><span>🎡</span><span>KẾT QUẢ:</span></div><div style="font-size:30px;font-weight:900;color:#facc15;text-shadow:0 2px 8px rgba(0,0,0,0.9);">${this.escapeHtml(resultLabel)}</div>`;
                 }
                 result.style.opacity = '1';
             }, duration);

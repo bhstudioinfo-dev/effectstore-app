@@ -3072,7 +3072,11 @@ class EffectStoreApp {
 
                 const isAdmin = this.currentUser?.isAdmin === true;
                 const isBusiness = this.currentUser && ['pro', 'studio'].includes(resolvePlanKey(this.currentUser));
-                const hasPurchased = this.ownedProductIds.has(String(effectId)) ||
+                // Template cards are synthesized from the authenticated
+                // template endpoint, so their explicit isOwned flag is an
+                // entitlement (unlike a generic Store catalog effect).
+                const templateEntitlement = effect.category === 'menu_template' && effect.isOwned === true;
+                const hasPurchased = templateEntitlement || this.ownedProductIds.has(String(effectId)) ||
                     this.ownedEffects.some(e => String(e.id || e._id) === String(effectId));
 
                 const isOwned = isAdmin || isBusiness || hasPurchased;

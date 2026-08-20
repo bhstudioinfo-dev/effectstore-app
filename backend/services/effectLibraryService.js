@@ -17,6 +17,36 @@ const { getEntitlements, upgradePayload } = require('../config/planEntitlements'
 // already used for the encrypted video file itself.
 const mirroredEffectsCache = new Map();
 
+async function syncUserEffectEntitlementsFromCloud(userId) {
+    const { isCentralCloudRuntime } = require('../middleware/cloudProxy');
+    if (!userId || isCentralCloudRuntime()) return false;
+
+    try {
+        const { getCloudSessionToken } = require('./cloudSessionTokenStore');
+        const token = getCloudSessionToken(userId);
+        const cloudApiUrl = String(process.env.CLOUD_API_URL || 'https://effectstore-app.onrender.com').trim().replace(/\/+$/, '');
+        if (!token || !cloudApiUrl) return false;
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 6000);
+        timer.unref?.();
+        try {
+            const response = await fetch(`${cloudApiUrl}/api/user/effects`, {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: controller.signal
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || !payload?.success || !Array.isArray(payload.effects)) return false;
+            const { mirrorUserPurchasedEffectsLocally } = require('./localUserMirror');
+            return await mirrorUserPurchasedEffectsLocally(userId, payload.effects);
+        } finally {
+            clearTimeout(timer);
+        }
+    } catch (_error) {
+        return false;
+    }
+}
+
 async function mirrorEffectFromCentral(effectId) {
     if (!effectId) return null;
     if (mirroredEffectsCache.has(effectId)) return mirroredEffectsCache.get(effectId);
@@ -367,9 +397,19 @@ async function resolveEffectForUser(userId, effectId) {
     }
 
     if (!purchased) {
+        // /api/auth/me can omit purchasedEffects.  Reconcile against the
+        // authenticated cloud library once on a local miss, then keep all
+        // subsequent OBS/live triggers local and fast.
+        const synced = await syncUserEffectEntitlementsFromCloud(userId);
+        if (synced) {
+            user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+            purchased = (user?.purchasedEffects || []).find((item) =>
+                toEffectId(item?.effectId?._id || item?.effectId) === id
+            );
+        }
         // A catalog record proves that the product exists, not that this
-        // account owns it. Fail closed after the Cloud refresh above.
-        return null;
+        // account owns it. Fail closed after the authenticated refresh.
+        if (!purchased) return null;
     }
 
     let purchasedEffect = purchased.effectId;

@@ -31,6 +31,22 @@ async function mirrorUserLocally(userPayload) {
             || userPayload.subscription?.endDate
             || userPayload.subscription?.expiresAt
             || null;
+        const accountFields = {
+            email: userPayload.email,
+            name: userPayload.name || '',
+            phone: userPayload.phone || '',
+            isAdmin: Boolean(userPayload.isAdmin),
+            subscription,
+            subscriptionExpiresAt,
+            marketingConsent: Boolean(userPayload.marketingConsent),
+            isActive: true
+        };
+        // /api/auth/me intentionally does not always include a purchase list.
+        // Do not erase the local entitlement mirror with an empty profile
+        // response; /api/user/effects is the authoritative purchase payload.
+        if (Array.isArray(userPayload.purchasedEffects)) {
+            accountFields.purchasedEffects = userPayload.purchasedEffects;
+        }
         await User.findByIdAndUpdate(
             id,
             {
@@ -41,17 +57,7 @@ async function mirrorUserLocally(userPayload) {
                     // latency-sensitive local OBS/TikTok routes.
                     password: 'central-account-no-local-password'
                 },
-                $set: {
-                    email: userPayload.email,
-                    name: userPayload.name || '',
-                    phone: userPayload.phone || '',
-                    isAdmin: Boolean(userPayload.isAdmin),
-                    subscription,
-                    subscriptionExpiresAt,
-                    marketingConsent: Boolean(userPayload.marketingConsent),
-                    purchasedEffects: Array.isArray(userPayload.purchasedEffects) ? userPayload.purchasedEffects : [],
-                    isActive: true
-                }
+                $set: accountFields
             },
             { upsert: true, setDefaultsOnInsert: true, runValidators: false }
         );
