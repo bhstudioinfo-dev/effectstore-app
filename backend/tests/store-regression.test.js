@@ -47,11 +47,11 @@ assert.ok(homeSource.includes('async checkAuth({ loadDependentData = true } = {}
 assert.ok(homeSource.includes('this.checkAuth({ loadDependentData: false })'));
 assert.ok(homeSource.includes('if (this._aiConfigLoadPromise) return this._aiConfigLoadPromise'));
 assert.ok(homeSource.includes('if (!res.ok) return false'));
-assert.ok(homeSource.includes('tasks.push(this.preloadMappingLibrary())'));
+assert.ok(homeSource.includes('deferredTasks.push(this.preloadMappingLibrary())'));
 assert.ok(homeSource.includes('if (!force && this._mappingLibraryPromise) return this._mappingLibraryPromise'));
 assert.ok(homeSource.includes('await this.loadChallengeWheels()'));
 assert.ok(homeSource.includes('await this.loadEffectsForMapping()'));
-assert.ok(homeSource.includes('await Promise.allSettled(tasks);'));
+assert.ok(homeSource.includes('void Promise.allSettled(deferredTasks)'));
 assert.ok(homeSource.includes("effect.category !== 'menu_template' && effect.isChallengeWheel !== true"));
 assert.ok(homeSource.includes("effect.isChallengeWheel || effect.category === 'menu_template'"));
 assert.ok(homeSource.includes("Match the Store's real wheel preview"));
