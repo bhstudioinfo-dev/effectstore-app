@@ -1629,8 +1629,6 @@
             // which made the content larger than the saved bounds and allowed
             // avatars/text to spill outside the board.
             const isTopDonateBoard = item.type === 'top-contributors';
-            const boardWidth = item.width || refW / 3;
-            const boardHeight = item.height || refH / 3;
             const isTalentBoard = item.type === 'talent-live' || item.type === 'talent-leaderboard';
             const widgetHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
               ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary })
@@ -2005,6 +2003,7 @@
         ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary })
         : '';
       if (!staticWheel) liveWheel.innerHTML = `<div class="gmd-visual-scaled-wrapper" style="width:${refW}px;height:${refH}px;transform:scale(${wrapperScaleX},${wrapperScaleY});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">${widgetHTML}</div>`;
+      if (staticWheel || widgetHTML) {
         const widget = liveWheel.querySelector('.gmd-challenge-wheel-widget');
         // Tìm chính xác đĩa quay tròn chứa conic-gradient
         const disc = widget?.querySelector('div[style*="conic-gradient"], div[style*="border-radius: 50%"], div[style*="border-radius:50%"]') || widget?.querySelector(':scope > div:first-child');

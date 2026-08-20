@@ -221,6 +221,20 @@ for (const renderEngineSource of [desktopRenderEngineSource, overlayRenderEngine
         'PK segments must preserve their calculated widths and hide zero-width labels'
     );
 }
+
+// OBS Browser Source executes the inline overlay scripts directly.  Parse each
+// one in CI so a duplicate declaration cannot leave the whole gift menu blank.
+const overlayDocumentSource = fs.readFileSync(
+    path.join(root, 'backend', 'public', 'gift-menu-overlay.html'),
+    'utf8'
+);
+const inlineOverlayScripts = [...overlayDocumentSource.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+    .map((match) => match[1])
+    .filter((script) => script.trim());
+assert.ok(inlineOverlayScripts.length > 0, 'gift-menu overlay must include executable scripts');
+inlineOverlayScripts.forEach((script, index) => {
+    assert.doesNotThrow(() => new Function(script), `gift-menu overlay inline script ${index} must parse`);
+});
 assert.ok(
     designerSource.includes("segmentEl.style.transition = 'width 0.3s ease'"),
     'Existing PK segments should still animate smoothly when scores change'
