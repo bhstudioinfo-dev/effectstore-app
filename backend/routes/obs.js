@@ -430,11 +430,11 @@ router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
     }
 });
 
-// Hide the currently rendered board when its desktop account signs out.
-// The browser source and the saved layout deliberately remain in OBS/Mongo:
-// a later "Xuất sang OBS" can enable the same source again.  This prevents a
-// shared computer from leaving the previous account's Gift Menu visible while
-// never deleting a customer's OBS configuration.
+// Clear the currently rendered board when its desktop account signs out.
+// The browser source stays enabled and is pointed at a transparent document,
+// so OBS keeps its expected scene/source structure instead of looking as if a
+// user manually disabled it. A later "Xuất sang OBS" restores the real
+// overlay URL and the saved menu as usual.
 router.post('/hide-gift-menu', requireLoopbackDesktop, async (_req, res) => {
     try {
         if (!obsService.isConnected()) {
@@ -453,11 +453,21 @@ router.post('/hide-gift-menu', requireLoopbackDesktop, async (_req, res) => {
             giftMenuSourceNames.has(item.sourceName) && typeof item.sceneItemId === 'number'
         );
 
-        await Promise.all(giftMenuItems.map((item) => obsService.obs.call('SetSceneItemEnabled', {
-            sceneName,
-            sceneItemId: item.sceneItemId,
-            sceneItemEnabled: false
-        })));
+        await Promise.all(giftMenuItems.map(async (item) => {
+            // `about:blank` is fully transparent in an OBS Browser Source.
+            // Do not delete or disable the source: it is part of the user's
+            // scene setup and must remain ready for the next login.
+            await obsService.obs.call('SetInputSettings', {
+                inputName: item.sourceName,
+                inputSettings: { url: 'about:blank', shutdown: false, restart_when_active: false },
+                overlay: true
+            });
+            await obsService.obs.call('SetSceneItemEnabled', {
+                sceneName,
+                sceneItemId: item.sceneItemId,
+                sceneItemEnabled: true
+            });
+        }));
 
         return res.json({ success: true, hidden: giftMenuItems.length > 0, count: giftMenuItems.length });
     } catch (error) {
