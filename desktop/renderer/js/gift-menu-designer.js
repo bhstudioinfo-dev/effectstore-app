@@ -5106,25 +5106,9 @@
         // static composition instead, using the same supplied jar artwork in both
         // places. This keeps previewing separate from the live physics simulation.
         buildGiftJarTemplatePreview(_item = {}, { compact = false } = {}) {
-            const radius = compact ? '6px' : '16px';
-            const titleSize = compact ? '6px' : '17px';
-            const coinSize = compact ? '8px' : '20px';
-            const jarWidth = compact ? '68%' : '62%';
-            const titleTop = compact ? '5px' : '16px';
-            const progressBottom = compact ? '4px' : '14px';
-
             return `
-                <div class="gmd-gift-jar-preview" style="position:relative;width:100%;height:100%;overflow:hidden;border-radius:${radius};box-sizing:border-box;background:radial-gradient(circle at 50% 75%,rgba(250,204,21,.30),transparent 34%),radial-gradient(circle at 50% 58%,rgba(45,212,191,.15),transparent 52%),linear-gradient(145deg,#061827,#080c18);border:1px solid rgba(45,212,191,.58);">
-                    <div style="position:absolute;z-index:4;top:${titleTop};left:5%;right:5%;text-align:center;font-size:${titleSize};font-weight:900;letter-spacing:.04em;color:#fef3c7;text-shadow:0 0 8px rgba(250,204,21,.78);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏺 HŨ QUÀ TẶNG</div>
-                    <div style="position:absolute;z-index:1;left:50%;bottom:${compact ? '8%' : '10%'};width:${jarWidth};height:${compact ? '75%' : '78%'};transform:translateX(-50%);border-radius:48% 48% 22% 22%;background:radial-gradient(ellipse at 50% 71%,rgba(250,204,21,.70),rgba(249,115,22,.36) 38%,transparent 68%);filter:blur(${compact ? '2px' : '5px'});"></div>
-                    <div style="position:absolute;z-index:2;left:50%;bottom:${compact ? '14%' : '16%'};width:${jarWidth};height:${compact ? '62%' : '66%'};transform:translateX(-50%);overflow:hidden;border-radius:34% 34% 24% 24%;">
-                        <span style="position:absolute;left:18%;bottom:21%;font-size:${coinSize};filter:drop-shadow(0 0 5px #facc15);">🪙</span>
-                        <span style="position:absolute;right:15%;bottom:28%;font-size:${coinSize};filter:drop-shadow(0 0 5px #fb7185);">🎁</span>
-                        <span style="position:absolute;left:42%;bottom:8%;font-size:${coinSize};filter:drop-shadow(0 0 5px #38bdf8);">💎</span>
-                        <span style="position:absolute;right:35%;top:22%;font-size:${compact ? '7px' : '16px'};">✨</span>
-                    </div>
-                    <img src="assets/jars/thum-hu-qua.png" alt="" draggable="false" style="position:absolute;z-index:3;left:50%;bottom:${compact ? '4%' : '6%'};width:${jarWidth};height:${compact ? '80%' : '82%'};object-fit:contain;transform:translateX(-50%);filter:drop-shadow(0 4px 9px rgba(45,212,191,.60));">
-                    <div style="position:absolute;z-index:4;bottom:${progressBottom};left:${compact ? '8px' : '11%'};right:${compact ? '8px' : '11%'};height:${compact ? '3px' : '7px'};border-radius:99px;background:rgba(255,255,255,.16);overflow:hidden;"><i style="display:block;width:58%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#facc15,#f97316,#fb7185);box-shadow:0 0 8px #facc15;"></i></div>
+                <div class="gmd-gift-jar-preview" style="position:relative;width:100%;height:100%;overflow:hidden;background:transparent;">
+                    <img src="assets/jars/thum-hu-qua.png" alt="Hũ quà tặng" draggable="false" style="position:absolute;left:50%;top:50%;width:${compact ? '70%' : '76%'};height:${compact ? '82%' : '88%'};object-fit:contain;transform:translate(-50%,-50%);filter:drop-shadow(0 4px 8px rgba(0,0,0,.38));">
                 </div>`;
         }
 
