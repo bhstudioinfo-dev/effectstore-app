@@ -80,6 +80,16 @@ function buildChallengeWheelPresentation(item, exportedItem = item) {
         renderItem
     };
 }
+
+// A layout keeps both the editable Designer item and its OBS export item.
+// The export item is the authoritative 1080x1920 geometry. Choosing the
+// editable item first made an old stage coordinate leak into live playback.
+function findChallengeWheelItem(template) {
+    return [
+        ...(template?.exportedItems || []),
+        ...(template?.items || [])
+    ].find((item) => item && item.type === 'challenge-wheel') || null;
+}
 fs.mkdirSync(goalAssetDir, { recursive: true });
 const goalAssetUpload = multer({
     storage: multer.diskStorage({
@@ -277,25 +287,44 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
             return res.json({ success: true, wheels });
         }
         const owner = req.user || (await User.findById(req.userId).select('isAdmin subscription').lean());
+        const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
+        // Use the same cloud catalogue truth as the Store. A local Desktop
+        // mirror can briefly contain a previous/deleted wheel template while
+        // the current Store product has already changed.
+        const cloudTemplates = await syncCloudTemplateList(bearerToken).catch(() => null);
+        const cloudTemplateIds = new Set((cloudTemplates || [])
+            .filter((template) => template?.isActive === true)
+            .map((template) => String(template._id || template.id)));
+        const activeTemplateProductIds = new Set((await Effect.find({
+            category: 'menu_template',
+            isActive: true
+        }).select('fileUrl').lean()).map((effect) => String(effect.fileUrl || '')).filter(Boolean));
         // `business` is a legacy account value with historical bundled-product
         // access. Current Pro/Studio subscriptions do not automatically own
         // paid Store or Challenge Wheel products.
         if (owner?.isAdmin === true || owner?.subscription === 'business') {
-            const templates = await GiftMenuLayout.find({
-                userId: req.userId,
+            const rawTemplates = await GiftMenuLayout.find({
+                // Cloud catalogue mirrors are global records and intentionally
+                // have no local userId. The administrator owns every active
+                // Store product, so it must be able to materialise its wheel
+                // from that canonical record.
+                ...(owner?.isAdmin === true ? {} : { userId: req.userId }),
                 isTemplate: true,
-                isActive: true,
                 $or: [
                     { productType: 'challenge-wheel' },
                     { 'items.type': 'challenge-wheel' },
                     { 'exportedItems.type': 'challenge-wheel' }
                 ]
             }).lean();
+            const templates = rawTemplates.filter((template) =>
+                template.isActive === true
+                || cloudTemplateIds.has(String(template._id))
+                || activeTemplateProductIds.has(String(template._id))
+            );
             for (const template of templates) {
-                const wheelItem = [...(template.items || []), ...(template.exportedItems || [])]
-                    .find((item) => item && item.type === 'challenge-wheel');
+                const wheelItem = findChallengeWheelItem(template);
                 if (!wheelItem) continue;
-                await ChallengeWheel.findOneAndUpdate(
+                const storedWheel = await ChallengeWheel.findOneAndUpdate(
                     { userId: req.userId, sourceTemplateId: template._id },
                     {
                         // Backfill only. An existing wheel belongs to the user
@@ -316,9 +345,28 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
                     },
                     { upsert: true, setDefaultsOnInsert: true }
                 );
+                // Older versions created linked wheels without the exported
+                // render snapshot. Repair only that broken state, preserving
+                // any user-customised presentation.
+                if (!storedWheel?.presentation?.renderItem) {
+                    await ChallengeWheel.updateOne(
+                        { _id: storedWheel?._id },
+                        { $set: { presentation: buildChallengeWheelPresentation(wheelItem, wheelItem) } }
+                    );
+                }
             }
         }
-        const rawWheels = await ChallengeWheel.find({ userId: req.userId }).sort({ updatedAt: -1 }).lean();
+        const publishedSourceIds = new Set([
+            ...cloudTemplateIds,
+            ...activeTemplateProductIds
+        ]);
+        const hasAuthoritativeCatalog = Array.isArray(cloudTemplates) || publishedSourceIds.size > 0;
+        const rawWheels = (await ChallengeWheel.find({ userId: req.userId }).sort({ updatedAt: -1 }).lean())
+            // Keep standalone wheels, but never show a wheel tied to an old
+            // unpublished Store template alongside the current product. If
+            // cloud is temporarily unavailable, preserve the local cache
+            // rather than making a customer's wheel disappear.
+            .filter((wheel) => !hasAuthoritativeCatalog || !wheel.sourceTemplateId || publishedSourceIds.has(String(wheel.sourceTemplateId)));
         // A previous client could create the same wheel more than once while
         // synchronizing a published template. Return one record per source.
         const seenSources = new Set();
@@ -450,17 +498,12 @@ router.post('/challenge-wheels/:id/test', authMiddleware, async (req, res) => {
         let templateItem = null;
         if (wheel.sourceTemplateId) {
             const template = await GiftMenuLayout.findOne({ _id: wheel.sourceTemplateId, isTemplate: true }).select('items exportedItems').lean().catch(() => null);
-            templateItem = [...(template?.items || []), ...(template?.exportedItems || [])].find((entry) => entry?.type === 'challenge-wheel');
+            templateItem = findChallengeWheelItem(template);
         }
         const savedPresentation = wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {};
         const resolvedSegments = Array.isArray(wheel.segments) ? wheel.segments : [];
         const resolvedPresentation = {
-            ...(templateItem ? {
-                hideBorder: Boolean(templateItem.hideBorder), hideBg: Boolean(templateItem.hideBg),
-                ringEffect: templateItem.ringEffect || 'gold', borderColor: templateItem.borderColor || '#d6a84f',
-                useCustomTextColor: Boolean(templateItem.useCustomTextColor), textColor: templateItem.textColor || '#ffffff',
-                labelFontSize: Number(templateItem.labelFontSize) || 16
-            } : {}),
+            ...(templateItem ? buildChallengeWheelPresentation(templateItem, templateItem) : {}),
             ...savedPresentation,
             boardWidth: savedPresentationNumber(savedPresentation, 'boardWidth', templateItem?.w || templateItem?.width || templateItem?.lockedW),
             boardHeight: savedPresentationNumber(savedPresentation, 'boardHeight', templateItem?.h || templateItem?.height || templateItem?.lockedH),
@@ -677,17 +720,13 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             let templateItem = null;
             if (wheel.sourceTemplateId) {
                 const template = await GiftMenuLayout.findOne({ _id: wheel.sourceTemplateId, isTemplate: true }).select('items exportedItems').lean().catch(() => null);
-                templateItem = [...(template?.items || []), ...(template?.exportedItems || [])].find((entry) => entry?.type === 'challenge-wheel');
+                templateItem = findChallengeWheelItem(template);
             }
             const savedPresentation = wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {};
             const resolvedSegments = Array.isArray(wheel.segments) ? wheel.segments : [];
             const resolvedTitle = wheel.title || templateItem?.title;
             const presentation = {
-                ...(templateItem ? {
-                    hideBorder: Boolean(templateItem.hideBorder), hideBg: Boolean(templateItem.hideBg), ringEffect: templateItem.ringEffect || 'gold',
-                    borderColor: templateItem.borderColor || '#d6a84f', useCustomTextColor: Boolean(templateItem.useCustomTextColor),
-                    textColor: templateItem.textColor || '#ffffff', labelFontSize: Number(templateItem.labelFontSize) || 16
-                } : {}),
+                ...(templateItem ? buildChallengeWheelPresentation(templateItem, templateItem) : {}),
                 ...savedPresentation,
                 boardWidth: savedPresentationNumber(savedPresentation, 'boardWidth', templateItem?.w || templateItem?.width || templateItem?.lockedW),
                 boardHeight: savedPresentationNumber(savedPresentation, 'boardHeight', templateItem?.h || templateItem?.height || templateItem?.lockedH),

@@ -403,6 +403,9 @@ class EffectStoreApp {
 
             // Wait for the backend to respond
             await this.waitForBackendReady(30, 400).catch(() => {});
+            // Begin OBS health polling before the slower catalog/account
+            // preload so the first visible state cannot remain stale.
+            this.startSystemStatusPoll();
             this.updateAppLoadingProgress('🔐 Đang xác minh phiên đăng nhập...', 45);
 
             // Validate authentication token
