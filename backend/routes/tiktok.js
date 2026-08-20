@@ -1266,7 +1266,13 @@ router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
                     const cloudTemplate = cloudById.get(String(t._id));
                     return {
                         ...t,
-                        isPurchased: false,
+                        // Keep the catalogue's public/free ownership state
+                        // when this endpoint is opened before a user session
+                        // is available.  Returning false unconditionally made
+                        // valid free/cloud templates look locked in Desktop.
+                        isPurchased: cloudTemplate
+                            ? Boolean(cloudTemplate.isPurchased)
+                            : Number(t.price || 0) <= 0,
                         isUsed: false,
                         usedLayoutId: null
                     };
@@ -1696,17 +1702,19 @@ router.post('/gift-menu-layout/publish', authMiddleware, async (req, res) => {
         if (!isAdmin) return res.status(403).json({ success: false, error: 'Unauthorized' });
         const payload = req.body || {};
         const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
-        let cloudPublish = null;
-        try {
-            cloudPublish = await fetchCloudTemplateJson(
-                '/api/tiktok/gift-menu-layout/publish',
-                bearerToken,
-                { method: 'POST', body: payload }
-            );
-        } catch (cloudErr) {
-            console.warn('[publish] Cloud template publish skipped/failed; saving locally to MongoDB:', cloudErr.message);
-        }
-        if (cloudPublish && cloudPublish.success) {
+        const cloudPublish = await fetchCloudTemplateJson(
+            '/api/tiktok/gift-menu-layout/publish',
+            bearerToken,
+            { method: 'POST', body: payload }
+        ).catch((error) => {
+            // A packaged Desktop build must not claim a marketplace publish
+            // succeeded when the commercial/cloud write failed.  Local-only
+            // development keeps its explicit fallback for offline work.
+            if (process.env.EFFECTSTORE_DESKTOP_MANAGED === 'true') throw error;
+            console.warn('[publish] Cloud template publish unavailable; using local development fallback:', error.message);
+            return null;
+        });
+        if (cloudPublish) {
             if (cloudPublish.template) {
                 await mirrorCloudTemplates([cloudPublish.template]);
             }

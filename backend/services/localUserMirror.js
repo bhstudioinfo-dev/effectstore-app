@@ -36,8 +36,10 @@ async function mirrorUserLocally(userPayload) {
             {
                 $setOnInsert: {
                     _id: id,
-                    password: 'central-account-no-local-password',
-                    phone: userPayload.phone || ''
+                    // The local record is never used to authenticate a central
+                    // account.  It only keeps entitlement metadata for the
+                    // latency-sensitive local OBS/TikTok routes.
+                    password: 'central-account-no-local-password'
                 },
                 $set: {
                     email: userPayload.email,
