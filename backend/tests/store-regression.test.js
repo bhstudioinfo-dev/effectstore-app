@@ -90,6 +90,8 @@ assert.ok(!authSource.includes('user = new User({'));
 assert.ok(paymentRouteSource.includes("await User.findById(req.userId).select('purchasedEffects isActive')"));
 assert.ok(!paymentRouteSource.includes('const user = req.user ||'));
 assert.ok(tiktokRouteSource.includes('if (correspondingEffect && !hasPurchased)'));
+assert.ok(tiktokRouteSource.includes('const cloudOwnershipConfirmed = cloudTemplate?.isPurchased === true'));
+assert.ok(tiktokRouteSource.includes("'purchasedEffects.effectId': { $ne: effectId }"));
 assert.ok(tiktokRouteSource.includes('owned: privileged || !product || purchasedIds.has(String(product._id))'));
 assert.ok(designerSource.includes('const isOwned = Boolean(t.isPurchased);'));
 assert.ok(!designerSource.includes('Boolean(t.isPurchased) || price === 0'));
@@ -99,6 +101,7 @@ assert.ok(homeSource.includes('this.cart.reduce((sum, effect) => sum + this.getE
 assert.ok(homeSource.includes('const cartItemPrice = this.getEffectiveCartPrice(effect);'));
 assert.ok(!homeSource.includes('effect.flashSalePrice > 0'));
 assert.ok(publicDesignerSource.includes('const isOwned = Boolean(t.isPurchased);'));
+assert.ok(designerSource.includes('await window.app.preloadMappingLibrary({ force: true });'));
 assert.ok(homeSource.includes('resetAuthForms()'));
 assert.ok(homeSource.includes("this.switchAuthTab('login');"));
 const authTabBody = homeSource.slice(homeSource.indexOf('switchAuthTab(tab, trigger = null)'), homeSource.indexOf('async login()'));

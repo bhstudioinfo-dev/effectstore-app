@@ -845,6 +845,13 @@
                 }
                 await this.loadLayoutsList();
                 await this.loadTemplatesList();
+                // A challenge wheel becomes mappable only after its
+                // user-specific wheel record is created by /use.  Refresh
+                // the mapping catalogue now, rather than requiring a full
+                // app restart or leaving the purchased product invisible.
+                if (data.challengeWheel?._id && typeof window.app?.preloadMappingLibrary === 'function') {
+                    await window.app.preloadMappingLibrary({ force: true });
+                }
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('success', data.reused ? 'Đã mở thiết kế bạn từng sử dụng.' : 'Đã thêm mẫu vào thư viện của bạn.');
                 }

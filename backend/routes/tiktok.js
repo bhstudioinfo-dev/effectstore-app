@@ -1940,6 +1940,18 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, planQuotaLoc
         await syncCloudTemplate(req.params.templateId, bearerToken).catch((error) => {
             console.warn('[templates] Cloud template refresh failed; using local cache:', error.message);
         });
+        // Template ownership is user-specific and the cloud catalog is its
+        // source of truth.  A desktop's local User mirror can be stale just
+        // after checkout, which previously made Store say “owned” while this
+        // endpoint rejected the very same template.
+        const cloudTemplates = await syncCloudTemplateList(bearerToken).catch((error) => {
+            console.warn('[templates] Cloud entitlement refresh failed; using local entitlement:', error.message);
+            return null;
+        });
+        const cloudTemplate = Array.isArray(cloudTemplates)
+            ? cloudTemplates.find((entry) => String(entry?._id || entry?.id || '') === String(req.params.templateId))
+            : null;
+        const cloudOwnershipConfirmed = cloudTemplate?.isPurchased === true;
         const template = await GiftMenuLayout.findOne({ _id: req.params.templateId, isTemplate: true });
         if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
         const user = await User.findById(req.userId);
@@ -1961,6 +1973,18 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, planQuotaLoc
             hasPurchased = true;
         } else {
             hasPurchased = correspondingEffect ? user.purchasedEffects.some(pe => pe.effectId?.toString() === correspondingEffect._id.toString()) : false;
+            // Only mirror an entitlement after the authenticated cloud
+            // catalog explicitly confirms it.  This keeps the local backend
+            // fail-closed when the cloud is unavailable, while repairing the
+            // stale local record that Gift Mapping also relies on.
+            if (!hasPurchased && correspondingEffect && cloudOwnershipConfirmed) {
+                const effectId = correspondingEffect._id;
+                await User.updateOne(
+                    { _id: user._id, 'purchasedEffects.effectId': { $ne: effectId } },
+                    { $push: { purchasedEffects: { effectId, purchasedAt: new Date() } } }
+                );
+                hasPurchased = true;
+            }
         }
 
         // A 0đ Store product is still acquired through cart/checkout. Price
