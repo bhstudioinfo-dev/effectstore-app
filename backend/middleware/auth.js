@@ -8,6 +8,16 @@ const { isAdminUser } = require('../config/security');
 async function resolveUserIdFromToken(token) {
     try {
         const decoded = verifyUserToken(token);
+        // In the managed Desktop product Render is the account authority.
+        // A legacy local JWT can still pass the old local secret after a cloud
+        // password reset, leaving the UI looking logged in while cloud writes
+        // fail with "Invalid or expired token". Verify it centrally before
+        // accepting it locally so stale sessions are forced back to login.
+        if (process.env.EFFECTSTORE_DESKTOP_MANAGED === 'true' && process.env.CLOUD_API_URL) {
+            const userId = await verifyUserWithCloud(token);
+            if (!userId) throw new Error('Cloud account token rejected');
+            return { decoded: { ...decoded, userId }, verifiedByCloud: true };
+        }
         return { decoded, verifiedByCloud: false };
     } catch (localError) {
         // During the HS256 -> RS256 migration, installed clients must never

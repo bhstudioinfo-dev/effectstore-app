@@ -8,6 +8,7 @@ const effectsRouteSource = fs.readFileSync(path.join(__dirname, '../routes/effec
 const effectLibrarySource = fs.readFileSync(path.join(__dirname, '../services/effectLibraryService.js'), 'utf8');
 const paymentServiceSource = fs.readFileSync(path.join(__dirname, '../services/paymentService.js'), 'utf8');
 const authSource = fs.readFileSync(path.join(__dirname, '../middleware/auth.js'), 'utf8');
+const cloudProxySource = fs.readFileSync(path.join(__dirname, '../middleware/cloudProxy.js'), 'utf8');
 const paymentRouteSource = fs.readFileSync(path.join(__dirname, '../routes/payment.js'), 'utf8');
 const tiktokRouteSource = fs.readFileSync(path.join(__dirname, '../routes/tiktok.js'), 'utf8');
 const designerSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/js/gift-menu-designer.js'), 'utf8');
@@ -78,6 +79,9 @@ assert.ok(!homeSource.includes('🎁 Nhận miễn phí'));
 assert.ok(!homeSource.includes('const hasPurchased = effect.isOwned === true'));
 assert.ok(effectLibrarySource.includes('!isCentralCloudRuntime()'));
 assert.ok(authSource.includes('await verifyUserWithCloud(token);'));
+assert.ok(authSource.includes("process.env.EFFECTSTORE_DESKTOP_MANAGED === 'true'"));
+assert.ok(cloudProxySource.includes('const publicCatalogRequest = req.method === \'GET\''));
+assert.ok(cloudProxySource.includes('delete anonymousHeaders.authorization;'));
 assert.ok(!authSource.includes('user = new User({'));
 assert.ok(paymentRouteSource.includes("await User.findById(req.userId).select('purchasedEffects isActive')"));
 assert.ok(!paymentRouteSource.includes('const user = req.user ||'));

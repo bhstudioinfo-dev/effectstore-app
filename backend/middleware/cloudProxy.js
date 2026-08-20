@@ -65,9 +65,24 @@ function proxyToCloud(req, res, next) {
         duplex: isRawStreamBody ? 'half' : undefined,
         signal: controller.signal
     })
-        .then(async (cloudRes) => {
+        .then(async (initialCloudRes) => {
             clearTimeout(timeout);
-            const contentType = cloudRes.headers.get('content-type') || '';
+            let cloudRes = initialCloudRes;
+            let contentType = cloudRes.headers.get('content-type') || '';
+            const publicCatalogRequest = req.method === 'GET' && /^\/api\/(?:effects(?:\/|$)|banner$)/.test(req.path);
+            // A public catalogue must not disappear merely because a cached
+            // account token expired. Retry those read-only endpoints without
+            // credentials; protected writes still fail closed and require a
+            // proper sign-in.
+            if (!cloudRes.ok && publicCatalogRequest && headers.authorization) {
+                const anonymousHeaders = { ...headers };
+                delete anonymousHeaders.authorization;
+                const anonymousRes = await fetch(target, { method: req.method, headers: anonymousHeaders });
+                if (anonymousRes.ok) {
+                    cloudRes = anonymousRes;
+                    contentType = cloudRes.headers.get('content-type') || '';
+                }
+            }
             if ((!cloudRes.ok || !contentType.includes('application/json')) && typeof next === 'function') {
                 return next();
             }
