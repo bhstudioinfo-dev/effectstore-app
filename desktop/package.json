@@ -4,7 +4,7 @@
   "description": "LiveFlow - Premium Livestream Effects",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "set ELECTRON_RUN_AS_NODE=&& electron .",
     "build": "node scripts/build-win.js",
     "build:verify": "node scripts/build-win.js"
   },
