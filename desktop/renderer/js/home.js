@@ -2995,7 +2995,15 @@ class EffectStoreApp {
             .map(String)
             .sort()
             .join(',');
-        const cacheKey = `_hasRendered_${viewName}_${contentSignature}_${usageSignature}_${ownershipSignature}_${ownedProductSignature}_${cartSignature}_${pendingSignature}`;
+        // Template cards are rendered from their layout payload rather than a
+        // thumbnail file. Include that payload in the grid cache key so a
+        // card that initially fell back during a cold cloud start redraws as
+        // soon as the template catalogue arrives.
+        const templateSignature = (this._templatesCache || [])
+            .map(template => [template?._id || template?.id, template?.updatedAt || template?.savedAt || '', (template?.exportedItems || template?.items || []).length].join(':'))
+            .sort()
+            .join('|');
+        const cacheKey = `_hasRendered_${viewName}_${contentSignature}_${templateSignature}_${usageSignature}_${ownershipSignature}_${ownedProductSignature}_${cartSignature}_${pendingSignature}`;
         
         if (!grid[cacheKey]) {
             grid[cacheKey] = true;
@@ -8441,14 +8449,16 @@ if (document.readyState === 'loading') {
     bootstrapApp();
 }
 
-// Watchdog: Ensure loading splash never hangs forever
+// A cloud service on a free/cold instance can take longer than the old fixed
+// five-second watchdog. Never reveal an empty Store while its authoritative
+// catalogue is still loading; genuine failures are handled by init() through
+// showBootstrapFailure(), which exposes the retry button.
 setTimeout(() => {
     const overlay = document.getElementById('app-loading-overlay');
     const retryBtn = document.getElementById('app-loading-retry');
     if (overlay && overlay.style.display !== 'none' && (!retryBtn || retryBtn.style.display !== 'block')) {
-        console.warn('Loading overlay watchdog timeout reached. Forcing dismissal.');
-        overlay.style.opacity = '0';
-        setTimeout(() => { overlay.style.display = 'none'; }, 300);
+        console.warn('Loading overlay is still synchronizing; keeping it visible.');
+        window.app?.updateAppLoadingProgress?.('☁️ Đang đánh thức dữ liệu cloud, vui lòng chờ...', 65);
     }
 }, 5000);
 
