@@ -54,6 +54,7 @@ assert.ok(homeSource.includes('await this.loadEffectsForMapping()'));
 assert.ok(homeSource.includes('await Promise.allSettled(tasks);'));
 assert.ok(homeSource.includes("effect.category !== 'menu_template' && effect.isChallengeWheel !== true"));
 assert.ok(homeSource.includes("effect.isChallengeWheel || effect.category === 'menu_template'"));
+assert.ok(homeSource.includes("Match the Store's real wheel preview"));
 assert.ok(homeSource.includes('this.showBootstrapFailure(err.message'));
 assert.ok(homeSource.includes("accountStorageKey('es_cache_owned_effects')"));
 assert.ok(homeSource.includes("accountStorageKey('es_pending_payments')"));

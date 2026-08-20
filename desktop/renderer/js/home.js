@@ -6643,7 +6643,22 @@ class EffectStoreApp {
                         const videoWithFrame = videoUrl ? (videoUrl.includes('#') ? videoUrl : `${videoUrl}#t=0.001`) : '';
                         
                         if (isChallengeWheel) {
-                            previewHTML = '<span style="font-size:46px;filter:drop-shadow(0 0 10px rgba(245,158,11,.65));">🎡</span>';
+                            // Match the Store's real wheel preview instead of
+                            // falling back to an emoji. A wheel is a template,
+                            // so it must never borrow a video's thumbnail.
+                            previewHTML = `
+                                <div style="position:relative;width:100%;height:100%;background:radial-gradient(circle at center,#1e1b4b 0%,#090d16 80%);display:flex;align-items:center;justify-content:center;padding:10px;">
+                                    <svg viewBox="0 0 100 100" style="width:82%;height:82%;filter:drop-shadow(0 0 10px rgba(99,102,241,.5));">
+                                        <circle cx="50" cy="50" r="48" fill="#18181b" stroke="#f59e0b" stroke-width="3" />
+                                        <path d="M 50 50 L 50 4 A 46 46 0 0 1 96 50 Z" fill="#ef4444" />
+                                        <path d="M 50 50 L 96 50 A 46 46 0 0 1 50 96 Z" fill="#0284c7" />
+                                        <path d="M 50 50 L 50 96 A 46 46 0 0 1 4 50 Z" fill="#eab308" />
+                                        <path d="M 50 50 L 4 50 A 46 46 0 0 1 50 4 Z" fill="#10b981" />
+                                        <circle cx="50" cy="50" r="16" fill="#1e1b4b" stroke="#fff" stroke-width="2" />
+                                        <text x="50" y="54" font-size="10" font-weight="900" fill="#fff" text-anchor="middle">SPIN</text>
+                                        <polygon points="50,0 44,14 56,14" fill="#fbbf24" stroke="#78350f" stroke-width="1" />
+                                    </svg>
+                                </div>`;
                         } else if (effectiveThumb && videoWithFrame) {
                             previewHTML = `
                                 <img src="${effectiveThumb}" class="mapping-thumb-img" onerror="this.style.display='none'; const v=this.nextElementSibling; if(v) { v.style.opacity='1'; }">
