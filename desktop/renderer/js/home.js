@@ -312,9 +312,10 @@ class EffectStoreApp {
         this.updateAppLoadingProgress('🖼️ Đang tải trước hình ảnh sản phẩm...', 76);
         await this.preloadStoreVisualAssets();
 
-        // Finish every view's data work behind the launch overlay. Otherwise
-        // the app appears ready, then each tab reloads and changes underneath
-        // the user after navigation.
+        // Preload the data used by the first two working views.  The visual
+        // designer has its own, much larger Goal Board data set and must load
+        // it only when that view is opened.  Fetching it here made every app
+        // launch wait for unrelated cloud endpoints (and their cold starts).
         this.updateAppLoadingProgress('🎁 Đang chuẩn bị thư viện và gán hiệu ứng...', 86);
         const tasks = [];
         if (typeof this.loadGifts === 'function') tasks.push(this.loadGifts());
@@ -323,10 +324,6 @@ class EffectStoreApp {
         if (typeof this.loadSoundLibrary === 'function') tasks.push(this.loadSoundLibrary());
         if (typeof this.loadAiAssistantConfig === 'function') tasks.push(this.loadAiAssistantConfig());
         if (typeof this.loadSettings === 'function') tasks.push(this.loadSettings());
-        if (typeof this.getTemplateLayout === 'function') tasks.push(this.getTemplateLayout('preload'));
-        if (window.giftMenuDesigner && typeof window.giftMenuDesigner.loadDataIfNeeded === 'function') {
-            tasks.push(window.giftMenuDesigner.loadDataIfNeeded());
-        }
         if (isAdminUser) {
             if (typeof this.loadAdminDashboard === 'function') tasks.push(this.loadAdminDashboard());
             if (typeof this.loadAdminEffectAcquisitions === 'function') tasks.push(this.loadAdminEffectAcquisitions());
@@ -3127,7 +3124,7 @@ class EffectStoreApp {
                 if (isOwned) {
                     btnClass += ' btn-owned';
                     if (effect.category === 'menu_template') {
-                        btnAction = `app.useMenuTemplateFromStore('${effect.fileUrl}')`;
+                        btnAction = `app.useMenuTemplateFromStore('${effectId}', '${effect.fileUrl || ''}')`;
                         btnText = '🛠️ Mở thiết kế';
                     } else {
                         btnAction = `app.triggerEffect('${effectId}')`;
@@ -3507,7 +3504,7 @@ class EffectStoreApp {
             if (effect.category === 'menu_template') {
                 btnAddCart.innerHTML = '🛠️ Mở thiết kế';
                 btnAddCart.className = 'btn-add-cart btn-owned';
-                btnAddCart.onclick = () => { this.closeEffectDetailModal(); this.useMenuTemplateFromStore(effect.fileUrl); };
+                btnAddCart.onclick = () => { this.closeEffectDetailModal(); this.useMenuTemplateFromStore(effectId, effect.fileUrl); };
             } else {
                 btnAddCart.innerHTML = '▶ Xem thử trên OBS';
                 btnAddCart.className = 'btn-add-cart btn-owned';
@@ -3543,8 +3540,21 @@ class EffectStoreApp {
         }
     }
 
-    async useMenuTemplateFromStore(templateId) {
+    async useMenuTemplateFromStore(productOrTemplateId, explicitTemplateId = '') {
         try {
+            const isResourceId = (value) => /^[a-f\d]{24}$/i.test(String(value || '').trim());
+            const product = (this.storeEffects || []).find((effect) =>
+                String(effect?._id || effect?.id || '') === String(productOrTemplateId || '')
+            );
+            // Old rendered cards only carried the template id.  New cards
+            // carry both IDs, so resolve from the canonical Store product
+            // before navigating rather than ever sending /undefined/use.
+            const templateId = [explicitTemplateId, product?.fileUrl, productOrTemplateId]
+                .map(value => String(value || '').trim())
+                .find(isResourceId);
+            if (!templateId) {
+                throw new Error('Mẫu thiết kế này chưa đồng bộ xong. Vui lòng tải lại Cửa hàng.');
+            }
             this.switchView('gift-menu-designer');
             const tryOpen = async (retries = 5) => {
                 if (window.giftMenuDesigner && typeof window.giftMenuDesigner.buyOrUseTemplateFromSidebar === 'function') {

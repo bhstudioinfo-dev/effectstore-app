@@ -781,14 +781,25 @@
         }
 
         async buyOrUseTemplateFromSidebar(templateId) {
-            const goalTemplateResult = await this.tryOpenPurchasedGoalTemplate(templateId);
-            if (goalTemplateResult) return goalTemplateResult;
+            const templateKey = String(templateId || '').trim();
+            if (!/^[a-f\d]{24}$/i.test(templateKey)) {
+                window.app?.showNotification?.('error', 'Mẫu thiết kế chưa hợp lệ hoặc chưa đồng bộ xong.');
+                return { success: false };
+            }
+
+            // A Store menu template and a Goal Board template use different
+            // APIs.  Always resolve the Store template first; attempting the
+            // Goal Board route here caused cold-start delays and, on missing
+            // data, requests to /undefined/use.
+            const template = (this.serverTemplates || []).find((item) => String(item._id) === templateKey);
+            if (!template) {
+                const goalTemplateResult = await this.tryOpenPurchasedGoalTemplate(templateKey);
+                if (goalTemplateResult) return goalTemplateResult;
+            }
 
             if (!this._usingTemplateIds) this._usingTemplateIds = new Set();
-            const templateKey = String(templateId);
             if (this._usingTemplateIds.has(templateKey)) return;
 
-            const template = (this.serverTemplates || []).find((item) => String(item._id) === String(templateId));
             if (template && Number(template.price || 0) > 0 && !template.isPurchased) {
                 if (window.app && typeof window.app.buyMenuTemplate === 'function') {
                     window.app.buyMenuTemplate(templateId);
@@ -817,15 +828,22 @@
                     if (this.handlePlanLimit(data, 'templates')) return;
                     throw new Error(data.error || `HTTP ${res.status}`);
                 }
+                await this.loadLayout(data.layout);
                 if (data.challengeWheel?._id) {
-                    const wheelItem = this.items.find((entry) => entry.type === 'challenge-wheel');
-                    if (wheelItem) {
-                        wheelItem.challengeWheelId = String(data.challengeWheel._id);
-                        await this.saveLayout(false, false);
-                    }
+                    // The API returns the canonical wheel ID.  Bind it after
+                    // loading the layout, otherwise loadLayout overwrites the
+                    // link with a stale ID from a previous template version.
+                    const wheelId = String(data.challengeWheel._id);
+                    let changed = false;
+                    this.items.forEach((entry) => {
+                        if (entry?.type === 'challenge-wheel' && entry.challengeWheelId !== wheelId) {
+                            entry.challengeWheelId = wheelId;
+                            changed = true;
+                        }
+                    });
+                    if (changed) await this.saveLayout(false, false);
                 }
                 await this.loadLayoutsList();
-                await this.loadLayout(data.layout);
                 await this.loadTemplatesList();
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('success', data.reused ? 'Đã mở thiết kế bạn từng sử dụng.' : 'Đã thêm mẫu vào thư viện của bạn.');

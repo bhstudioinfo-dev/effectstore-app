@@ -1943,6 +1943,26 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, planQuotaLoc
         };
         let linkedLayout = await GiftMenuLayout.findOne(templateLayoutFilter).sort({ isActive: -1, updatedAt: -1 });
 
+        // Older desktop builds saved challenge-wheel layouts against a
+        // transient template ID.  Keep the user's edited segments/layout, but
+        // relink that one legacy layout to the canonical Store template before
+        // performing the idempotent upsert below.  This prevents a deleted
+        // wheel ID from reaching Gift Mapping or OBS.
+        if (!linkedLayout && template.productType === 'challenge-wheel') {
+            const legacyLayout = await GiftMenuLayout.findOne({
+                userId: req.userId,
+                isTemplate: false,
+                name: template.name,
+                'items.type': 'challenge-wheel'
+            }).sort({ isActive: -1, updatedAt: -1 });
+            if (legacyLayout) {
+                legacyLayout.parentTemplateId = template._id;
+                legacyLayout.isActive = true;
+                await legacyLayout.save();
+                linkedLayout = legacyLayout;
+            }
+        }
+
         if (!linkedLayout && Number.isFinite(entitlements.layouts)) {
             const layoutCount = await GiftMenuLayout.countDocuments({ userId: req.userId, isTemplate: false });
             if (layoutCount >= entitlements.layouts) {
