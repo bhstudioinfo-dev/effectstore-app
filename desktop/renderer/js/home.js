@@ -303,11 +303,14 @@ class EffectStoreApp {
         this.renderEffects();
         this.renderControlDeck();
         this.syncControlDeckToRemote();
+        this.updateAppLoadingProgress('🖼️ Đang tải trước hình ảnh sản phẩm...', 76);
         await this.preloadStoreVisualAssets();
 
-        // Heavy auxiliary tasks run purely in the background without holding up the user
+        // Finish every view's data work behind the launch overlay. Otherwise
+        // the app appears ready, then each tab reloads and changes underneath
+        // the user after navigation.
+        this.updateAppLoadingProgress('🎁 Đang chuẩn bị thư viện và gán hiệu ứng...', 86);
         const tasks = [];
-        if (typeof this.loadPersonalEffects === 'function') tasks.push(this.loadPersonalEffects());
         if (typeof this.loadGifts === 'function') tasks.push(this.loadGifts());
         if (typeof this.loadMappings === 'function') tasks.push(this.loadMappings());
         if (typeof this.preloadMappingLibrary === 'function') tasks.push(this.preloadMappingLibrary());
@@ -322,7 +325,8 @@ class EffectStoreApp {
             if (typeof this.loadAdminDashboard === 'function') tasks.push(this.loadAdminDashboard());
             if (typeof this.loadAdminEffectAcquisitions === 'function') tasks.push(this.loadAdminEffectAcquisitions());
         }
-        Promise.allSettled(tasks).catch(() => {});
+        await Promise.allSettled(tasks);
+        this.updateAppLoadingProgress('✅ Hoàn tất đồng bộ dữ liệu...', 96);
     }
 
     async preloadStoreVisualAssets() {
@@ -6561,7 +6565,7 @@ class EffectStoreApp {
             const list = Array.isArray(effects) && effects.length > 0 ? effects : (this.ownedEffects || []);
             list.forEach(effect => {
                 const effectId = String(effect._id || effect.id || '').trim();
-                if (!effectId || effect.isCustom) return;
+                if (!effectId || effect.isCustom || effect.isChallengeWheel || effect.category === 'menu_template') return;
                 fetch(`${this.API_URL}/api/stream/effect/${encodeURIComponent(effectId)}?authToken=${encodeURIComponent(token)}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 }).catch(() => {});
@@ -6586,9 +6590,14 @@ class EffectStoreApp {
                 );
             }
             const data = await res.json().catch(() => ({ success: true, effects: this.storeEffects || [] }));
-            const displayEffects = (data && data.success !== false && Array.isArray(data.effects) && data.effects.length > 0)
-                ? [...data.effects]
-                : (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0 ? [...this.ownedEffects] : []);
+            const rawEffects = (data && data.success !== false && Array.isArray(data.effects) && data.effects.length > 0)
+                ? data.effects
+                : (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0 ? this.ownedEffects : []);
+            // A menu-template is Store metadata, not a playable video. The
+            // challenge wheel below is the one canonical mapping item.
+            const displayEffects = rawEffects.filter(effect =>
+                effect && effect.category !== 'menu_template' && effect.isChallengeWheel !== true
+            );
             // Mapping must only expose wheels backed by a currently active
             // Store template.  Legacy/orphan records are retained locally for
             // recovery, but must never reappear after their product is deleted.
