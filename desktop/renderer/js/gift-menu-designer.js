@@ -4926,18 +4926,7 @@
                                 </div>
                             `;
                 } else if (t.id === 'tmpl_interactive_gift_jar') {
-                    // Use the same jar artwork as the actual widget. A CSS
-                    // imitation drifts from the canvas appearance at this
-                    // card's very small scale.
-                    previewHTML = `
-                                <div class="gmd-mini-widget" style="position:relative;width:100%;height:100%;overflow:hidden;border-radius:6px;background:radial-gradient(circle at 50% 80%,rgba(250,204,21,.18),transparent 37%),linear-gradient(145deg,#071525,#0a0d19);border:1px solid rgba(45,212,191,.56);display:grid;place-items:center;box-sizing:border-box;">
-                                    <div style="position:absolute;top:5px;left:0;right:0;text-align:center;font-size:6px;font-weight:900;color:#fef3c7;text-shadow:0 0 5px rgba(250,204,21,.65);">HŨ QUÀ TẶNG</div>
-                                    <img src="assets/jars/thum-hu-qua.png" alt="" draggable="false" style="position:absolute;left:50%;top:51%;width:46px;height:57px;object-fit:contain;transform:translate(-50%,-50%);filter:drop-shadow(0 2px 5px rgba(45,212,191,.42));">
-                                    <span style="position:absolute;left:calc(50% - 16px);bottom:10px;font-size:12px;line-height:1;filter:drop-shadow(0 0 3px #facc15);">🪙</span>
-                                    <span style="position:absolute;right:calc(50% - 18px);bottom:12px;font-size:8px;line-height:1;">✨</span>
-                                    <div style="position:absolute;bottom:4px;left:8px;right:8px;height:3px;border-radius:99px;background:rgba(255,255,255,.15);overflow:hidden;"><i style="display:block;width:38%;height:100%;background:linear-gradient(90deg,#facc15,#f97316);"></i></div>
-                                </div>
-                            `;
+                    previewHTML = this.buildGiftJarTemplatePreview(t.layers?.[0] || {}, { compact: true });
                 } else if (t.id === 'tmpl_pk_versus_bar') {
                     previewHTML = `
                                 <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #0f172a 0%, #05070f 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box; position: relative;">
@@ -5112,6 +5101,33 @@
             return w / h;
         }
 
+        // Physics Jar is a live canvas widget, so the shared renderer intentionally
+        // does not instantiate it in catalogue/modal previews. Render a lightweight
+        // static composition instead, using the same supplied jar artwork in both
+        // places. This keeps previewing separate from the live physics simulation.
+        buildGiftJarTemplatePreview(_item = {}, { compact = false } = {}) {
+            const radius = compact ? '6px' : '16px';
+            const titleSize = compact ? '6px' : '17px';
+            const coinSize = compact ? '8px' : '20px';
+            const jarWidth = compact ? '68%' : '62%';
+            const titleTop = compact ? '5px' : '16px';
+            const progressBottom = compact ? '4px' : '14px';
+
+            return `
+                <div class="gmd-gift-jar-preview" style="position:relative;width:100%;height:100%;overflow:hidden;border-radius:${radius};box-sizing:border-box;background:radial-gradient(circle at 50% 75%,rgba(250,204,21,.30),transparent 34%),radial-gradient(circle at 50% 58%,rgba(45,212,191,.15),transparent 52%),linear-gradient(145deg,#061827,#080c18);border:1px solid rgba(45,212,191,.58);">
+                    <div style="position:absolute;z-index:4;top:${titleTop};left:5%;right:5%;text-align:center;font-size:${titleSize};font-weight:900;letter-spacing:.04em;color:#fef3c7;text-shadow:0 0 8px rgba(250,204,21,.78);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏺 HŨ QUÀ TẶNG</div>
+                    <div style="position:absolute;z-index:1;left:50%;bottom:${compact ? '8%' : '10%'};width:${jarWidth};height:${compact ? '75%' : '78%'};transform:translateX(-50%);border-radius:48% 48% 22% 22%;background:radial-gradient(ellipse at 50% 71%,rgba(250,204,21,.70),rgba(249,115,22,.36) 38%,transparent 68%);filter:blur(${compact ? '2px' : '5px'});"></div>
+                    <div style="position:absolute;z-index:2;left:50%;bottom:${compact ? '14%' : '16%'};width:${jarWidth};height:${compact ? '62%' : '66%'};transform:translateX(-50%);overflow:hidden;border-radius:34% 34% 24% 24%;">
+                        <span style="position:absolute;left:18%;bottom:21%;font-size:${coinSize};filter:drop-shadow(0 0 5px #facc15);">🪙</span>
+                        <span style="position:absolute;right:15%;bottom:28%;font-size:${coinSize};filter:drop-shadow(0 0 5px #fb7185);">🎁</span>
+                        <span style="position:absolute;left:42%;bottom:8%;font-size:${coinSize};filter:drop-shadow(0 0 5px #38bdf8);">💎</span>
+                        <span style="position:absolute;right:35%;top:22%;font-size:${compact ? '7px' : '16px'};">✨</span>
+                    </div>
+                    <img src="assets/jars/thum-hu-qua.png" alt="" draggable="false" style="position:absolute;z-index:3;left:50%;bottom:${compact ? '4%' : '6%'};width:${jarWidth};height:${compact ? '80%' : '82%'};object-fit:contain;transform:translateX(-50%);filter:drop-shadow(0 4px 9px rgba(45,212,191,.60));">
+                    <div style="position:absolute;z-index:4;bottom:${progressBottom};left:${compact ? '8px' : '11%'};right:${compact ? '8px' : '11%'};height:${compact ? '3px' : '7px'};border-radius:99px;background:rgba(255,255,255,.16);overflow:hidden;"><i style="display:block;width:58%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#facc15,#f97316,#fb7185);box-shadow:0 0 8px #facc15;"></i></div>
+                </div>`;
+        }
+
         buildTemplatePreviewLayers(template) {
             const layers = Array.isArray(template?.layers) ? template.layers : [];
             if (!layers.length) return '<div style="color:#94a3b8;font-weight:700;">Kh\u00f4ng c\u00f3 d\u1eef li\u1ec7u xem tr\u01b0\u1edbc</div>';
@@ -5133,7 +5149,9 @@
 
             return boxes.map(({ layer, x, y, w, h }, index) => {
                 const previewItem = { ...layer, width: w, height: h, w, h };
-                const rendered = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                const rendered = previewItem.type === 'gift-jar'
+                    ? this.buildGiftJarTemplatePreview(previewItem)
+                    : this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
                     ? this.sharedRenderEngine.renderByType(previewItem, {
                         mode: 'preview',
                         scale: previewScale,
