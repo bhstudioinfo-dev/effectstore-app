@@ -298,7 +298,13 @@ class EffectStoreApp {
         // The loading screen must cover the complete core sync. Releasing it
         // after a fixed delay causes an empty banner/card flash on slower
         // cloud connections and can briefly render stale ownership state.
-        await Promise.allSettled(coreTasks);
+        const coreResults = await Promise.allSettled(coreTasks);
+        // `loadEffects()` returns false when its authoritative catalogue or
+        // template list could not be read. Do not pretend the app is ready in
+        // that case: keep the launch overlay and offer the explicit retry.
+        if (requireCore && coreResults.some(result => result.status === 'rejected' || result.value === false)) {
+            throw new Error('Danh mục cloud chưa sẵn sàng. Vui lòng thử đồng bộ lại.');
+        }
 
         this.renderEffects();
         this.renderControlDeck();
@@ -1517,16 +1523,25 @@ class EffectStoreApp {
             try {
                 const headers = {};
                 if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
-                let templateResponse = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
-                if (templateResponse.status === 401 && this.authToken) {
-                    templateResponse = await this.retryUnauthorized(
-                        templateResponse,
-                        (token) => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers: { Authorization: `Bearer ${token}` } }),
-                        () => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`)
-                    );
+                let templateData = null;
+                for (let attempt = 0; attempt < 3 && !templateData; attempt++) {
+                    let templateResponse = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
+                    if (templateResponse.status === 401 && this.authToken) {
+                        templateResponse = await this.retryUnauthorized(
+                            templateResponse,
+                            (token) => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers: { Authorization: `Bearer ${token}` } }),
+                            () => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`)
+                        );
+                    }
+                    const payload = await templateResponse.json().catch(() => ({}));
+                    if (templateResponse.ok && payload.success && Array.isArray(payload.templates)) {
+                        templateData = payload;
+                        break;
+                    }
+                    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 1200 * (attempt + 1)));
                 }
-                const templateData = await templateResponse.json().catch(() => ({}));
-                if (templateData.success && Array.isArray(templateData.templates)) {
+                if (!templateData) throw new Error('Không thể tải mẫu thiết kế từ cloud.');
+                if (Array.isArray(templateData.templates)) {
                     this._templatesCache = templateData.templates;
                     try {
                         localStorage.setItem('es_cache_templates', JSON.stringify(templateData.templates));
@@ -3853,9 +3868,19 @@ class EffectStoreApp {
         try {
             const template = await this.getTemplateLayout(templateId);
             if (!template) {
-                container.innerHTML = `<span style="font-size:32px;">📋</span>`;
+                // A cold cloud instance can answer the product list before
+                // the heavier template payload. Keep the card in a loading
+                // state and retry instead of replacing a real wheel with the
+                // misleading generic document icon.
+                const attempts = Number(container._templatePreviewAttempts || 0);
+                container.innerHTML = `<span style="font-size:12px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Đang tải preview...</span>`;
+                if (attempts < 6) {
+                    container._templatePreviewAttempts = attempts + 1;
+                    setTimeout(() => this.drawTemplatePreview(container, templateId, containerW, containerH), 1500);
+                }
                 return;
             }
+            container._templatePreviewAttempts = 0;
 
             let canvasW = template.canvasSize?.width || 720;
             let canvasH = template.canvasSize?.height || 960;
