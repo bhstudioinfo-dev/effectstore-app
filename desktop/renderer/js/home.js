@@ -6530,6 +6530,31 @@ class EffectStoreApp {
             const displayEffects = (data && data.success !== false && Array.isArray(data.effects) && data.effects.length > 0)
                 ? [...data.effects]
                 : (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0 ? [...this.ownedEffects] : []);
+            // Preserve legacy wheels that predate sourceTemplateId. A missing
+            // sourceTemplateId means "personal/legacy", not "unowned".
+            const seenWheelKeys = new Set();
+            const uniqueWheels = (this.challengeWheels || []).filter((wheel) => {
+                const contentKey = (wheel.segments || []).map((segment) => segment.label).join('|');
+                const key = wheel.sourceTemplateId ? `source:${wheel.sourceTemplateId}` : `content:${wheel.name}|${contentKey}`;
+                if (seenWheelKeys.has(key)) return false;
+                seenWheelKeys.add(key);
+                return true;
+            });
+            const catalogWheelIds = this.challengeWheelTemplateIds instanceof Set
+                ? this.challengeWheelTemplateIds
+                : new Set();
+            const visibleWheels = uniqueWheels.filter((wheel) =>
+                !wheel.sourceTemplateId || catalogWheelIds.has(String(wheel.sourceTemplateId))
+            );
+            displayEffects.push(...visibleWheels.map((wheel) => ({
+                _id: `challenge-wheel:${wheel._id}`,
+                name: wheel.displayName || wheel.name || 'Vòng quay thử thách',
+                icon: '🎡',
+                isChallengeWheel: true,
+                challengeWheelId: String(wheel._id),
+                segments: Array.isArray(wheel.segments) ? wheel.segments : [],
+                presentation: wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {}
+            })));
             this.precacheOwnedEffectsMedia(displayEffects);
 
             const customEffects = displayEffects.filter(effect => effect?.isCustom);
@@ -6561,7 +6586,7 @@ class EffectStoreApp {
                         }
 
                     return `
-                <div class="effect-mapping-item" data-effect-id="${effectId}" data-effect-name="${e.name || ''}" style="${e.isCustom ? 'border-color:rgba(34,197,94,.35);' : ''}">
+                <div class="effect-mapping-item" data-effect-id="${effectId}" data-effect-name="${e.name || ''}" ${e.isChallengeWheel ? `data-wheel-id="${e.challengeWheelId}"` : ''} style="${e.isCustom ? 'border-color:rgba(34,197,94,.35);' : e.isChallengeWheel ? 'border-color:rgba(245,158,11,.55);' : ''}">
                     <div class="effect-mapping-thumb" 
                         onmouseenter="const v=this.querySelector('video'); if(v) { v.muted=true; v.style.opacity='1'; const p=v.play(); if(p!==undefined) p.catch(()=>{}); }" 
                         onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; const img=this.querySelector('.mapping-thumb-img'); if(img && img.style.display!=='none') v.style.opacity='0'; }">
@@ -6596,6 +6621,11 @@ class EffectStoreApp {
                         }
 
                         item.addEventListener('click', () => {
+                            const wheelId = item.getAttribute('data-wheel-id');
+                            if (wheelId) {
+                                this.selectChallengeWheel(wheelId, item.getAttribute('data-effect-name') || 'Vòng quay thử thách', item);
+                                return;
+                            }
                             const effectId = item.getAttribute('data-effect-id');
                             const effectName = item.getAttribute('data-effect-name') || item.querySelector('.effect-mapping-name').textContent.trim();
                             this.selectEffect(effectId, effectName, item);
@@ -7505,7 +7535,7 @@ class EffectStoreApp {
                 ? this.challengeWheelTemplateIds
                 : new Set();
             const mappingWheels = uniqueMappingWheels.filter((wheel) =>
-                wheel.sourceTemplateId && catalogWheelIds.has(String(wheel.sourceTemplateId))
+                !wheel.sourceTemplateId || catalogWheelIds.has(String(wheel.sourceTemplateId))
             );
             const select = document.getElementById('mapping-wheel-id');
             if (select) select.innerHTML = mappingWheels.length

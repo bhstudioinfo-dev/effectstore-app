@@ -1977,7 +1977,7 @@
       const wrapperScaleX = (boardWidth / refW) * scale;
       const wrapperScaleY = (boardHeight / refH) * scale;
 
-      const liveWheel = document.createElement('div');
+      let liveWheel = document.createElement('div');
       liveWheel.className = 'gmd-item gmd-export-item gmd-live-wheel-clone';
       liveWheel.style.position = 'absolute';
       liveWheel.style.left = `${Math.round(offsetX + posX * scale)}px`;
@@ -1989,12 +1989,22 @@
       liveWheel.style.opacity = '1';
 
       let staticWheel = document.querySelector('#overlay-root .gmd-static-challenge-wheel');
-      if (staticWheel) staticWheel.style.visibility = 'hidden';
+      if (staticWheel) {
+        // Reuse the exact element already rendered from the saved OBS layout.
+        // Its geometry is authoritative for live spins; recomputing it here
+        // causes a visible position/scale mismatch with the designer preview.
+        liveWheel = staticWheel.cloneNode(true);
+        liveWheel.classList.remove('gmd-static-challenge-wheel');
+        liveWheel.classList.add('gmd-live-wheel-clone');
+        liveWheel.style.visibility = 'visible';
+        liveWheel.style.opacity = '1';
+        staticWheel.style.visibility = 'hidden';
+      }
 
       const widgetHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
         ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: 1, apiBase: '', escapeText: true, gifts: giftsLibrary })
         : '';
-      liveWheel.innerHTML = `<div class="gmd-visual-scaled-wrapper" style="width:${refW}px;height:${refH}px;transform:scale(${wrapperScaleX},${wrapperScaleY});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">${widgetHTML}</div>`;
+      if (!staticWheel) liveWheel.innerHTML = `<div class="gmd-visual-scaled-wrapper" style="width:${refW}px;height:${refH}px;transform:scale(${wrapperScaleX},${wrapperScaleY});transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none;">${widgetHTML}</div>`;
         const widget = liveWheel.querySelector('.gmd-challenge-wheel-widget');
         // Tìm chính xác đĩa quay tròn chứa conic-gradient
         const disc = widget?.querySelector('div[style*="conic-gradient"], div[style*="border-radius: 50%"], div[style*="border-radius:50%"]') || widget?.querySelector(':scope > div:first-child');

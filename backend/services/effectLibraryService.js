@@ -254,45 +254,6 @@ async function getUserRecord(userId, { forceRefresh = false } = {}) {
             purchasedEffects: [],
             customEffects: []
         };
-        try {
-            const { getCloudSessionToken, getAnyCloudSessionToken } = require('./cloudSessionTokenStore');
-            const cloudToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
-            const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
-            if (cloudToken && cloudApiUrl) {
-                const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 6000);
-                timer.unref?.();
-                try {
-                    const res = await fetch(`${cloudApiUrl}/api/auth/me`, {
-                        headers: { 'Authorization': `Bearer ${cloudToken}` },
-                        signal: controller.signal
-                    });
-                    if (res.ok) {
-                        const data = await res.json().catch(() => ({}));
-                        if (data.success && data.user) {
-                            const { mirrorUserLocally } = require('./localUserMirror');
-                            await mirrorUserLocally(data.user);
-                            user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
-                        }
-                    }
-                } finally {
-                    clearTimeout(timer);
-                }
-            }
-        } catch (_e) {}
-    }
-    if (!user) {
-        user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
-    }
-    if (!user) {
-        user = {
-            _id: String(userId),
-            email: 'user@local',
-            isAdmin: false,
-            subscription: 'free',
-            purchasedEffects: [],
-            customEffects: []
-        };
     }
     return user;
 }
