@@ -4293,7 +4293,8 @@ class EffectStoreApp {
                         _id: id,
                         name: effect.name || effect.effectName || 'Hiệu ứng',
                         thumbUrl: formatThumb(effect.thumbUrl),
-                        icon: effect.icon || '🎬'
+                        icon: effect.icon || '🎬',
+                        duration: Number(effect.duration) > 0 ? Number(effect.duration) : 5
                     };
                 });
 
@@ -4754,7 +4755,8 @@ class EffectStoreApp {
             name: effect.name || effect.effectName || 'Hiệu ứng',
             thumbUrl,
             hotkey: '',
-            volume: 1
+            volume: 1,
+            duration: Number(effect.duration) > 0 ? Number(effect.duration) : 5
         });
         this.closeControlDeckPicker();
         this.saveControlDeckState();

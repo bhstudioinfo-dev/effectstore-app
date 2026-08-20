@@ -24,7 +24,7 @@ async function run() {
                     effect: { visible: 10, slots: [null] },
                     sound: { visible: 10, slots: [] },
                     availableEffects: [
-                        { id: 'effect-1', name: 'Hoa Hồng', thumbUrl: '/thumb.png' },
+                        { id: 'effect-1', name: 'Hoa Hồng', thumbUrl: '/thumb.png', duration: 0.05 },
                         { id: 'wheel-1', name: 'Vòng quay thử thách', type: 'challenge-wheel' }
                     ],
                     availableSounds: []
@@ -72,6 +72,22 @@ async function run() {
         const state = await stateResponse.json();
         assert.strictEqual(state.deck.effect.slots.length, 1);
         assert.strictEqual(state.deck.effect.slots[0].effectId, 'effect-1');
+
+        const triggered = await fetch(`${base}/api/remote/trigger`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-remote-token': token },
+            body: JSON.stringify({ slotId: assigned.slot.id, deckType: 'effect' })
+        });
+        const triggeredData = await triggered.json();
+        assert.strictEqual(triggered.status, 200);
+        assert.ok(triggeredData.durationMs >= 1000);
+
+        const duplicateTrigger = await fetch(`${base}/api/remote/trigger`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-remote-token': token },
+            body: JSON.stringify({ slotId: assigned.slot.id, deckType: 'effect' })
+        });
+        assert.strictEqual(duplicateTrigger.status, 409);
 
         const connectionStatus = await fetch(`${base}/api/remote/connection-status`);
         const connection = await connectionStatus.json();

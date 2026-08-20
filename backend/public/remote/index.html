@@ -67,6 +67,9 @@
         }
         .deck-card.triggering { animation: pulseGlow 0.4s ease; }
         @keyframes pulseGlow { 0% { transform: scale(0.92); box-shadow: 0 0 24px #ec4899; } 100% { transform: scale(1); } }
+        .deck-card.effect-locked { pointer-events: none; cursor: wait; opacity: 0.58; filter: grayscale(0.35); }
+        .deck-card.effect-locked::after { content: '⏳ Đang phát'; position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; border-radius: 20px; color: #fff; background: rgba(8, 11, 27, 0.68); font-size: 12px; font-weight: 800; text-shadow: 0 1px 8px #000; }
+        .deck-card.effect-locked .card-remove { display: none; }
         
         .deck-card.empty-slot {
             background: rgba(10, 16, 29, 0.55);
@@ -220,6 +223,9 @@
         let deckState = { effect: { slots: [], visible: 10 }, sound: { slots: [], visible: 10 }, availableEffects: [], availableSounds: [] };
         let pendingAssignIndex = 0;
         let pendingAssignType = 'effect';
+        let effectTriggerPending = false;
+        let effectLockUntil = 0;
+        let effectUnlockTimer = null;
         const remoteToken = new URLSearchParams(window.location.search).get('token') || '';
 
         function remoteHeaders(extra = {}) {
@@ -269,6 +275,40 @@
             setTimeout(() => toast.classList.remove('show'), 2200);
         }
 
+        function effectLocked() {
+            return effectTriggerPending || Date.now() < effectLockUntil;
+        }
+
+        function renderEffectLock() {
+            const locked = effectLocked();
+            document.querySelectorAll('.deck-card[data-deck-type="effect"].active-slot').forEach(card => {
+                card.classList.toggle('effect-locked', locked);
+                card.setAttribute('aria-disabled', locked ? 'true' : 'false');
+            });
+        }
+
+        function setEffectLock(activeEffect) {
+            const durationMs = Math.max(0, Number(activeEffect?.expiresAt || 0) - Date.now()) || Math.max(0, Number(activeEffect?.durationMs || 0));
+            effectLockUntil = Date.now() + durationMs;
+            if (effectUnlockTimer) clearTimeout(effectUnlockTimer);
+            if (durationMs > 0) {
+                effectUnlockTimer = setTimeout(() => {
+                    effectLockUntil = 0;
+                    effectUnlockTimer = null;
+                    renderEffectLock();
+                    showToast('✅ Hiệu ứng đã kết thúc — bạn có thể bấm tiếp.');
+                }, durationMs + 50);
+            }
+            renderEffectLock();
+        }
+
+        function clearEffectLock() {
+            effectLockUntil = 0;
+            if (effectUnlockTimer) clearTimeout(effectUnlockTimer);
+            effectUnlockTimer = null;
+            renderEffectLock();
+        }
+
         async function fetchDeckState() {
             try {
                 const controller = new AbortController();
@@ -281,6 +321,8 @@
                 const data = await res.json();
                 if (data.success && data.deck) {
                     deckState = data.deck;
+                    if (data.activeEffect?.expiresAt > Date.now()) setEffectLock(data.activeEffect);
+                    else if (!effectTriggerPending && effectLockUntil && effectLockUntil <= Date.now()) clearEffectLock();
                     document.getElementById('conn-status').textContent = '🟢 Đã kết nối PC';
                     renderDeck();
                 }
@@ -349,7 +391,7 @@
                     const slotId = slot.id || `slot-${i}`;
 
                     cardsHTML += `
-                        <div class="deck-card active-slot" onclick="triggerSlot('${slotId}', '${type}', this)">
+                        <div class="deck-card active-slot${effectLocked() ? ' effect-locked' : ''}" data-deck-type="effect" onclick="triggerSlot('${slotId}', '${type}', this)">
                             <button class="card-remove" aria-label="Xóa nút" onclick="event.stopPropagation();removeSlot('${escapeHtml(slotId)}','${type}')">×</button>
                             <span class="card-badge">#${i + 1}</span>
                             ${iconHTML}
@@ -474,6 +516,14 @@
         }
 
         async function triggerSlot(slotId, deckType, cardEl) {
+            if (deckType === 'effect' && effectLocked()) {
+                showToast('⏳ Hiệu ứng đang phát, vui lòng chờ kết thúc.');
+                return;
+            }
+            if (deckType === 'effect') {
+                effectTriggerPending = true;
+                renderEffectLock();
+            }
             if (navigator.vibrate) navigator.vibrate(45);
             if (cardEl) {
                 cardEl.classList.remove('triggering');
@@ -489,11 +539,21 @@
                 });
                 const data = await res.json().catch(() => ({}));
                 if (data.success) {
-                    showToast('⚡ Đã kích hoạt trên PC!');
+                    if (deckType === 'effect') setEffectLock(data.activeEffect || { durationMs: data.durationMs || 5000 });
+                    showToast(deckType === 'effect' ? '⚡ Đã kích hoạt — khóa đến khi hiệu ứng kết thúc.' : '⚡ Đã kích hoạt trên PC!');
+                } else {
+                    if (deckType === 'effect' && data.activeEffect) setEffectLock(data.activeEffect);
+                    showToast(`❌ ${data.error || 'Không thể kích hoạt hiệu ứng'}`);
                 }
             } catch (e) {
                 console.error('Trigger error:', e);
                 showToast('❌ Không gửi được lệnh tới PC');
+                if (deckType === 'effect') clearEffectLock();
+            } finally {
+                if (deckType === 'effect') {
+                    effectTriggerPending = false;
+                    renderEffectLock();
+                }
             }
         }
 

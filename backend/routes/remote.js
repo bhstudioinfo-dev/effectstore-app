@@ -22,6 +22,47 @@ let currentControlDeckState = {
     sound: { slots: [] }
 };
 let deckRevision = 0;
+// One effect player is shared by every remote phone.  Keep this guard on the
+// server as well as in the phone UI so rapid taps (or multiple devices) cannot
+// enqueue duplicate effect commands.
+let activeRemoteEffect = null;
+let activeRemoteEffectTimer = null;
+
+function getEffectDurationMs(value) {
+    const seconds = Number(value);
+    // Most catalogue effects store duration in seconds.  Five seconds is the
+    // established fallback for older deck slots that predate this field.
+    return Math.max(1000, Math.min(120000, Math.round((Number.isFinite(seconds) && seconds > 0 ? seconds : 5) * 1000)));
+}
+
+function clearActiveRemoteEffect() {
+    activeRemoteEffect = null;
+    if (activeRemoteEffectTimer) clearTimeout(activeRemoteEffectTimer);
+    activeRemoteEffectTimer = null;
+}
+
+function getActiveRemoteEffect() {
+    if (activeRemoteEffect && activeRemoteEffect.expiresAt <= Date.now()) clearActiveRemoteEffect();
+    return activeRemoteEffect;
+}
+
+function lockRemoteEffect(slot) {
+    const durationMs = getEffectDurationMs(slot.duration);
+    const token = crypto.randomUUID();
+    activeRemoteEffect = {
+        token,
+        slotId: String(slot.id),
+        name: String(slot.name || 'Hiệu ứng'),
+        durationMs,
+        expiresAt: Date.now() + durationMs
+    };
+    if (activeRemoteEffectTimer) clearTimeout(activeRemoteEffectTimer);
+    // A very small grace period makes the lock cover final video/audio frames.
+    activeRemoteEffectTimer = setTimeout(() => {
+        if (activeRemoteEffect?.token === token) clearActiveRemoteEffect();
+    }, durationMs + 250);
+    return activeRemoteEffect;
+}
 
 function getLocalLanIp() {
     const interfaces = os.networkInterfaces();
@@ -94,7 +135,8 @@ function assignDeckItem(indexValue, deckType, requestedItem) {
             name: item.name || 'Hiệu ứng',
             thumbUrl: (item.thumbUrl || (String(item.id || item._id).startsWith('custom-') ? `/custom-effects/${item.id || item._id}/thumbnail.png` : `/uploads/thumbs/${item.id || item._id}.png`)).replace(/^http:\/\/(127\.0\.0\.1|localhost):8080/i, ''),
             hotkey: '',
-            volume: 1
+            volume: 1,
+            duration: Number(item.duration) > 0 ? Number(item.duration) : 5
         }
         : {
             ...item,
@@ -136,6 +178,9 @@ router.post('/sync-deck', requireLoopback, async (req, res) => {
         const { deck } = req.body || {};
         if (deck && typeof deck === 'object') {
             currentControlDeckState = sanitizeRemoteDeck(deck);
+            const active = getActiveRemoteEffect();
+            const existingSlots = currentControlDeckState.effect?.slots || [];
+            if (active && !existingSlots.some((slot) => String(slot?.id) === active.slotId)) clearActiveRemoteEffect();
             deckRevision += 1;
         }
         res.json({ success: true, message: 'Control deck synced to remote', revision: deckRevision });
@@ -185,7 +230,8 @@ router.get('/deck-state', requireRemoteToken, async (req, res) => {
             success: true,
             deck: currentControlDeckState,
             revision: deckRevision,
-            connectedClients: activeRemoteClients.size
+            connectedClients: activeRemoteClients.size,
+            activeEffect: getActiveRemoteEffect()
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -196,13 +242,32 @@ router.get('/deck-state', requireRemoteToken, async (req, res) => {
 router.post('/trigger', requireRemoteToken, async (req, res) => {
     try {
         const { slotId, deckType, action } = req.body || {};
+        const type = safeDeckType(deckType);
+        if (action !== 'stop_all_sounds' && (!type || !slotId)) {
+            return res.status(400).json({ success: false, error: 'Nút điều khiển không hợp lệ.' });
+        }
+        let activeEffect = null;
+        if (type === 'effect') {
+            const active = getActiveRemoteEffect();
+            if (active) {
+                return res.status(409).json({
+                    success: false,
+                    error: 'Hiệu ứng đang phát. Vui lòng chờ kết thúc rồi bấm tiếp.',
+                    activeEffect: active,
+                    retryAfterMs: Math.max(0, active.expiresAt - Date.now())
+                });
+            }
+            const slot = (currentControlDeckState.effect?.slots || []).find((item) => String(item?.id) === String(slotId));
+            if (!slot) return res.status(404).json({ success: false, error: 'Nút hiệu ứng không còn tồn tại.' });
+            activeEffect = lockRemoteEffect(slot);
+        }
         const broadcastFn = req.app.locals?.broadcastToClients || req.app.get?.('broadcastToClients');
         
         if (typeof broadcastFn === 'function') {
-            broadcastFn('control_deck_trigger', { slotId, deckType, action });
+            broadcastFn('control_deck_trigger', { slotId, deckType: type, action, activeEffect });
         }
         
-        res.json({ success: true, message: 'Triggered from remote', slotId, action });
+        res.json({ success: true, message: 'Triggered from remote', slotId, action, activeEffect, durationMs: activeEffect?.durationMs || 0 });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
