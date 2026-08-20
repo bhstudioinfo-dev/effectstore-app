@@ -164,16 +164,19 @@ class EffectStoreApp {
         if (progress) progress.style.width = `${this._currentLoadingPercent}%`;
         if (percentEl) percentEl.textContent = `${Math.round(this._currentLoadingPercent)}%`;
 
-        // Continuous smooth live ticker so the percentage never freezes or stands still
+        // Do not let an estimated ticker race to 95% while a real cloud
+        // request is still pending. That looked like a frozen app on slower
+        // connections. Actual completed stages are the only thing allowed to
+        // move the loader past 90%.
         if (this._loadingTickerInterval) clearInterval(this._loadingTickerInterval);
-        if (this._currentLoadingPercent < 95) {
+        if (this._currentLoadingPercent < 90) {
             this._loadingTickerInterval = setInterval(() => {
-                if (this._currentLoadingPercent < 95) {
+                if (this._currentLoadingPercent < 90) {
                     this._currentLoadingPercent += 1;
                     if (progress) progress.style.width = `${this._currentLoadingPercent}%`;
                     if (percentEl) percentEl.textContent = `${Math.round(this._currentLoadingPercent)}%`;
                 }
-            }, 110);
+            }, 420);
         }
     }
 
@@ -312,24 +315,24 @@ class EffectStoreApp {
         this.updateAppLoadingProgress('🖼️ Đang tải trước hình ảnh sản phẩm...', 76);
         await this.preloadStoreVisualAssets();
 
-        // Preload the data used by the first two working views.  The visual
-        // designer has its own, much larger Goal Board data set and must load
-        // it only when that view is opened.  Fetching it here made every app
-        // launch wait for unrelated cloud endpoints (and their cold starts).
-        this.updateAppLoadingProgress('🎁 Đang chuẩn bị thư viện và gán hiệu ứng...', 86);
-        const tasks = [];
-        if (typeof this.loadGifts === 'function') tasks.push(this.loadGifts());
-        if (typeof this.loadMappings === 'function') tasks.push(this.loadMappings());
-        if (typeof this.preloadMappingLibrary === 'function') tasks.push(this.preloadMappingLibrary());
-        if (typeof this.loadSoundLibrary === 'function') tasks.push(this.loadSoundLibrary());
-        if (typeof this.loadAiAssistantConfig === 'function') tasks.push(this.loadAiAssistantConfig());
-        if (typeof this.loadSettings === 'function') tasks.push(this.loadSettings());
+        // The Store/owned catalogue is now ready to show. Warm the rest in
+        // the background: these are secondary views and must not hold the
+        // launch screen hostage when a cloud endpoint is cold.
+        this.updateAppLoadingProgress('🚀 Đang mở LiveFlow...', 96);
+        const deferredTasks = [];
+        if (typeof this.loadGifts === 'function') deferredTasks.push(this.loadGifts());
+        if (typeof this.loadMappings === 'function') deferredTasks.push(this.loadMappings());
+        if (typeof this.preloadMappingLibrary === 'function') deferredTasks.push(this.preloadMappingLibrary());
+        if (typeof this.loadSoundLibrary === 'function') deferredTasks.push(this.loadSoundLibrary());
+        if (typeof this.loadAiAssistantConfig === 'function') deferredTasks.push(this.loadAiAssistantConfig());
+        if (typeof this.loadSettings === 'function') deferredTasks.push(this.loadSettings());
         if (isAdminUser) {
-            if (typeof this.loadAdminDashboard === 'function') tasks.push(this.loadAdminDashboard());
-            if (typeof this.loadAdminEffectAcquisitions === 'function') tasks.push(this.loadAdminEffectAcquisitions());
+            if (typeof this.loadAdminDashboard === 'function') deferredTasks.push(this.loadAdminDashboard());
+            if (typeof this.loadAdminEffectAcquisitions === 'function') deferredTasks.push(this.loadAdminEffectAcquisitions());
         }
-        await Promise.allSettled(tasks);
-        this.updateAppLoadingProgress('✅ Hoàn tất đồng bộ dữ liệu...', 96);
+        void Promise.allSettled(deferredTasks).then(() => {
+            console.log('Deferred libraries ready.');
+        });
     }
 
     async preloadStoreVisualAssets() {
@@ -362,7 +365,12 @@ class EffectStoreApp {
             if (img.complete) img.onload();
         });
 
-        await Promise.all([...urls].map(loadImage));
+        // Product art continues loading naturally in its <img> elements. Do
+        // not make a slow/missing thumbnail postpone the whole application.
+        await Promise.race([
+            Promise.all([...urls].map(loadImage)),
+            new Promise(resolve => setTimeout(resolve, 2800))
+        ]);
     }
     async init() {
         try {
