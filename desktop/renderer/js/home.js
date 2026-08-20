@@ -318,7 +318,7 @@ class EffectStoreApp {
         this.renderEffects();
         this.renderControlDeck();
         this.syncControlDeckToRemote();
-        this.updateAppLoadingProgress('🖼️ Đang tải trước hình ảnh sản phẩm...', 76);
+        this.updateAppLoadingProgress('🖼️ Đang tải trước hình ảnh và preview hiệu ứng...', 76);
         await this.preloadStoreVisualAssets();
 
         // The Store/owned catalogue is now ready to show. Warm the rest in
@@ -342,12 +342,22 @@ class EffectStoreApp {
     }
 
     async preloadStoreVisualAssets() {
-        const urls = new Set();
-        if (this.bannerUrl) urls.add(this.bannerUrl);
+        const imageUrls = new Set();
+        const videoUrls = new Set();
+        if (this.bannerUrl) imageUrls.add(this.bannerUrl);
         (this.storeEffects || []).forEach(effect => {
-            if (!effect || typeof effect !== 'object' || !effect.thumbUrl) return;
-            const url = this.resolveCatalogMediaUrl(effect.thumbUrl);
-            if (url) urls.add(url);
+            if (!effect || typeof effect !== 'object') return;
+            if (effect.thumbUrl) {
+                const url = this.resolveCatalogMediaUrl(effect.thumbUrl);
+                if (url) imageUrls.add(url);
+            }
+            // The Store only starts a video request on hover by default.  That
+            // makes the first hover feel broken, especially for Flash Sale.
+            // Warm each actual video before releasing the splash screen.
+            const effectId = effect._id || effect.id;
+            const isPlayableVideo = effectId && effect.category !== 'menu_template' &&
+                !effect.isChallengeWheel && !effect.isWheel && !effect.isWidget && !effect.isTemplate;
+            if (isPlayableVideo) videoUrls.add(`${this.API_URL}/api/stream/effect/${effectId}`);
         });
 
         const loadImage = (url) => new Promise(resolve => {
@@ -371,12 +381,45 @@ class EffectStoreApp {
             if (img.complete) img.onload();
         });
 
-        // Product art continues loading naturally in its <img> elements. Do
-        // not make a slow/missing thumbnail postpone the whole application.
-        await Promise.race([
-            Promise.all([...urls].map(loadImage)),
-            new Promise(resolve => setTimeout(resolve, 2800))
-        ]);
+        const preloadVideo = (url) => new Promise(resolve => {
+            const video = document.createElement('video');
+            video.muted = true;
+            video.playsInline = true;
+            video.preload = 'auto';
+            let settled = false;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                // Retain the warm media element: Electron otherwise may evict
+                // the just-fetched video before the card's hover element uses it.
+                this._preloadedPreviewVideos = this._preloadedPreviewVideos || [];
+                this._preloadedPreviewVideos.push(video);
+                resolve();
+            };
+            const timer = setTimeout(finish, 12000);
+            video.oncanplay = finish;
+            video.onerror = finish;
+            video.src = url;
+            video.load();
+        });
+
+        const tasks = [
+            ...[...imageUrls].map(url => ({ kind: 'image', url, load: () => loadImage(url) })),
+            ...[...videoUrls].map(url => ({ kind: 'video', url, load: () => preloadVideo(url) }))
+        ];
+        if (!tasks.length) return;
+
+        let completed = 0;
+        const updateProgress = () => {
+            completed += 1;
+            const progress = Math.min(95, 76 + Math.round((completed / tasks.length) * 19));
+            this.updateAppLoadingProgress(`🎞️ Đang chuẩn bị preview hiệu ứng (${completed}/${tasks.length})...`, progress);
+        };
+        // Individual timeouts above keep one corrupt/missing file from holding
+        // the app forever, while every valid thumbnail and video is ready
+        // before the Store becomes interactive.
+        await Promise.all(tasks.map(task => task.load().finally(updateProgress)));
     }
     async init() {
         try {
