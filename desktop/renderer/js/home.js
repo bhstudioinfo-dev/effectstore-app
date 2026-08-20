@@ -164,15 +164,21 @@ class EffectStoreApp {
         if (progress) progress.style.width = `${this._currentLoadingPercent}%`;
         if (percentEl) percentEl.textContent = `${Math.round(this._currentLoadingPercent)}%`;
 
-        // Do not let an estimated ticker race to 95% while a real cloud
-        // request is still pending. That looked like a frozen app on slower
-        // connections. Actual completed stages are the only thing allowed to
-        // move the loader past 90%.
+        // Keep the waiting state visibly alive while a cloud request is
+        // pending.  The previous hard 90% ceiling was truthful, but made a
+        // cold cloud look like a frozen application.  This is deliberately a
+        // slow *estimated* advance only: it never reaches completion (95% is
+        // the ceiling), and 100% remains reserved for a completed core sync.
         if (this._loadingTickerInterval) clearInterval(this._loadingTickerInterval);
-        if (this._currentLoadingPercent < 90) {
+        if (this._currentLoadingPercent < 95) {
             this._loadingTickerInterval = setInterval(() => {
-                if (this._currentLoadingPercent < 90) {
-                    this._currentLoadingPercent += 1;
+                if (this._currentLoadingPercent < 95) {
+                    const increment = this._currentLoadingPercent < 80
+                        ? 0.8
+                        : this._currentLoadingPercent < 90
+                            ? 0.45
+                            : 0.2;
+                    this._currentLoadingPercent = Math.min(95, this._currentLoadingPercent + increment);
                     if (progress) progress.style.width = `${this._currentLoadingPercent}%`;
                     if (percentEl) percentEl.textContent = `${Math.round(this._currentLoadingPercent)}%`;
                 }
