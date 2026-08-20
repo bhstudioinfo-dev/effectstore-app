@@ -909,8 +909,11 @@ body[data-current-view="gift-mapping"] .contact-card { display:none; }
     object-fit: cover; border-radius: 16px 16px 0 0;
     opacity: 0; transition: opacity 0.25s ease; pointer-events: none;
 }
-.effect-thumb-container:hover .effect-thumb-img { opacity: 0; }
-.effect-thumb-container:hover .effect-video:not([data-error="true"]) { opacity: 1; }
+/* The thumbnail stays visible until JavaScript receives the video's `playing`
+   event.  This avoids a black/static-looking Flash Sale card while its stream
+   is still buffering. */
+.effect-thumb-container.is-previewing .effect-thumb-img { opacity: 0; }
+.effect-thumb-container.is-previewing .effect-video:not([data-error="true"]) { opacity: 1; }
 
 /* ===== 8. STEPS SECTION ===== */
 .steps-section {

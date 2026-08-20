@@ -2922,6 +2922,7 @@ class EffectStoreApp {
         videoEl.setAttribute('data-error', 'true');
         const parent = videoEl.parentElement;
         if (parent) {
+            parent.classList.remove('is-previewing');
             const img = parent.querySelector('.effect-thumb-img');
             if (img && img.style.display !== 'none') img.style.opacity = '1';
         }
@@ -3185,18 +3186,14 @@ class EffectStoreApp {
                             `;
                 } else if (thumbUrl) {
                     previewHTML = `
-                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')"
-                                    onmouseenter="const v=this.querySelector('video'); if(v && v.getAttribute('data-error')!=='true') { v.play().catch(e=>{}); }" 
-                                    onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
+                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')">
                                     <img src="${thumbUrl}" class="effect-thumb-img" onerror="app.handleThumbError(this)">
                                     ${effectiveVideo ? `<video src="${effectiveVideo}" class="effect-video" muted loop playsinline preload="metadata" onerror="app.handlePreviewError(this)"></video>` : ''}
                                 </div>
                             `;
                 } else if (effectiveVideo) {
                     previewHTML = `
-                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')"
-                                    onmouseenter="const v=this.querySelector('video'); if(v && v.getAttribute('data-error')!=='true') { v.play().catch(e=>{}); }" 
-                                    onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; }">
+                                <div class="effect-thumb-container" onclick="app.showEffectDetail('${effectId}')">
                                     <video src="${effectiveVideo}" class="effect-video" style="opacity:1;" muted loop playsinline preload="metadata" onerror="app.handlePreviewError(this)"></video>
                                 </div>
                             `;
@@ -3374,12 +3371,21 @@ class EffectStoreApp {
                 const video = container.querySelector('video');
                 if (video) {
                     container.addEventListener('mouseenter', () => {
+                        if (video.getAttribute('data-error') === 'true') return;
+                        // Do not reveal the video early: Flash Sale cards have
+                        // a large image and used to look blank until the first
+                        // decoded frame was ready.
+                        const revealPreview = () => {
+                            if (container.matches(':hover')) container.classList.add('is-previewing');
+                        };
+                        video.addEventListener('playing', revealPreview, { once: true });
                         video.currentTime = 0;
                         video.play().catch(err => {
                             if (err.name !== 'AbortError') console.error('Video play error:', err);
                         });
                     });
                     container.addEventListener('mouseleave', () => {
+                        container.classList.remove('is-previewing');
                         video.pause();
                         video.currentTime = 0;
                     });
