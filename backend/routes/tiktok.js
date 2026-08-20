@@ -284,6 +284,7 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
             const templates = await GiftMenuLayout.find({
                 userId: req.userId,
                 isTemplate: true,
+                isActive: true,
                 $or: [
                     { productType: 'challenge-wheel' },
                     { 'items.type': 'challenge-wheel' },

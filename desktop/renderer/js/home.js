@@ -6544,8 +6544,9 @@ class EffectStoreApp {
             const displayEffects = (data && data.success !== false && Array.isArray(data.effects) && data.effects.length > 0)
                 ? [...data.effects]
                 : (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0 ? [...this.ownedEffects] : []);
-            // Preserve legacy wheels that predate sourceTemplateId. A missing
-            // sourceTemplateId means "personal/legacy", not "unowned".
+            // Mapping must only expose wheels backed by a currently active
+            // Store template.  Legacy/orphan records are retained locally for
+            // recovery, but must never reappear after their product is deleted.
             const seenWheelKeys = new Set();
             const uniqueWheels = (this.challengeWheels || []).filter((wheel) => {
                 const contentKey = (wheel.segments || []).map((segment) => segment.label).join('|');
@@ -6558,7 +6559,7 @@ class EffectStoreApp {
                 ? this.challengeWheelTemplateIds
                 : new Set();
             const visibleWheels = uniqueWheels.filter((wheel) =>
-                !wheel.sourceTemplateId || catalogWheelIds.has(String(wheel.sourceTemplateId))
+                Boolean(wheel.sourceTemplateId) && catalogWheelIds.has(String(wheel.sourceTemplateId))
             );
             displayEffects.push(...visibleWheels.map((wheel) => ({
                 _id: `challenge-wheel:${wheel._id}`,
@@ -7495,6 +7496,7 @@ class EffectStoreApp {
                 const isBusiness = this.currentUser && ['pro', 'studio'].includes(resolvePlanKey(this.currentUser));
                 const templateByFileUrl = new Map(catalogEffects.filter(e => e.category === 'menu_template' && e.fileUrl).map(e => [String(e.fileUrl), e]));
                 const isUserTemplatePurchased = (template) => {
+                    if (template?.isActive !== true) return false;
                     if (isAdmin || isBusiness) return true;
                     const effect = templateByFileUrl.get(String(template._id));
                     if (effect) {
@@ -7552,7 +7554,7 @@ class EffectStoreApp {
                 ? this.challengeWheelTemplateIds
                 : new Set();
             const mappingWheels = uniqueMappingWheels.filter((wheel) =>
-                !wheel.sourceTemplateId || catalogWheelIds.has(String(wheel.sourceTemplateId))
+                Boolean(wheel.sourceTemplateId) && catalogWheelIds.has(String(wheel.sourceTemplateId))
             );
             const select = document.getElementById('mapping-wheel-id');
             if (select) select.innerHTML = mappingWheels.length
