@@ -6179,6 +6179,12 @@ class EffectStoreApp {
             const bank = data.bankInfo || {};
             const orderPrice = Number(data.amount ?? bank.amount ?? price);
             const formattedPrice = this.formatPrice(orderPrice);
+            const transferDescription = String(bank.description || orderId);
+            const transferDescriptionJson = JSON.stringify(transferDescription).replace(/</g, '\\u003c');
+            const accountNumber = String(bank.accountNumber || '');
+            const accountName = String(bank.accountName || '');
+            const bankName = String(bank.bank || bank.bankCode || '');
+            const escapePaymentHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
             this.showModal(`Thanh toán nâng cấp ${planName}`, `
                         <div style="font-family: 'Inter', sans-serif; max-width: 650px; margin: 0 auto; color: #fff;">
@@ -6206,6 +6212,12 @@ class EffectStoreApp {
                                         </div>
 
                                         <div style="display: flex; flex-direction: column; gap: 15px;">
+                                            <div style="padding:12px;background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.2);border-radius:10px;display:grid;gap:8px;">
+                                                <div style="font-size:11px;color:var(--text-secondary);font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Thông tin chuyển khoản</div>
+                                                <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;"><span style="color:var(--text-secondary);">Ngân hàng</span><b style="color:#93c5fd;">${escapePaymentHtml(bankName)}</b></div>
+                                                <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;"><span style="color:var(--text-secondary);">Số tài khoản</span><span style="display:flex;align-items:center;gap:7px;"><b style="letter-spacing:.06em;">${escapePaymentHtml(accountNumber)}</b><button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(accountNumber).replace(/</g, '\\u003c')});app.showNotification('info','📋 Đã sao chép số tài khoản')" style="border:0;background:transparent;color:#c4b5fd;cursor:pointer;padding:0;"><i class="fas fa-copy"></i></button></span></div>
+                                                <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;"><span style="color:var(--text-secondary);">Chủ tài khoản</span><b style="color:#e9d5ff;text-align:right;">${escapePaymentHtml(accountName)}</b></div>
+                                            </div>
                                             <div>
                                                 <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Số tiền thanh toán</div>
                                                 <div style="font-size: 22px; font-weight: 900; color: #fbbf24;">${formattedPrice}</div>
@@ -6214,8 +6226,8 @@ class EffectStoreApp {
                                             <div>
                                                 <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Nội dung chuyển khoản</div>
                                                 <div style="display: flex; gap: 8px;">
-                                                    <div style="flex: 1; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); padding: 8px 12px; border-radius: 8px; color: #10b981; font-weight: 700; font-family: monospace; font-size: 14px;">${bank.description || data.orderId}</div>
-                                                    <button onclick="navigator.clipboard.writeText('${bank.description || data.orderId}'); app.showNotification('info', '📋 Đã sao chép nội dung')" style="padding: 0 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; cursor: pointer;"><i class="fas fa-copy"></i></button>
+                                                    <div style="flex: 1; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); padding: 8px 12px; border-radius: 8px; color: #10b981; font-weight: 700; font-family: monospace; font-size: 13px; line-height:1.45;">${escapePaymentHtml(transferDescription)}</div>
+                                                    <button onclick="navigator.clipboard.writeText(${transferDescriptionJson}); app.showNotification('info', '📋 Đã sao chép nội dung')" style="padding: 0 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; cursor: pointer;"><i class="fas fa-copy"></i></button>
                                                 </div>
                                             </div>
 

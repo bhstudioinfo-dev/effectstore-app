@@ -40,11 +40,23 @@ function createOrderId() {
     return `DH${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 }
 
-function bankConfiguration(amount, orderId) {
+function transferCustomerName(user) {
+    // A human-readable payment memo is helpful when a customer cannot scan
+    // VietQR. Keep the generated order ID as well: the webhook uses it for
+    // reliable automatic reconciliation.
+    const candidate = String(user?.name || user?.email || 'KHACH HANG')
+        .split('@')[0]
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return (candidate || 'KHACH HANG').slice(0, 48);
+}
+
+function bankConfiguration(amount, orderId, user) {
     const bankCode = process.env.BANK_CODE || 'TCB';
     const accountNumber = process.env.BANK_ACCOUNT_NUMBER || '7698689999';
     const accountName = process.env.BANK_ACCOUNT_NAME || 'HUYNH BAO HUNG';
-    const description = `ES ${orderId}`;
+    const description = `${transferCustomerName(user)} CHUYEN KHOAN ${orderId}`;
     return { bankCode, bank: bankCode, accountNumber, accountName, amount, description };
 }
 
@@ -58,7 +70,7 @@ router.post('/create-qr', authMiddleware, async (req, res) => {
         // authMiddleware intentionally selects a lightweight profile. Orders
         // must read the complete, current ownership list from the database or
         // an already-owned item can be ordered again.
-        const user = await User.findById(req.userId).select('purchasedEffects isActive');
+        const user = await User.findById(req.userId).select('purchasedEffects isActive name email');
         if (!user || user.isActive === false) return res.status(404).json({ success: false, error: 'User not found' });
         const order = await calculateOrder(req.body?.effectIds, user);
         const orderId = createOrderId();
@@ -71,7 +83,7 @@ router.post('/create-qr', authMiddleware, async (req, res) => {
             proofImage: null,
             status: 'created'
         });
-        const bankInfo = bankConfiguration(payment.amount, orderId);
+        const bankInfo = bankConfiguration(payment.amount, orderId, user);
         const qrCode = `https://img.vietqr.io/image/${bankInfo.bankCode}-${bankInfo.accountNumber}-qr_only.png?amount=${payment.amount}&addInfo=${encodeURIComponent(bankInfo.description)}`;
         return res.status(201).json({ success: true, qrCode, orderId, amount: payment.amount, bankInfo });
     } catch (error) {
