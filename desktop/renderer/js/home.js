@@ -6633,6 +6633,17 @@ class EffectStoreApp {
             this.personalEffects = customEffects;
             this.mappingEffects = displayEffects;
 
+            // Use the same shared widget renderer as the known-good 17/8
+            // desktop build. A hand-drawn SVG only resembles a wheel; it
+            // cannot reflect the product's saved colours, labels or skin.
+            if (visibleWheels.length && !document.getElementById('gift-menu-renderer-css')) {
+                const rendererCss = document.createElement('link');
+                rendererCss.id = 'gift-menu-renderer-css';
+                rendererCss.rel = 'stylesheet';
+                rendererCss.href = `${this.API_URL}/gift-menu-renderer.css?v=13`;
+                document.head.appendChild(rendererCss);
+            }
+
             if (displayEffects && displayEffects.length > 0) {
                 const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value);
 
@@ -6646,22 +6657,35 @@ class EffectStoreApp {
                         const videoWithFrame = videoUrl ? (videoUrl.includes('#') ? videoUrl : `${videoUrl}#t=0.001`) : '';
                         
                         if (isChallengeWheel) {
-                            // Match the Store's real wheel preview instead of
-                            // falling back to an emoji. A wheel is a template,
-                            // so it must never borrow a video's thumbnail.
-                            previewHTML = `
-                                <div style="position:relative;width:100%;height:100%;background:radial-gradient(circle at center,#1e1b4b 0%,#090d16 80%);display:flex;align-items:center;justify-content:center;padding:10px;">
-                                    <svg viewBox="0 0 100 100" style="width:82%;height:82%;filter:drop-shadow(0 0 10px rgba(99,102,241,.5));">
-                                        <circle cx="50" cy="50" r="48" fill="#18181b" stroke="#f59e0b" stroke-width="3" />
-                                        <path d="M 50 50 L 50 4 A 46 46 0 0 1 96 50 Z" fill="#ef4444" />
-                                        <path d="M 50 50 L 96 50 A 46 46 0 0 1 50 96 Z" fill="#0284c7" />
-                                        <path d="M 50 50 L 50 96 A 46 46 0 0 1 4 50 Z" fill="#eab308" />
-                                        <path d="M 50 50 L 4 50 A 46 46 0 0 1 50 4 Z" fill="#10b981" />
-                                        <circle cx="50" cy="50" r="16" fill="#1e1b4b" stroke="#fff" stroke-width="2" />
-                                        <text x="50" y="54" font-size="10" font-weight="900" fill="#fff" text-anchor="middle">SPIN</text>
-                                        <polygon points="50,0 44,14 56,14" fill="#fbbf24" stroke="#78350f" stroke-width="1" />
-                                    </svg>
-                                </div>`;
+                            const segments = (e.segments || []).filter(segment => segment && segment.label).slice(0, 8);
+                            const presentation = e.presentation || {};
+                            const savedRenderItem = presentation.renderItem && typeof presentation.renderItem === 'object'
+                                ? presentation.renderItem
+                                : null;
+                            const sharedRenderer = window.MenuDesignerSharedRenderEngine;
+                            if (savedRenderItem && sharedRenderer && typeof sharedRenderer.renderByType === 'function') {
+                                const renderItem = {
+                                    ...savedRenderItem,
+                                    type: 'challenge-wheel',
+                                    segments: segments.length ? segments : savedRenderItem.segments
+                                };
+                                const refW = Math.max(1, Number(renderItem.lockedW || renderItem.w || renderItem.width || presentation.boardWidth) || 720);
+                                const refH = Math.max(1, Number(renderItem.lockedH || renderItem.h || renderItem.height || presentation.boardHeight) || 760);
+                                const previewSize = 128;
+                                const previewScale = Math.min(previewSize / refW, previewSize / refH);
+                                const renderedWheel = sharedRenderer.renderByType(renderItem, {
+                                    mode: 'overlay', scale: 1, apiBase: this.API_URL, escapeText: true
+                                });
+                                previewHTML = `<div style="width:${previewSize}px;height:${previewSize}px;position:relative;overflow:hidden;"><div style="position:absolute;left:50%;top:50%;width:${refW}px;height:${refH}px;transform:translate(-50%,-50%) scale(${previewScale});transform-origin:center;pointer-events:none;">${renderedWheel}</div></div>`;
+                            } else {
+                                // Safe fallback for an older record that does
+                                // not yet contain a saved render snapshot.
+                                const colors = segments.map((segment, index) => segment.color || ['#4c00ff','#ec4899','#f59e0b','#06b6d4','#22c55e'][index % 5]);
+                                const gradient = colors.length > 1
+                                    ? `conic-gradient(${colors.map((color, index) => `${color} ${(index / colors.length) * 100}% ${((index + 1) / colors.length) * 100}%`).join(',')})`
+                                    : 'conic-gradient(#8b5cf6 0 25%,#ec4899 25% 50%,#f59e0b 50% 75%,#06b6d4 75% 100%)';
+                                previewHTML = `<div style="width:128px;height:128px;position:relative;display:grid;place-items:center;"><div style="position:absolute;inset:12px;border-radius:50%;background:${gradient};border:5px solid ${presentation.borderColor || '#d6a84f'};box-shadow:0 0 0 6px #ef2029,0 0 18px #f97316;"><span style="position:absolute;inset:35%;border-radius:50%;display:grid;place-items:center;background:#1d4ed8;border:4px solid #fbbf24;color:#fff;font-size:9px;font-weight:900;">QUAY</span></div><span style="position:absolute;top:0;left:50%;transform:translateX(-50%);color:#fef3c7;font-size:14px;">▼</span></div>`;
+                            }
                         } else if (effectiveThumb && videoWithFrame) {
                             previewHTML = `
                                 <img src="${effectiveThumb}" class="mapping-thumb-img" onerror="this.style.display='none'; const v=this.nextElementSibling; if(v) { v.style.opacity='1'; }">
