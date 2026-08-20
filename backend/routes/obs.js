@@ -22,6 +22,12 @@ const { paths: dataPaths } = require('../config/dataPaths');
 const { isValidResourceId, ownedResourceFilter } = require('../utils/accessControl');
 const { getEntitlements, validateDesignerItems } = require('../config/planEntitlements');
 
+function requireLoopbackDesktop(req, res, next) {
+    const address = String(req.socket?.remoteAddress || '');
+    if (address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1') return next();
+    return res.status(403).json({ success: false, message: 'Endpoint này chỉ dành cho ứng dụng LiveFlow trên PC.' });
+}
+
 async function getObsConnectionConfig(userId) {
     try {
         const settings = userId
@@ -429,7 +435,7 @@ router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
 // a later "Xuất sang OBS" can enable the same source again.  This prevents a
 // shared computer from leaving the previous account's Gift Menu visible while
 // never deleting a customer's OBS configuration.
-router.post('/hide-gift-menu', authMiddleware, async (_req, res) => {
+router.post('/hide-gift-menu', requireLoopbackDesktop, async (_req, res) => {
     try {
         if (!obsService.isConnected()) {
             return res.json({ success: true, hidden: false, reason: 'obs-offline' });

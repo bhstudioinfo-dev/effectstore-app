@@ -471,6 +471,13 @@ class EffectStoreApp {
             // Validate authentication token
             await this.checkAuth().catch(() => {});
 
+            // A user can arrive at the login screen after a prior process
+            // crashed, its token expired, or localStorage was cleared. In all
+            // of those cases there is no bearer token left to clean up the
+            // previous account's OBS menu, so enforce the same safe state at
+            // the unauthenticated launch boundary as well.
+            if (!this.authToken) await this.hideGiftMenuOverlayOnLogout();
+
             this.updateAppLoadingProgress('📦 Đang đồng bộ dữ liệu tài khoản...', 65);
             if (this.currentUser && this.authToken) {
                 this.hydrateAccountCaches();
@@ -1394,13 +1401,13 @@ class EffectStoreApp {
     }
 
     async hideGiftMenuOverlayOnLogout() {
-        if (!this.authToken) return;
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 2500);
         try {
+            const headers = this.authToken ? { 'Authorization': `Bearer ${this.authToken}` } : {};
             const response = await fetch(`${this.API_URL}/api/obs/hide-gift-menu`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${this.authToken}` },
+                headers,
                 signal: controller.signal
             });
             if (!response.ok) {
