@@ -191,10 +191,14 @@ async function startManagedBackend(options) {
         EFFECTSTORE_LEGACY_DATA_DIR: options.legacyDataDirectory || '',
         CLOUD_API_URL: process.env.CLOUD_API_URL || options.cloudApiUrl || '',
         CLOUD_JWT_PUBLIC_KEY: process.env.CLOUD_JWT_PUBLIC_KEY || options.cloudJwtPublicKey || '',
-        R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || '2942b67fe2cf3cb694ca18fb030cccd0',
-        R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || '5f87e981b26633f992a3e491bf43a532',
-        R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY || '8fc607424f25d1685c119c31e221e459d5fe0fda140d3d95f59123b39a64a362',
-        R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || 'liveflow-effects'
+        // Desktop clients never receive object-storage credentials. Catalog and
+        // purchase uploads are proxied through the authenticated cloud API;
+        // keeping provider secrets out of a distributable prevents every
+        // installed copy from becoming a privileged storage client.
+        R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || '',
+        R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || '',
+        R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY || '',
+        R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || ''
     };
     if (!options.launchProcess) childEnvironment.ELECTRON_RUN_AS_NODE = '1';
 

@@ -292,10 +292,13 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
         // mirror can briefly contain a previous/deleted wheel template while
         // the current Store product has already changed.
         const cloudTemplates = await syncCloudTemplateList(bearerToken).catch(() => null);
+        const hasCloudCatalog = Array.isArray(cloudTemplates);
         const cloudTemplateIds = new Set((cloudTemplates || [])
             .filter((template) => template?.isActive === true)
             .map((template) => String(template._id || template.id)));
-        const activeTemplateProductIds = new Set((await Effect.find({
+        // The local Effect collection is only an offline cache. Do not let a
+        // deleted cache entry revive a product after cloud sync succeeds.
+        const activeTemplateProductIds = hasCloudCatalog ? new Set() : new Set((await Effect.find({
             category: 'menu_template',
             isActive: true
         }).select('fileUrl').lean()).map((effect) => String(effect.fileUrl || '')).filter(Boolean));
@@ -316,10 +319,9 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
                     { 'exportedItems.type': 'challenge-wheel' }
                 ]
             }).lean();
-            const templates = rawTemplates.filter((template) =>
-                template.isActive === true
-                || cloudTemplateIds.has(String(template._id))
-                || activeTemplateProductIds.has(String(template._id))
+            const templates = rawTemplates.filter((template) => hasCloudCatalog
+                ? cloudTemplateIds.has(String(template._id))
+                : (template.isActive === true || activeTemplateProductIds.has(String(template._id)))
             );
             for (const template of templates) {
                 const wheelItem = findChallengeWheelItem(template);
@@ -360,7 +362,7 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
             ...cloudTemplateIds,
             ...activeTemplateProductIds
         ]);
-        const hasAuthoritativeCatalog = Array.isArray(cloudTemplates) || publishedSourceIds.size > 0;
+        const hasAuthoritativeCatalog = hasCloudCatalog || publishedSourceIds.size > 0;
         const rawWheels = (await ChallengeWheel.find({ userId: req.userId }).sort({ updatedAt: -1 }).lean())
             // Keep standalone wheels, but never show a wheel tied to an old
             // unpublished Store template alongside the current product. If
@@ -395,6 +397,15 @@ router.post('/challenge-wheels', authMiddleware, async (req, res) => {
         if (!sourceTemplateId && owner?.isAdmin !== true && normalizePlan(owner) !== 'business') {
             return res.status(403).json({ success: false, error: 'Vòng quay chỉ được tạo từ sản phẩm Vòng quay thử thách đã mua.' });
         }
+        let sourceWheelItem = null;
+        if (sourceTemplateId) {
+            const sourceTemplate = await GiftMenuLayout.findOne({ _id: sourceTemplateId, isTemplate: true })
+                .select('items exportedItems').lean();
+            sourceWheelItem = findChallengeWheelItem(sourceTemplate);
+            if (!sourceWheelItem) {
+                return res.status(404).json({ success: false, error: 'Mẫu vòng quay không còn khả dụng.' });
+            }
+        }
         const name = String(req.body.name || '').trim();
         const rawSegments = Array.isArray(req.body.segments) ? req.body.segments : [];
         const segments = rawSegments.map((segment, index) => ({
@@ -414,6 +425,12 @@ router.post('/challenge-wheels', authMiddleware, async (req, res) => {
             noRepeat: Boolean(req.body.noRepeat),
             isActive: true
         };
+        // A wheel copied from a Store template must retain the exported 1080x1920
+        // render item.  Otherwise a later test can fall back to the Designer
+        // stage coordinates and draw only a thin strip in OBS.
+        if (sourceWheelItem) {
+            wheelData.presentation = buildChallengeWheelPresentation(sourceWheelItem, sourceWheelItem);
+        }
         const wheel = sourceTemplateId
             ? await ChallengeWheel.findOneAndUpdate(
                 { userId: req.userId, sourceTemplateId },
@@ -1298,19 +1315,25 @@ router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
             return null;
         });
         const cloudById = new Map((cloudTemplates || []).map((template) => [String(template._id || template.id), template]));
-        const templates = await GiftMenuLayout.find({ isTemplate: true, category: { $ne: 'goal_board' } }).sort({ updatedAt: -1 }).lean();
+        const hasCloudCatalog = Array.isArray(cloudTemplates);
+        const localTemplates = await GiftMenuLayout.find({ isTemplate: true, category: { $ne: 'goal_board' } }).sort({ updatedAt: -1 }).lean();
         // Older published templates were written with GiftMenuLayout.isActive
         // false even though their Store Effect is active.  The Store product
         // is the canonical publication state, so expose it here and let every
         // client (Desktop, Designer and mapping) agree on availability.
-        const activeTemplateProductIds = new Set((await Effect.find({
+        const activeTemplateProductIds = hasCloudCatalog ? new Set() : new Set((await Effect.find({
             category: 'menu_template',
             isActive: true,
-            fileUrl: { $in: templates.map((template) => String(template._id)) }
+            fileUrl: { $in: localTemplates.map((template) => String(template._id)) }
         }).select('fileUrl').lean()).map((effect) => String(effect.fileUrl)));
+        const templates = hasCloudCatalog
+            ? localTemplates.filter((template) => cloudById.has(String(template._id)))
+            : localTemplates;
         const normalizeTemplatePublication = (template) => ({
             ...template,
-            isActive: template.isActive === true || activeTemplateProductIds.has(String(template._id))
+            isActive: hasCloudCatalog
+                ? cloudById.get(String(template._id))?.isActive === true
+                : (template.isActive === true || activeTemplateProductIds.has(String(template._id)))
         });
         const publishedTemplates = templates.map(normalizeTemplatePublication);
         if (!req.userId) {

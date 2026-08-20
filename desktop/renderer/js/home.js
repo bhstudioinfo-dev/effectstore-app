@@ -6664,6 +6664,8 @@ class EffectStoreApp {
                                 : null;
                             const sharedRenderer = window.MenuDesignerSharedRenderEngine;
                             if (savedRenderItem && sharedRenderer && typeof sharedRenderer.renderByType === 'function') {
+                                // Match the Store's real wheel preview by using
+                                // the packaged exported item, not a generic icon.
                                 const renderItem = {
                                     ...savedRenderItem,
                                     type: 'challenge-wheel',

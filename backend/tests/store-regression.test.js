@@ -112,8 +112,9 @@ assert.ok(homeSource.includes(".filter(template => template && template.isActive
 assert.ok(homeSource.includes('const ownedTemplates = this.getOwnedTemplateProducts();'));
 assert.ok(homeSource.includes('this.ownedEffects.length + ownedTemplates.length'));
 assert.ok(homeSource.includes("category: 'menu_template',"));
-assert.ok(tiktokRouteSource.includes('const activeTemplateProductIds = new Set'));
-assert.ok(tiktokRouteSource.includes('isActive: template.isActive === true || activeTemplateProductIds.has(String(template._id))'));
+assert.ok(tiktokRouteSource.includes('const hasCloudCatalog = Array.isArray(cloudTemplates)'));
+assert.ok(tiktokRouteSource.includes('const activeTemplateProductIds = hasCloudCatalog ? new Set()'));
+assert.ok(tiktokRouteSource.includes("cloudById.get(String(template._id))?.isActive === true"));
 assert.ok(tiktokRouteSource.includes('isActive: true,\n            isTemplate: true,'));
 assert.ok(cloudTemplateCatalogSource.includes('isActive: template.isActive === true'));
 
