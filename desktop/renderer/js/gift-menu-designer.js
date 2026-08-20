@@ -5361,6 +5361,22 @@
             const effectiveLayers = alreadyBundle ? (rawLayers[0].children || []) : rawLayers;
             const shouldBundle = effectiveLayers.length > 1 && !effectiveLayers.some((layer) => unbundleableTypes.has(layer.type));
 
+            // The Physics Jar owns one shared Matter.js world and one canvas per
+            // menu. A second jar layer cannot have an independent simulation: it
+            // would appear as an empty selection box while the original jar keeps
+            // rendering. Keep the existing, working jar intact and select it rather
+            // than silently creating a misleading duplicate.
+            if (effectiveLayers.some((layer) => layer.type === 'gift-jar')) {
+                const existingGiftJar = this.items.find((item) => item.type === 'gift-jar' && item.visible !== false);
+                if (existingGiftJar) {
+                    this.setSelection([existingGiftJar.id], existingGiftJar.id);
+                    this.renderCanvas();
+                    this.renderInspector();
+                    window.app?.showNotification?.('info', 'Mỗi menu chỉ dùng một Hũ quà vật lý. Đã chọn Hũ hiện có để tránh tạo layer trống.');
+                    return;
+                }
+            }
+
             effectiveLayers.forEach((layer) => {
                 if (layer.type === 'talent-leaderboard' && layer.talentCompetition) {
                     layer.talentCompetition.showTop3 = false;
