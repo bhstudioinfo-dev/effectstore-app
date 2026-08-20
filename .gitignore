@@ -34,6 +34,8 @@ dist/
 out/
 build/
 app-builds/
+# Named local verification/release folders created by the Desktop packager.
+desktop/dist-*/
 
 # Bundled MongoDB binary (fetched by desktop/scripts/fetch-mongod.js, not
 # committed — ~64MB and easy to re-download on any machine that builds
