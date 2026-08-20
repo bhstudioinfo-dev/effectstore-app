@@ -8802,6 +8802,10 @@
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) },
                     body: JSON.stringify({
+                        // Lets the backend repair a legacy/deleted wheel ID
+                        // against this exact user layout instead of failing
+                        // the first Save after an app upgrade.
+                        layoutId: this.currentLayoutId || undefined,
                         title: item.title,
                         segments: item.segments || [],
                         durationMs: item.durationMs,

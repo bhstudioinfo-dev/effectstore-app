@@ -444,7 +444,56 @@ router.post('/challenge-wheels', authMiddleware, async (req, res) => {
 
 router.put('/challenge-wheels/:id', authMiddleware, async (req, res) => {
     try {
-        const wheel = await ChallengeWheel.findOne({ _id: req.params.id, userId: req.userId });
+        let wheel = await ChallengeWheel.findOne({ _id: req.params.id, userId: req.userId });
+        // Self-heal layouts saved by an older desktop build: their item can
+        // reference a deleted wheel even though the user still owns the
+        // current Store template.  Recover by the layout's name/type, then
+        // permanently write the canonical template and wheel IDs back.
+        if (!wheel && isValidResourceId(req.body?.layoutId)) {
+            const layout = await GiftMenuLayout.findOne({
+                _id: req.body.layoutId,
+                userId: req.userId,
+                isTemplate: false
+            });
+            if (layout) {
+                const sourceTemplate = await GiftMenuLayout.findOne({
+                    isTemplate: true,
+                    isActive: true,
+                    productType: 'challenge-wheel',
+                    name: layout.name
+                }).sort({ updatedAt: -1 });
+                const wheelItem = findChallengeWheelItem(layout) || findChallengeWheelItem(sourceTemplate);
+                if (sourceTemplate && wheelItem) {
+                    wheel = await ChallengeWheel.findOne({
+                        userId: req.userId,
+                        sourceTemplateId: sourceTemplate._id
+                    });
+                    if (!wheel) {
+                        wheel = await ChallengeWheel.create({
+                            userId: req.userId,
+                            sourceTemplateId: sourceTemplate._id,
+                            name: sourceTemplate.name,
+                            title: wheelItem.title || 'VÒNG QUAY THỬ THÁCH',
+                            segments: wheelItem.segments || [],
+                            durationMs: wheelItem.durationMs || 6500,
+                            autoHideMs: wheelItem.autoHideMs || 7000,
+                            presentation: buildChallengeWheelPresentation(wheelItem, wheelItem),
+                            isActive: true
+                        });
+                    }
+                    const canonicalWheelId = String(wheel._id);
+                    const attachWheelId = (entry) => entry?.type === 'challenge-wheel'
+                        ? { ...entry, challengeWheelId: canonicalWheelId }
+                        : entry;
+                    layout.parentTemplateId = sourceTemplate._id;
+                    layout.items = (layout.items || []).map(attachWheelId);
+                    layout.exportedItems = (layout.exportedItems || []).map(attachWheelId);
+                    layout.markModified('items');
+                    layout.markModified('exportedItems');
+                    await layout.save();
+                }
+            }
+        }
         if (!wheel) return res.status(404).json({ success: false, error: 'Không tìm thấy vòng quay.' });
         if (req.body.name !== undefined) wheel.name = String(req.body.name || '').trim();
         if (req.body.title !== undefined) wheel.title = String(req.body.title || '').trim();
