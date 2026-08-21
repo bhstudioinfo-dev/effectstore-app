@@ -2138,6 +2138,12 @@ class EffectStoreApp {
         if (sidebar) sidebar.style.right = '0px';
         if (overlay) overlay.style.display = 'block';
     }
+    closeCart() {
+        const sidebar = document.getElementById('cart-sidebar');
+        const overlay = document.getElementById('cart-overlay');
+        if (sidebar) sidebar.style.right = '-420px';
+        if (overlay) overlay.style.display = 'none';
+    }
     updateCartUI() {
         const count = this.cart.length;
         // Badge trên icon giỏ hàng
@@ -2566,7 +2572,7 @@ class EffectStoreApp {
             }
 
             if (!paidItems.length) {
-                toggleCart();
+                this.closeCart();
                 this.showNotification('success', '✅ Đã thêm hiệu ứng miễn phí vào thư viện!');
                 return;
             }
@@ -2595,6 +2601,7 @@ class EffectStoreApp {
             const orderTotal = Number(data.amount ?? bank.amount ?? total);
             const formattedTotal = this.formatPrice(orderTotal);
 
+            this.closeCart();
             this.showModal('Thanh toán', `
                         <div style="font-family:inherit;max-width:480px;margin:0 auto;">
 
