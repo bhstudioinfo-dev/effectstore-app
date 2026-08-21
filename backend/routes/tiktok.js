@@ -1359,13 +1359,24 @@ router.get('/gift-menu-layouts', authMiddleware, async (req, res) => {
 router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
     try {
         const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
-        const cloudTemplates = await syncCloudTemplateList(bearerToken).catch((error) => {
-            console.warn('[templates] Cloud catalog sync failed; using local cache:', error.message);
-            return null;
-        });
+        const localTemplates = await GiftMenuLayout.find({ isTemplate: true, category: { $ne: 'goal_board' } }).sort({ updatedAt: -1 }).lean();
+        // The desktop mirror is deliberately read first. Render can cold-start
+        // or briefly return 503; waiting for it here made every Store template
+        // preview spin forever despite a perfectly usable local copy.
+        // Refresh the mirror in the background for the *next* request.
+        let cloudTemplates = null;
+        if (localTemplates.length === 0) {
+            cloudTemplates = await syncCloudTemplateList(bearerToken).catch((error) => {
+                console.warn('[templates] Cloud catalog sync failed; using local cache:', error.message);
+                return null;
+            });
+        } else {
+            void syncCloudTemplateList(bearerToken).catch((error) => {
+                console.warn('[templates] Background cloud catalog sync failed:', error.message);
+            });
+        }
         const cloudById = new Map((cloudTemplates || []).map((template) => [String(template._id || template.id), template]));
         const hasCloudCatalog = Array.isArray(cloudTemplates);
-        const localTemplates = await GiftMenuLayout.find({ isTemplate: true, category: { $ne: 'goal_board' } }).sort({ updatedAt: -1 }).lean();
         // Older published templates were written with GiftMenuLayout.isActive
         // false even though their Store Effect is active.  The Store product
         // is the canonical publication state, so expose it here and let every
@@ -2185,10 +2196,16 @@ router.get('/gift-menu-templates/:templateId', optionalAuthMiddleware, async (re
             return res.status(400).json({ success: false, error: 'Invalid template ID' });
         }
         const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
-        await syncCloudTemplate(req.params.templateId, bearerToken).catch(() => null);
         const template = await GiftMenuLayout.findOne({ _id: req.params.templateId, isTemplate: true }).lean();
-        if (!template) return res.status(404).json({ success: false, error: 'Template not found' });
-        res.json({ success: true, template });
+        if (template) {
+            // Serve the known layout immediately. The cloud refresh must never
+            // delay a Store thumbnail or make it remain in loading state.
+            void syncCloudTemplate(req.params.templateId, bearerToken).catch(() => null);
+            return res.json({ success: true, template });
+        }
+        const cloudTemplate = await syncCloudTemplate(req.params.templateId, bearerToken).catch(() => null);
+        if (!cloudTemplate) return res.status(404).json({ success: false, error: 'Template not found' });
+        res.json({ success: true, template: cloudTemplate });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

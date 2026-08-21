@@ -568,6 +568,7 @@ if (!hasSingleInstanceLock) {
 }
 
 app.whenReady().then(async () => {
+    let databaseStatusPromise = null;
     try {
         console.log('🚀 Starting bundled MongoDB...');
         const mongo = await startBundledMongo({
@@ -584,16 +585,24 @@ app.whenReady().then(async () => {
         backendProcess = backend.process;
         attachBackendCrashMonitor(backendProcess);
         console.log('🚀 Managed backend started, waiting for DB connection...');
-        const status = await waitForDatabaseConnection(10000);
-        console.log('🚀 Backend database connection status:', status);
-        if (!status.database?.connected) {
-            console.warn('⚠️ Backend DB is not connected locally. LiveFlow is running in standalone mode.');
-        }
+        // Do not hold the whole Electron window hostage while MongoDB finishes
+        // its last connection step. The renderer already displays a real
+        // loading state and retries the local API. Opening the shell now makes
+        // cold starts feel immediate instead of adding an avoidable 10 seconds.
+        databaseStatusPromise = waitForDatabaseConnection(10000);
     } catch (error) {
         console.error('Backend startup error:', error);
         dialog.showErrorBox('Không thể khởi động LiveFlow Backend', String(error?.message || error));
     }
     createWindow();
+    if (databaseStatusPromise) {
+        void databaseStatusPromise.then((status) => {
+            console.log('🚀 Backend database connection status:', status);
+            if (!status.database?.connected) {
+                console.warn('⚠️ Backend DB is not connected locally. LiveFlow is running in standalone mode.');
+            }
+        }).catch((error) => console.warn('⚠️ Unable to confirm backend DB status:', error.message));
+    }
     setupAutoUpdater();
     if (app.isPackaged) {
         autoUpdater.checkForUpdates().catch((error) => {

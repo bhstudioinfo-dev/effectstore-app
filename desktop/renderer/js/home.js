@@ -341,6 +341,16 @@ class EffectStoreApp {
         });
     }
 
+    async fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            return await fetch(url, { ...options, signal: controller.signal });
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
     async preloadStoreVisualAssets() {
         const imageUrls = new Set();
         const videoUrls = new Set();
@@ -369,7 +379,7 @@ class EffectStoreApp {
                 clearTimeout(timer);
                 resolve();
             };
-            const timer = setTimeout(finish, 10000);
+            const timer = setTimeout(finish, 5000);
             img.onload = async () => {
                 try {
                     if (typeof img.decode === 'function') await img.decode();
@@ -397,7 +407,7 @@ class EffectStoreApp {
                 this._preloadedPreviewVideos.push(video);
                 resolve();
             };
-            const timer = setTimeout(finish, 12000);
+            const timer = setTimeout(finish, 6000);
             video.oncanplay = finish;
             video.onerror = finish;
             video.src = url;
@@ -413,7 +423,7 @@ class EffectStoreApp {
         let completed = 0;
         const updateProgress = () => {
             completed += 1;
-            const progress = Math.min(95, 76 + Math.round((completed / tasks.length) * 19));
+            const progress = Math.min(94, 76 + Math.round((completed / tasks.length) * 18));
             this.updateAppLoadingProgress(`🎞️ Đang chuẩn bị preview hiệu ứng (${completed}/${tasks.length})...`, progress);
         };
         // Individual timeouts above keep one corrupt/missing file from holding
@@ -1618,13 +1628,16 @@ class EffectStoreApp {
                 const headers = {};
                 if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
                 let templateData = null;
-                for (let attempt = 0; attempt < 3 && !templateData; attempt++) {
-                    let templateResponse = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
+                // One bounded request is enough: the local backend answers
+                // from its mirror first. Repeating three long cloud-bound
+                // requests was the main reason the splash stalled at 90–95%.
+                for (let attempt = 0; attempt < 2 && !templateData; attempt++) {
+                    let templateResponse = await this.fetchWithTimeout(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers }, 6000);
                     if (templateResponse.status === 401 && this.authToken) {
                         templateResponse = await this.retryUnauthorized(
                             templateResponse,
-                            (token) => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers: { Authorization: `Bearer ${token}` } }),
-                            () => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`)
+                            (token) => this.fetchWithTimeout(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers: { Authorization: `Bearer ${token}` } }, 6000),
+                            () => this.fetchWithTimeout(`${this.API_URL}/api/tiktok/gift-menu-templates`, {}, 6000)
                         );
                     }
                     const payload = await templateResponse.json().catch(() => ({}));
@@ -1632,7 +1645,7 @@ class EffectStoreApp {
                         templateData = payload;
                         break;
                     }
-                    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 1200 * (attempt + 1)));
+                    if (attempt < 1) await new Promise(resolve => setTimeout(resolve, 500));
                 }
                 if (!templateData) throw new Error('Không thể tải mẫu thiết kế từ cloud.');
                 if (Array.isArray(templateData.templates)) {
@@ -3735,8 +3748,8 @@ class EffectStoreApp {
             this._fetchingTemplatesPromise = (async () => {
                 try {
                     const headers = this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {};
-                    const res = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
-                    const data = await res.json();
+                    const res = await this.fetchWithTimeout(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers }, 6000);
+                    const data = await res.json().catch(() => ({}));
                     if (data.success && Array.isArray(data.templates)) {
                         this._templatesCache = data.templates;
                         if (window.giftMenuDesigner) window.giftMenuDesigner.serverTemplates = data.templates;
@@ -3754,8 +3767,8 @@ class EffectStoreApp {
             if (listed) return listed;
 
             const headers = this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {};
-            const direct = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates/${encodeURIComponent(templateId)}`, { headers });
-            const directData = await direct.json();
+            const direct = await this.fetchWithTimeout(`${this.API_URL}/api/tiktok/gift-menu-templates/${encodeURIComponent(templateId)}`, { headers }, 6000);
+            const directData = await direct.json().catch(() => ({}));
             return direct.ok && directData.success ? directData.template : null;
         } catch (e) {
             console.error('Failed to fetch template layout:', e);
@@ -3987,15 +4000,16 @@ class EffectStoreApp {
         try {
             const template = await this.getTemplateLayout(templateId);
             if (!template) {
-                // A cold cloud instance can answer the product list before
-                // the heavier template payload. Keep the card in a loading
-                // state and retry instead of replacing a real wheel with the
-                // misleading generic document icon.
+                // Never leave a Store card spinning forever. The direct
+                // lookup is bounded; if both cloud and local cache are absent,
+                // show a clear retryable fallback instead of an eternal loader.
                 const attempts = Number(container._templatePreviewAttempts || 0);
-                container.innerHTML = `<span style="font-size:12px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Đang tải preview...</span>`;
-                if (attempts < 6) {
+                container.innerHTML = attempts < 1
+                    ? `<span style="font-size:12px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Đang tải preview...</span>`
+                    : `<span style="font-size:11px;color:var(--text-muted);text-align:center;padding:12px;">Preview tạm thời chưa sẵn sàng<br><small>Nhấn để thử lại</small></span>`;
+                if (attempts < 1) {
                     container._templatePreviewAttempts = attempts + 1;
-                    setTimeout(() => this.drawTemplatePreview(container, templateId, containerW, containerH), 1500);
+                    setTimeout(() => this.drawTemplatePreview(container, templateId, containerW, containerH), 800);
                 }
                 return;
             }
