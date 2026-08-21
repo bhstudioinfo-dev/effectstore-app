@@ -1,4 +1,6 @@
 const GiftMenuLayout = require('../models/GiftMenuLayout');
+const User = require('../models/User');
+const Effect = require('../models/Effect');
 
 const CLOUD_API_URL = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
 
@@ -87,6 +89,44 @@ async function syncCloudTemplateList(token = '') {
     return templates;
 }
 
+// Templates do not belong to /api/user/effects because they are not playable
+// video media. Reconcile their positive cloud entitlements separately so all
+// local views share the same ownership source.
+async function reconcileCloudTemplateEntitlements(userId, templates = []) {
+    const id = String(userId || '').trim();
+    if (!id || !Array.isArray(templates)) return [];
+    const ownedTemplateIds = templates
+        .filter((template) => template?.isPurchased === true && (template?._id || template?.id))
+        .map((template) => String(template._id || template.id));
+    if (!ownedTemplateIds.length) return [];
+
+    const products = await Effect.find({
+        category: 'menu_template',
+        fileUrl: { $in: ownedTemplateIds }
+    }).select('_id').lean().catch(() => []);
+    const productIds = products.map((product) => product._id);
+    if (!productIds.length) return [];
+    const user = await User.findById(id).select('purchasedEffects').lean().catch(() => null);
+    const existing = new Set((user?.purchasedEffects || [])
+        .map((entry) => String(entry?.effectId || ''))
+        .filter(Boolean));
+    const missingProductIds = productIds.filter((effectId) => !existing.has(String(effectId)));
+    if (!missingProductIds.length) return productIds.map((effectId) => String(effectId));
+
+    await User.updateOne(
+        { _id: id },
+        {
+            $addToSet: {
+                purchasedEffects: {
+                    $each: missingProductIds.map((effectId) => ({ effectId, purchasedAt: new Date(), acquisitionType: 'legacy' }))
+                }
+            },
+            $set: { isActive: true }
+        }
+    ).catch(() => {});
+    return productIds.map((effectId) => String(effectId));
+}
+
 async function syncCloudTemplate(templateId, token = '') {
     const data = await fetchCloudTemplateJson(`/api/tiktok/gift-menu-templates/${encodeURIComponent(templateId)}`, token);
     if (!data) return null;
@@ -101,5 +141,6 @@ module.exports = {
     resolveCloudAssetUrl,
     syncCloudTemplate,
     syncCloudTemplateList,
+    reconcileCloudTemplateEntitlements,
     templateFields
 };

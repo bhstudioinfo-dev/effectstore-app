@@ -81,6 +81,26 @@ async function mirrorUserPurchasedEffectsLocally(userId, effectsList) {
                 useCount: Number(e.useCount || 0)
             }));
 
+        // /api/user/effects intentionally contains playable media only. A
+        // menu template is still a Store product, so never erase its local
+        // entitlement when refreshing the playable-effect library.
+        const Effect = require('../models/Effect');
+        const existingUser = await User.findById(id).select('purchasedEffects').lean().catch(() => null);
+        const existingIds = (existingUser?.purchasedEffects || [])
+            .map((entry) => String(entry?.effectId || ''))
+            .filter(Boolean);
+        const templateProducts = existingIds.length
+            ? await Effect.find({ _id: { $in: existingIds }, category: 'menu_template' }).select('_id').lean().catch(() => [])
+            : [];
+        const incomingIds = new Set(purchasedEffects.map((entry) => String(entry.effectId)));
+        for (const product of templateProducts) {
+            const effectId = String(product._id);
+            if (!incomingIds.has(effectId)) {
+                purchasedEffects.push({ effectId, purchasedAt: new Date(), useCount: 0 });
+                incomingIds.add(effectId);
+            }
+        }
+
         await User.findByIdAndUpdate(
             id,
             {
@@ -93,7 +113,6 @@ async function mirrorUserPurchasedEffectsLocally(userId, effectsList) {
         );
 
         // Also upsert basic metadata into local Effect collection so local queries find it instantly
-        const Effect = require('../models/Effect');
         for (const e of effectsList) {
             const effectId = String(e._id || e.id || '').trim();
             if (!effectId || e.isCustom) continue;

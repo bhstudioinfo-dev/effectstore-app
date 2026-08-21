@@ -32,7 +32,8 @@ const {
     mirrorCloudTemplates,
     resolveCloudAssetUrl,
     syncCloudTemplate,
-    syncCloudTemplateList
+    syncCloudTemplateList,
+    reconcileCloudTemplateEntitlements
 } = require('../services/cloudTemplateCatalog');
 let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) { }
@@ -1365,15 +1366,23 @@ router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
         // preview spin forever despite a perfectly usable local copy.
         // Refresh the mirror in the background for the *next* request.
         let cloudTemplates = null;
-        if (localTemplates.length === 0) {
+        const syncOwnership = String(req.query?.syncOwnership || '').toLowerCase() === 'true';
+        const reconcile = async (templates) => {
+            if (req.userId && Array.isArray(templates)) {
+                await reconcileCloudTemplateEntitlements(req.userId, templates);
+            }
+            return templates;
+        };
+        if (localTemplates.length === 0 || (syncOwnership && req.userId)) {
             cloudTemplates = await syncCloudTemplateList(bearerToken).catch((error) => {
                 console.warn('[templates] Cloud catalog sync failed; using local cache:', error.message);
                 return null;
             });
+            await reconcile(cloudTemplates);
         } else {
-            void syncCloudTemplateList(bearerToken).catch((error) => {
-                console.warn('[templates] Background cloud catalog sync failed:', error.message);
-            });
+            void syncCloudTemplateList(bearerToken)
+                .then(reconcile)
+                .catch((error) => console.warn('[templates] Background cloud catalog sync failed:', error.message));
         }
         const cloudById = new Map((cloudTemplates || []).map((template) => [String(template._id || template.id), template]));
         const hasCloudCatalog = Array.isArray(cloudTemplates);
@@ -1442,13 +1451,14 @@ router.get('/gift-menu-templates', optionalAuthMiddleware, async (req, res) => {
             );
             const isUsed = usedTemplateIds.has(String(t._id)) || usedTemplateNames.has(normalizedName);
             if (isAdmin || hasLegacyBundledProducts) {
-                return { ...t, isPurchased: true, isUsed, usedLayoutId: usedLayout?._id || null };
+                return { ...t, storeProductId: null, isPurchased: true, isUsed, usedLayoutId: usedLayout?._id || null };
             }
             const correspondingEffectId = templateEffectByLayoutId.get(String(t._id));
             const isPurchased = correspondingEffectId ? ownedEffectIds.includes(correspondingEffectId) : false;
             const cloudTemplate = cloudById.get(String(t._id));
             return {
                 ...t,
+                storeProductId: correspondingEffectId || null,
                 isPurchased: cloudTemplate ? Boolean(cloudTemplate.isPurchased) : isPurchased,
                 isUsed,
                 usedLayoutId: usedLayout?._id || null

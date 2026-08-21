@@ -1780,18 +1780,25 @@ class EffectStoreApp {
         }
     }
 
-    async loadOwnedTemplates() {
+    async loadOwnedTemplates(syncOwnership = false) {
         if (!this.authToken) {
             this._templatesCache = [];
             return [];
         }
         try {
-            const response = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, {
+            const suffix = syncOwnership ? '?syncOwnership=true' : '';
+            const response = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates${suffix}`, {
                 headers: { Authorization: `Bearer ${this.authToken}` }
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok || data.success !== true || !Array.isArray(data.templates)) return this._templatesCache || [];
             this._templatesCache = data.templates;
+            // /api/user/effects excludes non-playable menu templates. Keep
+            // their Store product IDs in the shared ownership set so Gift
+            // Mapping sees a just-purchased template immediately.
+            if (!(this.ownedProductIds instanceof Set)) this.ownedProductIds = new Set();
+            data.templates.filter((template) => template?.isPurchased && template?.storeProductId)
+                .forEach((template) => this.ownedProductIds.add(String(template.storeProductId)));
             try { localStorage.setItem('es_cache_templates', JSON.stringify(data.templates)); } catch (_error) {}
             if (window.giftMenuDesigner) window.giftMenuDesigner.serverTemplates = data.templates;
             return data.templates;
@@ -2465,8 +2472,10 @@ class EffectStoreApp {
                 this.cart = this.cart.filter(effect => !freeIds.has(String(effect._id || effect.id)));
                 this.saveCart();
                 await this.loadOwnedEffects();
+                await this.loadOwnedTemplates(true);
                 await this.loadEffects();
                 this._mappingLibraryLoaded = false;
+                await this.loadChallengeWheels({ syncOwnership: true, force: true });
                 await this.loadEffectsForMapping();
                 this.updateUI();
             }
@@ -6762,6 +6771,12 @@ class EffectStoreApp {
             const grid = document.getElementById('effects-mapping-grid');
             if (!grid) return;
 
+            // A challenge wheel is template-backed rather than a video item
+            // returned by /available-effects. Populate it before first draw.
+            if (!this._challengeWheelsLoaded && typeof this.loadChallengeWheels === 'function') {
+                await this.loadChallengeWheels().catch(() => {});
+            }
+
             const headers = {};
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
             let res = await fetch(`${this.API_URL}/api/tiktok/available-effects`, { headers });
@@ -7736,7 +7751,7 @@ class EffectStoreApp {
         return wheel?.displayName || wheel?.name || 'Vòng quay thử thách';
     }
 
-    async loadChallengeWheels() {
+    async loadChallengeWheels(options = {}) {
         try {
             const headers = {};
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
@@ -7751,12 +7766,13 @@ class EffectStoreApp {
             const data = await res.json().catch(() => ({ success: true, wheels: [] }));
             this.challengeWheels = this.labelChallengeWheelCopies(Array.isArray(data.wheels) ? data.wheels : []);
             {
-                let templateRes = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers });
+                const templateSuffix = options.syncOwnership ? '?syncOwnership=true' : '';
+                let templateRes = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates${templateSuffix}`, { headers });
                 if (templateRes.status === 401) {
                     templateRes = await this.retryUnauthorized(
                         templateRes,
-                        (token) => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`, { headers: { Authorization: `Bearer ${token}` } }),
-                        () => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates`)
+                        (token) => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates${templateSuffix}`, { headers: { Authorization: `Bearer ${token}` } }),
+                        () => fetch(`${this.API_URL}/api/tiktok/gift-menu-templates${templateSuffix}`)
                     );
                 }
                 const templateData = await templateRes.json().catch(() => ({}));
@@ -7777,10 +7793,10 @@ class EffectStoreApp {
                     if (template?.isActive !== true) return false;
                     if (isAdmin || isBusiness) return true;
                     const effect = templateByFileUrl.get(String(template._id));
-                    if (effect) {
-                        return this.ownedProductIds.has(String(effect._id || effect.id));
-                    }
-                    return Boolean(template.isPurchased && Number(template.price || 0) > 0);
+                    // Authenticated template ownership is authoritative for
+                    // both paid and 0đ checkout products.
+                    if (template.isPurchased === true) return true;
+                    return Boolean(effect && this.ownedProductIds.has(String(effect._id || effect.id)));
                 };
 
                 const purchasedWheelTemplates = templates.filter((template) => {
@@ -7838,6 +7854,7 @@ class EffectStoreApp {
             if (select) select.innerHTML = mappingWheels.length
                 ? mappingWheels.map((wheel) => `<option value="${wheel._id}">${wheel.displayName || wheel.name} (${(wheel.segments || []).length} thử thách)</option>`).join('')
                 : '<option value="">Chưa có vòng quay</option>';
+            this._challengeWheelsLoaded = true;
         } catch (error) { console.warn('Không tải được vòng quay thử thách:', error.message); }
     }
 
