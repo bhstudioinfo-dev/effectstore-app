@@ -816,6 +816,9 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                 boardX: savedPresentationNumber(savedPresentation, 'boardX', templateItem?.x, true),
                 boardY: savedPresentationNumber(savedPresentation, 'boardY', templateItem?.y, true)
             };
+            if (obsService.isConnected()) {
+                await obsService.ensureGiftMenuOverlaySourceUrl().catch(() => {});
+            }
             req.app.locals.broadcastToClients?.('challenge_wheel_spin', {
                 wheelId: String(wheel._id), title: resolvedTitle, segments: resolvedSegments, presentation,
                 resultId: result.id, resultLabel: result.label, resultImage: result.resultImage || '',

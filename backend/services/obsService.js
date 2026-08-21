@@ -167,8 +167,33 @@ class OBSService {
         try {
             const { inputs } = await this.obs.call('GetInputList');
             const names = new Set(inputs.map((input) => input.inputName));
-            const sourceName = candidateSources.find((name) => names.has(name));
-            if (!sourceName) return false;
+            let sourceName = candidateSources.find((name) => names.has(name));
+
+            if (!sourceName) {
+                const sceneName = 'EffectStore';
+                const { scenes } = await this.obs.call('GetSceneList');
+                if (!scenes.some((scene) => scene.sceneName === sceneName)) {
+                    await this.obs.call('CreateScene', { sceneName });
+                }
+                sourceName = 'gift_menu_overlay';
+                await this.obs.call('CreateInput', {
+                    sceneName,
+                    inputName: sourceName,
+                    inputKind: 'browser_source',
+                    inputSettings: {
+                        url: `${sourceUrl}&t=${Date.now()}`,
+                        width: 1080,
+                        height: 1920,
+                        fps: 60,
+                        fps_custom: true,
+                        css: '',
+                        shutdown: false,
+                        restart_when_active: false
+                    }
+                });
+                console.log(`Created OBS browser source: ${sourceName} -> gift-menu-overlay.html`);
+                return true;
+            }
 
             await this.obs.call('SetInputSettings', {
                 inputName: sourceName,
