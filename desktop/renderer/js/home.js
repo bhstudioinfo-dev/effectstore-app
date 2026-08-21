@@ -1093,6 +1093,24 @@ class EffectStoreApp {
             }
             const adminNavItem = document.getElementById('admin-nav-item');
             if (adminNavItem) adminNavItem.style.display = 'none';
+
+            // Clear settings view DOM
+            const settingsName = document.getElementById('settings-name');
+            const settingsEmail = document.getElementById('settings-email');
+            const settingsAvatar = document.getElementById('settings-avatar');
+            const settingsBadge = document.getElementById('settings-plan-badge');
+            const settingsExpiry = document.getElementById('settings-plan-expiry');
+            const operationsCard = document.getElementById('admin-operations-card');
+            if (settingsName) settingsName.textContent = 'Chưa đăng nhập';
+            if (settingsEmail) settingsEmail.textContent = 'Vui lòng đăng nhập để sử dụng';
+            if (settingsAvatar) {
+                settingsAvatar.textContent = '?';
+                settingsAvatar.style.background = 'linear-gradient(135deg,#374151,#4b5563)';
+                settingsAvatar.style.color = '#fff';
+            }
+            if (settingsBadge) settingsBadge.innerHTML = '';
+            if (settingsExpiry) settingsExpiry.textContent = 'Không khả dụng';
+            if (operationsCard) operationsCard.style.display = 'none';
             return;
         }
         const u = this.currentUser;
@@ -1409,10 +1427,14 @@ class EffectStoreApp {
         this.cart = [];
         this.personalEffects = [];
         this.giftMappings = [];
+        this.mappingEffects = [];
+        this.challengeWheels = [];
+        this.challengeWheelTemplateIds = new Set();
         this.controlDeckSlots = [];
         this.updateAdminBadges(0);
         await this.resetRemoteControlSession();
         await this.resetGiftMenuDesignerSession();
+        this.switchView('store');
         this.updateUserUI();
         this.openAuthModal();
         this.showNotification('info', '👋 Đã đăng xuất thành công!');
@@ -1457,6 +1479,7 @@ class EffectStoreApp {
     }
 
     closeAuthModal() {
+        if (!this.authToken || !this.currentUser) return;
         const modal = document.getElementById('auth-modal');
         if (modal) {
             modal.classList.remove('show');
