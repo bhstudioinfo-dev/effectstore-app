@@ -301,16 +301,22 @@ async function getUserAvailableEffects(userId) {
             await syncUserEffectEntitlementsFromCloud(userId);
             user = await User.findById(userId).lean().catch(() => user);
         }
-        for (const item of (user?.purchasedEffects || [])) {
-            let rawEffect = item?.effectId;
-            let effectIdStr = typeof rawEffect === 'object' && rawEffect !== null
-                ? toEffectId(rawEffect?._id || rawEffect?.id)
-                : toEffectId(rawEffect);
-            if (!effectIdStr) continue;
+        const rawIds = (user?.purchasedEffects || []).map((item) => {
+            const raw = item?.effectId;
+            return typeof raw === 'object' && raw !== null
+                ? toEffectId(raw?._id || raw?.id)
+                : toEffectId(raw);
+        }).filter(Boolean);
 
-            if (typeof rawEffect !== 'object' || rawEffect === null || !rawEffect?.name) {
-                rawEffect = await Effect.findById(effectIdStr).lean().catch(() => null)
-                    || await mirrorEffectFromCentral(effectIdStr);
+        const localEffects = rawIds.length > 0
+            ? await Effect.find({ _id: { $in: rawIds } }).lean().catch(() => [])
+            : [];
+        const localMap = new Map(localEffects.map((e) => [String(e._id), e]));
+
+        for (const effectIdStr of rawIds) {
+            let rawEffect = localMap.get(effectIdStr);
+            if (!rawEffect || !rawEffect.name) {
+                rawEffect = await mirrorEffectFromCentral(effectIdStr);
             }
             if (rawEffect) {
                 const norm = normalizePurchasedEffect(rawEffect, user._id, true);

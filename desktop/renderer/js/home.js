@@ -1740,6 +1740,17 @@ class EffectStoreApp {
             if (this.currentView === 'library') this.renderEffects();
             return true;
         }
+        // Instant Hydration from local cache
+        try {
+            const ownedKey = this.accountStorageKey('es_cache_owned_effects');
+            if (ownedKey && (!this.ownedEffects || this.ownedEffects.length === 0)) {
+                const cached = JSON.parse(localStorage.getItem(ownedKey) || '[]');
+                if (Array.isArray(cached) && cached.length > 0) {
+                    this.ownedEffects = cached;
+                    this.ownedProductIds = new Set((cached.map(e => e.id || e._id)).map(String));
+                }
+            }
+        } catch (_e) {}
         try {
             const response = await fetch(this.API_URL + '/api/user/effects', {
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
@@ -6831,6 +6842,17 @@ class EffectStoreApp {
             } else if (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0) {
                 const initialEffects = this.ownedEffects.filter(e => e && e.category !== 'menu_template' && e.isChallengeWheel !== true);
                 if (initialEffects.length > 0) this.renderMappingEffectsGrid(initialEffects);
+            } else {
+                try {
+                    const ownedKey = this.accountStorageKey('es_cache_owned_effects');
+                    if (ownedKey) {
+                        const cached = JSON.parse(localStorage.getItem(ownedKey) || '[]');
+                        if (Array.isArray(cached) && cached.length > 0) {
+                            const initial = cached.filter(e => e && e.category !== 'menu_template' && e.isChallengeWheel !== true);
+                            if (initial.length > 0) this.renderMappingEffectsGrid(initial);
+                        }
+                    }
+                } catch (_e) {}
             }
 
             // 2. Parallel Data Fetching: Fetch challenge wheels and available effects simultaneously
