@@ -176,6 +176,9 @@
         const labelBackground = giftLabelBackground(item, ctx);
         const subtext = text(ctx, item.subtext || '');
 
+        const nameColor = item.textColor || '#f7cb64';
+        const subtextColor = item.subtextColor || item.textColor || '#f7cb64';
+
         return `
             <div class="gmd-visual ${motionClass} ${auraClass}"
                 style="--aura-color:${item.auraColor || '#d7b2ff'};--aura-radius:${shape.radius};--aura-clip:${shape.clip};--anim-speed:${animSpeed}s;--aura-speed:${auraSpeed}s;--aura-scale:${auraScale};--icon-url:url('${iconUrl}');">
@@ -185,7 +188,7 @@
                 </span>
                 <span class="gmd-aura gmd-aura-front ${auraClass}"></span>
             </div>
-            ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-size:${textSize}px;color:${item.textColor || '#f7cb64'};--label-gap:${textGap}px;text-align:${item.textAlign || 'center'};${labelBackground}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;">${name}</div>${subtext ? `<div style="font-size:${Math.max(5, Math.round(textSize * .78))}px;opacity:.8;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:${roundPx(2, ctx.scale)}px;">${subtext}</div>` : ''}</div>` : ''}
+            ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-size:${textSize}px;color:${nameColor};--label-gap:${textGap}px;text-align:${item.textAlign || 'center'};${labelBackground}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;color:${nameColor};">${name}</div>${subtext ? `<div style="font-size:${Math.max(5, Math.round(textSize * .78))}px;color:${subtextColor};opacity:.9;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:${roundPx(2, ctx.scale)}px;">${subtext}</div>` : ''}</div>` : ''}
         `;
     }
 
@@ -1773,6 +1776,9 @@
                         const textAlign = item.textAlign || 'center';
                         const alignVal = textAlign === 'left' ? 'flex-start' : (textAlign === 'right' ? 'flex-end' : 'center');
 
+                        const childNameColor = child.textColor || item.textColor || '#ffffff';
+                        const childSubtextColor = child.subtextColor || item.subtextColor || child.textColor || item.textColor || '#ffffff';
+
                         const childMargin = isLoop
                             ? (direction === 'horizontal' ? `margin-right:${iconGap}px;` : `margin-bottom:${iconGap}px;`)
                             : '';
@@ -1781,8 +1787,8 @@
                                 ${visualContent}
                                 ${item.showName !== false ? `
                                     <div class="gmd-stack-group-text-wrap pos-${textPosition}" style="order:${labelOrder};display:flex;flex-direction:column;align-items:${alignVal};justify-content:center;${labelBgStyle}">
-                                        <div class="gmd-stack-group-label" style="font-size:${textSize}px;color:${item.textColor || '#ffffff'};font-weight:800;line-height:1.15;text-align:${textAlign};white-space:nowrap;text-shadow:0 2px 8px rgba(0,0,0,.62);">${name}</div>
-                                        ${subtext ? `<div class="gmd-stack-group-subtext" style="font-size:${subtextSize}px;color:${item.textColor || '#ffffff'};opacity:0.8;font-weight:600;line-height:1.15;text-align:${textAlign};white-space:nowrap;margin-top:${effectPx(2)}px;text-shadow:0 1px 4px rgba(0,0,0,.5);">${subtext}</div>` : ''}
+                                        <div class="gmd-stack-group-label" style="font-size:${textSize}px;color:${childNameColor};font-weight:800;line-height:1.15;text-align:${textAlign};white-space:nowrap;text-shadow:0 2px 8px rgba(0,0,0,.62);">${name}</div>
+                                        ${subtext ? `<div class="gmd-stack-group-subtext" style="font-size:${subtextSize}px;color:${childSubtextColor};opacity:0.9;font-weight:600;line-height:1.15;text-align:${textAlign};white-space:nowrap;margin-top:${effectPx(2)}px;text-shadow:0 1px 4px rgba(0,0,0,.5);">${subtext}</div>` : ''}
                                     </div>
                                 ` : ''}
                             </div>

@@ -36,12 +36,14 @@ async function resolveUserIdFromToken(token) {
     }
 }
 
+const USER_AUTH_SELECT = '_id email name phone isAdmin isActive subscription plan subscriptionExpiresAt purchasedEffects customEffects supportProfile marketingConsent usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig';
+
 const authMiddleware = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'No token provided' });
         const { decoded, verifiedByCloud } = await resolveUserIdFromToken(token);
-        let user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+        let user = await User.findById(decoded.userId).select(USER_AUTH_SELECT);
         if (!user && decoded.userId) {
             try {
                 // A centrally signed token may verify locally while its User
@@ -49,13 +51,13 @@ const authMiddleware = async (req, res, next) => {
                 // Fetch the authoritative cloud profile before inventing any
                 // local fallback identity.
                 await verifyUserWithCloud(token);
-                user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+                user = await User.findById(decoded.userId).select(USER_AUTH_SELECT);
             } catch (_e) {}
         }
         if (!user && decoded.userId) {
             const fallbackEmail = decoded.email || `${decoded.userId}@local.user`;
             await mirrorUserLocally({ id: decoded.userId, email: fallbackEmail, isAdmin: Boolean(decoded.isAdmin) });
-            user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+            user = await User.findById(decoded.userId).select(USER_AUTH_SELECT);
         }
         if (!user || user.isActive === false) {
             console.warn(`[authMiddleware] rejected: decoded.userId=${decoded.userId} found=${Boolean(user)} isActive=${user?.isActive}`);
@@ -95,19 +97,18 @@ const optionalAuthMiddleware = async (req, res, next) => {
             return next();
         }
         const { decoded, verifiedByCloud } = await resolveUserIdFromToken(token);
-        let user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+        let user = await User.findById(decoded.userId).select(USER_AUTH_SELECT);
         if (!user && decoded.userId) {
             try {
                 const fallbackEmail = decoded.email || `${decoded.userId}@local.user`;
                 await mirrorUserLocally({ id: decoded.userId, email: fallbackEmail, isAdmin: Boolean(decoded.isAdmin) });
-                user = await User.findById(decoded.userId).select('_id email isAdmin isActive subscription plan subscriptionExpiresAt usedCharactersThisMonth usedSystemVoiceCharactersThisMonth addonCharacters aiMonthKey aiAssistantConfig');
+                user = await User.findById(decoded.userId).select(USER_AUTH_SELECT);
             } catch (_e) {}
         }
         if (user && user.isActive !== false) {
             req.userId = decoded.userId;
             req.user = user;
             req.isAdmin = isAdminUser(user);
-            req.machineId = decoded.machineId || null;
             const algorithm = require('jsonwebtoken').decode(token, { complete: true })?.header?.alg;
             if (algorithm === 'RS256' || verifiedByCloud) rememberCloudSessionToken(decoded.userId, token);
         } else if (decoded.userId) {

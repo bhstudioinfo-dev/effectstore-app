@@ -1000,34 +1000,42 @@ class EffectStoreApp {
                 button: 'XEM GÓI BASIC',
                 action: 'pricing'
             },
-            pro: {
+            basic: {
                 icon: '⚡',
-                badge: 'KHI BẠN CẦN THÊM',
+                badge: '⚡ NÂNG CẤP PRO',
                 title: 'Tự động hóa mạnh hơn',
-                description: 'Gộp nhiều effect, cooldown nâng cao và thêm không gian sáng tạo.',
+                description: 'Gộp nhiều effect, cooldown nâng cao và mở rộng tính năng.',
                 button: 'KHÁM PHÁ GÓI PRO',
                 action: 'pricing'
             },
-            business: {
+            pro: {
                 icon: '🚀',
-                badge: 'DÀNH CHO TEAM',
+                badge: '👑 GIẢI PHÁP STUDIO',
                 title: 'Mở rộng quy mô vận hành',
                 description: 'Khám phá giải pháp tùy chỉnh cho team và nhiều thiết bị.',
                 button: 'TÌM HIỂU STUDIO',
                 action: 'pricing'
             },
+            business: {
+                icon: '👑',
+                badge: '👑 ĐẲNG CẤP STUDIO',
+                title: 'Đã mở khóa tất cả',
+                description: 'Mở trình thiết kế để tiếp tục xây dựng bảng quà của bạn.',
+                button: 'MỞ TRÌNH THIẾT KẾ',
+                action: 'designer'
+            },
             studio: {
-                icon: '🎨',
-                badge: 'LỐI TẮT',
-                title: 'Tạo trải nghiệm mới',
+                icon: '👑',
+                badge: '👑 ĐẲNG CẤP STUDIO',
+                title: 'Đã mở khóa tất cả',
                 description: 'Mở trình thiết kế để tiếp tục xây dựng bảng quà của bạn.',
                 button: 'MỞ TRÌNH THIẾT KẾ',
                 action: 'designer'
             },
             admin: {
                 icon: '🛠️',
-                badge: 'QUẢN TRỊ',
-                title: 'Tạo trải nghiệm mới',
+                badge: 'QUẢN TRỊ VIÊN',
+                title: 'Quyền quản trị hệ thống',
                 description: 'Mở nhanh trình thiết kế bảng quà và nội dung cửa hàng.',
                 button: 'MỞ TRÌNH THIẾT KẾ',
                 action: 'designer'
@@ -1994,16 +2002,58 @@ class EffectStoreApp {
     getOwnedTemplateProducts() {
         const isPrivileged = this.currentUser?.isAdmin === true ||
             (this.currentUser && ['pro', 'studio'].includes(resolvePlanKey(this.currentUser)));
-        return (this._templatesCache || [])
+
+        const results = [];
+        const seenIds = new Set();
+
+        // 1. From server templates cache (_templatesCache)
+        (this._templatesCache || [])
             .filter(template => template && template.isActive === true && (isPrivileged || template.isPurchased === true))
-            .map(template => ({
-                ...template,
-                _id: String(template._id || template.id),
-                id: String(template._id || template.id),
-                category: 'menu_template',
-                fileUrl: String(template._id || template.id),
-                isOwned: true
-            }));
+            .forEach(template => {
+                const id = String(template._id || template.id);
+                seenIds.add(id);
+                if (template.storeProductId) seenIds.add(String(template.storeProductId));
+                results.push({
+                    ...template,
+                    _id: id,
+                    id: id,
+                    category: 'menu_template',
+                    fileUrl: String(template.fileUrl || template._id || template.id),
+                    isOwned: true
+                });
+            });
+
+        // 2. From purchased store effects with category === 'menu_template' (or menu templates in ownedProductIds / ownedEffects)
+        const allStoreTemplates = (this.storeEffects || this.effects || [])
+            .filter(e => e && e.category === 'menu_template');
+
+        allStoreTemplates.forEach(effect => {
+            const effectId = String(effect._id || effect.id || '');
+            const fileUrl = String(effect.fileUrl || '');
+            if (!effectId) return;
+
+            const isOwned = isPrivileged ||
+                (this.ownedProductIds && this.ownedProductIds.has(effectId)) ||
+                (this.ownedEffects && this.ownedEffects.some(e => String(e.id || e._id) === effectId));
+
+            if (isOwned) {
+                // Check if already represented by server template layout
+                if (!seenIds.has(effectId) && (!fileUrl || !seenIds.has(fileUrl))) {
+                    seenIds.add(effectId);
+                    if (fileUrl) seenIds.add(fileUrl);
+                    results.push({
+                        ...effect,
+                        _id: effectId,
+                        id: effectId,
+                        category: 'menu_template',
+                        fileUrl: fileUrl || effectId,
+                        isOwned: true
+                    });
+                }
+            }
+        });
+
+        return results;
     }
 
     addOwnedEffect(effect) {
@@ -2475,8 +2525,9 @@ class EffectStoreApp {
                 await this.loadOwnedTemplates(true);
                 await this.loadEffects();
                 this._mappingLibraryLoaded = false;
+                this._challengeWheelsLoaded = false;
                 await this.loadChallengeWheels({ syncOwnership: true, force: true });
-                await this.loadEffectsForMapping();
+                await this.loadEffectsForMapping({ force: true });
                 this.updateUI();
             }
 
@@ -3467,6 +3518,9 @@ class EffectStoreApp {
         if (!container) return;
         try {
             let template = (this._templatesCache || []).find(t => String(t._id || t.id) === String(templateId));
+            if (!template) {
+                template = (this.storeEffects || this.effects || []).find(t => String(t._id || t.id) === String(templateId) || String(t.fileUrl) === String(templateId));
+            }
             if (!template) {
                 const headers = this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {};
                 const res = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates/${encodeURIComponent(templateId)}`, { headers }).catch(() => null);
@@ -6765,35 +6819,48 @@ class EffectStoreApp {
         } catch (_e) {}
     }
 
-    async loadEffectsForMapping() {
+    async loadEffectsForMapping(options = {}) {
         try {
             console.log('🎬 Loading mapping effects...');
             const grid = document.getElementById('effects-mapping-grid');
             if (!grid) return;
 
-            // A challenge wheel is template-backed rather than a video item
-            // returned by /available-effects. Populate it before first draw.
-            if (!this._challengeWheelsLoaded && typeof this.loadChallengeWheels === 'function') {
-                await this.loadChallengeWheels().catch(() => {});
+            // 1. Instant Cache Render: If we already have mappingEffects or ownedEffects in memory, render immediately
+            if (Array.isArray(this.mappingEffects) && this.mappingEffects.length > 0) {
+                this.renderMappingEffectsGrid(this.mappingEffects);
+            } else if (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0) {
+                const initialEffects = this.ownedEffects.filter(e => e && e.category !== 'menu_template' && e.isChallengeWheel !== true);
+                if (initialEffects.length > 0) this.renderMappingEffectsGrid(initialEffects);
             }
 
-            const headers = {};
-            if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
-            let res = await fetch(`${this.API_URL}/api/tiktok/available-effects`, { headers });
-            if (res.status === 401 && this.authToken) {
-                res = await this.retryUnauthorized(
-                    res,
-                    (token) => fetch(`${this.API_URL}/api/tiktok/available-effects`, { headers: { Authorization: `Bearer ${token}` } }),
-                    () => fetch(`${this.API_URL}/api/tiktok/available-effects`)
-                );
-            }
-            const data = await res.json().catch(() => ({ success: true, effects: this.storeEffects || [] }));
-            const rawEffects = (data && data.success !== false && Array.isArray(data.effects) && data.effects.length > 0)
-                ? data.effects
-                : (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0 ? this.ownedEffects : []);
+            // 2. Parallel Data Fetching: Fetch challenge wheels and available effects simultaneously
+            const wheelPromise = (options?.force || !this._challengeWheelsLoaded) && typeof this.loadChallengeWheels === 'function'
+                ? this.loadChallengeWheels(options).catch(() => {})
+                : Promise.resolve();
+
+            const effectsPromise = (async () => {
+                const headers = {};
+                if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+                let res = await fetch(`${this.API_URL}/api/tiktok/available-effects`, { headers }).catch(() => null);
+                if (res && res.status === 401 && this.authToken) {
+                    res = await this.retryUnauthorized(
+                        res,
+                        (token) => fetch(`${this.API_URL}/api/tiktok/available-effects`, { headers: { Authorization: `Bearer ${token}` } }),
+                        () => fetch(`${this.API_URL}/api/tiktok/available-effects`)
+                    ).catch(() => null);
+                }
+                const data = res ? await res.json().catch(() => null) : null;
+                const apiEffects = (data && data.success !== false && Array.isArray(data.effects)) ? data.effects : null;
+                if (apiEffects && apiEffects.length > 0) return apiEffects;
+                if (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0) return this.ownedEffects;
+                return apiEffects || [];
+            })();
+
+            const [, rawEffects] = await Promise.all([wheelPromise, effectsPromise]);
+
             // A menu-template is Store metadata, not a playable video. The
             // challenge wheel below is the one canonical mapping item.
-            const displayEffects = rawEffects.filter(effect =>
+            const displayEffects = (rawEffects || []).filter(effect =>
                 effect && effect.category !== 'menu_template' && effect.isChallengeWheel !== true
             );
             // Mapping must only expose wheels backed by a currently active
@@ -6839,127 +6906,147 @@ class EffectStoreApp {
                 document.head.appendChild(rendererCss);
             }
 
-            if (displayEffects && displayEffects.length > 0) {
-                const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value);
-
-                grid.innerHTML = displayEffects.map(e => {
-                    const effectId = e._id || e.id;
-                    const isChallengeWheel = e.isChallengeWheel === true;
-                    const thumbUrl = isChallengeWheel ? '' : resolveMediaUrl(e.thumbUrl);
-                    const videoUrl = !isChallengeWheel && effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
-                    let previewHTML = '';
-                    const effectiveThumb = thumbUrl || (!isChallengeWheel && effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
-                        const videoWithFrame = videoUrl ? (videoUrl.includes('#') ? videoUrl : `${videoUrl}#t=0.001`) : '';
-                        
-                        if (isChallengeWheel) {
-                            const segments = (e.segments || []).filter(segment => segment && segment.label).slice(0, 8);
-                            const presentation = e.presentation || {};
-                            const savedRenderItem = presentation.renderItem && typeof presentation.renderItem === 'object'
-                                ? presentation.renderItem
-                                : null;
-                            const sharedRenderer = window.MenuDesignerSharedRenderEngine;
-                            if (savedRenderItem && sharedRenderer && typeof sharedRenderer.renderByType === 'function') {
-                                // Match the Store's real wheel preview by using
-                                // the packaged exported item, not a generic icon.
-                                const renderItem = {
-                                    ...savedRenderItem,
-                                    type: 'challenge-wheel',
-                                    segments: segments.length ? segments : savedRenderItem.segments
-                                };
-                                const refW = Math.max(1, Number(renderItem.lockedW || renderItem.w || renderItem.width || presentation.boardWidth) || 720);
-                                const refH = Math.max(1, Number(renderItem.lockedH || renderItem.h || renderItem.height || presentation.boardHeight) || 760);
-                                const previewSize = 128;
-                                const previewScale = Math.min(previewSize / refW, previewSize / refH);
-                                const renderedWheel = sharedRenderer.renderByType(renderItem, {
-                                    mode: 'overlay', scale: 1, apiBase: this.API_URL, escapeText: true
-                                });
-                                previewHTML = `<div style="width:${previewSize}px;height:${previewSize}px;position:relative;overflow:hidden;"><div style="position:absolute;left:50%;top:50%;width:${refW}px;height:${refH}px;transform:translate(-50%,-50%) scale(${previewScale});transform-origin:center;pointer-events:none;">${renderedWheel}</div></div>`;
-                            } else {
-                                // Safe fallback for an older record that does
-                                // not yet contain a saved render snapshot.
-                                const colors = segments.map((segment, index) => segment.color || ['#4c00ff','#ec4899','#f59e0b','#06b6d4','#22c55e'][index % 5]);
-                                const gradient = colors.length > 1
-                                    ? `conic-gradient(${colors.map((color, index) => `${color} ${(index / colors.length) * 100}% ${((index + 1) / colors.length) * 100}%`).join(',')})`
-                                    : 'conic-gradient(#8b5cf6 0 25%,#ec4899 25% 50%,#f59e0b 50% 75%,#06b6d4 75% 100%)';
-                                previewHTML = `<div style="width:128px;height:128px;position:relative;display:grid;place-items:center;"><div style="position:absolute;inset:12px;border-radius:50%;background:${gradient};border:5px solid ${presentation.borderColor || '#d6a84f'};box-shadow:0 0 0 6px #ef2029,0 0 18px #f97316;"><span style="position:absolute;inset:35%;border-radius:50%;display:grid;place-items:center;background:#1d4ed8;border:4px solid #fbbf24;color:#fff;font-size:9px;font-weight:900;">QUAY</span></div><span style="position:absolute;top:0;left:50%;transform:translateX(-50%);color:#fef3c7;font-size:14px;">▼</span></div>`;
-                            }
-                        } else if (effectiveThumb && videoWithFrame) {
-                            previewHTML = `
-                                <img src="${effectiveThumb}" class="mapping-thumb-img" onerror="this.style.display='none'; const v=this.nextElementSibling; if(v) { v.style.opacity='1'; }">
-                                <video src="${videoWithFrame}" class="mapping-video" muted loop playsinline preload="auto" onloadeddata="this.style.opacity='1'"></video>
-                            `;
-                        } else if (videoWithFrame) {
-                            previewHTML = `<video src="${videoWithFrame}" class="mapping-video" style="opacity:1;" muted loop playsinline preload="auto"></video>`;
-                        } else if (effectiveThumb) {
-                            previewHTML = `<img src="${effectiveThumb}" class="mapping-thumb-img" style="opacity:1;" onerror="this.style.display='none';">`;
-                        } else {
-                            previewHTML = `<span style="font-size:32px;">🎬</span>`;
-                        }
-
-                    return `
-                <div class="effect-mapping-item" data-effect-id="${effectId}" data-effect-name="${e.name || ''}" ${e.isChallengeWheel ? `data-wheel-id="${e.challengeWheelId}"` : ''} style="${e.isCustom ? 'border-color:rgba(34,197,94,.35);' : e.isChallengeWheel ? 'border-color:rgba(245,158,11,.55);' : ''}">
-                    <div class="effect-mapping-thumb" 
-                        onmouseenter="const v=this.querySelector('video'); if(v) { v.muted=true; v.style.opacity='1'; const p=v.play(); if(p!==undefined) p.catch(()=>{}); }" 
-                        onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; const img=this.querySelector('.mapping-thumb-img'); if(img && img.style.display!=='none') v.style.opacity='0'; }">
-                        ${previewHTML}
-                    </div>
-                    <div class="effect-mapping-info">
-                        <div class="effect-mapping-name">${e.icon || '🎬'} ${e.name}</div>
-                        ${e.isCustom 
-                            ? '<div style="margin-top:3px;color:#34d399;font-size:10px;font-weight:800;">💻 Cá nhân</div>' 
-                            : '<div style="margin-top:3px;color:#a78bfa;font-size:10px;font-weight:800;">🏬 Cửa hàng</div>'
-                        }
-                    </div>
-                </div>
-            `}).join('');
-                console.log('✅ Rendered', displayEffects.length, 'mapping effects');
-
-                setTimeout(() => {
-                    const effectItems = grid.querySelectorAll('.effect-mapping-item');
-                    effectItems.forEach(item => {
-                        const video = item.querySelector('video');
-
-                        if (video) {
-                            item.addEventListener('mouseenter', () => {
-                                video.style.opacity = '1';
-                                video.currentTime = 0;
-                                video.play().catch(() => { });
-                            });
-                            item.addEventListener('mouseleave', () => {
-                                video.style.opacity = '0';
-                                video.pause();
-                            });
-                        }
-
-                        item.addEventListener('click', () => {
-                            const wheelId = item.getAttribute('data-wheel-id');
-                            if (wheelId) {
-                                this.selectChallengeWheel(wheelId, item.getAttribute('data-effect-name') || 'Vòng quay thử thách', item);
-                                return;
-                            }
-                            const effectId = item.getAttribute('data-effect-id');
-                            const effectName = item.getAttribute('data-effect-name') || item.querySelector('.effect-mapping-name').textContent.trim();
-                            this.selectEffect(effectId, effectName, item);
-                        });
-                    });
-                }, 100);
-            } else {
-                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:20px;">Không có effect nào khả dụng cho tài khoản này.</div>';
-            }
-        } catch (e) {
-            console.error('❌ Load effects mapping error:', e);
+            this.renderMappingEffectsGrid(displayEffects);
+        } catch (error) {
+            console.error('❌ Load mapping effects error:', error);
         }
     }
-        selectGift(id, name, icon) {
+
+    renderMappingEffectsGrid(displayEffects) {
+        const grid = document.getElementById('effects-mapping-grid');
+        if (!grid) return;
+
+        if (!Array.isArray(displayEffects) || displayEffects.length === 0) {
+            grid.innerHTML = `
+                <div style="grid-column: 1 / -1; padding: 28px 16px; text-align: center; color: var(--text-muted); background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">🎬</div>
+                    <div style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Chưa có hiệu ứng nào</div>
+                    <div style="font-size: 11px; margin-bottom: 12px;">Hãy mua hiệu ứng từ Cửa hàng hoặc tải lên hiệu ứng cá nhân</div>
+                    <button onclick="switchView('store')" class="pro-btn" style="padding: 6px 14px; font-size: 11px; display: inline-flex; align-items: center; gap: 6px; margin: 0 auto;">
+                        <i class="fas fa-shopping-bag"></i> Khám phá Cửa hàng
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value);
+
+        grid.innerHTML = displayEffects.map(e => {
+            const effectId = e._id || e.id;
+            const isChallengeWheel = e.isChallengeWheel === true;
+            const thumbUrl = isChallengeWheel ? '' : resolveMediaUrl(e.thumbUrl);
+            const videoUrl = !isChallengeWheel && effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
+            let previewHTML = '';
+            const effectiveThumb = thumbUrl || (!isChallengeWheel && effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
+            const videoWithFrame = videoUrl ? (videoUrl.includes('#') ? videoUrl : `${videoUrl}#t=0.001`) : '';
+            
+            if (isChallengeWheel) {
+                const segments = (e.segments || []).filter(segment => segment && segment.label).slice(0, 8);
+                const presentation = e.presentation || {};
+                const savedRenderItem = presentation.renderItem && typeof presentation.renderItem === 'object'
+                    ? presentation.renderItem
+                    : null;
+                const sharedRenderer = window.MenuDesignerSharedRenderEngine;
+                if (savedRenderItem && sharedRenderer && typeof sharedRenderer.renderByType === 'function') {
+                    // Match the Store's real wheel preview by using
+                    // the packaged exported item, not a generic icon.
+                    const renderItem = {
+                        ...savedRenderItem,
+                        type: 'challenge-wheel',
+                        segments: segments.length ? segments : savedRenderItem.segments
+                    };
+                    const refW = Math.max(1, Number(renderItem.lockedW || renderItem.w || renderItem.width || presentation.boardWidth) || 720);
+                    const refH = Math.max(1, Number(renderItem.lockedH || renderItem.h || renderItem.height || presentation.boardHeight) || 760);
+                    const previewSize = 128;
+                    const previewScale = Math.min(previewSize / refW, previewSize / refH);
+                    const renderedWheel = sharedRenderer.renderByType(renderItem, {
+                        mode: 'overlay', scale: 1, apiBase: this.API_URL, escapeText: true
+                    });
+                    previewHTML = `<div style="width:${previewSize}px;height:${previewSize}px;position:relative;overflow:hidden;"><div style="position:absolute;left:50%;top:50%;width:${refW}px;height:${refH}px;transform:translate(-50%,-50%) scale(${previewScale});transform-origin:center;pointer-events:none;">${renderedWheel}</div></div>`;
+                } else {
+                    const colors = segments.map((segment, index) => segment.color || ['#4c00ff','#ec4899','#f59e0b','#06b6d4','#22c55e'][index % 5]);
+                    const gradient = colors.length > 1
+                        ? `conic-gradient(${colors.map((color, index) => `${color} ${(index / colors.length) * 100}% ${((index + 1) / colors.length) * 100}%`).join(',')})`
+                        : 'conic-gradient(#8b5cf6 0 25%,#ec4899 25% 50%,#f59e0b 50% 75%,#06b6d4 75% 100%)';
+                    previewHTML = `<div style="width:128px;height:128px;position:relative;display:grid;place-items:center;"><div style="position:absolute;inset:12px;border-radius:50%;background:${gradient};border:5px solid ${presentation.borderColor || '#d6a84f'};box-shadow:0 0 0 6px #ef2029,0 0 18px #f97316;"><span style="position:absolute;inset:35%;border-radius:50%;display:grid;place-items:center;background:#1d4ed8;border:4px solid #fbbf24;color:#fff;font-size:9px;font-weight:900;">QUAY</span></div><span style="position:absolute;top:0;left:50%;transform:translateX(-50%);color:#fef3c7;font-size:14px;">▼</span></div>`;
+                }
+            } else if (effectiveThumb && videoWithFrame) {
+                previewHTML = `
+                    <img src="${effectiveThumb}" class="mapping-thumb-img" onerror="this.style.display='none'; const v=this.nextElementSibling; if(v) { v.style.opacity='1'; }">
+                    <video src="${videoWithFrame}" class="mapping-video" muted loop playsinline preload="auto" onloadeddata="this.style.opacity='1'"></video>
+                `;
+            } else if (videoWithFrame) {
+                previewHTML = `<video src="${videoWithFrame}" class="mapping-video" style="opacity:1;" muted loop playsinline preload="auto"></video>`;
+            } else if (effectiveThumb) {
+                previewHTML = `<img src="${effectiveThumb}" class="mapping-thumb-img" style="opacity:1;" onerror="this.style.display='none';">`;
+            } else {
+                previewHTML = `<span style="font-size:32px;">🎬</span>`;
+            }
+
+            return `
+            <div class="effect-mapping-item" data-effect-id="${effectId}" data-effect-name="${e.name || ''}" ${e.isChallengeWheel ? `data-wheel-id="${e.challengeWheelId}"` : ''} style="${e.isCustom ? 'border-color:rgba(34,197,94,.35);' : e.isChallengeWheel ? 'border-color:rgba(245,158,11,.55);' : ''}">
+                <div class="effect-mapping-thumb" 
+                    onmouseenter="const v=this.querySelector('video'); if(v) { v.muted=true; v.style.opacity='1'; const p=v.play(); if(p!==undefined) p.catch(()=>{}); }" 
+                    onmouseleave="const v=this.querySelector('video'); if(v) { v.pause(); v.currentTime=0; const img=this.querySelector('.mapping-thumb-img'); if(img && img.style.display!=='none') v.style.opacity='0'; }">
+                    ${previewHTML}
+                </div>
+                <div class="effect-mapping-info">
+                    <div class="effect-mapping-name">${e.icon || '🎬'} ${e.name}</div>
+                    ${e.isCustom 
+                        ? '<div style="margin-top:3px;color:#34d399;font-size:10px;font-weight:800;">💻 Cá nhân</div>' 
+                        : '<div style="margin-top:3px;color:#a78bfa;font-size:10px;font-weight:800;">🏬 Cửa hàng</div>'
+                    }
+                </div>
+            </div>
+            `;
+        }).join('');
+        console.log('✅ Rendered', displayEffects.length, 'mapping effects');
+
+        setTimeout(() => {
+            const effectItems = grid.querySelectorAll('.effect-mapping-item');
+            effectItems.forEach(item => {
+                const video = item.querySelector('video');
+
+                if (video) {
+                    item.addEventListener('mouseenter', () => {
+                        video.style.opacity = '1';
+                        video.currentTime = 0;
+                        video.play().catch(() => { });
+                    });
+                    item.addEventListener('mouseleave', () => {
+                        video.style.opacity = '0';
+                        video.pause();
+                    });
+                }
+
+                item.addEventListener('click', () => {
+                    const wheelId = item.getAttribute('data-wheel-id');
+                    if (wheelId) {
+                        this.selectChallengeWheel(wheelId, item.getAttribute('data-effect-name') || 'Vòng quay thử thách', item);
+                        return;
+                    }
+                    this.selectEffect(item.getAttribute('data-effect-id'), item.getAttribute('data-effect-name'), item);
+                });
+            });
+        }, 50);
+    }
+
+    selectEffectForMapping(id, name, element) {
+        return this.selectEffect(id, name, element);
+    }
+
+    selectGift(id, name, icon, element) {
         this.selectedGift = { id, name, icon };
         document.querySelectorAll('.gift-item').forEach(el => el.classList.remove('selected'));
-        if (event && event.currentTarget) {
-            event.currentTarget.classList.add('selected');
+        const itemEl = element || (typeof event !== 'undefined' && event && event.currentTarget) || document.querySelector(`.gift-item[onclick*="${id}"]`);
+        if (itemEl) {
+            itemEl.classList.add('selected');
         }
         this.updateMappingConfigPanel();
     }
 
-        selectChallengeWheel(wheelId, name, element) {
+    selectChallengeWheel(wheelId, name, element) {
         const trigger = document.getElementById('mapping-trigger-type');
         const wheelSelect = document.getElementById('mapping-wheel-id');
         if (trigger) trigger.value = 'wheel';
@@ -6978,10 +7065,10 @@ class EffectStoreApp {
         this.showNotification('success', `Đã chọn vòng quay: ${name}`);
     }
 
-        selectEffect(id, name, element) {
+    selectEffect(id, name, element) {
         if (!this.selectedEffects) this.selectedEffects = [];
         const idx = this.selectedEffects.findIndex(x => x.id === id);
-        const itemEl = element || (event && event.currentTarget);
+        const itemEl = element || (typeof event !== 'undefined' && event && event.currentTarget);
         
         if (idx >= 0) {
             this.selectedEffects.splice(idx, 1);

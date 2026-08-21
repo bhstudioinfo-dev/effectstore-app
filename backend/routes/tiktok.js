@@ -287,7 +287,7 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
             const wheels = await ChallengeWheel.find({ isTemplate: true }).lean();
             return res.json({ success: true, wheels });
         }
-        const owner = req.user || (await User.findById(req.userId).select('isAdmin subscription').lean());
+        const owner = req.user || (await User.findById(req.userId).select('isAdmin subscription purchasedEffects').lean());
         const bearerToken = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1] || '';
         // Use the same cloud catalogue truth as the Store. A local Desktop
         // mirror can briefly contain a previous/deleted wheel template while
@@ -303,16 +303,31 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
             category: 'menu_template',
             isActive: true
         }).select('fileUrl').lean()).map((effect) => String(effect.fileUrl || '')).filter(Boolean));
-        // `business` is a legacy account value with historical bundled-product
-        // access. Current Pro/Studio subscriptions do not automatically own
-        // paid Store or Challenge Wheel products.
+
+        const ownedEffectIds = new Set((owner?.purchasedEffects || []).map(p => String(p?.effectId?._id || p?.effectId || '')).filter(Boolean));
+        let ownedTemplateIds = new Set();
         if (owner?.isAdmin === true || owner?.subscription === 'business') {
+            // Owns all active templates
+        } else if (ownedEffectIds.size > 0) {
+            const linkedTemplateEffects = await Effect.find({
+                _id: { $in: Array.from(ownedEffectIds) },
+                category: 'menu_template'
+            }).select('fileUrl').lean().catch(() => []);
+            linkedTemplateEffects.forEach(e => {
+                if (e.fileUrl) ownedTemplateIds.add(String(e.fileUrl));
+            });
+            ownedEffectIds.forEach(id => ownedTemplateIds.add(id));
+        }
+
+        const shouldMaterializeAll = owner?.isAdmin === true || owner?.subscription === 'business';
+        if (shouldMaterializeAll || ownedTemplateIds.size > 0) {
             const rawTemplates = await GiftMenuLayout.find({
-                // Cloud catalogue mirrors are global records and intentionally
-                // have no local userId. The administrator owns every active
-                // Store product, so it must be able to materialise its wheel
-                // from that canonical record.
-                ...(owner?.isAdmin === true ? {} : { userId: req.userId }),
+                ...(shouldMaterializeAll ? {} : {
+                    $or: [
+                        { userId: req.userId },
+                        { _id: { $in: Array.from(ownedTemplateIds) } }
+                    ]
+                }),
                 isTemplate: true,
                 $or: [
                     { productType: 'challenge-wheel' },
@@ -322,7 +337,7 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
             }).lean();
             const templates = rawTemplates.filter((template) => hasCloudCatalog
                 ? cloudTemplateIds.has(String(template._id))
-                : (template.isActive === true || activeTemplateProductIds.has(String(template._id)))
+                : (template.isActive === true || activeTemplateProductIds.has(String(template._id)) || ownedTemplateIds.has(String(template._id)))
             );
             for (const template of templates) {
                 const wheelItem = findChallengeWheelItem(template);
@@ -361,7 +376,8 @@ router.get('/challenge-wheels', optionalAuthMiddleware, async (req, res) => {
         }
         const publishedSourceIds = new Set([
             ...cloudTemplateIds,
-            ...activeTemplateProductIds
+            ...activeTemplateProductIds,
+            ...ownedTemplateIds
         ]);
         const hasAuthoritativeCatalog = hasCloudCatalog || publishedSourceIds.size > 0;
         const rawWheels = (await ChallengeWheel.find({ userId: req.userId }).sort({ updatedAt: -1 }).lean())

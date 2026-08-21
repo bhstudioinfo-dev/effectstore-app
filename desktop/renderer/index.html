@@ -404,19 +404,64 @@
         .sidebar-promo-card:hover .sidebar-promo-button span {
             transform: translateX(3px);
         }
-        .sidebar-promo-card[data-plan="admin"],
-        .sidebar-promo-card[data-plan="studio"] {
+        .sidebar-promo-card[data-plan="basic"] {
             background:
-                radial-gradient(circle at 90% 8%, rgba(34,211,238,.18), transparent 38%),
-                linear-gradient(145deg, rgba(13,51,65,.96), rgba(12,24,42,.98));
-            border-color: rgba(34,211,238,.32);
+                radial-gradient(circle at 90% 8%, rgba(168,85,247,.25), transparent 40%),
+                linear-gradient(145deg, rgba(67,24,92,.95), rgba(28,19,56,.98));
+            border-color: rgba(168,85,247,.45);
+        }
+        .sidebar-promo-card[data-plan="basic"] .sidebar-promo-badge {
+            border-color: #a855f7;
+            background: linear-gradient(135deg, rgba(147,51,234,.8), rgba(236,72,153,.8));
+            color: #fff;
+            box-shadow: 0 0 12px rgba(168,85,247,.3);
+        }
+        .sidebar-promo-card[data-plan="basic"] .sidebar-promo-button {
+            background: linear-gradient(135deg, #7c3aed, #ec4899);
+            box-shadow: 0 5px 16px rgba(124,58,237,.35);
+        }
+
+        .sidebar-promo-card[data-plan="pro"] {
+            background:
+                radial-gradient(circle at 90% 8%, rgba(59,130,246,.25), transparent 40%),
+                linear-gradient(145deg, rgba(20,35,80,.95), rgba(15,20,45,.98));
+            border-color: rgba(59,130,246,.45);
+        }
+        .sidebar-promo-card[data-plan="pro"] .sidebar-promo-badge {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, rgba(37,99,235,.8), rgba(14,165,233,.8));
+            color: #fff;
+            box-shadow: 0 0 12px rgba(59,130,246,.3);
+        }
+        .sidebar-promo-card[data-plan="pro"] .sidebar-promo-button {
+            background: linear-gradient(135deg, #2563eb, #06b6d4);
+            box-shadow: 0 5px 16px rgba(37,99,235,.35);
+        }
+
+        .sidebar-promo-card[data-plan="admin"],
+        .sidebar-promo-card[data-plan="studio"],
+        .sidebar-promo-card[data-plan="business"] {
+            background:
+                radial-gradient(circle at 90% 8%, rgba(245,158,11,.22), transparent 40%),
+                linear-gradient(145deg, rgba(35,28,15,.96), rgba(18,17,25,.98));
+            border-color: rgba(245,158,11,.45);
             animation: none;
         }
         .sidebar-promo-card[data-plan="admin"] .sidebar-promo-badge,
-        .sidebar-promo-card[data-plan="studio"] .sidebar-promo-badge {
-            border-color: rgba(34,211,238,.3);
-            background: rgba(34,211,238,.09);
-            color: #a5f3fc;
+        .sidebar-promo-card[data-plan="studio"] .sidebar-promo-badge,
+        .sidebar-promo-card[data-plan="business"] .sidebar-promo-badge {
+            border-color: #fbbf24;
+            background: linear-gradient(135deg, rgba(180,83,9,.85), rgba(217,119,6,.85));
+            color: #fffbeb;
+            box-shadow: 0 0 12px rgba(245,158,11,.3);
+        }
+        .sidebar-promo-card[data-plan="admin"] .sidebar-promo-button,
+        .sidebar-promo-card[data-plan="studio"] .sidebar-promo-button,
+        .sidebar-promo-card[data-plan="business"] .sidebar-promo-button {
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+            color: #0f172a;
+            font-weight: 800;
+            box-shadow: 0 5px 16px rgba(245,158,11,.35);
         }
         @keyframes sidebarPromoBorder {
             0%,100% { box-shadow: 0 8px 24px rgba(0,0,0,.35), 0 0 0 rgba(168,85,247,0); }

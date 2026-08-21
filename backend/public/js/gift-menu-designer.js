@@ -7789,8 +7789,12 @@
                     </div>
                     ${selected.useCustomTextColor ? `
                     <div class="gmd-field" style="margin-top: 4px;">
-                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu chữ</label>
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu tên chính</label>
                         <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}">
+                    </div>
+                    <div class="gmd-field" style="margin-top: 4px;">
+                        <label style="font-size: 11px; display: block; margin-bottom: 4px;">Màu tên phụ / Ghi chú</label>
+                        <input class="gmd-color" style="width:100%; height:32px; padding:0; border:1px solid rgba(255,255,255,0.1); background:none; cursor:pointer;" type="color" data-goal-key="subtextColor" value="${selected.subtextColor || selected.textColor || '#ffffff'}">
                     </div>
                     ` : ''}
             `;
@@ -7815,12 +7819,18 @@
                                     
                                     <div class="gmd-field" style="margin-top: 4px;">
                                         <label style="font-size: 11px;">Tên chính</label>
-                                        <input class="gmd-input gmd-input-compact" style="width:100%; font-size:11px; height:24px; padding:2px 4px;" data-child-index="${index}" data-child-key="name" value="${child.name || child.giftName || ''}">
+                                        <div class="gmd-inline-color" style="display:flex; gap:4px; align-items:center;">
+                                            <input class="gmd-input gmd-input-compact" style="flex:1; font-size:11px; height:24px; padding:2px 4px;" data-child-index="${index}" data-child-key="name" value="${child.name || child.giftName || ''}">
+                                            <input class="gmd-color" type="color" title="Màu tên chính" style="width:24px; height:24px; padding:0; border:0; background:none; cursor:pointer;" data-child-index="${index}" data-child-key="textColor" value="${child.textColor && child.textColor.startsWith('#') ? child.textColor.slice(0, 7) : (selected.textColor && selected.textColor.startsWith('#') ? selected.textColor.slice(0, 7) : '#ffffff')}">
+                                        </div>
                                     </div>
 
                                     <div class="gmd-field" style="margin-top: 4px;">
                                         <label style="font-size: 11px;">Tên phụ / Ghi chú (Subtext)</label>
-                                        <input class="gmd-input gmd-input-compact" style="width:100%; font-size:11px; height:24px; padding:2px 4px;" data-child-index="${index}" data-child-key="subtext" value="${child.subtext || ''}">
+                                        <div class="gmd-inline-color" style="display:flex; gap:4px; align-items:center;">
+                                            <input class="gmd-input gmd-input-compact" style="flex:1; font-size:11px; height:24px; padding:2px 4px;" data-child-index="${index}" data-child-key="subtext" value="${child.subtext || ''}">
+                                            <input class="gmd-color" type="color" title="Màu tên phụ" style="width:24px; height:24px; padding:0; border:0; background:none; cursor:pointer;" data-child-index="${index}" data-child-key="subtextColor" value="${child.subtextColor && child.subtextColor.startsWith('#') ? child.subtextColor.slice(0, 7) : (child.textColor && child.textColor.startsWith('#') ? child.textColor.slice(0, 7) : (selected.subtextColor && selected.subtextColor.startsWith('#') ? selected.subtextColor.slice(0, 7) : '#ffffff'))}">
+                                        </div>
                                     </div>
 
                                     <div class="gmd-field" style="margin-top: 6px;">

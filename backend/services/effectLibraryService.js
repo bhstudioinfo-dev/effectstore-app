@@ -240,7 +240,7 @@ async function getUserRecord(userId, { forceRefresh = false } = {}) {
     if (!userId) return null;
     let user = null;
     if (!forceRefresh) {
-        user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+        user = await User.findById(userId).lean().catch(() => null);
     }
     const hasPurchases = user && Array.isArray(user.purchasedEffects) && user.purchasedEffects.length > 0;
     const { isCentralCloudRuntime } = require('../middleware/cloudProxy');
@@ -263,7 +263,7 @@ async function getUserRecord(userId, { forceRefresh = false } = {}) {
                         if (data.success && data.user) {
                             const { mirrorUserLocally } = require('./localUserMirror');
                             await mirrorUserLocally(data.user);
-                            user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+                            user = await User.findById(userId).lean().catch(() => null);
                         }
                     }
                 } finally {
@@ -273,7 +273,7 @@ async function getUserRecord(userId, { forceRefresh = false } = {}) {
         } catch (_e) {}
     }
     if (!user) {
-        user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+        user = await User.findById(userId).lean().catch(() => null);
     }
     if (!user) {
         user = {
@@ -289,7 +289,7 @@ async function getUserRecord(userId, { forceRefresh = false } = {}) {
 }
 
 async function getUserAvailableEffects(userId) {
-    const user = await getUserRecord(userId, { forceRefresh: true });
+    let user = await getUserRecord(userId, { forceRefresh: false });
     if (!user) return [];
 
     const purchased = [];
@@ -297,7 +297,11 @@ async function getUserAvailableEffects(userId) {
         const allEffects = await Effect.find({ isActive: true }).sort({ uses: -1 }).lean().catch(() => []);
         purchased.push(...allEffects.map((effect) => normalizePurchasedEffect(effect, user._id, true)).filter(Boolean));
     } else {
-        for (const item of (user.purchasedEffects || [])) {
+        if (!Array.isArray(user.purchasedEffects) || user.purchasedEffects.length === 0) {
+            await syncUserEffectEntitlementsFromCloud(userId);
+            user = await User.findById(userId).lean().catch(() => user);
+        }
+        for (const item of (user?.purchasedEffects || [])) {
             let rawEffect = item?.effectId;
             let effectIdStr = typeof rawEffect === 'object' && rawEffect !== null
                 ? toEffectId(rawEffect?._id || rawEffect?.id)
@@ -402,7 +406,7 @@ async function resolveEffectForUser(userId, effectId) {
         // subsequent OBS/live triggers local and fast.
         const synced = await syncUserEffectEntitlementsFromCloud(userId);
         if (synced) {
-            user = await User.findById(userId).populate('purchasedEffects.effectId').lean().catch(() => null);
+            user = await User.findById(userId).lean().catch(() => null);
             purchased = (user?.purchasedEffects || []).find((item) =>
                 toEffectId(item?.effectId?._id || item?.effectId) === id
             );

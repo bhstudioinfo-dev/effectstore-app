@@ -44,7 +44,7 @@ async function mirrorUserLocally(userPayload) {
         // /api/auth/me intentionally does not always include a purchase list.
         // Do not erase the local entitlement mirror with an empty profile
         // response; /api/user/effects is the authoritative purchase payload.
-        if (Array.isArray(userPayload.purchasedEffects)) {
+        if (Array.isArray(userPayload.purchasedEffects) && userPayload.purchasedEffects.length > 0) {
             accountFields.purchasedEffects = userPayload.purchasedEffects;
         }
         await User.findByIdAndUpdate(

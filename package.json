@@ -1,6 +1,6 @@
 {
   "name": "effectstore",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "LiveFlow - Premium Livestream Effects Manager",
   "main": "desktop/main.js",
   "scripts": {

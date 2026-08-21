@@ -130,9 +130,11 @@
                         <label>Hiển thị tên</label>
                         ${toggleInput('showName', item.showName !== false)}
                     </div>
-                    ${field('Tên', textInput('name', item.name || ''))}
+                    ${field('Tên chính', textInput('name', item.name || ''))}
+                    ${field('Tên phụ', textInput('subtext', item.subtext || ''))}
                     ${field('Cỡ chữ', numberInput('textSize', item.textSize || 13))}
-                    ${field('Màu chữ', colorInput('textColor', item.textColor || '#f7cb64'))}
+                    ${field('Màu tên chính', colorInput('textColor', item.textColor || '#f7cb64'))}
+                    ${field('Màu tên phụ', colorInput('subtextColor', item.subtextColor || item.textColor || '#f7cb64'))}
                     ${field('Khoảng cách', numberInput('textGap', item.textGap || 4))}
                 `, 'fas fa-font')}
             `,
@@ -345,7 +347,8 @@
                     { value: 'right', label: 'Phải' }
                 ]))}
                 ${field('Khoảng cách chữ', numberInput('textGap', item.textGap ?? 4))}
-                ${field('Màu chữ', colorInput('textColor', item.textColor || '#ffffff'))}
+                ${field('Màu tên chính', colorInput('textColor', item.textColor || '#ffffff'))}
+                ${field('Màu tên phụ', colorInput('subtextColor', item.subtextColor || item.textColor || '#ffffff'))}
                 <div class="gmd-field gmd-toggle-row">
                     <label>Bật viền</label>
                     ${toggleInput('showBorder', item.showBorder !== false)}
