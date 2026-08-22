@@ -1568,16 +1568,34 @@ class EffectStoreApp {
     }
     async loadBanner() {
         try {
-            const res = await fetch(`${this.API_URL}/api/banner`);
-            if (!res.ok) return false;
-            const data = await res.json();
-
             const heroBanner = document.querySelector('.hero-banner-new');
+            let bannerData = null;
 
-            if (data.success && data.banner && heroBanner) {
+            // 1. Try local desktop backend
+            const res = await fetch(`${this.API_URL}/api/banner`).catch(() => null);
+            if (res && res.ok) {
+                const data = await res.json().catch(() => ({}));
+                if (data.success && data.banner && data.banner.url) {
+                    bannerData = data.banner;
+                }
+            }
+
+            // 2. If local backend has no active banner, fetch directly from Cloud Render
+            if (!bannerData && this.CLOUD_API_URL) {
+                const cloudRes = await fetch(`${this.CLOUD_API_URL}/api/banner`).catch(() => null);
+                if (cloudRes && cloudRes.ok) {
+                    const cloudData = await cloudRes.json().catch(() => ({}));
+                    if (cloudData.success && cloudData.banner && cloudData.banner.url) {
+                        bannerData = cloudData.banner;
+                    }
+                }
+            }
+
+            if (bannerData && heroBanner) {
                 const normalizeBannerUrl = (base, path) => {
                     const safePath = String(path || '').trim();
                     if (!safePath) return '';
+                    if (safePath.startsWith('http://') || safePath.startsWith('https://')) return safePath;
                     try {
                         return new URL(safePath, base).toString();
                     } catch (_error) {
@@ -1586,12 +1604,9 @@ class EffectStoreApp {
                 };
 
                 const bannerVersion = encodeURIComponent(
-                    String(data.banner.updatedAt || data.banner.filename || data.banner.id || '1')
+                    String(bannerData.updatedAt || bannerData.filename || bannerData.id || '1')
                 );
-                // Route public artwork through the desktop backend first. It
-                // keeps a local cache backed by R2, while a direct Render URL
-                // can be cold/slow and leaves the Store visually blank even
-                // though the catalog data has already loaded.
+                const data = { banner: bannerData };
                 const primaryUrl = normalizeBannerUrl(this.API_URL, data.banner.url);
                 const fallbackUrl = normalizeBannerUrl(this.CLOUD_API_URL, data.banner.url);
                 const bannerUrl = `${encodeURI(primaryUrl)}?v=${bannerVersion}`;
@@ -1599,7 +1614,7 @@ class EffectStoreApp {
                 try {
                     localStorage.setItem('es_cached_banner_url', bannerUrl);
                 } catch (_e) {}
-                // Use backgroundImage to preserve existing background settings like gradient overlays
+
                 heroBanner.style.backgroundImage = `url('${bannerUrl}')`;
                 heroBanner.style.backgroundSize = 'cover';
                 heroBanner.style.backgroundPosition = 'center';
@@ -1608,12 +1623,15 @@ class EffectStoreApp {
                 if (fallbackUrl && fallbackUrl !== primaryUrl) {
                     const preloadImg = new Image();
                     preloadImg.onerror = () => {
-                        heroBanner.style.backgroundImage = `url('${encodeURI(fallbackUrl)}?v=${bannerVersion}')`;
+                        const cloudBannerUrl = `${encodeURI(fallbackUrl)}?v=${bannerVersion}`;
+                        this.bannerUrl = cloudBannerUrl;
+                        try { localStorage.setItem('es_cached_banner_url', cloudBannerUrl); } catch (_e) {}
+                        heroBanner.style.backgroundImage = `url('${cloudBannerUrl}')`;
                     };
                     preloadImg.src = bannerUrl;
                 }
 
-                console.log('✅ Banner loaded:', data.banner.url);
+                console.log('✅ Banner loaded:', bannerData.url);
             } else if (!heroBanner) {
                 console.warn('⚠️ .hero-banner-new not found in DOM');
             }
@@ -4360,10 +4378,15 @@ class EffectStoreApp {
             } else if (view === 'store') {
                 document.getElementById('page-title').textContent = '🛒 Cửa Hàng';
                 const heroBanner = document.querySelector('.hero-banner-new');
-                if (heroBanner && this.bannerUrl) {
-                    heroBanner.style.backgroundImage = `url('${this.bannerUrl}')`;
+                const cachedBanner = this.bannerUrl || localStorage.getItem('es_cached_banner_url');
+                if (heroBanner && cachedBanner) {
+                    this.bannerUrl = cachedBanner;
+                    heroBanner.style.backgroundImage = `url('${cachedBanner}')`;
                     heroBanner.style.backgroundSize = 'cover';
                     heroBanner.style.backgroundPosition = 'center';
+                }
+                if (!this.bannerUrl) {
+                    this.loadBanner();
                 }
                 this.renderEffects();
             } else if (view === 'library') {
@@ -7905,7 +7928,8 @@ class EffectStoreApp {
             const data = await res.json().catch(() => ({ success: true, wheels: [] }));
             this.challengeWheels = this.labelChallengeWheelCopies(Array.isArray(data.wheels) ? data.wheels : []);
             {
-                const templateSuffix = options.syncOwnership ? '?syncOwnership=true' : '';
+                // Always sync ownership so purchased wheels immediately appear in Gift Mapping
+                const templateSuffix = '?syncOwnership=true';
                 let templateRes = await fetch(`${this.API_URL}/api/tiktok/gift-menu-templates${templateSuffix}`, { headers });
                 if (templateRes.status === 401) {
                     templateRes = await this.retryUnauthorized(
@@ -7916,9 +7940,11 @@ class EffectStoreApp {
                 }
                 const templateData = await templateRes.json().catch(() => ({}));
                 const templates = Array.isArray(templateData.templates) ? templateData.templates : [];
-                // Chỉ đưa vào Gán hiệu ứng các vòng quay đang có sản phẩm
-                // challenge-wheel hoạt động trong Cửa hàng. Các bản ghi cũ
-                // còn sót lại trong ChallengeWheel không được coi là sản phẩm.
+                
+                if (!this.ownedProductIds || !this.ownedProductIds.size) {
+                    await this.loadOwnedEffects().catch(() => {});
+                }
+
                 let catalogEffects = Array.isArray(this.storeEffects) ? this.storeEffects : [];
                 if (!catalogEffects.length) {
                     const catalogRes = await fetch(`${this.API_URL}/api/effects`, { headers: { 'Authorization': `Bearer ${this.authToken}` } }).catch(() => null);
@@ -7931,11 +7957,11 @@ class EffectStoreApp {
                 const isUserTemplatePurchased = (template) => {
                     if (template?.isActive !== true) return false;
                     if (isAdmin || isBusiness) return true;
-                    const effect = templateByFileUrl.get(String(template._id));
-                    // Authenticated template ownership is authoritative for
-                    // both paid and 0đ checkout products.
                     if (template.isPurchased === true) return true;
-                    return Boolean(effect && this.ownedProductIds.has(String(effect._id || effect.id)));
+                    const effect = templateByFileUrl.get(String(template._id));
+                    if (effect && this.ownedProductIds && this.ownedProductIds.has(String(effect._id || effect.id))) return true;
+                    if (this.ownedProductIds && this.ownedProductIds.has(String(template._id))) return true;
+                    return false;
                 };
 
                 const purchasedWheelTemplates = templates.filter((template) => {

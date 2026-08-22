@@ -25,14 +25,42 @@ const upload = multer({
     }
 });
 
+const CLOUD_URL = process.env.CLOUD_API_URL || 'https://effectstore-backend.onrender.com';
+
 // Get active banner
 router.get('/', async (req, res) => {
     try {
         const banner = await Banner.findOne({ isActive: true });
+        if (banner && banner.publicUrl) {
+            return res.json({ 
+                success: true, 
+                hasBanner: true,
+                banner: { url: banner.publicUrl } 
+            });
+        }
+
+        // Fallback: If local desktop database has no banner record, fetch from Cloud Render
+        try {
+            const cloudRes = await fetch(`${CLOUD_URL}/api/banner`, { signal: AbortSignal.timeout(3000) }).catch(() => null);
+            if (cloudRes && cloudRes.ok) {
+                const cloudData = await cloudRes.json().catch(() => ({}));
+                if (cloudData.success && cloudData.banner && cloudData.banner.url) {
+                    const fullCloudUrl = cloudData.banner.url.startsWith('http')
+                        ? cloudData.banner.url
+                        : `${CLOUD_URL}${cloudData.banner.url.startsWith('/') ? '' : '/'}${cloudData.banner.url}`;
+                    return res.json({
+                        success: true,
+                        hasBanner: true,
+                        banner: { url: fullCloudUrl }
+                    });
+                }
+            }
+        } catch (_err) {}
+
         res.json({ 
             success: true, 
-            hasBanner: !!banner,
-            banner: banner ? { url: banner.publicUrl } : null 
+            hasBanner: false,
+            banner: null 
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

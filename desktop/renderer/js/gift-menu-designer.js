@@ -736,15 +736,60 @@
             }
         }
 
-        async openLibraryLayout(layoutId) {
-            await this.loadLayoutsList();
-            const layout = (this.layouts || []).find((item) => String(item._id) === String(layoutId));
-            if (!layout) return { success: false };
-            await this.loadLayout(layout);
-            if (window.app && typeof window.app.showNotification === 'function') {
-                window.app.showNotification('success', 'Đã mở thiết kế để tùy chỉnh.');
+        showCanvasLoading(title = 'Đang tải thiết kế...', subtitle = 'Hệ thống đang chuẩn bị bảng vẽ, vui lòng đợi trong giây lát...') {
+            const canvas = this.mount ? this.mount.querySelector('#gmd-canvas') : document.getElementById('gmd-canvas');
+            if (!canvas) return;
+            let overlay = canvas.querySelector('#gmd-canvas-loading-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'gmd-canvas-loading-overlay';
+                overlay.style.cssText = 'position:absolute;inset:0;background:rgba(10,10,18,0.88);backdrop-filter:blur(8px);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;transition:opacity 0.2s ease;';
+                overlay.innerHTML = `
+                    <div style="width:50px;height:50px;border:3px solid rgba(168,85,247,0.2);border-top:3px solid #a855f7;border-right:3px solid #ec4899;border-radius:50%;animation:gmdSpin 0.75s linear infinite;box-shadow:0 0 20px rgba(168,85,247,0.4);"></div>
+                    <div class="gmd-loading-title" style="margin-top:16px;font-size:15px;font-weight:700;color:#fff;letter-spacing:0.3px;"></div>
+                    <div class="gmd-loading-sub" style="margin-top:6px;font-size:12px;color:#94a3b8;max-width:320px;text-align:center;line-height:1.4;"></div>
+                    <style>
+                        @keyframes gmdSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    </style>
+                `;
+                canvas.appendChild(overlay);
             }
-            return { success: true, layout };
+            overlay.querySelector('.gmd-loading-title').textContent = title;
+            overlay.querySelector('.gmd-loading-sub').textContent = subtitle;
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+        }
+
+        hideCanvasLoading() {
+            const canvas = this.mount ? this.mount.querySelector('#gmd-canvas') : document.getElementById('gmd-canvas');
+            const overlay = canvas ? canvas.querySelector('#gmd-canvas-loading-overlay') : null;
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => { overlay.style.display = 'none'; }, 200);
+            }
+        }
+
+        async openLibraryLayout(layoutId) {
+            this.showCanvasLoading('Đang mở thiết kế...', 'Đang nạp dữ liệu từ thư viện của bạn...');
+            try {
+                if (!this.layouts || !this.layouts.length) {
+                    await this.loadLayoutsList();
+                }
+                const layout = (this.layouts || []).find((item) => String(item._id) === String(layoutId));
+                if (!layout) {
+                    this.hideCanvasLoading();
+                    return { success: false };
+                }
+                await this.loadLayout(layout);
+                this.hideCanvasLoading();
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('success', 'Đã mở thiết kế để tùy chỉnh.');
+                }
+                return { success: true, layout };
+            } catch (err) {
+                this.hideCanvasLoading();
+                throw err;
+            }
         }
 
         async tryOpenPurchasedGoalTemplate(templateId) {
@@ -787,6 +832,8 @@
                 return { success: false };
             }
 
+            this.showCanvasLoading('Đang mở thiết kế...', 'Đang nạp mẫu và chuẩn bị các phần tử lên bảng vẽ...');
+
             // A Store menu template and a Goal Board template use different
             // APIs.  Always resolve the Store template first; attempting the
             // Goal Board route here caused cold-start delays and, on missing
@@ -794,13 +841,20 @@
             const template = (this.serverTemplates || []).find((item) => String(item._id) === templateKey);
             if (!template) {
                 const goalTemplateResult = await this.tryOpenPurchasedGoalTemplate(templateKey);
-                if (goalTemplateResult) return goalTemplateResult;
+                if (goalTemplateResult) {
+                    this.hideCanvasLoading();
+                    return goalTemplateResult;
+                }
             }
 
             if (!this._usingTemplateIds) this._usingTemplateIds = new Set();
-            if (this._usingTemplateIds.has(templateKey)) return;
+            if (this._usingTemplateIds.has(templateKey)) {
+                this.hideCanvasLoading();
+                return;
+            }
 
             if (template && Number(template.price || 0) > 0 && !template.isPurchased) {
+                this.hideCanvasLoading();
                 if (window.app && typeof window.app.buyMenuTemplate === 'function') {
                     window.app.buyMenuTemplate(templateId);
                 } else {
@@ -829,6 +883,8 @@
                     throw new Error(data.error || `HTTP ${res.status}`);
                 }
                 await this.loadLayout(data.layout);
+                this.hideCanvasLoading();
+
                 if (data.challengeWheel?._id) {
                     // The API returns the canonical wheel ID.  Bind it after
                     // loading the layout, otherwise loadLayout overwrites the
@@ -843,17 +899,18 @@
                     });
                     if (changed) await this.saveLayout(false, false);
                 }
-                await this.loadLayoutsList();
-                await this.loadTemplatesList();
+
+                // Run auxiliary lists in background without blocking the canvas
+                Promise.allSettled([
+                    this.loadLayoutsList(),
+                    this.loadTemplatesList()
+                ]).catch(() => {});
+
                 // A challenge wheel becomes mappable only after its
                 // user-specific wheel record is created by /use.  Refresh
                 // the mapping catalogue now, rather than requiring a full
                 // app restart or leaving the purchased product invisible.
                 if (data.challengeWheel?._id && window.app) {
-                    // We already have the canonical wheel in this response.
-                    // Make it selectable immediately, then reconcile the
-                    // full library in the background instead of making the
-                    // customer wait for another cloud template request.
                     const app = window.app;
                     const wheel = data.challengeWheel;
                     const knownWheels = Array.isArray(app.challengeWheels) ? app.challengeWheels : [];
@@ -869,10 +926,12 @@
                 }
                 return data;
             } catch (error) {
+                this.hideCanvasLoading();
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('error', `Không thể sử dụng mẫu: ${error.message}`);
                 }
             } finally {
+                this.hideCanvasLoading();
                 this._usingTemplateIds.delete(templateKey);
                 useButtons.forEach((button) => {
                     button.disabled = false;
