@@ -435,10 +435,19 @@ class EffectStoreApp {
         try {
             this.showAppLoadingOverlay('🚀 Đang khởi động hệ thống...', 25);
 
-            let savedMachineId = localStorage.getItem('es_machine_id');
+            let savedMachineId = null;
+            try {
+                if (window.getMachineId) {
+                    savedMachineId = await window.getMachineId();
+                }
+            } catch (_e) {}
             if (!savedMachineId) {
-                savedMachineId = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('es_machine_id', savedMachineId);
+                // Fallback only when running outside Electron (no real machine ID available).
+                savedMachineId = localStorage.getItem('es_machine_id');
+                if (!savedMachineId) {
+                    savedMachineId = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                    localStorage.setItem('es_machine_id', savedMachineId);
+                }
             }
             this.machineId = savedMachineId;
 

@@ -237,15 +237,27 @@ router.post('/login', loginRateLimiter, async (req, res) => {
             if (!user.activeDevices) user.activeDevices = [];
 
             if (!user.activeDevices.includes(machineId)) {
-                if (user.activeDevices.length >= maxDevices) {
+                // Older app builds generated a random per-install ID (e.g. "user-171..-abc12de34")
+                // instead of a real machine-derived ID. When every ID on file is one of those
+                // legacy IDs, treat this login as a one-time migration to the new stable ID
+                // rather than an extra device, so existing paying users aren't locked out just
+                // because the app upgraded how it identifies a device.
+                const isLegacyDeviceId = (id) => /^user-\d+-[a-z0-9]+$/i.test(id);
+                const allLegacy = user.activeDevices.length > 0 && user.activeDevices.every(isLegacyDeviceId);
+
+                if (allLegacy) {
+                    user.activeDevices = [machineId];
+                    await user.save();
+                } else if (user.activeDevices.length >= maxDevices) {
                     return res.status(403).json(upgradePayload(
                         'devices',
                         `Gói ${entitlements.label} chỉ sử dụng được trên ${maxDevices} thiết bị.`,
                         entitlements
                     ));
+                } else {
+                    user.activeDevices.push(machineId);
+                    await user.save();
                 }
-                user.activeDevices.push(machineId);
-                await user.save();
             }
         }
 
