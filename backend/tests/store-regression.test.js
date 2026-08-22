@@ -2,19 +2,24 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
-const homeSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/js/home.js'), 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/index.html'), 'utf8');
-const effectsRouteSource = fs.readFileSync(path.join(__dirname, '../routes/effects.js'), 'utf8');
-const effectLibrarySource = fs.readFileSync(path.join(__dirname, '../services/effectLibraryService.js'), 'utf8');
-const paymentServiceSource = fs.readFileSync(path.join(__dirname, '../services/paymentService.js'), 'utf8');
-const authSource = fs.readFileSync(path.join(__dirname, '../middleware/auth.js'), 'utf8');
-const cloudProxySource = fs.readFileSync(path.join(__dirname, '../middleware/cloudProxy.js'), 'utf8');
-const paymentRouteSource = fs.readFileSync(path.join(__dirname, '../routes/payment.js'), 'utf8');
-const tiktokRouteSource = fs.readFileSync(path.join(__dirname, '../routes/tiktok.js'), 'utf8');
-const designerSource = fs.readFileSync(path.join(__dirname, '../../desktop/renderer/js/gift-menu-designer.js'), 'utf8');
-const publicDesignerSource = fs.readFileSync(path.join(__dirname, '../public/js/gift-menu-designer.js'), 'utf8');
-const catalogDeletionSource = fs.readFileSync(path.join(__dirname, '../services/catalogDeletionService.js'), 'utf8');
-const cloudTemplateCatalogSource = fs.readFileSync(path.join(__dirname, '../services/cloudTemplateCatalog.js'), 'utf8');
+// Normalize CRLF -> LF: some source files in this repo are saved with
+// Windows line endings, which would otherwise break any assertion here
+// that checks for a literal '\n'-joined multi-line string.
+const readSource = (relativePath) => fs.readFileSync(path.join(__dirname, relativePath), 'utf8').replace(/\r\n/g, '\n');
+
+const homeSource = readSource('../../desktop/renderer/js/home.js');
+const indexSource = readSource('../../desktop/renderer/index.html');
+const effectsRouteSource = readSource('../routes/effects.js');
+const effectLibrarySource = readSource('../services/effectLibraryService.js');
+const paymentServiceSource = readSource('../services/paymentService.js');
+const authSource = readSource('../middleware/auth.js');
+const cloudProxySource = readSource('../middleware/cloudProxy.js');
+const paymentRouteSource = readSource('../routes/payment.js');
+const tiktokRouteSource = readSource('../routes/tiktok.js');
+const designerSource = readSource('../../desktop/renderer/js/gift-menu-designer.js');
+const publicDesignerSource = readSource('../public/js/gift-menu-designer.js');
+const catalogDeletionSource = readSource('../services/catalogDeletionService.js');
+const cloudTemplateCatalogSource = readSource('../services/cloudTemplateCatalog.js');
 
 const loadOwnedBody = homeSource.slice(
     homeSource.indexOf('async loadOwnedEffects()'),
