@@ -643,8 +643,51 @@ class EffectStoreApp {
         return false;
     }
 
+    // Session token is kept encrypted-at-rest via Electron safeStorage (main
+    // process) instead of plaintext localStorage, which is readable by
+    // anyone with access to the app's on-disk storage. Falls back to
+    // localStorage only when running outside Electron.
+    async loadStoredAuthToken() {
+        try {
+            if (window.electronAPI?.invoke) {
+                const secure = await window.electronAPI.invoke('session-token:load');
+                if (secure?.token) return secure.token;
+            }
+        } catch (_e) {}
+        // Migration path: an older app version stored the token in
+        // localStorage. Move it into secure storage once, so existing
+        // logged-in users aren't forced to log in again after this update.
+        const legacyToken = localStorage.getItem('token');
+        if (legacyToken) {
+            this.saveAuthToken(legacyToken).catch(() => {});
+            localStorage.removeItem('token');
+            return legacyToken;
+        }
+        return null;
+    }
+
+    async saveAuthToken(token) {
+        try {
+            if (window.electronAPI?.invoke) {
+                await window.electronAPI.invoke('session-token:save', token);
+                return;
+            }
+        } catch (_e) {}
+        // Outside Electron there is no secure store available.
+        localStorage.setItem('token', token);
+    }
+
+    async clearAuthToken() {
+        try {
+            if (window.electronAPI?.invoke) {
+                await window.electronAPI.invoke('session-token:clear');
+            }
+        } catch (_e) {}
+        localStorage.removeItem('token');
+    }
+
     async checkAuth({ loadDependentData = true } = {}) {
-        const token = localStorage.getItem('token');
+        const token = await this.loadStoredAuthToken();
 
         if (!token) {
             this.authToken = null;
@@ -689,7 +732,7 @@ class EffectStoreApp {
                 }
                 this.startAdminPendingPaymentsPoll();
             } else {
-                localStorage.removeItem('token');
+                this.clearAuthToken();
                 localStorage.removeItem('currentUser');
                 localStorage.removeItem('user');
                 this.authToken = null;
@@ -745,7 +788,7 @@ class EffectStoreApp {
             // isn't valid (account gone/deleted, token rejected) — the earlier
             // cache-trust was wrong. Force a real re-login instead of leaving
             // the user stuck looking logged in while every real action 401s.
-            localStorage.removeItem('token');
+            this.clearAuthToken();
             localStorage.removeItem('currentUser');
             localStorage.removeItem('user');
             this.authToken = null;
@@ -1221,7 +1264,7 @@ class EffectStoreApp {
             });
             const data = await res.json().catch(() => ({}));
             if (data.success) {
-                localStorage.setItem('token', data.token);
+                this.saveAuthToken(data.token);
                 localStorage.setItem('currentUser', JSON.stringify(data.user));
                 this.currentUser = data.user;
                 this.authToken = data.token;
@@ -1303,7 +1346,7 @@ class EffectStoreApp {
             });
             const data = await res.json().catch(() => ({}));
             if (data.success) {
-                localStorage.setItem('token', data.token);
+                this.saveAuthToken(data.token);
                 if (data.user) {
                     localStorage.setItem('currentUser', JSON.stringify(data.user));
                     this.currentUser = data.user;
@@ -1415,7 +1458,7 @@ class EffectStoreApp {
                 clearTimeout(timeout);
             }
         } catch (_error) { }
-        localStorage.removeItem('token');
+        this.clearAuthToken();
         localStorage.removeItem('currentUser');
         localStorage.removeItem('user');
         this.authToken = null;
@@ -8877,7 +8920,7 @@ function showAccount() {
             `);
 }
 function navigateTo(page) {
-    const token = localStorage.getItem('token');
+    const token = window.app?.authToken || localStorage.getItem('token');
     if (token) {
         window.location.href = `${page}?token=${token}`;
     } else {
@@ -8885,7 +8928,7 @@ function navigateTo(page) {
     }
 }
 function openBannerManager() {
-    const token = localStorage.getItem('token');
+    const token = window.app?.authToken || localStorage.getItem('token');
     window.location.href = `admin-banner.html?token=${token}`;
 }
 function openGiftMapping() { switchView('gift-mapping'); }

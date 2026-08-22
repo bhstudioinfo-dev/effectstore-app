@@ -895,6 +895,43 @@ ipcMain.handle('get-machine-id', () => MACHINE_ID);
 ipcMain.handle('get-app-data-path', () => appDataPath);
 ipcMain.handle('get-obs-url', () => `http://localhost:${PORT}/overlay`);
 
+// Encrypted-at-rest session token storage (replaces plaintext localStorage).
+// Uses the same OS-backed safeStorage codec already used for backend secrets.
+const SESSION_TOKEN_FILE = path.join(appDataPath, 'session.dat');
+
+ipcMain.handle('session-token:save', async (_event, token) => {
+    try {
+        if (!token) return { success: false, error: 'Missing token' };
+        const codec = getSecretCodec();
+        fs.writeFileSync(SESSION_TOKEN_FILE, codec.protect(token), { mode: 0o600 });
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('session-token:load', async () => {
+    try {
+        if (!fs.existsSync(SESSION_TOKEN_FILE)) return { success: true, token: null };
+        const codec = getSecretCodec();
+        const token = codec.reveal(fs.readFileSync(SESSION_TOKEN_FILE, 'utf8'));
+        return { success: true, token };
+    } catch (error) {
+        // A corrupt/undecryptable file must not block login — the renderer
+        // falls back to prompting for credentials again.
+        return { success: false, token: null, error: error.message };
+    }
+});
+
+ipcMain.handle('session-token:clear', async () => {
+    try {
+        if (fs.existsSync(SESSION_TOKEN_FILE)) fs.unlinkSync(SESSION_TOKEN_FILE);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
 async function readCustomEffects() {
     if (!fs.existsSync(customEffectsPath)) return [];
     const effects = await Promise.all(fs.readdirSync(customEffectsPath, { withFileTypes: true })
