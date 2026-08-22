@@ -6620,65 +6620,6 @@ class EffectStoreApp {
     }
 
 
-    connectWebSocket() {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
-        this.ws = new WebSocket(`${this.WS_URL}?token=${encodeURIComponent(this.authToken || '')}`);
-        this.ws.onopen = () => console.log('✅ WebSocket connected');
-        this.ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                this.handleWebSocketEvent(data);
-            } catch (e) { console.error('Parse error:', e); }
-        };
-        this.ws.onerror = (error) => console.error('WebSocket error:', error);
-        this.ws.onclose = () => setTimeout(() => this.connectWebSocket(), 3000);
-    }
-
-    handleWebSocketEvent(data) {
-        switch (data.event) {
-            case 'stats': this.updateStats(data.data); break;
-            case 'gift': this.handleGift(data.data); break;
-            case 'follow': this.handleFollow(data.data); break;
-            case 'share': this.handleShare(data.data); break;
-            case 'chat': this.handleChat(data.data); break;
-            case 'remote_device_connected':
-                this.handleRemoteDeviceConnected(data.data);
-                break;
-            case 'control_deck_trigger':
-                if (data.data?.action === 'stop_all_sounds') {
-                    this.stopControlDeckSounds();
-                } else if (data.data?.slotId) {
-                    this.triggerControlDeckSlot(data.data.slotId);
-                }
-                break;
-            case 'control_deck_assign':
-                if (data.data?.deckType === 'effect') {
-                    const effect = data.data.item;
-                    if (effect) this.addControlDeckEffectToSlot(effect, Number(data.data.index));
-                } else if (data.data?.deckType === 'sound') {
-                    const sound = data.data.item;
-                    if (sound) {
-                        this.pendingControlDeckIndex = Number(data.data.index);
-                        this.addSoundLibraryItemToDeck(sound);
-                    }
-                }
-                break;
-            case 'control_deck_media_uploaded':
-                this.handleRemoteMediaUploaded(data.data);
-                break;
-            case 'control_deck_remove':
-                if (data.data?.slotId) this.removeControlDeckSlot(String(data.data.slotId));
-                break;
-            case 'effect_warning':
-                this.showNotification('warning', data.data?.message || 'Hiệu ứng đã bị bỏ qua vì thiếu thời lượng.');
-                break;
-            case 'plan_limit_reached': this.handlePlanLimit(data.data, data.data?.feature); break;
-            case 'ai_quota_exhausted':
-                this.showNotification('info', 'Trợ lý AI đã dùng hết hạn mức phản hồi tháng này. Bình luận vẫn được nhận bình thường; bạn có thể nạp thêm ký tự khi cần.');
-                break;
-        }
-    }
-
     async handleRemoteMediaUploaded(payload = {}) {
         const index = Number(payload.index);
         if (!Number.isInteger(index)) return;
@@ -6702,24 +6643,6 @@ class EffectStoreApp {
         }
     }
 
-    updateStats(stats) {
-        const el = (id) => document.getElementById(id);
-        if (el('stat-gifts')) el('stat-gifts').textContent = stats.gifts || 0;
-        if (el('stat-likes')) el('stat-likes').textContent = stats.likes || 0;
-        if (el('stat-chats')) el('stat-chats').textContent = stats.chats || 0;
-        if (el('stat-viewers')) el('stat-viewers').textContent = stats.viewers || 0;
-
-        const statusEl = document.getElementById('connection-status');
-        if (statusEl) {
-            if (stats.isLive) {
-                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;"></span>Đang live';
-                statusEl.style.background = 'rgba(16,185,129,0.2)';
-            } else {
-                statusEl.innerHTML = '<span style="width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block;"></span>Chưa kết nối';
-                statusEl.style.background = 'rgba(239,68,68,0.2)';
-            }
-        }
-    }
     async prepareTikTok() {
         const roomId = document.getElementById('room-id')?.value.trim();
         if (!roomId) return this.showNotification('error', 'Vui lòng nhập Room ID!');
