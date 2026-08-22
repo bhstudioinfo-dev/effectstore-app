@@ -1654,6 +1654,27 @@ router.post('/gift-menu-layout', authMiddleware, planQuotaLock('layouts'), async
                 isActive: true
             });
         }
+        // Guard against silently wiping a populated design. There is no
+        // legitimate client flow that intentionally saves a fully-empty
+        // items/exportedItems array over an existing non-empty layout —
+        // "delete everything" happens by deleting the whole layout from My
+        // Library, not by saving it blank. So if the incoming payload has
+        // zero items while the stored layout already has some (e.g. an
+        // autosave firing before the designer finished loading this
+        // layout's items, or any other client-side race), keep the
+        // previously saved items/exportedItems instead of overwriting them
+        // with nothing. A payload that genuinely reduces item count (but
+        // isn't zero) is unaffected and saves normally.
+        const previousItems = Array.isArray(layout.items) ? layout.items : [];
+        const incomingItems = Array.isArray(payload.items) ? payload.items : [];
+        const nextItems = (incomingItems.length > 0 || previousItems.length === 0) ? incomingItems : previousItems;
+
+        const previousExportedItems = Array.isArray(layout.exportedItems) ? layout.exportedItems : [];
+        const incomingExportedItems = Array.isArray(payload.exportedItems) ? payload.exportedItems : [];
+        const nextExportedItems = (incomingExportedItems.length > 0 || previousExportedItems.length === 0)
+            ? incomingExportedItems
+            : previousExportedItems;
+
         const layoutUpdate = {
             name: payload.name || layout.name || 'Menu mặc định',
             version: Number(payload.version) || 2,
@@ -1662,8 +1683,8 @@ router.post('/gift-menu-layout', authMiddleware, planQuotaLock('layouts'), async
             canvasSize: payload.canvasSize || undefined,
             safeArea: payload.safeArea || undefined,
             exportSize: payload.exportSize || undefined,
-            items: Array.isArray(payload.items) ? payload.items : [],
-            exportedItems: Array.isArray(payload.exportedItems) ? payload.exportedItems : []
+            items: nextItems,
+            exportedItems: nextExportedItems
         };
         if (layout.isNew) {
             Object.assign(layout, layoutUpdate);

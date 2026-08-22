@@ -7524,7 +7524,7 @@ class EffectStoreApp {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang phát...';
             this.updateMappingTestButtons();
 
-            const token = localStorage.getItem('token');
+            const token = this.authToken || localStorage.getItem('token');
             const mapping = (this.giftMappings || []).find((entry) => String(entry._id) === String(id));
             const wheelOnly = mapping?.wheelId && (mapping.triggerType === 'wheel' || !mapping.effectId);
             const testUrl = wheelOnly
