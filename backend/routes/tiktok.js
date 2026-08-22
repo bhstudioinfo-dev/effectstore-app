@@ -230,32 +230,6 @@ router.post('/usage/tts', authMiddleware, (req, res) => {
     res.status(result.status).json(result.payload);
 });
 
-// Save Voice Sample MP3
-router.post('/save-voice-sample', (req, res) => {
-    try {
-        const { voiceId, audioBase64 } = req.body || {};
-        if (!voiceId || !audioBase64) return res.status(400).json({ success: false, message: 'Missing parameters' });
-
-        const base64Data = audioBase64.replace(/^data:audio\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
-
-        const targets = [
-            path.join(__dirname, '..', 'public', 'assets', 'audio', 'voice-samples', `${voiceId}.mp3`),
-            path.join(__dirname, '..', '..', 'desktop', 'renderer', 'assets', 'audio', 'voice-samples', `${voiceId}.mp3`)
-        ];
-
-        targets.forEach(targetPath => {
-            const dir = path.dirname(targetPath);
-            fs.mkdirSync(dir, { recursive: true });
-            fs.writeFileSync(targetPath, buffer);
-        });
-
-        res.json({ success: true, voiceId, url: `/assets/audio/voice-samples/${voiceId}.mp3` });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
 // Stats
 router.get('/stats', (req, res) => {
     res.json({ success: true, stats: tiktokService.liveStats });
