@@ -28,6 +28,7 @@ Thumbs.db
 # IDEs
 .vscode/
 .idea/
+.claude/settings.local.json
 
 # Build folders
 dist/
