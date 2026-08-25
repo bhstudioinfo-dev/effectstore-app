@@ -89,7 +89,7 @@ async function saveRemoteSound(uploadedFile, requestedName) {
     return sound;
 }
 
-async function saveRemoteEffect(uploadedFile, requestedName) {
+async function saveRemoteEffect(uploadedFile, requestedName, options = {}) {
     ensureDirectories();
     const ext = path.extname(uploadedFile.originalname || '').toLowerCase();
     if (!EFFECT_EXTENSIONS.has(ext)) throw new Error('Chỉ hỗ trợ MP4, MOV, AVI hoặc WebM.');
@@ -103,7 +103,10 @@ async function saveRemoteEffect(uploadedFile, requestedName) {
         await runFfmpeg([
             '-i', uploadedFile.path, '-t', '15',
             '-vf', "scale=720:1280:force_original_aspect_ratio=decrease:flags=lanczos,pad=720:1280:(ow-iw)/2:(oh-ih)/2:color=black@0,fps=30,format=yuva420p",
-            '-an', '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-crf', '30', '-b:v', '0',
+            '-map', '0:v:0', '-map', '0:a?',
+            '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p',
+            '-c:a', 'libopus', '-b:a', '128k',
+            '-crf', '30', '-b:v', '0',
             '-deadline', 'good', '-cpu-used', '4', '-row-mt', '1', outputPath
         ]);
         await runFfmpeg([

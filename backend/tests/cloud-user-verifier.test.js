@@ -27,7 +27,7 @@ try {
     assert.strictEqual(cloudProxy.isCloudProxyEnabled(), false);
     delete process.env.RENDER;
     assert.strictEqual(cloudProxy.isCentralCloudRuntime(), false);
-    assert.strictEqual(cloudProxy.isCloudProxyEnabled(), true);
+    assert.strictEqual(cloudProxy.isCloudProxyEnabled(), false);
 } finally {
     if (originalRender === undefined) delete process.env.RENDER;
     else process.env.RENDER = originalRender;

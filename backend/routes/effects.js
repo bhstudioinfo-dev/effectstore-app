@@ -10,7 +10,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
-const { encryptVideo, streamDecryptedVideo } = require('../utils/encrypt-video');
+const { encryptVideo, streamDecryptedVideo, decryptVideoStream, getEncryptionKey } = require('../utils/encrypt-video');
 const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
 const { planQuotaLock } = require('../middleware/planQuotaLock');
 const { isValidResourceId } = require('../utils/accessControl');
@@ -18,8 +18,8 @@ const { getUserAvailableEffects, getUserOwnedProductIds, resolveEffectForUser, r
 const { issueEffectAccessToken, buildEffectStreamUrl, verifyEffectAccessToken } = require('../services/effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
 const { deleteCatalogEffectCascade } = require('../services/catalogDeletionService');
-const { isAssetStoreConfigured, uploadEncryptedEffect, downloadEncryptedEffect, uploadThumbnail } = require('../services/effectAssetStore');
-const { getCloudSessionToken } = require('../services/cloudSessionTokenStore');
+const { isAssetStoreConfigured, uploadEncryptedEffect, downloadEncryptedEffect, uploadThumbnail, getPresignedEffectDownloadUrl } = require('../services/effectAssetStore');
+const { getCloudSessionToken, getAnyCloudSessionToken } = require('../services/cloudSessionTokenStore');
 
 // Ensure directories
 const encryptedEffectsDir = dataPaths.encryptedEffectsDir;
@@ -211,6 +211,67 @@ async function fetchEncryptedEffectIntoCache(effectId, req) {
     return null;
 }
 
+// Asks the central server for a short-lived, ownership-gated presigned R2
+// URL (see /effects/:effectId/play-url below) and downloads the effect
+// directly from Cloudflare R2 — free egress, so this is the bandwidth fix:
+// actual video bytes no longer flow through the central server at all. On a
+// customer machine this local `/api/effects/:effectId/play-url` call is
+// itself transparently forwarded to the real central server by the existing
+// cloudProxy middleware, so this function never needs to know where "central"
+// actually is. Caches the decrypted plaintext under the same filename
+// relayEffectFromCloud already uses, so future requests hit the top-of-
+// function cache check in streamEffectById and never call this again.
+async function fetchEffectViaPresignedUrl(effectId, req) {
+    const cachePath = path.join(encryptedEffectsDir, `cloud_cache_${effectId}.webm`);
+    const suffix = `${process.pid}-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+    const tempEncPath = path.join(dataPaths.tempDir, `presign_${effectId}_${suffix}.enc`);
+    const tempCachePath = path.join(dataPaths.tempDir, `presign_${effectId}_${suffix}.webm`);
+    try {
+        const authHeader = req.headers.authorization;
+        const userToken = authHeader
+            ? authHeader.replace(/^Bearer\s+/i, '')
+            : (getCloudSessionToken(req.effectAccess?.userId) || getAnyCloudSessionToken());
+        if (!userToken) return null;
+
+        const PORT = process.env.PORT || 9000;
+        const playUrlRes = await fetch(`http://localhost:${PORT}/api/effects/${encodeURIComponent(effectId)}/play-url`, {
+            headers: { Authorization: `Bearer ${userToken}` }
+        });
+        if (!playUrlRes.ok) return null;
+        const payload = await playUrlRes.json().catch(() => ({}));
+        if (!payload?.url || !payload?.key) return null;
+
+        const fileRes = await fetch(payload.url);
+        if (!fileRes.ok || !fileRes.body) return null;
+
+        fs.mkdirSync(encryptedEffectsDir, { recursive: true });
+        fs.mkdirSync(dataPaths.tempDir, { recursive: true });
+
+        await new Promise((resolve, reject) => {
+            const out = fs.createWriteStream(tempEncPath);
+            Readable.fromWeb(fileRes.body).pipe(out);
+            out.on('finish', resolve);
+            out.on('error', reject);
+        });
+
+        const keyBuffer = Buffer.from(payload.key, 'base64');
+        await new Promise((resolve, reject) => {
+            const out = fs.createWriteStream(tempCachePath);
+            decryptVideoStream(tempEncPath, keyBuffer).pipe(out);
+            out.on('finish', resolve);
+            out.on('error', reject);
+        });
+
+        fs.renameSync(tempCachePath, cachePath);
+        return cachePath;
+    } catch (_error) {
+        return null;
+    } finally {
+        try { fs.unlinkSync(tempEncPath); } catch (_e) {}
+        try { fs.unlinkSync(tempCachePath); } catch (_e) {}
+    }
+}
+
 async function relayEffectFromCloud(effectId, req, res) {
     const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
     if (!cloudApiUrl) return false;
@@ -302,20 +363,22 @@ async function streamEffectById(req, res) {
         }
 
         const candidatePaths = [
-            effect?.previewFilePath,
-            effect?.encryptedFilePath,
+            effect?.previewUrl ? path.join(previewsDir, path.basename(effect.previewUrl)) : null,
+            effect?.previewUrl ? path.join(dataPaths.backendRoot, 'uploads', 'previews', path.basename(effect.previewUrl)) : null,
+            path.join(previewsDir, `${effectId}.webm`),
+            path.join(dataPaths.backendRoot, 'uploads', 'previews', `${effectId}.webm`),
+            effect?.previewFilePath ? (fs.existsSync(effect.previewFilePath) && !effect.previewFilePath.endsWith('.enc') ? effect.previewFilePath : null) : null,
             effect?.previewFilePath ? path.join(previewsDir, path.basename(effect.previewFilePath)) : null,
-            effect?.encryptedFilePath ? path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath)) : null,
             effect?.previewFilePath ? path.join(dataPaths.backendRoot, 'uploads', 'previews', path.basename(effect.previewFilePath)) : null,
+            path.join(previewsDir, '1777367568883.webm'),
+            path.join(dataPaths.backendRoot, 'uploads', 'previews', '1777367568883.webm'),
+            effect?.encryptedFilePath,
+            effect?.encryptedFilePath ? path.join(encryptedEffectsDir, path.basename(effect.encryptedFilePath)) : null,
             effect?.encryptedFilePath ? path.join(dataPaths.backendRoot, 'effects', 'encrypted', path.basename(effect.encryptedFilePath)) : null,
             path.join(encryptedEffectsDir, `${effectId}.enc`),
-            path.join(previewsDir, `${effectId}.webm`),
             path.join(dataPaths.backendRoot, 'effects', 'encrypted', `${effectId}.enc`),
-            path.join(dataPaths.backendRoot, 'uploads', 'previews', `${effectId}.webm`),
             path.join(encryptedEffectsDir, '1777367568883.enc'),
-            path.join(dataPaths.backendRoot, 'effects', 'encrypted', '1777367568883.enc'),
-            path.join(previewsDir, '1777367568883.webm'),
-            path.join(dataPaths.backendRoot, 'uploads', 'previews', '1777367568883.webm')
+            path.join(dataPaths.backendRoot, 'effects', 'encrypted', '1777367568883.enc')
         ].filter(Boolean);
 
         let streamPath = candidatePaths.find(p => fs.existsSync(p));
@@ -323,7 +386,7 @@ async function streamEffectById(req, res) {
         if (streamPath && fs.existsSync(streamPath)) {
             if (streamPath.includes('encrypted') || streamPath.endsWith('.enc')) {
                 res.setHeader('Cache-Control', 'private, no-store');
-                return streamDecryptedVideo(streamPath, req, res);
+                return streamDecryptedVideo(streamPath, req, res, effectId);
             } else {
                 const stats = fs.statSync(streamPath);
                 res.setHeader('Cache-Control', 'private, no-store');
@@ -338,7 +401,22 @@ async function streamEffectById(req, res) {
         const fetchedPath = await fetchEncryptedEffectIntoCache(effectId, req);
         if (fetchedPath && fs.existsSync(fetchedPath)) {
             res.setHeader('Cache-Control', 'private, no-store');
-            return streamDecryptedVideo(fetchedPath, req, res);
+            return streamDecryptedVideo(fetchedPath, req, res, effectId);
+        }
+
+        // Fallback: fetch a short-lived, ownership-gated presigned URL from the
+        // central server and download the effect directly from R2 (free
+        // egress) instead of proxying bytes through the central server's own
+        // bandwidth. Caches the decrypted plaintext, so this only ever runs
+        // once per effect per machine.
+        const viaPresignedUrl = await fetchEffectViaPresignedUrl(effectId, req);
+        if (viaPresignedUrl && fs.existsSync(viaPresignedUrl)) {
+            const stats = fs.statSync(viaPresignedUrl);
+            res.setHeader('Cache-Control', 'private, no-store');
+            res.setHeader('Accept-Ranges', 'bytes');
+            res.setHeader('Content-Type', 'video/webm');
+            res.setHeader('Content-Length', stats.size);
+            return fs.createReadStream(viaPresignedUrl).pipe(res);
         }
 
         // Fallback: Stream online from Cloud Server immediately (0ms start delay) and cache to disk
@@ -434,6 +512,37 @@ router.get('/effects/:effectId/asset', authorizeEffectStream, async (req, res) =
     }
 });
 
+// Issues a short-lived (5 min), single-object presigned R2 download URL plus
+// that one effect's derived decryption key — only after resolveEffectForUser
+// confirms the requesting account actually owns it. Only ever answered
+// directly on the central server (the one machine with R2 credentials and
+// ENCRYPTION_PASSWORD); every customer machine's local backend has this same
+// path forwarded there automatically by the cloudProxy middleware in
+// server.js, so it never executes this handler locally. Never call
+// getPresignedEffectDownloadUrl / getEncryptionKey before the ownership
+// check above — an unowned request must be rejected before any URL or key
+// is ever generated.
+router.get('/effects/:effectId/play-url', authMiddleware, async (req, res) => {
+    try {
+        if (!isValidResourceId(req.params.effectId)) {
+            return res.status(400).json({ success: false, error: 'Invalid effect ID' });
+        }
+        if (!isAssetStoreConfigured()) {
+            return res.status(404).json({ success: false, error: 'Shared asset store not configured on this server' });
+        }
+        const effect = await resolveEffectForUser(req.userId, req.params.effectId);
+        if (!effect) {
+            return res.status(403).json({ success: false, error: 'Effect access denied.' });
+        }
+        const url = await getPresignedEffectDownloadUrl(req.params.effectId, { expiresInSeconds: 300 });
+        const key = getEncryptionKey(req.params.effectId).toString('base64');
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.json({ success: true, url, key, expiresIn: 300 });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Multer config for uploads
 const storage = multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, dataPaths.tempDir),
@@ -456,21 +565,28 @@ const upload = multer({
 let ffmpegExecPath = process.env.FFMPEG_PATH || 'ffmpeg';
 try { ffmpegExecPath = require('ffmpeg-static') || ffmpegExecPath; } catch (_e) { }
 
-// Helper for video duration
+// Helper for video duration (accurate to 0.1s using ffmpeg)
 function getVideoDuration(filePath) {
     return new Promise((resolve) => {
         const { spawn } = require('child_process');
-        const ffprobe = spawn('ffprobe', [
-            '-v', 'quiet', '-show_entries', 'format=duration',
-            '-of', 'default=noprint_wrappers=1:nokey=1', filePath
-        ]);
-        let output = '';
-        ffprobe.stdout.on('data', (data) => { output += data.toString(); });
-        ffprobe.on('close', (code) => {
-            if (code === 0 && output.trim() && !isNaN(parseFloat(output.trim()))) resolve(parseFloat(output.trim()));
-            else resolve(5);
+        const child = spawn(ffmpegExecPath, [
+            '-hide_banner',
+            '-i', filePath
+        ], { windowsHide: true });
+        let stderr = '';
+        child.stderr.on('data', (data) => { stderr += data.toString(); });
+        child.on('close', () => {
+            const match = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/i);
+            if (match) {
+                const hours = parseFloat(match[1]) || 0;
+                const mins = parseFloat(match[2]) || 0;
+                const secs = parseFloat(match[3]) || 0;
+                const total = hours * 3600 + mins * 60 + secs;
+                if (total > 0) return resolve(Math.round(total * 10) / 10);
+            }
+            resolve(5);
         });
-        ffprobe.on('error', () => resolve(5));
+        child.on('error', () => resolve(5));
     });
 }
 
@@ -488,13 +604,17 @@ function convertVideoToWebmVp9(inputPath, outputPath) {
             '-hide_banner', '-loglevel', 'error', '-y',
             '-i', inputPath,
             '-vf', videoFilter,
-            '-an',
+            '-map', '0:v:0',
+            '-map', '0:a?',
             '-c:v', 'libvpx-vp9',
             '-pix_fmt', 'yuva420p',
+            '-c:a', 'libopus',
+            '-b:a', '128k',
             '-crf', '30',
             '-b:v', '0',
-            '-deadline', 'good',
-            '-cpu-used', '4',
+            '-deadline', 'realtime',
+            '-cpu-used', '8',
+            '-threads', '0',
             '-row-mt', '1',
             outputPath
         ], { windowsHide: true });
@@ -559,8 +679,28 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
             await convertVideoToWebmVp9(effectFile.path, previewPath);
             const detectedDuration = await getVideoDuration(previewPath);
             const duration = parseFloat(reqDuration) || detectedDuration || 5;
+            const fileSize = fs.existsSync(previewPath) ? fs.statSync(previewPath).size : (fs.existsSync(effectFile.path) ? fs.statSync(effectFile.path).size : 0);
+
+            if (!thumbFile) {
+                const autoThumbPath = path.join(thumbsDir, `${effectId}.png`);
+                const thumbCreated = await generateThumbnailPng(previewPath, autoThumbPath);
+                if (thumbCreated) {
+                    effectData.thumbFilePath = autoThumbPath;
+                    effectData.thumbUrl = `/uploads/thumbs/${effectId}.png`;
+                    if (isAssetStoreConfigured()) {
+                        try {
+                            await uploadThumbnail(effectId, autoThumbPath);
+                        } catch (uploadError) {
+                            console.error(`⚠️  Could not upload auto-thumbnail for ${effectId} to shared store:`, uploadError.message);
+                        }
+                    }
+                }
+            }
+
             const encryptedPath = path.join(encryptedEffectsDir, `${effectId}.enc`);
-            await encryptVideo(previewPath, encryptedPath);
+            const tempForEncrypt = path.join(dataPaths.tempDir, `${effectId}_enc_temp.webm`);
+            try { fs.copyFileSync(previewPath, tempForEncrypt); } catch (_e) {}
+            await encryptVideo(fs.existsSync(tempForEncrypt) ? tempForEncrypt : previewPath, encryptedPath, effectId);
 
             // Push the same encrypted bytes to the shared store so every
             // other machine can fetch this effect too (see
@@ -580,23 +720,7 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
             effectData.duration = duration;
             effectData.fileUrl = `/api/stream/effect/${effectId}`;
             effectData.previewUrl = `/uploads/previews/${effectId}.webm`;
-            effectData.fileSize = fs.statSync(previewPath).size;
-
-            if (!thumbFile) {
-                const autoThumbPath = path.join(thumbsDir, `${effectId}.png`);
-                const thumbCreated = await generateThumbnailPng(previewPath, autoThumbPath);
-                if (thumbCreated) {
-                    effectData.thumbFilePath = autoThumbPath;
-                    effectData.thumbUrl = `/uploads/thumbs/${effectId}.png`;
-                    if (isAssetStoreConfigured()) {
-                        try {
-                            await uploadThumbnail(effectId, autoThumbPath);
-                        } catch (uploadError) {
-                            console.error(`⚠️  Could not upload auto-thumbnail for ${effectId} to shared store:`, uploadError.message);
-                        }
-                    }
-                }
-            }
+            effectData.fileSize = fileSize || (fs.existsSync(encryptedPath) ? fs.statSync(encryptedPath).size : 0);
 
             try { fs.unlinkSync(effectFile.path); } catch (e) {}
         }
@@ -697,6 +821,8 @@ router.delete('/effects/:id', authMiddleware, adminMiddleware, async (req, res) 
             }
         }
         const result = await deleteCatalogEffectCascade(req.params.id);
+        const { deleteRemoteEffect } = require('../services/effectAssetStore');
+        deleteRemoteEffect(req.params.id).catch(() => {});
         res.json({ success: true, ...result });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });

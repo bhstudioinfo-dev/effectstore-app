@@ -7,6 +7,7 @@
 // playback time via utils/encrypt-video.js, unchanged.
 
 const { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 function isAssetStoreConfigured() {
     return Boolean(
@@ -72,6 +73,18 @@ async function downloadEncryptedEffect(effectId) {
     }
 }
 
+// A short-lived, single-object download URL a customer machine can fetch
+// directly from R2 (free egress) instead of the central server proxying the
+// bytes through its own bandwidth. Only ever call this after the caller has
+// already verified the requesting account owns the effect — the URL itself
+// carries no ownership check, only R2's own signature/expiry.
+async function getPresignedEffectDownloadUrl(effectId, { expiresInSeconds = 300 } = {}) {
+    return getSignedUrl(getClient(), new GetObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: keyForEffect(effectId)
+    }), { expiresIn: expiresInSeconds });
+}
+
 // Thumbnails are plain marketing images (not the protected video content),
 // so unlike the effect file above they're stored as-is, no encryption step.
 function keyForThumbnail(effectId) {
@@ -132,14 +145,34 @@ async function downloadThumbnail(effectId) {
     }
 }
 
+async function deleteRemoteEffect(effectId) {
+    if (!isAssetStoreConfigured()) return;
+    const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+    const keys = [
+        keyForEffect(effectId),
+        keyForThumbnail(effectId),
+        `previews/${effectId}.webm`
+    ];
+    for (const key of keys) {
+        try {
+            await getClient().send(new DeleteObjectCommand({
+                Bucket: process.env.R2_BUCKET_NAME,
+                Key: key
+            }));
+        } catch (_error) {}
+    }
+}
+
 module.exports = {
     isAssetStoreConfigured,
     uploadEncryptedEffect,
     effectExistsRemotely,
     downloadEncryptedEffect,
+    getPresignedEffectDownloadUrl,
     uploadThumbnail,
     downloadThumbnail,
     uploadReleaseArtifact,
     downloadReleaseArtifact,
-    keyForRelease
+    keyForRelease,
+    deleteRemoteEffect
 };

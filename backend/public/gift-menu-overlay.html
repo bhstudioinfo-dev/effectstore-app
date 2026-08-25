@@ -2012,15 +2012,20 @@
           disc.style.setProperty('transition', `transform ${duration}ms cubic-bezier(.12,.72,.08,1)`, 'important');
           disc.style.setProperty('transform', 'rotate(0deg)', 'important');
         }
-        
+
+        const resFontSize = Math.max(24, Math.min(80, Number(presentation.resultFontSize || data.resultFontSize || 42)));
+        const resTitleFontSize = Math.max(16, Math.round(resFontSize * 0.45));
+        const resPadY = Math.max(12, Math.round(resFontSize * 0.4));
+        const resPadX = Math.max(20, Math.round(resFontSize * 0.75));
+
         const resultBox = document.createElement('div');
         resultBox.className = 'gmd-wheel-result';
-        resultBox.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#0f172a; border:3px solid #fbbf24; border-radius:14px; padding:14px 28px; box-shadow:0 10px 30px rgba(0,0,0,0.9), 0 0 20px rgba(251,191,36,0.6); z-index:100; text-align:center; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.4s ease;';
-        resultBox.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:16px;font-weight:800;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:6px;"><span>🎡</span><span>KẾT QUẢ:</span></div>${resultVisual}<div style="font-size:24px;font-weight:900;color:#facc15;text-shadow:0 2px 8px rgba(0,0,0,0.9);">${safe(data.resultLabel || '')}</div>`;
+        resultBox.style.cssText = `position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); min-width:${Math.round(resFontSize * 5.5)}px; background:rgba(15,23,42,0.96); border:4px solid #fbbf24; border-radius:18px; padding:${resPadY}px ${resPadX}px; box-shadow:0 16px 48px rgba(0,0,0,0.95), 0 0 35px rgba(251,191,36,0.7); z-index:100; text-align:center; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.4s cubic-bezier(.16,1,.3,1), transform 0.4s cubic-bezier(.16,1,.3,1); backdrop-filter:blur(8px);`;
+        resultBox.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:${resTitleFontSize}px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:8px;"><span>🎡</span><span>KẾT QUẢ:</span></div>${resultVisual}<div style="font-size:${resFontSize}px;font-weight:900;color:#facc15;text-shadow:0 3px 12px rgba(0,0,0,0.95), 0 0 20px rgba(250,204,21,0.5);line-height:1.2;">${safe(data.resultLabel || '')}</div>`;
         liveWheel.appendChild(resultBox);
         host.appendChild(liveWheel);
         document.body.appendChild(host);
-        
+
         window.setTimeout(() => {
           host.classList.add('is-spinning');
           if (disc) {

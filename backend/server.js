@@ -275,7 +275,7 @@ async function seedInitialGifts() {
 let databaseSchemaReady = false;
 mongoose.set('bufferCommands', false);
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/effectstore', {
-    serverSelectionTimeoutMS: 3000,
+    serverSelectionTimeoutMS: 10000,
     maxPoolSize: 10,
     minPoolSize: 0
 })
@@ -358,7 +358,7 @@ try {
                 if (ws.messageWindow.count > 30) return ws.close(1008, 'Message rate exceeded');
                 const packet = JSON.parse(raw);
                 if (!packet || typeof packet !== 'object') return;
-                if (packet.event === 'effect_player_ready' || packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
+                if (packet.event === 'effect_player_ready' || packet.event === 'effect_player_play_started' || packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
                     if (packet.event === 'effect_player_ready') effectPlayerClients.add(ws);
                     effectQueue.handleEffectPlayerEvent(packet.event, packet.data || {});
                     broadcastToClients(packet.event, packet.data || {});
@@ -422,6 +422,10 @@ effectQueue.setBroadcastFn(broadcastToClients);
 // Connect to OBS on startup (using DB settings if available, or env/default fallbacks)
 const OBSSettings = require('./models/OBSSettings');
 async function initOBSConnection() {
+    // The hosted API has no local OBS instance.  Retrying localhost:4455 on
+    // Render only burns resources and floods logs; OBS is owned exclusively
+    // by the customer's per-machine backend.
+    if (String(process.env.RENDER || '').toLowerCase() === 'true') return;
     try {
         // No account is logged in yet at boot. Prefer the pre-migration
         // legacy document (no userId); otherwise fall back to whichever
@@ -480,14 +484,14 @@ if (isCloudProxyEnabled()) {
     app.get('/api/effects/:id/timeline', proxyToCloud);
     app.get('/api/user/effects', proxyToCloud);
     app.use('/api/s_*', proxyToCloud);
-    // Effect create/update/delete are writes to the shared catalog too — they
-    // must land in the central database, not this machine's own local one,
-    // or other machines would never see a newly-uploaded effect. The video
-    // file itself streams through unchanged (see proxyToCloud's raw-body
-    // passthrough) so the central server runs the exact same encrypt +
-    // upload-to-R2 steps this local server would have run.
-    app.post('/api/effects', proxyToCloud);
-    app.post('/api/effects/:id/update', proxyToCloud);
+    // Ownership check + a short-lived presigned R2 download URL + that one
+    // effect's derived key. Only the central server ever actually answers
+    // this (it alone holds R2 credentials and ENCRYPTION_PASSWORD) — see
+    // routes/effects.js's play-url route. Forwarding it here keeps every
+    // customer machine's own copy of that route handler unreachable.
+    app.get('/api/effects/:id/play-url', proxyToCloud);
+    // Effect create/update are processed locally (FFmpeg conversion to WebM VP9,
+    // AES encryption, and upload to shared R2 storage).
     app.delete('/api/effects/:id', proxyToCloud);
     app.put('/api/effects/:id/timeline', proxyToCloud);
     app.use('/api/admin', (req, res, next) => {
@@ -620,8 +624,12 @@ app.get('/api/cloud/status', async (_req, res) => {
 app.get('/api/system/status', async (_req, res) => {
     try {
         let obsSources = { gift_menu: false, effect_player: false };
+        let assetStoreConfigured = false;
         try {
             obsSources = await obsService.getFoundationSourceStatus();
+        } catch (_e) { }
+        try {
+            assetStoreConfigured = require('./services/effectAssetStore').isAssetStoreConfigured();
         } catch (_e) { }
         const databaseConnected = mongoose.connection.readyState === 1;
         return res.json({
@@ -636,6 +644,7 @@ app.get('/api/system/status', async (_req, res) => {
             },
             tiktok: { connected: tiktokService.isConnected() },
             obs: { connected: obsService.isConnected(), sources: obsSources },
+            assetStore: { configured: assetStoreConfigured },
             websocket: { active: Boolean(wss), clients: clients.size },
             uptimeSeconds: Math.floor(process.uptime()),
             launcher: { connected: true }
@@ -646,6 +655,7 @@ app.get('/api/system/status', async (_req, res) => {
             database: { connected: mongoose.connection.readyState === 1 },
             tiktok: { connected: tiktokService.isConnected() },
             obs: { connected: obsService.isConnected() },
+            assetStore: { configured: false },
             websocket: { active: Boolean(wss), clients: clients.size },
             uptimeSeconds: Math.floor(process.uptime()),
             launcher: { connected: true }

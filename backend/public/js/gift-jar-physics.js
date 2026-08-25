@@ -765,31 +765,7 @@
             // 1. Fiery Bomb Explosion with Smoke and Fireballs
             this.createBombExplosion(bombX, bombY);
 
-            const otherItems = this.items.filter(b => b !== bombBody && !b.exploding);
-
-            // Check if bomb hit inside or close enough to the jar
-            const isNearJar = jar && (
-                bombX >= jar.x - 30 &&
-                bombX <= jar.x + jar.w + 30 &&
-                bombY >= jar.y - 40 &&
-                bombY <= jar.y + jar.h + 50
-            );
-
-            if (!isNearJar || !otherItems.length) {
-                // Bomb landed outside! Jar is safe!
-                otherItems.forEach(b => {
-                    Matter.Body.setVelocity(b, {
-                        x: b.velocity.x + (Math.random() - 0.5) * 3,
-                        y: b.velocity.y - 2 - Math.random() * 2
-                    });
-                });
-                if (typeof callback === 'function') {
-                    callback({ isHit: false, destroyedCount: 0, totalCount: otherItems.length, ratio: 0 });
-                }
-                return;
-            }
-
-            // 2. Separate gifts: ~35% - 45% nearest gifts get destroyed; remainder survive
+            // 2. Separate gifts: ~30% - 42% nearest gifts around the bomb epicenter get destroyed
             const itemsWithDist = otherItems.map(b => {
                 const dx = b.position.x - bombX;
                 const dy = b.position.y - bombY;
@@ -797,8 +773,15 @@
             });
             itemsWithDist.sort((a, b) => a.dist - b.dist);
 
-            // Destroy approximately 35% - 45% of the gifts in the jar
-            const destroyPercent = 0.35 + Math.random() * 0.12;
+            if (!itemsWithDist.length) {
+                if (typeof callback === 'function') {
+                    callback({ isHit: false, destroyedCount: 0, totalCount: 0, ratio: 0 });
+                }
+                return;
+            }
+
+            // Destroy approximately 30% - 42% of the nearest gifts around the blast
+            const destroyPercent = 0.30 + Math.random() * 0.12;
             const destroyCount = Math.max(1, Math.min(itemsWithDist.length, Math.ceil(itemsWithDist.length * destroyPercent)));
             const destroyedItems = itemsWithDist.slice(0, destroyCount).map(entry => entry.body);
             const survivingItems = itemsWithDist.slice(destroyCount).map(entry => entry.body);

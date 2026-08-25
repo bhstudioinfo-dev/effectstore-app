@@ -70,9 +70,6 @@ class EffectStoreApp {
         this.ws = null;
         this.WS_URL = 'ws://127.0.0.1:9001';
         this.API_URL = 'http://127.0.0.1:9000';
-        // Public, non-secret central origin. Catalog JSON is requested through
-        // the local backend, but media paths returned by that cloud response
-        // live on the central host rather than on each customer's machine.
         this.CLOUD_API_URL = 'https://effectstore-app.onrender.com';
         this.selectedGift = null;
         this.selectedEffect = null;
@@ -1486,6 +1483,8 @@ class EffectStoreApp {
         this.updateAdminBadges(0);
         await this.resetRemoteControlSession();
         await this.resetGiftMenuDesignerSession();
+        await fetch(`${this.API_URL}/api/tiktok/gift-menu-overlay-clear`, { method: 'POST' }).catch(() => {});
+        await this.hideGiftMenuOverlayOnLogout();
         this.switchView('store');
         this.updateUserUI();
         this.openAuthModal();
@@ -3360,7 +3359,9 @@ class EffectStoreApp {
                 const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value);
                 const thumbUrl = effect.thumbUrl ? resolveMediaUrl(effect.thumbUrl) : '';
                 const fallbackIcon = effect.icon || '🎬';
-                const effectiveVideo = effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
+                const effectiveVideo = (effect.previewUrl && !effect.isCustom)
+                    ? resolveMediaUrl(effect.previewUrl)
+                    : (effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '');
 
                 if (effect.category === 'menu_template') {
                     previewHTML = `
@@ -3495,7 +3496,7 @@ class EffectStoreApp {
                                             <span class="price-current" style="color: #ffcc00; font-weight: 900; font-size: 26px; text-shadow: 0 0 20px rgba(255,204,0,0.6); letter-spacing: -0.5px;">${this.formatPrice(currentPrice)}</span>
                                             <span class="price-original" style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 13px; font-weight: 500;">${this.formatPrice(origPrice)}</span>
                                         </div>
-                                        <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
+                                        ${effect.category === 'menu_template' ? '' : `<span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>`}
                                     </div>
                                     ${countdownHTML}
                                     <button class="${activeBtnClass}" onclick="${activeBtnAction}">${activeBtnText}</button>
@@ -3532,7 +3533,7 @@ class EffectStoreApp {
                                             : '<span style="background:rgba(124,58,237,0.15);color:#c4b5fd;border:1px solid rgba(124,58,237,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">🏬 Cửa hàng</span>'
                                         }
                                     </div>
-                                    <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
+                                    ${effect.category === 'menu_template' ? '' : `<span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>`}
                                 </div>
                                 ` : `
                                 <div class="effect-price-row" style="margin-bottom: 5px;">
@@ -3540,7 +3541,7 @@ class EffectStoreApp {
                                         <span class="price-current" style="color: ${priceColor}; font-weight: 800; font-size: 15px;">${this.formatPrice(currentPrice)}</span>
                                         ${originalPriceHTML}
                                     </div>
-                                    <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
+                                    ${effect.category === 'menu_template' ? '' : `<span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>`}
                                 </div>
                                 `}
                                 <button class="${btnClass}" onclick="${btnAction}">${btnText}</button>
@@ -3556,22 +3557,17 @@ class EffectStoreApp {
                 if (video) {
                     container.addEventListener('mouseenter', () => {
                         if (video.getAttribute('data-error') === 'true') return;
-                        // Do not reveal the video early: Flash Sale cards have
-                        // a large image and used to look blank until the first
-                        // decoded frame was ready.
-                        const revealPreview = () => {
-                            if (container.matches(':hover')) container.classList.add('is-previewing');
-                        };
-                        video.addEventListener('playing', revealPreview, { once: true });
-                        video.currentTime = 0;
-                        video.play().catch(err => {
-                            if (err.name !== 'AbortError') console.error('Video play error:', err);
-                        });
+                        container.classList.add('is-previewing');
+                        const playPromise = video.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(err => {
+                                if (err.name !== 'AbortError') console.error('Video play error:', err);
+                            });
+                        }
                     });
                     container.addEventListener('mouseleave', () => {
                         container.classList.remove('is-previewing');
                         video.pause();
-                        video.currentTime = 0;
                     });
                 }
             });
@@ -3705,9 +3701,8 @@ class EffectStoreApp {
         // thumbnails locally. Prefer that stable local cache over Render so
         // cold/cloud asset responses cannot leave otherwise-ready cards blank.
         // Protected playback routes must also remain local because Render does
-        // not have their per-machine effect files.
         const isLocalMediaRoute = /^\/api\/(?:stream\/effect\/|obs\/effect-player-media\/)/i.test(raw)
-            || /^\/(?:effects\/|uploads\/(?:thumbs|banners)\/)/i.test(raw);
+            || /^\/(?:effects\/|uploads\/(?:thumbs|banners|previews)\/)/i.test(raw);
         const baseUrl = isLocalMediaRoute ? this.API_URL : this.CLOUD_API_URL;
         try {
             return new URL(raw, baseUrl).toString();
@@ -3842,25 +3837,38 @@ class EffectStoreApp {
             const product = (this.storeEffects || []).find((effect) =>
                 String(effect?._id || effect?.id || '') === String(productOrTemplateId || '')
             );
-            // Old rendered cards only carried the template id.  New cards
-            // carry both IDs, so resolve from the canonical Store product
-            // before navigating rather than ever sending /undefined/use.
             const templateId = [explicitTemplateId, product?.fileUrl, productOrTemplateId]
                 .map(value => String(value || '').trim())
                 .find(isResourceId);
             if (!templateId) {
                 throw new Error('Mẫu thiết kế này chưa đồng bộ xong. Vui lòng tải lại Cửa hàng.');
             }
+
+            const designer = window.giftMenuDesigner;
+            const targetName = product?.name || 'Mẫu thiết kế';
+            const userPlan = this.userPlan || this.user?.plan || 'free';
+            const limit = userPlan === 'free' ? 1 : (userPlan === 'basic' ? 2 : Infinity);
+            const layouts = designer?.layouts || [];
+            const isWheelProduct = /vòng quay|wheel/i.test(targetName) || product?.type === 'wheel' || product?.category === 'wheel';
+            const existingLayoutHasWheel = layouts.some(l => (l.items || []).some(i => i.type === 'challenge-wheel'));
+
+            // If user already reached library limit and does not have an existing layout specifically containing this widget:
+            if (Number.isFinite(limit) && layouts.length >= limit && (!isWheelProduct || !existingLayoutHasWheel)) {
+                const templateObj = {
+                    name: targetName,
+                    productType: isWheelProduct ? 'challenge-wheel' : '',
+                    id: isWheelProduct ? 'tmpl_challenge_wheel' : templateId
+                };
+                if (designer && typeof designer.showLibraryLimitModal === 'function') {
+                    designer.showLibraryLimitModal(templateObj);
+                    return;
+                }
+            }
+
             this.switchView('gift-menu-designer');
             const tryOpen = async (retries = 5) => {
                 if (window.giftMenuDesigner && typeof window.giftMenuDesigner.buyOrUseTemplateFromSidebar === 'function') {
-                    const usedLayoutId = this.menuTemplateLayoutIds?.get(String(templateId));
-                    let result = usedLayoutId
-                        ? await window.giftMenuDesigner.openLibraryLayout(usedLayoutId)
-                        : await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
-                    if (!result || !result.success) {
-                        result = await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
-                    }
+                    const result = await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
                     if (result && result.success) {
                         if (!this.menuTemplateUsage) this.menuTemplateUsage = new Map();
                         this.menuTemplateUsage.set(String(templateId), true);
@@ -5550,11 +5558,13 @@ class EffectStoreApp {
             return;
         }
         this._paymentApprovals.add(String(paymentId));
-        document.querySelectorAll('[data-payment-id]').forEach((button) => {
-            if (button.dataset.paymentId === String(paymentId)) button.disabled = true;
+        const buttons = document.querySelectorAll(`[data-payment-id="${paymentId}"]`);
+        buttons.forEach((button) => {
+            button.disabled = true;
+            button.dataset.origText = button.innerHTML;
+            button.innerHTML = '⏳ Đang duyệt...';
         });
         try {
-            this.showAppLoadingOverlay('⏳ Đang duyệt đơn và kích hoạt dịch vụ...', 30);
             const res = await fetch(`${this.API_URL}/api/payment/admin/approve`, {
                 method: 'POST',
                 headers: {
@@ -5565,26 +5575,30 @@ class EffectStoreApp {
             });
             const data = await res.json().catch(() => ({}));
             if (res.ok && data.success) {
-                if (data.processing) {
-                    this.showNotification('info', 'Đơn đang được máy chủ xử lý. Danh sách sẽ tự cập nhật.');
-                    setTimeout(() => this.loadAdminDashboard(), 1200);
-                    return;
+                // Optimistically remove the approved row from DOM immediately
+                document.querySelectorAll(`[data-payment-id="${paymentId}"]`).forEach((b) => {
+                    const row = b.closest('.effect-item-row');
+                    if (row) row.remove();
+                });
+                const container = document.getElementById('admin-payments-list');
+                if (container && container.querySelectorAll('.effect-item-row').length === 0) {
+                    container.innerHTML = '<div class="empty-state">💳 Không có payment chờ</div>';
                 }
                 this.showNotification('success', data.duplicate
                     ? '✅ Đơn này đã được duyệt trước đó; quyền lợi không bị cộng trùng.'
                     : '✅ Đã duyệt đơn và kích hoạt dịch vụ thành công!');
                 if (closeModal) this.closePendingPaymentsModal();
-                await this.loadAdminDashboard();
+                this.loadAdminDashboard();
             } else {
                 this.showNotification('error', '❌ ' + (data.message || data.error || 'Không thể duyệt đơn.'));
             }
         } catch (e) {
             this.showNotification('error', '❌ Lỗi kết nối máy chủ: ' + e.message);
         } finally {
-            this.hideAppLoadingOverlay();
             this._paymentApprovals.delete(String(paymentId));
-            document.querySelectorAll('[data-payment-id]').forEach((button) => {
-                if (button.dataset.paymentId === String(paymentId)) button.disabled = false;
+            buttons.forEach((button) => {
+                button.disabled = false;
+                if (button.dataset.origText) button.innerHTML = button.dataset.origText;
             });
         }
     }
@@ -6483,6 +6497,11 @@ class EffectStoreApp {
         this.connectWebSocket();
         this.loadGifts();
         this.loadAiAssistantConfig();
+        if (!this.testMappingTimer || this.testMappingTimer.until <= Date.now()) {
+            this.activeTestMappingId = null;
+            this.testMappingTimer = null;
+            this.isTestingFetch = false;
+        }
         // Usually already completed by preloadAllAppData; this is a safe
         // fallback for sessions that entered the view before authentication.
         this.loadEffectsForMapping();
@@ -6517,10 +6536,17 @@ class EffectStoreApp {
     }
 
     isEffectQueueBusy() {
-        return this.effectQueueStatus?.status && this.effectQueueStatus.status !== 'idle';
+        if (!this.effectQueueStatus) return false;
+        if (this.effectQueueStatus.status === 'idle') return false;
+        if (this.effectQueueStatus.queueLength === 0 && (!this.effectQueueStatus.remainingMs || this.effectQueueStatus.remainingMs <= 0)) {
+            return false;
+        }
+        return Boolean(this.effectQueueStatus.status && this.effectQueueStatus.status !== 'idle');
     }
 
     async refreshEffectQueueStatus() {
+        if (this._effectQueueStatusInFlight) return;
+        this._effectQueueStatusInFlight = true;
         try {
             const res = await fetch(`${this.API_URL}/api/queue/status`);
             if (!res.ok) return;
@@ -6528,10 +6554,9 @@ class EffectStoreApp {
             this.effectQueueStatus = status;
             this.updateControlDeckQueueStatus(status);
             const hasLocalTestTimer = Boolean(
-                (this.testMappingTimer && this.testMappingTimer.until > Date.now()) ||
-                this.isTestingFetch
+                this.testMappingTimer && this.testMappingTimer.until > Date.now()
             );
-            if (!this.isEffectQueueBusy() && !hasLocalTestTimer) {
+            if (!this.isEffectQueueBusy() && !hasLocalTestTimer && !this.isTestingFetch) {
                 this.activeTestMappingId = null;
             }
             this.updateMappingTestButtons();
@@ -6581,6 +6606,8 @@ class EffectStoreApp {
             }
         } catch (error) {
             console.warn('Queue status check failed:', error);
+        } finally {
+            this._effectQueueStatusInFlight = false;
         }
     }
 
@@ -6589,32 +6616,37 @@ class EffectStoreApp {
         if (!buttons.length) return;
 
         const hasTimer = Boolean(this.testMappingTimer && this.testMappingTimer.until > Date.now());
-        const localTestBusy = hasTimer || Boolean(this.activeTestMappingId) || Boolean(this.isTestingFetch);
-        const busy = this.isEffectQueueBusy() || localTestBusy;
-        const remainingSeconds = hasTimer
-            ? Math.max(0, (this.testMappingTimer.until - Date.now()) / 1000).toFixed(1)
-            : Math.max(0, Number(this.effectQueueStatus?.remainingMs || 0) / 1000).toFixed(1);
+        const activeTimerMappingId = hasTimer ? this.testMappingTimer.mappingId : null;
+        const queueBusy = this.isEffectQueueBusy();
+        const busy = queueBusy || hasTimer || Boolean(this.isTestingFetch);
         const queueLength = Number(this.effectQueueStatus?.queueLength || 0);
-        const busyLabel = queueLength > 0 ? `⏳ Đang chạy (${queueLength} chờ)` : `⏳ ${remainingSeconds}s`;
 
         buttons.forEach((btn) => {
             const defaultLabel = btn.dataset.defaultLabel || '▶ Test';
             const mappingId = btn.dataset.mappingId;
-            const isActiveTest = (this.activeTestMappingId && mappingId === this.activeTestMappingId)
-                || (hasTimer && mappingId === this.testMappingTimer?.mappingId);
+            const isLocalActive = Boolean(activeTimerMappingId && mappingId === activeTimerMappingId);
 
-            if (isActiveTest) return;
+            if (isLocalActive) {
+                // Active countdown is controlled by the timer interval
+                return;
+            }
 
             btn.disabled = busy;
             btn.style.cursor = busy ? 'not-allowed' : 'pointer';
-            btn.style.opacity = busy && !isActiveTest ? '0.55' : '';
+            btn.style.opacity = busy ? '0.6' : '';
 
             if (busy) {
-                btn.innerHTML = isActiveTest ? busyLabel : '⏸ Đang bận';
+                if (this.isTestingFetch && this.activeTestMappingId === mappingId) {
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang phát...';
+                } else {
+                    btn.innerHTML = queueLength > 0 ? `⏳ Đang chạy (${queueLength} chờ)` : '⏸ Đang bận';
+                }
             } else {
                 btn.innerHTML = defaultLabel;
                 btn.style.background = '';
                 btn.style.transition = '0.3s';
+                btn.style.opacity = '';
+                btn.style.cursor = 'pointer';
             }
         });
     }
@@ -6865,10 +6897,28 @@ class EffectStoreApp {
             if (!grid) return;
 
             // 1. Instant Cache Render: If we already have mappingEffects or ownedEffects in memory, render immediately
+            const wheelCacheKey = this.accountStorageKey('es_cache_challenge_wheels');
+            let cachedWheels = [];
+            if (wheelCacheKey) {
+                try {
+                    cachedWheels = JSON.parse(localStorage.getItem(wheelCacheKey) || '[]');
+                } catch (_e) {}
+            }
+            const formattedCachedWheels = (cachedWheels || []).map(wheel => ({
+                _id: `challenge-wheel:${wheel._id}`,
+                name: wheel.displayName || wheel.name || 'Vòng quay thử thách',
+                icon: '🎡',
+                isChallengeWheel: true,
+                challengeWheelId: String(wheel._id),
+                segments: Array.isArray(wheel.segments) ? wheel.segments : [],
+                presentation: wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {}
+            }));
+
             if (Array.isArray(this.mappingEffects) && this.mappingEffects.length > 0) {
                 this.renderMappingEffectsGrid(this.mappingEffects);
             } else if (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0) {
                 const initialEffects = this.ownedEffects.filter(e => e && e.category !== 'menu_template' && e.isChallengeWheel !== true);
+                initialEffects.push(...formattedCachedWheels.filter(w => !initialEffects.some(e => e._id === w._id)));
                 if (initialEffects.length > 0) this.renderMappingEffectsGrid(initialEffects);
             } else {
                 try {
@@ -6877,7 +6927,10 @@ class EffectStoreApp {
                         const cached = JSON.parse(localStorage.getItem(ownedKey) || '[]');
                         if (Array.isArray(cached) && cached.length > 0) {
                             const initial = cached.filter(e => e && e.category !== 'menu_template' && e.isChallengeWheel !== true);
+                            initial.push(...formattedCachedWheels.filter(w => !initial.some(e => e._id === w._id)));
                             if (initial.length > 0) this.renderMappingEffectsGrid(initial);
+                        } else if (formattedCachedWheels.length > 0) {
+                            this.renderMappingEffectsGrid(formattedCachedWheels);
                         }
                     }
                 } catch (_e) {}
@@ -6930,6 +6983,11 @@ class EffectStoreApp {
             const visibleWheels = uniqueWheels.filter((wheel) =>
                 Boolean(wheel.sourceTemplateId) && catalogWheelIds.has(String(wheel.sourceTemplateId))
             );
+            if (wheelCacheKey && visibleWheels.length > 0) {
+                try {
+                    localStorage.setItem(wheelCacheKey, JSON.stringify(visibleWheels));
+                } catch (_e) {}
+            }
             displayEffects.push(...visibleWheels.map((wheel) => ({
                 _id: `challenge-wheel:${wheel._id}`,
                 name: wheel.displayName || wheel.name || 'Vòng quay thử thách',
@@ -7429,15 +7487,16 @@ class EffectStoreApp {
         const btn = event.currentTarget;
         if (btn.disabled) return;
 
+        if (this.testMappingTimer?.interval) clearInterval(this.testMappingTimer.interval);
         if (this.testMappingTimer?.raf) cancelAnimationFrame(this.testMappingTimer.raf);
         this.testMappingTimer = null;
+        this.activeTestMappingId = null;
 
         btn.blur();
-
-        const originalContent = btn.innerHTML;
+        const originalContent = btn.dataset.defaultLabel || '▶ Test';
 
         try {
-            this.activeTestMappingId = id;
+            this.activeTestMappingId = String(id);
             this.isTestingFetch = true;
             btn.disabled = true;
             btn.style.cursor = 'not-allowed';
@@ -7454,14 +7513,27 @@ class EffectStoreApp {
                 ? `${this.API_URL}/api/tiktok/challenge-wheels/${encodeURIComponent(mapping.wheelId)}/test`
                 : `${this.API_URL}/api/tiktok/test-trigger`;
             const testBody = wheelOnly ? {} : { mappingId: id };
-            const res = await fetch(testUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(testBody)
-            });
+            const controller = new AbortController();
+            const fetchTimeout = setTimeout(() => controller.abort(), 25000);
+            let res;
+            try {
+                res = await fetch(testUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(testBody),
+                    signal: controller.signal
+                });
+            } catch (fetchErr) {
+                if (fetchErr.name === 'AbortError') {
+                    throw new Error('Yêu cầu kiểm tra hiệu ứng quá thời gian chờ (Timeout). Vui lòng thử lại.');
+                }
+                throw fetchErr;
+            } finally {
+                clearTimeout(fetchTimeout);
+            }
             const data = await res.json().catch(() => ({}));
             this.isTestingFetch = false;
 
@@ -7472,53 +7544,52 @@ class EffectStoreApp {
             this.showNotification('success', '🎬 Đã chạy thử hiệu ứng trên OBS!');
 
             const resolvedDuration = Number(data.duration) || (wheelOnly ? 6.5 : 0);
-            if (!Number.isFinite(resolvedDuration) || resolvedDuration <= 0) {
-                throw new Error('Không đọc được thời lượng hiệu ứng. Hãy kiểm tra tệp rồi thử lại.');
-            }
-            const totalDuration = Math.max(resolvedDuration * 1000, 1000);
+            const totalDuration = Math.max((Number.isFinite(resolvedDuration) && resolvedDuration > 0 ? resolvedDuration : 5) * 1000, 1000);
             const finishAt = Date.now() + totalDuration;
-            this.testMappingTimer = { mappingId: String(id), until: finishAt, raf: null };
-            let lastShown = null;
-            btn.style.background = `linear-gradient(90deg, #10b981 100%, rgba(0,0,0,0.3) 100%)`;
-            this.updateMappingTestButtons();
 
-            const tick = () => {
-                const timeLeft = Math.max(0, finishAt - Date.now());
-                const seconds = (timeLeft / 1000).toFixed(1);
-                if (seconds !== lastShown) {
-                    lastShown = seconds;
-                    const percent = Math.max(0, (timeLeft / totalDuration) * 100);
-                    btn.innerHTML = `<i class="fas fa-hourglass-half"></i> ${seconds}s`;
-                    btn.style.background = `linear-gradient(90deg, #10b981 ${percent}%, rgba(0,0,0,0.3) ${percent}%)`;
-                }
+            const cleanupTest = () => {
+                if (this.testMappingTimer?.interval) clearInterval(this.testMappingTimer.interval);
+                this.testMappingTimer = null;
+                this.activeTestMappingId = null;
+                this.isTestingFetch = false;
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+                btn.style.background = '';
+                btn.style.cursor = 'pointer';
+                btn.style.opacity = '';
+                btn.style.transition = '0.3s';
+                this.updateMappingTestButtons();
+                this.loadLogs?.();
+            };
+
+            const updateTick = () => {
+                const timeLeft = finishAt - Date.now();
                 if (timeLeft <= 0) {
-                    this.activeTestMappingId = null;
-                    this.testMappingTimer = null;
-                    this.isTestingFetch = false;
-                    btn.disabled = false;
-                    btn.innerHTML = originalContent;
-                    btn.style.background = '';
-                    btn.style.cursor = 'pointer';
-                    btn.style.transition = '0.3s';
-                    this.updateMappingTestButtons();
-                    this.loadLogs?.();
+                    cleanupTest();
                     return;
                 }
-                if (this.testMappingTimer) {
-                    this.testMappingTimer.raf = requestAnimationFrame(tick);
-                }
+                const seconds = (timeLeft / 1000).toFixed(1);
+                const percent = Math.max(0, (timeLeft / totalDuration) * 100);
+                btn.innerHTML = `<i class="fas fa-hourglass-half"></i> ${seconds}s`;
+                btn.style.background = `linear-gradient(90deg, #10b981 ${percent}%, rgba(0,0,0,0.3) ${percent}%)`;
             };
-            tick();
+            updateTick();
+            const interval = setInterval(updateTick, 100);
+
+            this.testMappingTimer = { mappingId: String(id), until: finishAt, interval };
+            this.updateMappingTestButtons();
+
         } catch (e) {
             this.showNotification('error', 'Lỗi test OBS: ' + e.message);
             this.activeTestMappingId = null;
             this.testMappingTimer = null;
             this.isTestingFetch = false;
-            this.updateMappingTestButtons();
             btn.disabled = false;
             btn.innerHTML = originalContent;
             btn.style.background = '';
             btn.style.cursor = 'pointer';
+            btn.style.opacity = '';
+            this.updateMappingTestButtons();
         }
     }
     showConfirmDialog(title, message, onConfirm) {
@@ -7560,12 +7631,16 @@ class EffectStoreApp {
     async deleteMapping(id) {
         this.showConfirmDialog('Xác nhận xóa Mapping', 'Bạn có chắc chắn muốn xóa mapping này không?', async () => {
             try {
-                await fetch(`${this.API_URL}/api/tiktok/mappings/${id}`, {
+                const res = await fetch(`${this.API_URL}/api/tiktok/mappings/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${this.authToken}` }
                 });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    throw new Error(data.message || data.error || 'Không thể xóa mapping');
+                }
                 this.showNotification('success', 'Đã xóa mapping thành công!');
-                this.loadMappings();
+                await this.loadMappings();
             } catch (e) { this.showNotification('error', 'Lỗi: ' + e.message); }
         });
     }
@@ -7616,6 +7691,21 @@ class EffectStoreApp {
                 break;
             case 'control_deck_remove':
                 if (data.data?.slotId) this.removeControlDeckSlot(String(data.data.slotId));
+                break;
+            case 'queue_updated':
+                this.effectQueueStatus = data.data;
+                this.updateControlDeckQueueStatus(data.data);
+                this.updateMappingTestButtons();
+                break;
+            case 'effect_playback_started':
+                this.refreshEffectQueueStatus();
+                break;
+            case 'effect_playback_finished':
+            case 'effect_queue_empty':
+                this.effectQueueStatus = { status: 'idle', queueLength: 0, remainingMs: 0 };
+                this.updateControlDeckQueueStatus(this.effectQueueStatus);
+                this.updateMappingTestButtons();
+                this.refreshEffectQueueStatus();
                 break;
             case 'effect_warning':
                 this.showNotification('warning', data.data?.message || 'Hiệu ứng đã bị bỏ qua vì thiếu thời lượng.');
@@ -7990,6 +8080,12 @@ class EffectStoreApp {
             const mappingWheels = uniqueMappingWheels.filter((wheel) =>
                 Boolean(wheel.sourceTemplateId) && catalogWheelIds.has(String(wheel.sourceTemplateId))
             );
+            const wheelCacheKey = this.accountStorageKey('es_cache_challenge_wheels');
+            if (wheelCacheKey && mappingWheels.length > 0) {
+                try {
+                    localStorage.setItem(wheelCacheKey, JSON.stringify(mappingWheels));
+                } catch (_e) {}
+            }
             const select = document.getElementById('mapping-wheel-id');
             if (select) select.innerHTML = mappingWheels.length
                 ? mappingWheels.map((wheel) => `<option value="${wheel._id}">${wheel.displayName || wheel.name} (${(wheel.segments || []).length} thử thách)</option>`).join('')
@@ -8680,9 +8776,34 @@ class EffectStoreApp {
         const safeVoiceId = String(voiceId || '').replace(/[^a-zA-Z0-9_-]/g, '');
         if (!safeVoiceId) throw new Error('Giọng AI không hợp lệ.');
 
-        const cacheKey = `es_ai_voice_cache_${safeVoiceId}_${text}`;
-        let audioDataUrl = localStorage.getItem(cacheKey);
-        if (!audioDataUrl) {
+        const personaSelect = document.querySelector('.ai-assistant-persona-input');
+        const activePersona = personaSelect ? personaSelect.value : (this.aiAssistantConfig?.persona || 'sassy');
+
+        // 1. Ưu tiên kiểm tra file âm thanh mẫu offline đóng gói sẵn trong app đúng theo tính cách và giọng đọc
+        const localCandidates = [
+            `assets/audio/voice-samples/${activePersona}_${safeVoiceId}.mp3`
+        ];
+
+        let targetAudioSrc = null;
+        for (const candidate of localCandidates) {
+            try {
+                const check = await fetch(candidate, { method: 'HEAD' });
+                if (check.ok) {
+                    targetAudioSrc = candidate;
+                    break;
+                }
+            } catch (_e) {}
+        }
+
+        // 2. Kiểm tra bộ nhớ đệm máy tính (localStorage)
+        const cacheKey = `es_ai_voice_cache_${safeVoiceId}_${activePersona}_${text}`;
+        const legacyCacheKey = `es_ai_voice_cache_${safeVoiceId}_${text}`;
+        if (!targetAudioSrc) {
+            targetAudioSrc = localStorage.getItem(cacheKey) || localStorage.getItem(legacyCacheKey);
+        }
+
+        // 3. Gọi Cloud API nếu chưa có và lưu vào cache
+        if (!targetAudioSrc) {
             const response = await fetch(`${this.API_URL}/api/ai/speech`, {
                 method: 'POST',
                 headers: {
@@ -8695,9 +8816,9 @@ class EffectStoreApp {
             if (!response.ok || !data.success || !data.audioDataUrl) {
                 throw new Error(data.error || 'Không thể tạo giọng nghe thử từ ElevenLabs.');
             }
-            audioDataUrl = data.audioDataUrl;
+            targetAudioSrc = data.audioDataUrl;
             try {
-                localStorage.setItem(cacheKey, audioDataUrl);
+                localStorage.setItem(cacheKey, targetAudioSrc);
             } catch (_cacheError) {}
         }
 
@@ -8705,7 +8826,7 @@ class EffectStoreApp {
             this.currentAudio.pause();
             this.currentAudio = null;
         }
-        this.currentAudio = new Audio(audioDataUrl);
+        this.currentAudio = new Audio(targetAudioSrc);
         this.currentAudio.volume = this.ttsVolume;
         this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
         await this.currentAudio.play();
@@ -8809,18 +8930,21 @@ function filterEffects() { const active = document.querySelector('.filter-btn-ne
 function switchView(view) { app.switchView(view); }
 function showAccount() {
     let u = app.currentUser;
-    if (!u) {
+    if (!u || !u.email || u.email.endsWith('@local.user')) {
         try {
-            u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
+            const stored = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
+            if (stored && stored.email && !stored.email.endsWith('@local.user')) {
+                u = { ...u, ...stored };
+            }
         } catch (_e) {}
     }
-    if (!u) {
-        const nameEl = document.querySelector('.user-card .name')?.textContent?.trim() || 'teest';
-        const planEl = document.querySelector('.user-card .plan')?.textContent?.trim() || 'BASIC';
+    if (!u || !u.email) {
+        const nameEl = document.querySelector('.user-card .name')?.textContent?.trim() || 'Người dùng';
+        const planEl = document.querySelector('.user-card .plan')?.textContent?.trim() || 'Miễn phí';
         const planElLower = planEl.toLowerCase();
         u = {
             name: nameEl,
-            email: `${nameEl}@liveflow.app`,
+            email: 'user@liveflow.app',
             subscription: planElLower.includes('basic') ? 'basic' : (planElLower.includes('pro') ? 'pro' : 'free')
         };
     }
@@ -8828,12 +8952,14 @@ function showAccount() {
     const plan = resolvePlanDisplay(u);
     const avatarBg = plan.avatarBg;
     const avatarColor = plan.avatarColor;
+    const displayEmail = (u.email && !u.email.endsWith('@local.user')) ? u.email : (u.phone || 'Tài khoản người dùng');
+    const displayName = (u.name && u.name !== 'Người dùng') ? u.name : (displayEmail.includes('@') ? displayEmail.split('@')[0] : (u.name || 'Người dùng'));
 
     app.showModal('Tài khoản của tôi', `
                 <div style="text-align:center; padding: 12px 0;">
-                    <div style="width:72px;height:72px;border-radius:50%;background:${avatarBg};display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:${avatarColor};margin:0 auto 14px;box-shadow:0 8px 24px rgba(0,0,0,0.3);">${(u.name || 'U')[0].toUpperCase()}</div>
-                    <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;">${u.name || 'Người dùng'}</div>
-                    <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">${u.email || 'test@liveflow.app'}</div>
+                    <div style="width:72px;height:72px;border-radius:50%;background:${avatarBg};display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:${avatarColor};margin:0 auto 14px;box-shadow:0 8px 24px rgba(0,0,0,0.3);">${(displayName || 'U')[0].toUpperCase()}</div>
+                    <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;">${displayName}</div>
+                    <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">${displayEmail}</div>
                     <div style="font-size:12px;padding:5px 16px;border-radius:20px;display:inline-block;background:${plan.bg};color:${plan.color};border:1px solid ${plan.border};font-weight:700;">${plan.label}</div>
                 </div>
                 <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);">

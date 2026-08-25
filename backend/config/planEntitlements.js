@@ -141,12 +141,10 @@ function validateDesignerItems(items, entitlements) {
                 entitlements
             );
         }
-    }
 
-    if (entitlements.designerLevel === 'lite') {
         const advancedTemplateItem = flatList.find(item => item && [
             'boss-bar', 'mystery-chests', 'goal-list',
-            'top-contributors', 'podium-contributors', 'combo'
+            'top-contributors', 'podium-contributors', 'combo', 'gift-jar'
         ].includes(item.type));
         if (advancedTemplateItem) {
             const widgetLabels = {
@@ -155,7 +153,8 @@ function validateDesignerItems(items, entitlements) {
                 'goal-list': 'Danh sách mục tiêu',
                 'top-contributors': 'Top Supporters Board',
                 'podium-contributors': 'Bảng xếp hạng',
-                combo: 'Combo quà tặng'
+                combo: 'Combo quà tặng',
+                'gift-jar': 'Hũ Quà Tặng'
             };
             const widgetName = widgetLabels[advancedTemplateItem.type] || advancedTemplateItem.name || 'Bảng nâng cao';
             return upgradePayload(
@@ -164,6 +163,7 @@ function validateDesignerItems(items, entitlements) {
                 entitlements
             );
         }
+
         const colorItem = list.find(item => {
             if (!item) return false;
             if (item.type === 'goal-circle') return false;
@@ -186,6 +186,7 @@ function validateDesignerItems(items, entitlements) {
                 entitlements
             );
         }
+
         const advancedItem = list.find(item => {
             if (!item) return false;
             const animation = String(item.animationType || 'None');

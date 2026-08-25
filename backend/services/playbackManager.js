@@ -145,26 +145,34 @@ class PlaybackManager {
     startEffectPlayerPlayback(item, onFinishedCallback) {
         const requestId = `${item.playbackType}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         this.pendingPlayerRequestId = requestId;
-        console.log(`[PLAYBACK] playbackType=${item.playbackType} → effect_player`);
+        const durationValue = Number(item.duration);
+        const durationMs = Number.isFinite(durationValue) && durationValue > 0
+            ? (durationValue < 100 ? Math.round(durationValue * 1000) : Math.round(durationValue))
+            : 5000;
+        item.duration = durationMs;
+        this.currentStartedAt = Date.now();
+        this.currentEndsAt = this.currentStartedAt + durationMs;
+
+        console.log(`[PLAYBACK] playbackType=${item.playbackType} → effect_player (${durationMs}ms)`);
 
         eventBus.emit('effect_player_play_request', {
             requestId,
             effectId: item.effectId,
             effectName: item.effectName,
             effectUrl: item.effectUrl,
-            duration: item.duration,
+            duration: durationMs,
             playbackType: item.playbackType,
             audioEnabled: item.audioEnabled !== false,
             audioVolume: Math.max(0, Math.min(1, Number.isFinite(Number(item.audioVolume)) ? Number(item.audioVolume) : 1)),
-            startedAt: Date.now()
+            startedAt: this.currentStartedAt
         });
 
-        // safety timeout
+        // Exact completion fallback timer: when duration expires + 300ms
         this.currentTimer = setTimeout(() => {
             if (this.pendingPlayerRequestId !== requestId) return;
-            console.warn('[PLAYBACK] effect_player safety timeout; continuing queue');
-            this.clearCurrentAndFinished(onFinishedCallback, 'safety_timeout');
-        }, item.duration + 3000);
+            console.log(`[PLAYBACK] effect_player duration timer finished (${durationMs}ms)`);
+            this.clearCurrentAndFinished(onFinishedCallback, 'duration_finished');
+        }, durationMs + 300);
     }
 
     handleEffectPlayerEvent(event, data = {}, onFinishedCallback) {

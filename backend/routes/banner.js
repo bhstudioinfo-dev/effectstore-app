@@ -25,7 +25,9 @@ const upload = multer({
     }
 });
 
-const CLOUD_URL = process.env.CLOUD_API_URL || 'https://effectstore-backend.onrender.com';
+// An explicit empty string (direct-mode installs) must stay disabled, not
+// fall back to the default cloud URL — only truly unset uses the default.
+const CLOUD_URL = process.env.CLOUD_API_URL === undefined ? 'https://effectstore-backend.onrender.com' : process.env.CLOUD_API_URL;
 
 // Get active banner
 router.get('/', async (req, res) => {
@@ -41,6 +43,7 @@ router.get('/', async (req, res) => {
 
         // Fallback: If local desktop database has no banner record, fetch from Cloud Render
         try {
+            if (!CLOUD_URL) throw new Error('cloud proxy disabled');
             const cloudRes = await fetch(`${CLOUD_URL}/api/banner`, { signal: AbortSignal.timeout(3000) }).catch(() => null);
             if (cloudRes && cloudRes.ok) {
                 const cloudData = await cloudRes.json().catch(() => ({}));

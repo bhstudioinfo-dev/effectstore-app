@@ -144,6 +144,14 @@
             return Infinity;
         }
 
+        get layoutLimit() {
+            if (this.isAdmin) return Infinity;
+            const plan = this.actualPlanKey;
+            if (plan === 'free') return 1;
+            if (plan === 'basic') return 2;
+            return Infinity;
+        }
+
         countGoalTrackers(items = this.items) {
             const types = new Set(['goal-bar', 'goal-circle', 'boss-bar', 'mystery-chests', 'goal-list', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'combo']);
             const list = Array.isArray(items) ? items : [];
@@ -863,7 +871,12 @@
                 return;
             }
             if (template?.isUsed && template.usedLayoutId) {
-                return this.openLibraryLayout(template.usedLayoutId);
+                const existingLayout = (this.layouts || []).find(x => String(x._id) === String(template.usedLayoutId));
+                const templateProductType = template.productType || (template.items?.some(i => i.type === 'challenge-wheel') ? 'challenge-wheel' : '');
+                const hasMatchingWidget = !templateProductType || (existingLayout?.items || []).some(i => i.type === templateProductType);
+                if (existingLayout && hasMatchingWidget) {
+                    return this.openLibraryLayout(template.usedLayoutId);
+                }
             }
             this._usingTemplateIds.add(templateKey);
             const useButtons = Array.from(this.mount.querySelectorAll('.gmd-btn-use-tmpl'))
@@ -879,6 +892,12 @@
                 const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-templates/${templateId}/use`, { method: 'POST', headers });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || !data.success) {
+                    this.hideCanvasLoading();
+                    if (data && data.upgradeRequired === true && data.feature === 'layouts') {
+                        const targetTemplate = template || (this.customTemplates || []).find(t => String(t.id || t._id || t.serverTemplateId) === templateKey) || { name: 'Mẫu thiết kế' };
+                        this.showLibraryLimitModal(targetTemplate);
+                        return { success: false, handled: true };
+                    }
                     if (this.handlePlanLimit(data, 'templates')) return;
                     throw new Error(data.error || `HTTP ${res.status}`);
                 }
@@ -3391,6 +3410,129 @@
             });
         }
 
+        showLibraryLimitModal(template) {
+            const modalId = 'gmd-library-limit-modal';
+            let existing = document.getElementById(modalId);
+            if (existing) existing.remove();
+
+            const modal = document.createElement('div');
+            modal.id = modalId;
+            modal.style.position = 'fixed';
+            modal.style.inset = '0';
+            modal.style.background = 'rgba(3, 7, 18, 0.8)';
+            modal.style.backdropFilter = 'blur(8px)';
+            modal.style.zIndex = '99999';
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+
+            const templateName = template?.name || 'Mẫu thiết kế mới';
+            const planKey = this.actualPlanKey;
+            const planLabel = planKey === 'free' ? 'Free (1 thiết kế)' : (planKey === 'basic' ? 'Basic (2 thiết kế)' : 'hiện tại');
+            const targetPlan = planKey === 'free' ? 'basic' : 'pro';
+
+            modal.innerHTML = `
+                <div style="background: linear-gradient(180deg, #0f172a 0%, #090d16 100%); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; width: 440px; max-width: 90%; padding: 22px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); font-family: system-ui, sans-serif; color: #fff;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; justify-content: center; font-size: 18px; color: #f59e0b;">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 800; color: #f8fafc;">Thư viện đã đạt giới hạn (${this.layoutLimit}/${this.layoutLimit})</h4>
+                            <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">Gói ${planLabel}</div>
+                        </div>
+                    </div>
+                    <p style="font-size: 12.5px; line-height: 1.6; color: #cbd5e1; margin: 0 0 18px;">
+                        Bạn đang có <strong>${this.layouts?.length || 1} thiết kế</strong> trong thư viện. Bạn có muốn nạp mẫu <strong>"${this.escapeHtml(templateName)}"</strong> vào bảng vẽ hiện tại (thay thế layer đang mở) hay nâng cấp gói để lưu thêm thiết kế mới?
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button id="gmd-lib-limit-replace" class="gmd-btn primary" style="background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; color: #fff; padding: 10px 14px; font-weight: 700; border-radius: 8px; justify-content: center;">
+                            <i class="fas fa-file-import" style="margin-right: 6px;"></i> Nạp & Thay thế bảng vẽ hiện tại
+                        </button>
+                        <button id="gmd-lib-limit-upgrade" class="gmd-btn" style="background: linear-gradient(135deg, #a855f7, #ec4899); border: none; color: #fff; padding: 10px 14px; font-weight: 700; border-radius: 8px; justify-content: center;">
+                            <i class="fas fa-crown" style="margin-right: 6px;"></i> Nâng cấp gói ${targetPlan.toUpperCase()} (Lưu nhiều thiết kế)
+                        </button>
+                        <button id="gmd-lib-limit-cancel" class="gmd-btn" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 8px 14px; border-radius: 8px; justify-content: center;">
+                            Hủy
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const cleanup = () => modal.remove();
+
+            modal.querySelector('#gmd-lib-limit-replace').onclick = () => {
+                cleanup();
+                this.loadTemplateToCurrentCanvas(template);
+            };
+
+            modal.querySelector('#gmd-lib-limit-upgrade').onclick = () => {
+                cleanup();
+                this.showUpgrade('layouts', `Gói ${planLabel} đã đạt giới hạn lưu thiết kế. Nâng cấp để lưu nhiều thiết kế cùng lúc.`, targetPlan);
+            };
+
+            modal.querySelector('#gmd-lib-limit-cancel').onclick = cleanup;
+        }
+
+        async loadTemplateToCurrentCanvas(template) {
+            if (!template) return;
+            if (window.app && typeof window.app.switchView === 'function') {
+                window.app.switchView('gift-menu-designer');
+            }
+            let rawItems = Array.isArray(template.items) && template.items.length ? template.items : (template.exportedItems || []);
+            if (!rawItems.length) {
+                const defaultTemplates = this.getDefaultTemplates();
+                const matchedDefault = defaultTemplates.find(t => t.id === template.id || t.category === template.category || (template.productType === 'challenge-wheel' && t.category === 'challenge-wheel') || (/vòng quay|wheel/i.test(template.name || '') && t.category === 'challenge-wheel'));
+                if (matchedDefault && matchedDefault.layers) {
+                    rawItems = matchedDefault.layers;
+                }
+            }
+            if (rawItems.length) {
+                this.items = JSON.parse(JSON.stringify(rawItems)).map((item, idx) => ({
+                    ...item,
+                    id: `item_${Date.now()}_${idx}`,
+                    zIndex: idx + 1,
+                    visible: item.visible !== false,
+                    locked: Boolean(item.locked)
+                }));
+            } else if (template.id) {
+                this.items = [];
+                this.clearSelection();
+                this.addTemplateToCanvas(template.id);
+            }
+            const newLayoutName = template.name || 'Vòng quay thử thách';
+            this.currentLayoutName = newLayoutName;
+            this.clearSelection();
+            if (this.items[0]) this.setSelection([this.items[0].id], this.items[0].id);
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('load-template-replace');
+
+            // Update local layouts entry immediately so the sidebar reflects the new name right away
+            const currentLayout = (this.layouts || []).find(x => x._id === this.currentLayoutId);
+            if (currentLayout) {
+                currentLayout.name = newLayoutName;
+                currentLayout.items = this.items;
+                this.renderMyLibrary();
+            }
+
+            // Sync to database in background without blocking UI
+            Promise.resolve().then(async () => {
+                try {
+                    await this.saveLayout(false, false);
+                    await this.loadLayoutsList();
+                } catch (err) {
+                    console.warn('Background auto-save replaced template error:', err);
+                }
+            });
+
+            if (window.app && typeof window.app.showNotification === 'function') {
+                window.app.showNotification('success', `Đã nạp mẫu “${newLayoutName}” vào thư viện của bạn.`);
+            }
+        }
+
         async saveLayout(showToast = true, forcePromptName = false, allowNamePrompt = true) {
             if (this._autoSaveTimer) {
                 clearTimeout(this._autoSaveTimer);
@@ -3748,7 +3890,14 @@
             }
             try {
                 const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
-                const res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layouts`, { headers });
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 3000);
+                let res;
+                try {
+                    res = await fetch(`${this.apiBase}/api/tiktok/gift-menu-layouts`, { headers, signal: controller.signal });
+                } finally {
+                    clearTimeout(timeout);
+                }
                 if (res.ok) {
                     const data = await res.json();
                     if (data && data.success && Array.isArray(data.layouts)) {
@@ -4011,6 +4160,14 @@
         renderMyLibrary() {
             const box = this.mount.querySelector('#gmd-my-library-list');
             if (!box) return;
+            const titleEl = this.mount.querySelector('.gmd-my-library-top h4');
+            const count = Array.isArray(this.layouts) ? this.layouts.length : 0;
+            const limit = this.layoutLimit;
+            const limitText = Number.isFinite(limit) ? `${count}/${limit}` : `${count}/∞`;
+            if (titleEl) {
+                const color = count >= limit && Number.isFinite(limit) ? '#f59e0b' : '#94a3b8';
+                titleEl.innerHTML = `Thư viện của tôi <span style="font-size: 11.5px; font-weight: 700; color: ${color}; margin-left: 4px;">(${limitText})</span>`;
+            }
             if (!this.layouts || !this.layouts.length) {
                 box.innerHTML = `<div style="text-align: center; padding: 24px 12px; font-size: 11px; color: rgba(255,255,255,0.4); line-height: 1.5; border: 1px dashed rgba(255,255,255,0.08); border-radius: 8px;">
                     Chưa có thiết kế nào.<br>Hãy bấm <strong>"Tạo mới"</strong> ở trên để bắt đầu!
@@ -4327,6 +4484,11 @@
                 }
 
                 if (action === 'new-layout') {
+                    if (Array.isArray(this.layouts) && this.layouts.length >= this.layoutLimit) {
+                        const planLabel = this.actualPlanKey === 'free' ? 'Free (1 thiết kế)' : (this.actualPlanKey === 'basic' ? 'Basic (2 thiết kế)' : 'hiện tại');
+                        this.showUpgrade('layouts', `Gói ${planLabel} đã đạt giới hạn ${this.layoutLimit} thiết kế trong thư viện. Bạn có thể xóa bớt thiết kế cũ hoặc nâng cấp gói để tạo thêm thiết kế mới.`);
+                        return;
+                    }
                     this.showPromptModal('Nhập tên thiết kế mới:', 'Menu mới').then(name => {
                         if (name === null) return;
                         const safeName = name.trim() || 'Menu mới';
@@ -7603,6 +7765,7 @@
                         <div class="gmd-field"><label>Dòng mô tả</label><input class="gmd-input" value="${this.escapeHtml(selected.subtitle || '')}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','subtitle',this.value)"></div>
                         <div class="gmd-row"><div class="gmd-field"><label>Cỡ chữ tiêu đề</label><input class="gmd-input" type="number" min="16" max="72" value="${selected.titleFontSize || 34}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','titleFontSize',this.value)"></div><div class="gmd-field"><label>Cỡ chữ mô tả</label><input class="gmd-input" type="number" min="10" max="36" value="${selected.subtitleFontSize || 18}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','subtitleFontSize',this.value)"></div></div>
                         <div class="gmd-field"><label>Cỡ chữ thử thách</label><input class="gmd-range" type="range" min="8" max="28" value="${selected.labelFontSize || 16}" oninput="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','labelFontSize',this.value,true)" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','labelFontSize',this.value)"></div>
+                        <div class="gmd-field"><label>Cỡ chữ kết quả khi quay xong</label><input class="gmd-range" type="range" min="24" max="72" value="${selected.resultFontSize || 42}" oninput="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','resultFontSize',this.value,true)" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','resultFontSize',this.value)"><div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-top:2px;"><span>Nhỏ (24px)</span><span style="color:#fbbf24;font-weight:700;">${selected.resultFontSize || 42}px</span><span>Lớn (72px)</span></div></div>
                         <div class="gmd-field"><label>Hiệu ứng viền vòng quay</label><select class="gmd-select" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','ringEffect',this.value)"><option value="gold" ${(selected.ringEffect || 'gold') === 'gold' ? 'selected' : ''}>Kim loại vàng</option><option value="neon" ${selected.ringEffect === 'neon' ? 'selected' : ''}>Neon xanh hồng</option><option value="fire" ${selected.ringEffect === 'fire' ? 'selected' : ''}>Lửa đỏ cam</option><option value="electric" ${selected.ringEffect === 'electric' ? 'selected' : ''}>Điện xanh</option><option value="rainbow" ${selected.ringEffect === 'rainbow' ? 'selected' : ''}>Cầu vồng chuyển động</option></select></div>
                         <div class="gmd-row"><div class="gmd-field"><label>Màu chữ</label><input class="gmd-color" type="color" value="${selected.textColor || '#ffffff'}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','textColor',this.value)"></div><div class="gmd-field"><label>Màu viền</label><input class="gmd-color" type="color" value="${selected.borderColor || '#d6a84f'}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','borderColor',this.value)"></div></div>
                         <div class="gmd-field gmd-toggle-row"><label>Ẩn viền bảng</label><label class="gmd-switch"><input type="checkbox" ${selected.hideBorder ? 'checked' : ''} onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','hideBorder',this.checked)"><span></span></label></div>
@@ -8947,6 +9110,7 @@
                             labelFontSize: Number(item.labelFontSize) || 16,
                             titleFontSize: Number(item.titleFontSize) || 34,
                             subtitleFontSize: Number(item.subtitleFontSize) || 18,
+                            resultFontSize: Number(item.resultFontSize) || 42,
                             boardX: Number(logical.x) || Number(item.x) || 0,
                             boardY: Number(logical.y) || Number(item.y) || 0,
                             boardWidth: Number(logical.w) || Number(item.width) || Number(item.w) || 720,
@@ -9030,13 +9194,18 @@
                 if (!result) {
                     result = document.createElement('div');
                     result.className = 'gmd-wheel-preview-result';
-                    result.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); min-width:210px; background:#0f172a; border:4px solid #fbbf24; border-radius:16px; padding:18px 30px; box-shadow:0 12px 36px rgba(0,0,0,0.9), 0 0 28px rgba(251,191,36,0.6); z-index:100; text-align:center; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.3s ease;';
                     widget.appendChild(result);
                 }
+                const resultFontSize = Number(item.resultFontSize || 42);
+                const titleFontSize = Math.max(16, Math.round(resultFontSize * 0.45));
+                const padY = Math.max(12, Math.round(resultFontSize * 0.4));
+                const padX = Math.max(20, Math.round(resultFontSize * 0.75));
+                result.style.cssText = `position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); min-width:${Math.round(resultFontSize * 5.5)}px; background:rgba(15,23,42,0.96); border:4px solid #fbbf24; border-radius:18px; padding:${padY}px ${padX}px; box-shadow:0 16px 48px rgba(0,0,0,0.95), 0 0 35px rgba(251,191,36,0.7); z-index:100; text-align:center; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.3s cubic-bezier(.16,1,.3,1), transform 0.3s cubic-bezier(.16,1,.3,1); backdrop-filter:blur(8px);`;
+
                 if (resultSegment.resultImage || item.resultImage) {
-                    result.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:18px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:8px;"><span>🎡</span><span>KẾT QUẢ:</span></div><img src="${this.escapeHtml(resultSegment.resultImage || item.resultImage)}" alt="Kết quả" style="max-width:230px;max-height:130px;display:block;margin:0 auto 8px;border-radius:10px;object-fit:contain;"><div style="font-size:30px;font-weight:900;color:#facc15;text-shadow:0 2px 8px rgba(0,0,0,0.9);">${this.escapeHtml(resultLabel)}</div>`;
+                    result.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:${titleFontSize}px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:8px;"><span>🎡</span><span>KẾT QUẢ:</span></div><img src="${this.escapeHtml(resultSegment.resultImage || item.resultImage)}" alt="Kết quả" style="max-width:280px;max-height:160px;display:block;margin:0 auto 10px;border-radius:12px;object-fit:contain;"><div style="font-size:${resultFontSize}px;font-weight:900;color:#facc15;text-shadow:0 3px 12px rgba(0,0,0,0.95), 0 0 20px rgba(250,204,21,0.5);line-height:1.2;">${this.escapeHtml(resultLabel)}</div>`;
                 } else {
-                    result.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:18px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:6px;"><span>🎡</span><span>KẾT QUẢ:</span></div><div style="font-size:30px;font-weight:900;color:#facc15;text-shadow:0 2px 8px rgba(0,0,0,0.9);">${this.escapeHtml(resultLabel)}</div>`;
+                    result.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:${titleFontSize}px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.8);margin-bottom:8px;"><span>🎡</span><span>KẾT QUẢ:</span></div><div style="font-size:${resultFontSize}px;font-weight:900;color:#facc15;text-shadow:0 3px 12px rgba(0,0,0,0.95), 0 0 20px rgba(250,204,21,0.5);line-height:1.2;">${this.escapeHtml(resultLabel)}</div>`;
                 }
                 result.style.opacity = '1';
             }, duration);
@@ -9519,16 +9688,17 @@
             const physics = this.activeGiftJarPhysics || this.giftJarPhysics;
             if (physics) {
                 physics.spawnBombAndExplode((res) => {
-                    if (res && res.isHit === false) {
-                        if (window.app?.showNotification) window.app.showNotification('info', '😅 Bom rơi trượt ra ngoài! Quà trong hũ an toàn!');
-                        return;
+                    if (res && res.destroyedCount > 0) {
+                        const ratio = res.ratio || 0.35;
+                        const oldCoins = Number(item.currentCoins) || 0;
+                        item.currentCoins = Math.max(0, Math.round(oldCoins * (1 - ratio)));
+                        this.renderCanvas();
+                        this.renderInspector();
+                        if (window.app?.showNotification) window.app.showNotification('warning', `💥 Bom nổ tung ${res.destroyedCount} món quà xung quanh điểm rơi! Xu giảm từ ${oldCoins.toLocaleString()} -> ${item.currentCoins.toLocaleString()} Xu`);
+                    } else {
+                        this.renderCanvas();
+                        this.renderInspector();
                     }
-                    const ratio = res?.ratio || 0.40;
-                    const oldCoins = Number(item.currentCoins) || 0;
-                    item.currentCoins = Math.max(0, Math.round(oldCoins * (1 - ratio)));
-                    this.renderCanvas();
-                    this.renderInspector();
-                    if (window.app?.showNotification) window.app.showNotification('warning', `💥 Bom trúng Hũ nổ tung một phần quà! Xu giảm từ ${oldCoins.toLocaleString()} -> ${item.currentCoins.toLocaleString()} Xu`);
                 });
             }
             if (this.socket && this.socket.connected) {
@@ -9715,6 +9885,7 @@
                     category: 'gift-jar',
                     tags: ['jar', 'physics', 'coin', 'drop', 'jackpot'],
                     isPremium: false,
+                    requiredPlan: 'basic',
                     layers: [
                         {
                             id: 'interactive_gift_jar_widget',
@@ -9746,6 +9917,7 @@
                     category: 'pk-versus',
                     tags: ['pk', 'versus', 'battle'],
                     isPremium: false,
+                    requiredPlan: 'basic',
                     layers: [
                         {
                             id: 'pk_versus_bar_default_layer',
@@ -9830,6 +10002,7 @@
                     category: 'multi-goal',
                     tags: ['list', 'multi', 'daily-goal'],
                     isPremium: false,
+                    requiredPlan: 'basic',
                     layers: [
                         {
                             id: 'multi_goal_list_widget',
@@ -9858,6 +10031,7 @@
                     category: 'contributors',
                     tags: ['top', 'ranking', 'supporters'],
                     isPremium: false,
+                    requiredPlan: 'basic',
                     layers: [
                         {
                             id: 'top_supporters_contributors_widget',
@@ -9892,6 +10066,7 @@
                     category: 'talent-competition',
                     tags: ['talent', 'contest', 'ranking', 'donate'],
                     isPremium: false,
+                    requiredPlan: 'basic',
                     layers: [
                         {
                             id: 'talent_live_widget', name: '🎤 Phần thi trực tiếp', type: 'talent-live',

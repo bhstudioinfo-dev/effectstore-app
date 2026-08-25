@@ -181,7 +181,7 @@ router.post('/register', registerRateLimiter, async (req, res) => {
             isAdmin: false
         });
 
-        const token = issueUserToken({ userId: user._id, isAdmin: false });
+        const token = issueUserToken({ userId: user._id, email: user.email, name: user.name, isAdmin: false });
 
         return res.json({
             success: true,
@@ -261,7 +261,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
             }
         }
 
-        const token = issueUserToken({ userId: user._id, isAdmin, machineId });
+        const token = issueUserToken({ userId: user._id, email: user.email, name: user.name, isAdmin, machineId });
 
         return res.json({
             success: true,

@@ -56,7 +56,7 @@ function getManagedBackendOptions(defaultMongodbUri = '') {
         defaultMongodbUri,
         // Central server that accounts/Store/purchases sync through — same
         // URL for every install, not a per-user secret (docs/COMMERCIAL_CLOUD_ROADMAP.md).
-        cloudApiUrl: process.env.LIVEFLOW_CLOUD_API_URL || 'https://effectstore-app.onrender.com',
+        cloudApiUrl: process.env.LIVEFLOW_CLOUD_API_URL || 'https://effectstore-app-p36e.onrender.com',
         // Public verification key is safe to distribute. The matching private
         // signing key remains only on the central server.
         cloudJwtPublicKey: getCloudJwtPublicKey(),
@@ -176,9 +176,12 @@ async function createCustomEffectWebm(inputPath, outputPath) {
         '-i', inputPath,
         '-t', String(CUSTOM_EFFECT_MAX_SECONDS),
         '-vf', videoFilter,
-        '-an',
+        '-map', '0:v:0',
+        '-map', '0:a?',
         '-c:v', 'libvpx-vp9',
         '-pix_fmt', 'yuva420p',
+        '-c:a', 'libopus',
+        '-b:a', '128k',
         '-crf', '30',
         '-b:v', '0',
         '-deadline', 'good',

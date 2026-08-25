@@ -55,7 +55,7 @@ router.post('/reply', authMiddleware, aiLimiter, async (req, res) => {
         await ensureCurrentAiMonth(req.user, req.userId);
         const usage = aiAssistantService.getCharacterUsage(req.user);
         if (usage.responseMode === 'exhausted') return res.status(402).json({ success: false, error: 'Đã hết hạn mức Trợ lý AI tháng này.' });
-        const replyText = await aiAssistantService.generateReply(username, comment, { persona });
+        const replyText = await aiAssistantService.generateReply(username, comment, { persona }, req.user);
         if (!replyText || !moderateText(replyText, { output: true }).allowed) return res.status(422).json({ success: false, error: 'Không thể tạo phản hồi an toàn.' });
         res.json({ success: true, replyText });
     } catch (error) {
@@ -88,7 +88,7 @@ router.post('/speech', authMiddleware, aiLimiter, async (req, res) => {
                 return res.status(409).json({ success: false, error: 'Hạn mức vừa được sử dụng bởi một yêu cầu khác.' });
             }
         }
-        const audio = await aiAssistantService.synthesizeElevenLabs(text, { elevenLabsVoiceId: voiceId });
+        const audio = await aiAssistantService.synthesizeElevenLabs(text, { elevenLabsVoiceId: voiceId }, req.user);
         if (!audio?.audioDataUrl) {
             if (reservedCharacters) await User.updateOne({ _id: req.userId }, { $inc: { usedCharactersThisMonth: -reservedCharacters } });
             return res.status(503).json({ success: false, error: 'Dịch vụ giọng đọc chưa được cấu hình.' });

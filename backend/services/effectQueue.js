@@ -10,6 +10,7 @@ class EffectQueue {
         
         // Listen to playback manager events to handle queue empty or queue updates
         eventBus.on('effect_playback_finished', () => {
+            eventBus.emit('queue_updated', this.getStatus());
             if (this.queue.length === 0) {
                 eventBus.emit('effect_queue_empty', { emittedAt: Date.now() });
             }

@@ -37,6 +37,15 @@ const {
 } = require('../services/cloudTemplateCatalog');
 let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) { }
+// Guards endpoints meant only for the desktop app calling its own local
+// backend (e.g. clearing overlay state on logout) — the server binds
+// 0.0.0.0 so the phone Live Control remote can reach it, so without this a
+// device elsewhere on the same LAN could hit these too.
+function requireLoopbackDesktop(req, res, next) {
+    const address = String(req.socket?.remoteAddress || '');
+    if (address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1') return next();
+    return res.status(403).json({ success: false, message: 'Endpoint này chỉ dành cho ứng dụng LiveFlow trên PC.' });
+}
 const giftMenuLayoutPath = dataPaths.giftMenuLayoutPath;
 const goalAssetDir = dataPaths.goalAssetsDir;
 const savedPresentationNumber = (presentation, key, fallback, allowZero = false) => {
@@ -74,6 +83,7 @@ function buildChallengeWheelPresentation(item, exportedItem = item) {
         labelFontSize: Number(source.labelFontSize || item?.labelFontSize) || 16,
         titleFontSize: Number(source.titleFontSize || item?.titleFontSize) || 34,
         subtitleFontSize: Number(source.subtitleFontSize || item?.subtitleFontSize) || 18,
+        resultFontSize: Number(source.resultFontSize || item?.resultFontSize) || 42,
         boardX: Number(source.x) || 0,
         boardY: Number.isFinite(Number(source.y)) ? Number(source.y) : 0,
         boardWidth: Number(source.w || source.width) || 0,
@@ -734,7 +744,8 @@ router.delete('/mappings/:id', authMiddleware, async (req, res) => {
         if (!isValidResourceId(req.params.id)) {
             return res.status(400).json({ success: false, error: 'Invalid mapping ID' });
         }
-        const mapping = await GiftMapping.findOneAndDelete(ownedResourceFilter(req.params.id, req.userId));
+        const mapping = await GiftMapping.findOneAndDelete(ownedResourceFilter(req.params.id, req.userId))
+            || (req.isAdmin ? await GiftMapping.findByIdAndDelete(req.params.id) : null);
         if (!mapping) return res.status(404).json({ success: false, error: 'Mapping not found' });
         return res.json({ success: true });
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
@@ -804,10 +815,7 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
         }
 
         const effectId = String(mapping.effectId || '');
-        const [resolvedEffect, duration] = await Promise.all([
-            resolveEffectForUser(req.userId, effectId),
-            resolveEffectDurationForUser(req.userId, effectId)
-        ]);
+        const resolvedEffect = await resolveEffectForUser(req.userId, effectId);
 
         if (!resolvedEffect) {
             return res.status(403).json({ success: false, message: 'Hiệu ứng không thuộc tài khoản này hoặc không còn khả dụng.' });
@@ -820,6 +828,7 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             });
         }
 
+        const duration = resolvedEffect.duration || 15;
         if (!duration) {
             return res.status(422).json({
                 success: false,
@@ -828,14 +837,20 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             });
         }
 
-        const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
-        if (!isPlayerReady) {
-            if (!obsService.isConnected()) {
-                return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
-            }
-            obsService.ensureEffectPlayerSource().catch(() => {});
-            if (!await waitForEffectPlayerReady(req, 150)) {
-                return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS. Vui lòng mở nguồn OBS Browser.' });
+        if (!obsService.isConnected()) {
+            await obsService.ensureConnected(req.userId).catch(() => {});
+        }
+        if (obsService.isConnected()) {
+            const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
+            if (!isPlayerReady) {
+                await obsService.ensureEffectPlayerSource().catch(() => {});
+                // The play command is a one-shot WebSocket broadcast, not a
+                // queued message — if the effect_player browser source
+                // hasn't finished (re)connecting yet, it silently misses it
+                // and nothing ever appears in OBS. Give it a moment before
+                // enqueueing, matching the same wait obs.js already does for
+                // Store previews.
+                await waitForEffectPlayerReady(req, 1500);
             }
         }
 
@@ -939,7 +954,7 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                 effectUrl,
                 audioEnabled: mapping.audioEnabled !== false,
                 audioVolume: mapping.audioVolume,
-                duration: finalDuration,
+                duration: finalDuration < 100 ? finalDuration * 1000 : finalDuration,
                 playbackType: 'test_mapping',
                 priority: 0,
                 createdAt: Date.now(),
@@ -951,7 +966,7 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             return res.status(422).json({ success: false, message: 'Không thể thêm hiệu ứng Test vào hàng đợi.' });
         }
 
-        await GiftLog.create({
+        GiftLog.create({
             giftId: mapping.giftId,
             giftName: mapping.giftName,
             effectId: effectId || 'group',
@@ -959,7 +974,7 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             sessionId: req.userId,
             userId: req.userId,
             userName: 'Test OBS'
-        });
+        }).catch(() => {});
 
         res.json({
             success: true,
@@ -1535,7 +1550,6 @@ router.post('/gift-menu-overlay-sync-active', authMiddleware, async (req, res) =
                 layout = fallback.toObject();
             }
         }
-        if (!layout) return res.json({ success: true, synced: false });
 
         let currentFileUserId = '';
         try {
@@ -1544,12 +1558,83 @@ router.post('/gift-menu-overlay-sync-active', authMiddleware, async (req, res) =
                 currentFileUserId = current && current.userId ? String(current.userId) : '';
             }
         } catch (_e) {}
-        if (currentFileUserId === String(req.userId)) return res.json({ success: true, synced: false });
 
-        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(layout, null, 2), 'utf8');
+        const targetLayout = layout || {
+            userId: String(req.userId),
+            items: [],
+            exportedItems: [],
+            aspectRatio: '9:16',
+            gridCols: 3,
+            version: 2,
+            updatedAt: new Date().toISOString()
+        };
+
+        if (currentFileUserId === String(req.userId) && layout) {
+            return res.json({ success: true, synced: false });
+        }
+
+        fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(targetLayout, null, 2), 'utf8');
+
+        // Also sync goal board layout file
+        const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
+        if (goalBoardLayoutPath) {
+            try {
+                const goalBoardLayout = {
+                    version: targetLayout.version || 2,
+                    savedAt: targetLayout.savedAt || new Date().toISOString(),
+                    aspectRatio: targetLayout.aspectRatio || '9:16',
+                    canvas: targetLayout.canvasSize ? { width: targetLayout.canvasSize.width, height: targetLayout.canvasSize.height } : { width: 1080, height: 1920 },
+                    layers: targetLayout.items || []
+                };
+                fs.writeFileSync(goalBoardLayoutPath, JSON.stringify(goalBoardLayout, null, 2), 'utf8');
+                tiktokService.setGoalBoardLayout(goalBoardLayout);
+            } catch (_err) {}
+        }
+
+        // Broadcast update to active OBS overlays
+        if (req.app.locals.broadcastToClients) {
+            req.app.locals.broadcastToClients('gift_menu_layout_update', {
+                type: 'gift_menu_layout_update',
+                layout: targetLayout
+            });
+            req.app.locals.broadcastToClients('goal_board_layout_update', {
+                type: 'goal_board_layout_update',
+                layout: targetLayout
+            });
+        }
         res.json({ success: true, synced: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/gift-menu-overlay-clear', requireLoopbackDesktop, async (req, res) => {
+    try {
+        const emptyLayout = {
+            userId: '',
+            items: [],
+            exportedItems: [],
+            aspectRatio: '9:16',
+            gridCols: 3,
+            version: 2,
+            updatedAt: new Date().toISOString()
+        };
+        if (fs.existsSync(giftMenuLayoutPath)) {
+            fs.writeFileSync(giftMenuLayoutPath, JSON.stringify(emptyLayout, null, 2), 'utf8');
+        }
+        const goalBoardLayoutPath = dataPaths.goalBoardLayoutPath;
+        if (goalBoardLayoutPath && fs.existsSync(goalBoardLayoutPath)) {
+            fs.writeFileSync(goalBoardLayoutPath, JSON.stringify({ version: 2, layers: [] }, null, 2), 'utf8');
+        }
+        if (req.app.locals.broadcastToClients) {
+            req.app.locals.broadcastToClients('gift_menu_layout_update', {
+                type: 'gift_menu_layout_update',
+                layout: emptyLayout
+            });
+        }
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
     }
 });
 
@@ -2050,6 +2135,13 @@ router.post('/gift-menu-templates/:templateId/use', authMiddleware, planQuotaLoc
             parentTemplateId: template._id
         };
         let linkedLayout = await GiftMenuLayout.findOne(templateLayoutFilter).sort({ isActive: -1, updatedAt: -1 });
+        if (linkedLayout && template.productType === 'challenge-wheel') {
+            const hasWheel = (linkedLayout.items || []).some(item => item && item.type === 'challenge-wheel');
+            if (!hasWheel) {
+                await GiftMenuLayout.updateOne({ _id: linkedLayout._id }, { $unset: { parentTemplateId: 1 } });
+                linkedLayout = null;
+            }
+        }
 
         // Older desktop builds saved challenge-wheel layouts against a
         // transient template ID.  Keep the user's edited segments/layout, but

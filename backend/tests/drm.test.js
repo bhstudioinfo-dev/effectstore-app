@@ -97,9 +97,14 @@ try {
     const { getEncryptionKey } = require('../utils/encrypt-video');
     const originalEncryptionPassword = process.env.ENCRYPTION_PASSWORD;
     delete process.env.ENCRYPTION_PASSWORD;
-    assert.throws(() => getEncryptionKey(), /ENCRYPTION_PASSWORD/);
+    assert.throws(() => getEncryptionKey('effect-a'), /ENCRYPTION_PASSWORD/);
     process.env.ENCRYPTION_PASSWORD = 'test-only-effect-encryption-password-123456789';
-    assert.strictEqual(getEncryptionKey().length, 32);
+    assert.throws(() => getEncryptionKey(), /effectId/);
+    const keyA = getEncryptionKey('effect-a');
+    const keyB = getEncryptionKey('effect-b');
+    assert.strictEqual(keyA.length, 32);
+    assert.strictEqual(keyB.length, 32);
+    assert.notStrictEqual(keyA.toString('hex'), keyB.toString('hex'), 'each effect must derive a distinct key');
     if (originalEncryptionPassword === undefined) delete process.env.ENCRYPTION_PASSWORD;
     else process.env.ENCRYPTION_PASSWORD = originalEncryptionPassword;
 

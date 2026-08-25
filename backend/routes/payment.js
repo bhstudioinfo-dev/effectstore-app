@@ -56,7 +56,7 @@ function bankConfiguration(amount, orderId, user) {
     const bankCode = process.env.BANK_CODE || 'TCB';
     const accountNumber = process.env.BANK_ACCOUNT_NUMBER || '7698689999';
     const accountName = process.env.BANK_ACCOUNT_NAME || 'HUYNH BAO HUNG';
-    const description = `${transferCustomerName(user)} CHUYEN KHOAN ${orderId}`;
+    const description = String(orderId || '').trim();
     return { bankCode, bank: bankCode, accountNumber, accountName, amount, description };
 }
 
@@ -246,7 +246,7 @@ router.post('/admin/approve', authMiddleware, adminMiddleware, async (req, res) 
     try {
         const paymentId = req.body?.paymentId;
         if (!isValidResourceId(paymentId)) return res.status(400).json({ success: false, error: 'Invalid payment ID' });
-        const approval = await approvePayment(paymentId, ['pending'], { reviewedBy: req.userId });
+        const approval = await approvePayment(paymentId, ['pending', 'processing'], { reviewedBy: req.userId, processingTimeoutMs: 0 });
         if (approval.outcome === 'not_found') return res.status(404).json({ success: false, message: 'Payment order not found.' });
         if (approval.outcome === 'processing') {
             return res.status(202).json({ success: true, processing: true, message: 'Payment is already being processed.' });

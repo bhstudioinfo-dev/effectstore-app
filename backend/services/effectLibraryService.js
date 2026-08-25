@@ -19,32 +19,34 @@ const mirroredEffectsCache = new Map();
 
 async function syncUserEffectEntitlementsFromCloud(userId) {
     const { isCentralCloudRuntime } = require('../middleware/cloudProxy');
-    if (!userId || isCentralCloudRuntime()) return false;
-
-    try {
-        const { getCloudSessionToken } = require('./cloudSessionTokenStore');
-        const token = getCloudSessionToken(userId);
-        const cloudApiUrl = String(process.env.CLOUD_API_URL || 'https://effectstore-app.onrender.com').trim().replace(/\/+$/, '');
-        if (!token || !cloudApiUrl) return false;
-
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 6000);
-        timer.unref?.();
+    if (!userId) return false;
+    if (!isCentralCloudRuntime()) {
         try {
-            const response = await fetch(`${cloudApiUrl}/api/user/effects`, {
-                headers: { Authorization: `Bearer ${token}` },
-                signal: controller.signal
-            });
-            const payload = await response.json().catch(() => ({}));
-            if (!response.ok || !payload?.success || !Array.isArray(payload.effects)) return false;
-            const { mirrorUserPurchasedEffectsLocally } = require('./localUserMirror');
-            return await mirrorUserPurchasedEffectsLocally(userId, payload.effects);
-        } finally {
-            clearTimeout(timer);
+            const { getCloudSessionToken } = require('./cloudSessionTokenStore');
+            const token = getCloudSessionToken(userId);
+            const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
+            if (!token || !cloudApiUrl) return false;
+
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 6000);
+            timer.unref?.();
+            try {
+                const response = await fetch(`${cloudApiUrl}/api/user/effects`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    signal: controller.signal
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload?.success || !Array.isArray(payload.effects)) return false;
+                const { mirrorUserPurchasedEffectsLocally } = require('./localUserMirror');
+                return await mirrorUserPurchasedEffectsLocally(userId, payload.effects);
+            } finally {
+                clearTimeout(timer);
+            }
+        } catch (_error) {
+            return false;
         }
-    } catch (_error) {
-        return false;
     }
+    return false;
 }
 
 async function mirrorEffectFromCentral(effectId) {
@@ -116,6 +118,8 @@ function isAdminUser(user) {
 
 function effectiveEffectPrice(effect, now = Date.now()) {
     if (!effect) return 0;
+
+
     const regularPrice = Math.max(0, Number(effect.price) || 0);
     const salePrice = Number(effect.flashSalePrice);
     const saleEndsAt = effect.flashSaleEndsAt ? new Date(effect.flashSaleEndsAt).getTime() : null;
@@ -238,43 +242,7 @@ async function isCustomEffectMediaAvailable(effect, options = {}) {
 
 async function getUserRecord(userId, { forceRefresh = false } = {}) {
     if (!userId) return null;
-    let user = null;
-    if (!forceRefresh) {
-        user = await User.findById(userId).lean().catch(() => null);
-    }
-    const hasPurchases = user && Array.isArray(user.purchasedEffects) && user.purchasedEffects.length > 0;
-    const { isCentralCloudRuntime } = require('../middleware/cloudProxy');
-    if ((!user || forceRefresh || !hasPurchases) && !isCentralCloudRuntime()) {
-        try {
-            const { getCloudSessionToken, getAnyCloudSessionToken } = require('./cloudSessionTokenStore');
-            const cloudToken = getCloudSessionToken(userId) || getAnyCloudSessionToken();
-            const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
-            if (cloudToken && cloudApiUrl) {
-                const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 6000);
-                timer.unref?.();
-                try {
-                    const res = await fetch(`${cloudApiUrl}/api/auth/me`, {
-                        headers: { 'Authorization': `Bearer ${cloudToken}` },
-                        signal: controller.signal
-                    });
-                    if (res.ok) {
-                        const data = await res.json().catch(() => ({}));
-                        if (data.success && data.user) {
-                            const { mirrorUserLocally } = require('./localUserMirror');
-                            await mirrorUserLocally(data.user);
-                            user = await User.findById(userId).lean().catch(() => null);
-                        }
-                    }
-                } finally {
-                    clearTimeout(timer);
-                }
-            }
-        } catch (_e) {}
-    }
-    if (!user) {
-        user = await User.findById(userId).lean().catch(() => null);
-    }
+    let user = await User.findById(userId).lean().catch(() => null);
     if (!user) {
         user = {
             _id: String(userId),

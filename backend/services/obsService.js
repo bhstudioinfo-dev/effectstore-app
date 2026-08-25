@@ -1,6 +1,18 @@
 const { OBSWebSocket } = require('obs-websocket-js');
 const { getOverlayAccessToken } = require('../config/networkSecurity');
 
+// obs-websocket-js requests have no built-in timeout — if OBS ever stalls
+// (busy decoding, UI dialog blocking its message loop, etc.) an awaited
+// call can hang forever, which cascades into every caller stacking up
+// pending HTTP connections in the renderer. Bound every wait explicitly.
+function withTimeout(promise, ms, label) {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label || 'OBS call'} timed out after ${ms}ms`)), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 class OBSService {
     constructor() {
         this.obs = new OBSWebSocket();
@@ -69,7 +81,7 @@ class OBSService {
     async connect(host = '127.0.0.1', port = 4455, password = 'obs123') {
         this._lastConfig = { host, port, password };
         try {
-            await this.obs.connect(`ws://${host}:${port}`, password);
+            await withTimeout(this.obs.connect(`ws://${host}:${port}`, password), 5000, 'OBS connect');
             return true;
         } catch (err) {
             console.error(`❌ OBS Connection failed (${host}:${port}):`, err.message || 'Check if OBS is running and WebSocket is enabled');
@@ -79,19 +91,27 @@ class OBSService {
         }
     }
 
-    async ensureConnected() {
+    async ensureConnected(userId = null) {
         if (this._isConnected) return true;
+
+        try {
+            const OBSSettings = require('../models/OBSSettings');
+            const settings = userId
+                ? (await OBSSettings.findOne({ userId })) || (await OBSSettings.findOne({ userId: { $exists: false } })) || (await OBSSettings.findOne().sort({ updatedAt: -1 }))
+                : (await OBSSettings.findOne({ userId: { $exists: false } })) || (await OBSSettings.findOne().sort({ updatedAt: -1 }));
+            if (settings) {
+                return await this.connect(
+                    settings.host || process.env.OBS_HOST || '127.0.0.1',
+                    settings.port || process.env.OBS_PORT || 4455,
+                    settings.password || process.env.OBS_PASSWORD || '123456'
+                );
+            }
+        } catch (_e) {}
 
         const fallbackHost = process.env.OBS_HOST || '127.0.0.1';
         const fallbackPort = process.env.OBS_PORT || 4455;
-        const fallbackPassword = process.env.OBS_PASSWORD || 'obs123';
-        const config = this._lastConfig || {
-            host: fallbackHost,
-            port: fallbackPort,
-            password: fallbackPassword
-        };
-
-        return this.connect(config.host, config.port, config.password);
+        const fallbackPassword = process.env.OBS_PASSWORD || '123456';
+        return this.connect(fallbackHost, fallbackPort, fallbackPassword);
     }
 
     startReconnect() {
@@ -126,13 +146,13 @@ class OBSService {
         const PORT = process.env.PORT || 9000;
         const wsToken = encodeURIComponent(getOverlayAccessToken('effect-player'));
         const sourceUrl = `http://localhost:${PORT}/effect-player-overlay.html?wsToken=${wsToken}`;
-        const { scenes } = await this.obs.call('GetSceneList');
+        const { scenes } = await withTimeout(this.obs.call('GetSceneList'), 4000, 'OBS GetSceneList');
 
         if (!scenes.some((scene) => scene.sceneName === sceneName)) {
-            await this.obs.call('CreateScene', { sceneName });
+            await withTimeout(this.obs.call('CreateScene', { sceneName }), 4000, 'OBS CreateScene');
         }
 
-        const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName });
+        const { sceneItems } = await withTimeout(this.obs.call('GetSceneItemList', { sceneName }), 4000, 'OBS GetSceneItemList');
         if (sceneItems.some((item) => item.sourceName === sourceName)) {
             return true;
         }
@@ -225,7 +245,7 @@ class OBSService {
         if (!this._isConnected) return status;
 
         try {
-            const { inputs } = await this.obs.call('GetInputList');
+            const { inputs } = await withTimeout(this.obs.call('GetInputList'), 4000, 'OBS GetInputList');
             const names = new Set(inputs.map((input) => input.inputName));
             status.gift_menu = names.has('gift_menu_overlay') || names.has('gift_menu');
             status.effect_player = names.has('effect_player');

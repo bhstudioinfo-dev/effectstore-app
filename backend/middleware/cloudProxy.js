@@ -8,8 +8,10 @@
 // Opt-in and zero-risk when unconfigured: if CLOUD_API_URL isn't set, none of
 // this is mounted and every route keeps working exactly as it did before.
 
-const DEFAULT_CLOUD_API_URL = 'https://effectstore-app.onrender.com';
-const CLOUD_API_URL = String(process.env.CLOUD_API_URL || DEFAULT_CLOUD_API_URL).trim().replace(/\/+$/, '');
+// A desktop install supplies the central URL explicitly.  Never quietly
+// fall back to an old Render deployment: that creates split accounts,
+// ownership and catalog data when an environment variable is missing.
+const CLOUD_API_URL = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
 const { mirrorUserLocally } = require('../services/localUserMirror');
 const { forgetCloudSessionToken, rememberCloudSessionToken, getCloudSessionToken, getAnyCloudSessionToken } = require('../services/cloudSessionTokenStore');
 const { verifyUserToken } = require('../services/userToken');
@@ -55,8 +57,10 @@ function proxyToCloud(req, res, next) {
     const isRawStreamBody = !isBodylessMethod && !hasJsonBody && !req.readableEnded;
     const body = hasJsonBody ? JSON.stringify(req.body) : (isRawStreamBody ? req : undefined);
 
+    const isAiRequest = String(req.originalUrl || '').startsWith('/api/ai');
+    const timeoutDuration = isAiRequest ? 30000 : 8000;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), timeoutDuration);
 
     fetch(target, {
         method: req.method,
@@ -122,6 +126,33 @@ function proxyToCloud(req, res, next) {
                                 await mirrorUserPurchasedEffectsLocally(decoded.userId, parsed.effects);
                             }
                         }
+                    }
+
+                    let modified = false;
+                    if (parsed?.success && Array.isArray(parsed.effects) && /^\/api\/(?:effects(?:\/trending)?|admin\/effects|user\/effects)$/.test(req.originalUrl.split('?')[0])) {
+                        const localEffects = await Effect.find({ isActive: true }).sort({ createdAt: -1 }).lean().catch(() => []);
+                        const existingIds = new Set(parsed.effects.map(e => String(e._id || e.id || '')));
+                        for (const localEffect of localEffects) {
+                            if (!existingIds.has(String(localEffect._id))) {
+                                parsed.effects.unshift({
+                                    ...localEffect,
+                                    isOwned: true
+                                });
+                                existingIds.add(String(localEffect._id));
+                                modified = true;
+                            }
+                        }
+                    } else if (parsed?.success && parsed.stats && req.originalUrl.split('?')[0] === '/api/admin/stats') {
+                        const localCount = await Effect.countDocuments({ isActive: true }).catch(() => 0);
+                        if (localCount > (parsed.stats.totalEffects || 0)) {
+                            parsed.stats.totalEffects = localCount;
+                            modified = true;
+                        }
+                    }
+                    if (modified) {
+                        res.status(cloudRes.status);
+                        if (contentType) res.set('content-type', contentType);
+                        return res.send(JSON.stringify(parsed));
                     }
                 } catch (_error) { /* not a mirrorable JSON body */ }
             }

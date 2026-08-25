@@ -31,13 +31,13 @@ function requireLoopbackDesktop(req, res, next) {
 async function getObsConnectionConfig(userId) {
     try {
         const settings = userId
-            ? (await OBSSettings.findOne({ userId })) || (await OBSSettings.findOne({ userId: { $exists: false } }))
-            : await OBSSettings.findOne({ userId: { $exists: false } });
+            ? (await OBSSettings.findOne({ userId })) || (await OBSSettings.findOne({ userId: { $exists: false } })) || (await OBSSettings.findOne().sort({ updatedAt: -1 }))
+            : (await OBSSettings.findOne({ userId: { $exists: false } })) || (await OBSSettings.findOne().sort({ updatedAt: -1 }));
         if (settings) {
             return {
                 host: settings.host || process.env.OBS_HOST || '127.0.0.1',
                 port: settings.port || process.env.OBS_PORT || 4455,
-                password: settings.password || process.env.OBS_PASSWORD || 'obs123'
+                password: settings.password || process.env.OBS_PASSWORD || '123456'
             };
         }
     } catch (_e) {}
@@ -45,7 +45,7 @@ async function getObsConnectionConfig(userId) {
     return {
         host: process.env.OBS_HOST || '127.0.0.1',
         port: process.env.OBS_PORT || 4455,
-        password: process.env.OBS_PASSWORD || 'obs123'
+        password: process.env.OBS_PASSWORD || '123456'
     };
 }
 
@@ -99,11 +99,7 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
         const effectId = String(req.body?.effectId || '').trim();
         if (!effectId) return res.status(400).json({ success: false, message: 'Thiếu mã hiệu ứng.' });
 
-        const [effect, duration] = await Promise.all([
-            resolveEffectForUser(req.userId, effectId),
-            resolveEffectDurationForUser(req.userId, effectId)
-        ]);
-
+        const effect = await resolveEffectForUser(req.userId, effectId);
         if (!effect) {
             return res.status(403).json({ success: false, message: 'Bạn chưa sở hữu hiệu ứng này.' });
         }
@@ -115,7 +111,7 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             });
         }
 
-        const durationMs = normalizeDurationMs(duration);
+        const durationMs = normalizeDurationMs(effect.duration || 15);
         if (!durationMs) {
             return res.status(422).json({ success: false, message: 'Hiệu ứng chưa có thời lượng hợp lệ.' });
         }
@@ -123,7 +119,11 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
         const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
         if (!isPlayerReady) {
             if (!obsService.isConnected()) {
-                return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
+                const obsConfig = await getObsConnectionConfig(req.userId);
+                await obsService.connect(obsConfig.host, obsConfig.port, obsConfig.password).catch(() => {});
+            }
+            if (!obsService.isConnected()) {
+                return res.status(503).json({ success: false, message: 'OBS chưa kết nối. Hãy kiểm tra OBS và kết nối lại trong Cài đặt.' });
             }
 
             await obsService.ensureEffectPlayerSource();
@@ -131,7 +131,7 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             if (!sourceStatus.effect_player) {
                 return res.status(503).json({ success: false, message: 'Không thể chuẩn bị nguồn effect_player trên OBS.' });
             }
-            if (!await waitForEffectPlayerReady(req, 1000)) {
+            if (!await waitForEffectPlayerReady(req, 2500)) {
                 return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa kết nối, vui lòng thử lại.' });
             }
         }

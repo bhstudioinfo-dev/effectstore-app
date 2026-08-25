@@ -341,4 +341,22 @@ router.post('/upload/:deckType', requireRemoteToken, upload.single('media'), asy
     }
 });
 
+function handleResetSession(_req, res) {
+    clearActiveRemoteEffect();
+    currentControlDeckState = {
+        effect: { slots: [] },
+        sound: { slots: [] }
+    };
+    deckRevision += 1;
+    res.json({ success: true });
+}
+
+// Called by the desktop app itself on logout (not the paired phone, which
+// has no reason to reset the whole session) — restrict to loopback so a
+// device elsewhere on the same LAN (the server binds 0.0.0.0 for the phone
+// remote feature) can't wipe the streamer's control deck without the
+// pairing token.
+router.post('/reset-session', requireLoopback, handleResetSession);
+router.post('/remote/reset-session', requireLoopback, handleResetSession);
+
 module.exports = router;
