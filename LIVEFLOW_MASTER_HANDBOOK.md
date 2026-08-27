@@ -234,19 +234,30 @@ npm test
 
 ---
 
-## 8. QUY TRÌNH ĐÓNG GÓI & PHÁT HÀNH RELEASE WINDOWS
+## 8. QUY TRÌNH ĐÓNG GÓI, PHÁT HÀNH & TỰ ĐỘNG CẬP NHẬT (AUTO-UPDATE)
 
-1. **Chuẩn bị môi trường & kiểm thử:**
-   - Chạy lệnh `npm test` để xác minh 25 test suite hoàn toàn xanh.
-   - Chạy `node scripts/validate-release.js` kiểm tra điều kiện phát hành.
-2. **Lệnh đóng gói bản cài đặt chính thức:**
+Hệ thống LiveFlow hỗ trợ cơ chế **Auto-Update 1-Click** tích hợp sẵn qua `electron-updater` và Cloudflare R2:
+
+### A. 3 Bước Phát Hành Bản Cập Nhật Mới (Dành cho Admin):
+1. **Bước 1: Tăng số phiên bản (Version):**
+   - Cập nhật số phiên bản trong `package.json` và `desktop/package.json` (ví dụ: từ `1.0.1` lên `1.0.2`).
+2. **Bước 2: Đóng gói bản cài đặt (Build Release):**
    ```bash
    npm run release:windows
    ```
-3. **Cấu trúc bản cài đặt sau khi đóng gói:**
-   - **Tệp cài đặt:** `desktop/dist/LiveFlow-Setup-1.0.1.exe` (~196MB).
-   - Tự động tích hợp binary MongoDB, bộ font UTM, toàn bộ asset âm thanh mẫu offline và icon chính thức LiveFlow.
-   - Hỗ trợ cài đặt 1-click mượt mà trên tất cả các máy tính Windows 10/11.
+   *(Hệ thống tự động chạy toàn bộ 25 bài test, kiểm tra tính toàn vẹn và tạo bộ cài `LiveFlow-Setup-1.0.2.exe` cùng file manifest `latest.yml` trong thư mục `desktop/dist/`).*
+3. **Bước 3: Đẩy bản cập nhật lên máy chủ phát hành (Upload Release):**
+   ```bash
+   npm run release:upload
+   ```
+   *(Tự động upload file `latest.yml`, `LiveFlow-Setup-1.0.2.exe` và `.blockmap` lên Cloudflare R2 / Server cập nhật).*
+
+---
+
+### B. Trải Nghiệm Cập Nhật Của Khách Hàng:
+- **Tự động kiểm tra:** Mỗi khi mở app hoặc khi bấm nút **"🌿 Phiên bản"** trên thanh Menu trên cùng.
+- **Thông báo & Nâng cấp 1-Click:** App hiển thị thông báo bản mới kèm nút **"Cập nhật"** ➔ Tải ngầm hiển thị tiến trình `%` ➔ Bấm **"Khởi động lại"** để tự động hoàn tất trong vài giây.
+- **Bảo toàn dữ liệu 100%:** Toàn bộ hiệu ứng cá nhân (`userData/custom-effects/`), ảnh đại diện, danh sách gán quà (mapping), cài đặt bàn phím Live Control đều được giữ nguyên vẹn trên máy khách.
 
 ---
 *Tài liệu này là cẩm nang kỹ thuật và vận hành chính thức của dự án LiveFlow.*
