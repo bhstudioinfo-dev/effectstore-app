@@ -2195,21 +2195,24 @@ class EffectStoreApp {
         // dashboard total instead of showing an admin "0" while the library
         // correctly grants access to a published board.
         const ownedTemplates = this.getOwnedTemplateProducts();
-        document.getElementById('owned-count').textContent = this.ownedEffects.length + ownedTemplates.length;
+        const ownedCountEl = document.getElementById('owned-count');
+        if (ownedCountEl) ownedCountEl.textContent = this.ownedEffects.length + ownedTemplates.length;
 
-        // Sử dụng giá trị thực tế từ DB thay vì cộng dồn giá tiền (đặc biệt quan trọng với Admin)
         const displaySpent = this.currentUser ? (this.currentUser.totalSpent || 0) : 0;
-        document.getElementById('total-spent').textContent = this.formatPrice(displaySpent);
+        const totalSpentEl = document.getElementById('total-spent');
+        if (totalSpentEl) totalSpentEl.textContent = this.formatPrice(displaySpent);
 
         const displayUses = this.currentUser ? (this.currentUser.totalUses || 0) : 0;
-        document.getElementById('total-uses').textContent = displayUses;
+        const totalUsesEl = document.getElementById('total-uses');
+        if (totalUsesEl) totalUsesEl.textContent = displayUses;
 
         const totalSavings = [...this.ownedEffects, ...ownedTemplates].reduce((sum, e) => {
             const orig = e.originalPrice || e.price || 0;
             const current = e.price || 0;
             return sum + (orig - current);
         }, 0);
-        document.getElementById('savings').textContent = this.formatPrice(totalSavings);
+        const savingsEl = document.getElementById('savings');
+        if (savingsEl) savingsEl.textContent = this.formatPrice(totalSavings);
         this.renderEffects();
     } // ✅ Đóng updateUI ở đây
 
