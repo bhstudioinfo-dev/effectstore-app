@@ -88,7 +88,7 @@ function writeMainProcessError(kind, error) {
             `[${new Date().toISOString()}] ${kind}: ${error?.stack || error}\n`,
             'utf8'
         );
-    } catch (_writeError) {}
+    } catch (_writeError) { }
 }
 process.on('uncaughtException', (error) => writeMainProcessError('uncaughtException', error));
 process.on('unhandledRejection', (error) => writeMainProcessError('unhandledRejection', error));
@@ -310,15 +310,15 @@ function createWindow() {
         mainWindow.webContents.openDevTools({ mode: 'detach' });
     }
     console.log('Loading HTML file...');
-    
+
     mainWindow.webContents.on('did-finish-load', () => {
         console.log('✅ HTML loaded successfully');
     });
-    
+
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDesc) => {
         console.log('❌ HTML load failed:', errorDesc);
     });
-    
+
     // Clear cache and enable instant live reload on Ctrl+R without restarting
     if (mainWindow && mainWindow.webContents && mainWindow.webContents.session) {
         mainWindow.webContents.session.clearCache().catch(e => console.error('Failed to clear cache:', e));
@@ -349,11 +349,11 @@ function createWindow() {
     const htmlPath = path.join(__dirname, 'renderer', 'index.html');
     console.log('📂 Loading from:', htmlPath);
     mainWindow.loadFile(htmlPath);
-    
+
     createTray();
     registerHotkeys();
     startLocalServer();
-    
+
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
@@ -362,22 +362,22 @@ function createWindow() {
 function createTray() {
     try {
         const iconPath = path.join(__dirname, 'assets', 'liveflow.ico');
-        const trayIcon = fs.existsSync(iconPath) 
-            ? nativeImage.createFromPath(iconPath) 
+        const trayIcon = fs.existsSync(iconPath)
+            ? nativeImage.createFromPath(iconPath)
             : nativeImage.createEmpty();
-        
+
         tray = new Tray(trayIcon);
-        
+
         const contextMenu = Menu.buildFromTemplate([
             { label: 'Mở LiveFlow', click: () => mainWindow.show() },
             { label: 'Trigger Effect', click: () => triggerLegacyPreviewEffect('eff-001') },
             { type: 'separator' },
             { label: 'Thoát', click: () => app.quit() }
         ]);
-        
+
         tray.setToolTip('LiveFlow - Livestream Effects');
         tray.setContextMenu(contextMenu);
-        
+
         tray.on('click', () => {
             mainWindow.show();
             mainWindow.focus();
@@ -412,7 +412,7 @@ function triggerEffectBySlot(slot) {
 
 function startLocalServer() {
     const expressApp = express();
-    
+
     // Serve static files from renderer folder
     expressApp.use('/renderer', express.static(path.join(__dirname, 'renderer')));
     expressApp.use('/assets', express.static(path.join(__dirname, 'renderer', 'assets')));
@@ -431,20 +431,16 @@ function startLocalServer() {
         maxAge: '1y',
         immutable: true
     }));
-    
+
     expressApp.get('/overlay', (req, res) => {
         res.sendFile(path.join(__dirname, 'renderer', 'overlay.html'));
     });
-    
-    expressApp.get(['/guide', '/obs-guide', '/obs-guide.html'], (req, res) => {
-        res.sendFile(path.join(__dirname, 'renderer', 'obs-guide.html'));
-    });
-    
+
     expressApp.get('/legacy-preview/api/trigger/:effectId', (req, res) => {
         triggerLegacyPreviewEffect(req.params.effectId);
         res.json({ success: true });
     });
-    
+
     expressApp.get('/legacy-preview/api/status', (req, res) => {
         res.json({
             obsConnected,
@@ -453,17 +449,17 @@ function startLocalServer() {
             connectedClients: connectedClients.size
         });
     });
-    
+
     localServer = expressApp.listen(PORT, '0.0.0.0', () => {
         console.log(`🌐 Server: http://localhost:${PORT}`);
     });
-    
+
     wss = new WebSocketServer({ port: WS_PORT, host: '0.0.0.0', maxPayload: 64 * 1024, perMessageDeflate: false });
-    
+
     wss.on('connection', (ws) => {
         connectedClients.add(ws);
         console.log('🔌 Overlay connected');
-        
+
         ws.on('message', (message) => {
             try {
                 const data = JSON.parse(message);
@@ -476,7 +472,7 @@ function startLocalServer() {
                 ws.close(1003, 'Invalid message');
             }
         });
-        
+
         ws.on('close', () => {
             connectedClients.delete(ws);
             console.log('🔌 Overlay disconnected');
@@ -489,7 +485,7 @@ function triggerLegacyPreviewEffect(effectId) {
     const effect = { id: effectId, triggeredAt: Date.now() };
     legacyCurrentEffect = effect;
     legacyPreviewQueue.push(effect);
-    
+
     connectedClients.forEach(client => {
         if (client.readyState === 1) {
             client.send(JSON.stringify({
@@ -499,11 +495,11 @@ function triggerLegacyPreviewEffect(effectId) {
             }));
         }
     });
-    
+
     if (mainWindow) {
         mainWindow.webContents.send('effect-triggered', effect);
     }
-    
+
     console.log('🎬 Effect triggered:', effectId);
 }
 
@@ -725,7 +721,7 @@ ipcMain.handle('database-config:save', async (_event, mongoUri) => {
         };
     } catch (error) {
         if (previousConfig) {
-            try { fs.writeFileSync(configPath, previousConfig, { mode: 0o600 }); } catch (_restoreError) {}
+            try { fs.writeFileSync(configPath, previousConfig, { mode: 0o600 }); } catch (_restoreError) { }
         }
         return { success: false, databaseConnected: false, error: error.message };
     }
@@ -827,26 +823,26 @@ ipcMain.handle('navigate-to', async (event, pageName) => {
         'admin-banner': 'admin-banner.html',      // ✅ BỎ 'renderer/'
         'overlay': 'overlay.html'                 // ✅ BỎ 'renderer/'
     };
-    
+
     const pagePath = pages[pageName];
     if (!pagePath) {
         return { success: false, error: 'Page not found' };
     }
-    
+
     // __dirname = desktop/
     // pagePath = gift-coins-manager.html
     // fullPath = desktop/gift-coins-manager.html ❌ SAI!
     // HOẶC
     // fullPath = desktop/renderer/gift-coins-manager.html ✅ ĐÚNG!
-    
+
     const fullPath = path.join(__dirname, 'renderer', pagePath); // ✅ THÊM 'renderer' VÀO ĐÂY
     console.log('🔍 Navigating to:', fullPath);
-    
+
     if (!fs.existsSync(fullPath)) {
         console.error('❌ File not found:', fullPath);
         return { success: false, error: 'File not found: ' + fullPath };
     }
-    
+
     mainWindow.loadFile(fullPath);
     return { success: true };
 });
@@ -854,15 +850,15 @@ ipcMain.handle('navigate-to', async (event, pageName) => {
 // Open page in new window
 ipcMain.handle('open-page-new-window', async (event, pageName) => {
     const pages = {
-    'gift-coins': 'gift-coins-manager.html',
-    'admin-banner': 'admin-banner.html'
+        'gift-coins': 'gift-coins-manager.html',
+        'admin-banner': 'admin-banner.html'
     };
-    
+
     const pagePath = pages[pageName];
     if (!pagePath) {
         return { success: false, error: 'Page not found' };
     }
-    
+
     const newWindow = new BrowserWindow({
         width: 1200,
         height: 900,
@@ -877,12 +873,12 @@ ipcMain.handle('open-page-new-window', async (event, pageName) => {
         parent: mainWindow,
         modal: false
     });
-    
+
     const fullPath = path.join(__dirname, 'renderer', pagePath);
     console.log('🔍 Opening new window:', fullPath);
     newWindow.loadFile(fullPath);
     newWindow.webContents.openDevTools();
-    
+
     return { success: true };
 });
 
@@ -1130,7 +1126,7 @@ ipcMain.handle('custom-effects:update-thumbnail', async (_event, payload = {}) =
         ]);
         const legacyPng = path.join(dir, 'thumbnail.png');
         if (fs.existsSync(legacyPng)) {
-            try { fs.unlinkSync(legacyPng); } catch (_e) {}
+            try { fs.unlinkSync(legacyPng); } catch (_e) { }
         }
 
         const effects = await readCustomEffects();
@@ -1193,7 +1189,7 @@ ipcMain.handle('control-deck:choose-sound', async () => {
     fs.copyFileSync(source, path.join(soundboardPath, fileName));
     const libraryPath = path.join(soundboardPath, 'library.json');
     let library = [];
-    try { library = JSON.parse(fs.readFileSync(libraryPath, 'utf8')); } catch (_error) {}
+    try { library = JSON.parse(fs.readFileSync(libraryPath, 'utf8')); } catch (_error) { }
     const sound = {
         id,
         name: path.basename(source, ext).slice(0, 60),
@@ -1236,7 +1232,7 @@ ipcMain.handle('control-deck:set-hotkeys', async (_event, bindings = []) => {
             if (globalShortcut.register(accelerator, () => mainWindow?.webContents.send('control-deck-trigger', slotId))) {
                 registered.push(slotId);
             }
-        } catch (_error) {}
+        } catch (_error) { }
     }
     return { success: true, registered };
 });

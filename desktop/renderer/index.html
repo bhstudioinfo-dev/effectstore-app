@@ -259,7 +259,7 @@
         }
 
         /* PREMIUM CTA CARD STYLES */
-         .pro-card-premium {
+        .pro-card-premium {
             position: relative;
             background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(236, 72, 153, 0.03) 100%);
             border: 1px solid rgba(124, 58, 237, 0.25);
@@ -272,6 +272,7 @@
             animation: borderGlow 4s infinite ease-in-out;
             transition: all 0.3s ease;
         }
+
         .pro-card-premium::before {
             content: '';
             position: absolute;
@@ -279,21 +280,21 @@
             left: -150%;
             width: 50%;
             height: 100%;
-            background: linear-gradient(
-                to right,
-                rgba(255, 255, 255, 0) 0%,
-                rgba(255, 255, 255, 0.15) 50%,
-                rgba(255, 255, 255, 0) 100%
-            );
+            background: linear-gradient(to right,
+                    rgba(255, 255, 255, 0) 0%,
+                    rgba(255, 255, 255, 0.15) 50%,
+                    rgba(255, 255, 255, 0) 100%);
             transform: skewX(-25deg);
             animation: lightSweep 4s infinite ease-in-out;
             pointer-events: none;
         }
+
         .pro-card-premium:hover {
             transform: translateY(-2px);
             border-color: rgba(236, 72, 153, 0.6);
             box-shadow: 0 12px 40px rgba(124, 58, 237, 0.2);
         }
+
         .premium-cta-btn {
             width: 100%;
             padding: 14px;
@@ -311,11 +312,13 @@
             transition: all 0.3s ease;
             animation: shimmer 3s infinite linear;
         }
+
         .premium-cta-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(236, 72, 153, 0.6), 0 0 15px rgba(124, 58, 237, 0.4);
             filter: brightness(1.15);
         }
+
         .sidebar-promo-card {
             min-height: 155px;
             margin-bottom: 16px;
@@ -324,19 +327,22 @@
             cursor: pointer;
             isolation: isolate;
             background:
-                radial-gradient(circle at 90% 8%, rgba(236,72,153,.20), transparent 38%),
-                linear-gradient(145deg, rgba(52,24,92,.94), rgba(21,19,48,.98));
-            border-color: rgba(192,132,252,.34);
+                radial-gradient(circle at 90% 8%, rgba(236, 72, 153, .20), transparent 38%),
+                linear-gradient(145deg, rgba(52, 24, 92, .94), rgba(21, 19, 48, .98));
+            border-color: rgba(192, 132, 252, .34);
             animation: sidebarPromoBorder 5s ease-in-out infinite;
         }
+
         .sidebar-promo-card::before {
             opacity: .65;
             animation-duration: 6s;
         }
+
         .sidebar-promo-card:focus-visible {
             outline: 2px solid #c084fc;
             outline-offset: 3px;
         }
+
         .sidebar-promo-orb {
             position: absolute;
             z-index: -1;
@@ -345,10 +351,11 @@
             right: -24px;
             top: -30px;
             border-radius: 50%;
-            background: rgba(236,72,153,.24);
+            background: rgba(236, 72, 153, .24);
             filter: blur(18px);
             animation: sidebarPromoOrb 5s ease-in-out infinite;
         }
+
         .sidebar-promo-topline {
             display: flex;
             align-items: center;
@@ -356,24 +363,27 @@
             gap: 7px;
             margin-bottom: 7px;
         }
+
         .sidebar-promo-icon {
             font-size: 18px;
-            filter: drop-shadow(0 0 8px rgba(251,191,36,.45));
+            filter: drop-shadow(0 0 8px rgba(251, 191, 36, .45));
         }
+
         .sidebar-promo-badge {
             padding: 4px 9px;
             border: 1px solid #fbbf24;
             border-radius: 999px;
-            background: rgba(180,83,9,.78);
+            background: rgba(180, 83, 9, .78);
             color: #fff4c2;
             font-size: 10px;
             line-height: 1;
             font-weight: 900;
             letter-spacing: .03em;
             white-space: nowrap;
-            text-shadow: 0 1px 3px rgba(0,0,0,.82);
-            box-shadow: 0 0 10px rgba(251,191,36,.16);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, .82);
+            box-shadow: 0 0 10px rgba(251, 191, 36, .16);
         }
+
         .sidebar-promo-title {
             margin: 0 0 4px;
             color: #fff;
@@ -382,6 +392,7 @@
             font-weight: 900;
             letter-spacing: -.01em;
         }
+
         .sidebar-promo-description {
             min-height: 34px;
             margin: 0 0 10px;
@@ -390,93 +401,132 @@
             line-height: 1.42;
             font-weight: 550;
         }
+
         .sidebar-promo-button {
             padding: 10px 11px;
             border-radius: 9px;
             font-size: 12px;
             letter-spacing: .035em;
-            box-shadow: 0 5px 16px rgba(236,72,153,.25);
+            box-shadow: 0 5px 16px rgba(236, 72, 153, .25);
             animation: none;
         }
+
         .sidebar-promo-button span {
             display: inline-block;
             margin-left: 3px;
             transition: transform .2s ease;
         }
+
         .sidebar-promo-card:hover .sidebar-promo-button span {
             transform: translateX(3px);
         }
+
         .sidebar-promo-card[data-plan="basic"] {
             background:
-                radial-gradient(circle at 90% 8%, rgba(168,85,247,.25), transparent 40%),
-                linear-gradient(145deg, rgba(67,24,92,.95), rgba(28,19,56,.98));
-            border-color: rgba(168,85,247,.45);
+                radial-gradient(circle at 90% 8%, rgba(168, 85, 247, .25), transparent 40%),
+                linear-gradient(145deg, rgba(67, 24, 92, .95), rgba(28, 19, 56, .98));
+            border-color: rgba(168, 85, 247, .45);
         }
+
         .sidebar-promo-card[data-plan="basic"] .sidebar-promo-badge {
             border-color: #a855f7;
-            background: linear-gradient(135deg, rgba(147,51,234,.8), rgba(236,72,153,.8));
+            background: linear-gradient(135deg, rgba(147, 51, 234, .8), rgba(236, 72, 153, .8));
             color: #fff;
-            box-shadow: 0 0 12px rgba(168,85,247,.3);
+            box-shadow: 0 0 12px rgba(168, 85, 247, .3);
         }
+
         .sidebar-promo-card[data-plan="basic"] .sidebar-promo-button {
             background: linear-gradient(135deg, #7c3aed, #ec4899);
-            box-shadow: 0 5px 16px rgba(124,58,237,.35);
+            box-shadow: 0 5px 16px rgba(124, 58, 237, .35);
         }
 
         .sidebar-promo-card[data-plan="pro"] {
             background:
-                radial-gradient(circle at 90% 8%, rgba(59,130,246,.25), transparent 40%),
-                linear-gradient(145deg, rgba(20,35,80,.95), rgba(15,20,45,.98));
-            border-color: rgba(59,130,246,.45);
+                radial-gradient(circle at 90% 8%, rgba(59, 130, 246, .25), transparent 40%),
+                linear-gradient(145deg, rgba(20, 35, 80, .95), rgba(15, 20, 45, .98));
+            border-color: rgba(59, 130, 246, .45);
         }
+
         .sidebar-promo-card[data-plan="pro"] .sidebar-promo-badge {
             border-color: #3b82f6;
-            background: linear-gradient(135deg, rgba(37,99,235,.8), rgba(14,165,233,.8));
+            background: linear-gradient(135deg, rgba(37, 99, 235, .8), rgba(14, 165, 233, .8));
             color: #fff;
-            box-shadow: 0 0 12px rgba(59,130,246,.3);
+            box-shadow: 0 0 12px rgba(59, 130, 246, .3);
         }
+
         .sidebar-promo-card[data-plan="pro"] .sidebar-promo-button {
             background: linear-gradient(135deg, #2563eb, #06b6d4);
-            box-shadow: 0 5px 16px rgba(37,99,235,.35);
+            box-shadow: 0 5px 16px rgba(37, 99, 235, .35);
         }
 
         .sidebar-promo-card[data-plan="admin"],
         .sidebar-promo-card[data-plan="studio"],
         .sidebar-promo-card[data-plan="business"] {
             background:
-                radial-gradient(circle at 90% 8%, rgba(245,158,11,.22), transparent 40%),
-                linear-gradient(145deg, rgba(35,28,15,.96), rgba(18,17,25,.98));
-            border-color: rgba(245,158,11,.45);
+                radial-gradient(circle at 90% 8%, rgba(245, 158, 11, .22), transparent 40%),
+                linear-gradient(145deg, rgba(35, 28, 15, .96), rgba(18, 17, 25, .98));
+            border-color: rgba(245, 158, 11, .45);
             animation: none;
         }
+
         .sidebar-promo-card[data-plan="admin"] .sidebar-promo-badge,
         .sidebar-promo-card[data-plan="studio"] .sidebar-promo-badge,
         .sidebar-promo-card[data-plan="business"] .sidebar-promo-badge {
             border-color: #fbbf24;
-            background: linear-gradient(135deg, rgba(180,83,9,.85), rgba(217,119,6,.85));
+            background: linear-gradient(135deg, rgba(180, 83, 9, .85), rgba(217, 119, 6, .85));
             color: #fffbeb;
-            box-shadow: 0 0 12px rgba(245,158,11,.3);
+            box-shadow: 0 0 12px rgba(245, 158, 11, .3);
         }
+
         .sidebar-promo-card[data-plan="admin"] .sidebar-promo-button,
         .sidebar-promo-card[data-plan="studio"] .sidebar-promo-button,
         .sidebar-promo-card[data-plan="business"] .sidebar-promo-button {
             background: linear-gradient(135deg, #d97706, #f59e0b);
             color: #0f172a;
             font-weight: 800;
-            box-shadow: 0 5px 16px rgba(245,158,11,.35);
+            box-shadow: 0 5px 16px rgba(245, 158, 11, .35);
         }
+
         @keyframes sidebarPromoBorder {
-            0%,100% { box-shadow: 0 8px 24px rgba(0,0,0,.35), 0 0 0 rgba(168,85,247,0); }
-            50% { box-shadow: 0 10px 28px rgba(0,0,0,.4), 0 0 18px rgba(168,85,247,.16); }
+
+            0%,
+            100% {
+                box-shadow: 0 8px 24px rgba(0, 0, 0, .35), 0 0 0 rgba(168, 85, 247, 0);
+            }
+
+            50% {
+                box-shadow: 0 10px 28px rgba(0, 0, 0, .4), 0 0 18px rgba(168, 85, 247, .16);
+            }
         }
+
         @keyframes sidebarPromoOrb {
-            0%,100% { transform: scale(.9); opacity:.55; }
-            50% { transform: scale(1.12); opacity:.9; }
+
+            0%,
+            100% {
+                transform: scale(.9);
+                opacity: .55;
+            }
+
+            50% {
+                transform: scale(1.12);
+                opacity: .9;
+            }
         }
+
         @keyframes borderGlow {
-            0%, 100% { border-color: rgba(124, 58, 237, 0.25); box-shadow: 0 0 15px rgba(124, 58, 237, 0.1), inset 0 0 15px rgba(124, 58, 237, 0.05); }
-            50% { border-color: rgba(236, 72, 153, 0.5); box-shadow: 0 0 25px rgba(236, 72, 153, 0.25), inset 0 0 25px rgba(236, 72, 153, 0.08); }
+
+            0%,
+            100% {
+                border-color: rgba(124, 58, 237, 0.25);
+                box-shadow: 0 0 15px rgba(124, 58, 237, 0.1), inset 0 0 15px rgba(124, 58, 237, 0.05);
+            }
+
+            50% {
+                border-color: rgba(236, 72, 153, 0.5);
+                box-shadow: 0 0 25px rgba(236, 72, 153, 0.25), inset 0 0 25px rgba(236, 72, 153, 0.08);
+            }
         }
+
         .cta-badge-text {
             font-size: 13px;
             font-weight: 900;
@@ -489,24 +539,61 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+
         @keyframes badgeScale {
-            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(255, 85, 0, 0.4)); }
-            50% { transform: scale(1.06); filter: drop-shadow(0 0 10px rgba(255, 85, 0, 0.7)); }
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 4px rgba(255, 85, 0, 0.4));
+            }
+
+            50% {
+                transform: scale(1.06);
+                filter: drop-shadow(0 0 10px rgba(255, 85, 0, 0.7));
+            }
         }
+
         @keyframes textGlowPulse {
-            0%, 100% { filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.4)) brightness(1); }
-            50% { filter: drop-shadow(0 0 18px rgba(0, 242, 254, 0.8)) brightness(1.2); }
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.4)) brightness(1);
+            }
+
+            50% {
+                filter: drop-shadow(0 0 18px rgba(0, 242, 254, 0.8)) brightness(1.2);
+            }
         }
+
         @keyframes lightSweep {
-            0% { left: -150%; }
-            50% { left: 150%; }
-            100% { left: 150%; }
+            0% {
+                left: -150%;
+            }
+
+            50% {
+                left: 150%;
+            }
+
+            100% {
+                left: 150%;
+            }
         }
+
         @keyframes shimmer {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
         }
+
         #plan-pro-card.featured {
             background: rgba(15, 23, 42, 0.75) !important;
             border: 2px solid #3b82f6 !important;
@@ -514,10 +601,12 @@
             transform: scale(1.04) !important;
             z-index: 5;
         }
+
         #plan-pro-card.featured:hover {
             transform: scale(1.05) translateY(-5px) !important;
             box-shadow: 0 0 35px rgba(59, 130, 246, 0.65) !important;
         }
+
         #plan-pro-card .featured-badge {
             background: #3b82f6 !important;
             color: #fff !important;
@@ -528,45 +617,77 @@
 </head>
 
 <body>
-    <div id="database-setup-modal" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
-        <div style="width:min(560px,100%);background:#111827;border:1px solid #374151;border-radius:20px;padding:28px;color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.55);">
+    <div id="database-setup-modal"
+        style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
+        <div
+            style="width:min(560px,100%);background:#111827;border:1px solid #374151;border-radius:20px;padding:28px;color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.55);">
             <h2 style="margin:0 0 10px;">Thiết lập cơ sở dữ liệu</h2>
-            <p style="margin:0 0 18px;color:#cbd5e1;line-height:1.6;">LiveFlow chưa kết nối được MongoDB. Bạn có thể nhập URI MongoDB Atlas hoặc bấm Bỏ qua để dùng chế độ Standalone / Offline.</p>
-            <label for="database-setup-uri" style="display:block;margin-bottom:8px;font-weight:700;">MongoDB URI (Tuỳ chọn)</label>
-            <input id="database-setup-uri" type="password" autocomplete="off" placeholder="mongodb+srv://user:password@cluster/effectstore" style="width:100%;box-sizing:border-box;padding:13px 14px;border-radius:10px;border:1px solid #4b5563;background:#030712;color:#fff;">
+            <p style="margin:0 0 18px;color:#cbd5e1;line-height:1.6;">LiveFlow chưa kết nối được MongoDB. Bạn có thể
+                nhập URI MongoDB Atlas hoặc bấm Bỏ qua để dùng chế độ Standalone / Offline.</p>
+            <label for="database-setup-uri" style="display:block;margin-bottom:8px;font-weight:700;">MongoDB URI (Tuỳ
+                chọn)</label>
+            <input id="database-setup-uri" type="password" autocomplete="off"
+                placeholder="mongodb+srv://user:password@cluster/effectstore"
+                style="width:100%;box-sizing:border-box;padding:13px 14px;border-radius:10px;border:1px solid #4b5563;background:#030712;color:#fff;">
             <div id="database-setup-error" style="min-height:22px;margin-top:10px;color:#fca5a5;font-size:13px;"></div>
             <div style="display:flex;gap:10px;">
-                <button id="database-setup-save" onclick="app.saveDatabaseSetup()" style="flex:1;padding:13px;border:0;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;cursor:pointer;">Lưu & Kết nối</button>
-                <button onclick="document.getElementById('database-setup-modal').style.display='none';" style="flex:1;padding:13px;border:1px solid #4b5563;border-radius:10px;background:rgba(255,255,255,0.05);color:#cbd5e1;font-weight:700;cursor:pointer;">Bỏ qua & Chạy ứng dụng</button>
+                <button id="database-setup-save" onclick="app.saveDatabaseSetup()"
+                    style="flex:1;padding:13px;border:0;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;cursor:pointer;">Lưu
+                    & Kết nối</button>
+                <button onclick="document.getElementById('database-setup-modal').style.display='none';"
+                    style="flex:1;padding:13px;border:1px solid #4b5563;border-radius:10px;background:rgba(255,255,255,0.05);color:#cbd5e1;font-weight:700;cursor:pointer;">Bỏ
+                    qua & Chạy ứng dụng</button>
             </div>
-            <p style="margin:14px 0 0;color:#94a3b8;font-size:12px;line-height:1.5;">Chế độ Standalone cho phép sử dụng trọn vẹn hiệu ứng, OBS WebSocket & AI Trợ lý Cà khịa không phụ thuộc MongoDB.</p>
+            <p style="margin:14px 0 0;color:#94a3b8;font-size:12px;line-height:1.5;">Chế độ Standalone cho phép sử dụng
+                trọn vẹn hiệu ứng, OBS WebSocket & AI Trợ lý Cà khịa không phụ thuộc MongoDB.</p>
         </div>
     </div>
-    <div id="admin-setup-modal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
-        <div style="width:min(560px,100%);background:#111827;border:1px solid #374151;border-radius:20px;padding:28px;color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.55);">
+    <div id="admin-setup-modal"
+        style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
+        <div
+            style="width:min(560px,100%);background:#111827;border:1px solid #374151;border-radius:20px;padding:28px;color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.55);">
             <h2 style="margin:0 0 10px;">Tạo quản trị viên đầu tiên</h2>
-            <p style="margin:0 0 18px;color:#cbd5e1;line-height:1.6;">Wizard này chỉ hoạt động khi hệ thống chưa có tài khoản admin. Token thiết lập được giữ trong main process và không gửi vào giao diện.</p>
+            <p style="margin:0 0 18px;color:#cbd5e1;line-height:1.6;">Wizard này chỉ hoạt động khi hệ thống chưa có tài
+                khoản admin. Token thiết lập được giữ trong main process và không gửi vào giao diện.</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                <input id="admin-setup-name" placeholder="Tên hiển thị" style="padding:12px;border-radius:9px;border:1px solid #4b5563;background:#030712;color:#fff;">
-                <input id="admin-setup-phone" placeholder="Số điện thoại" style="padding:12px;border-radius:9px;border:1px solid #4b5563;background:#030712;color:#fff;">
+                <input id="admin-setup-name" placeholder="Tên hiển thị"
+                    style="padding:12px;border-radius:9px;border:1px solid #4b5563;background:#030712;color:#fff;">
+                <input id="admin-setup-phone" placeholder="Số điện thoại"
+                    style="padding:12px;border-radius:9px;border:1px solid #4b5563;background:#030712;color:#fff;">
             </div>
-            <input id="admin-setup-email" type="email" placeholder="Email admin" style="width:100%;box-sizing:border-box;margin-top:10px;padding:12px;border-radius:9px;border:1px solid #4b5563;background:#030712;color:#fff;">
-            <input id="admin-setup-password" type="password" autocomplete="new-password" placeholder="Mật khẩu tối thiểu 12 ký tự" style="width:100%;box-sizing:border-box;margin-top:10px;padding:12px;border-radius:9px;border:1px solid #4b5563;background:#030712;color:#fff;">
+            <input id="admin-setup-email" type="email" placeholder="Email admin"
+                style="width:100%;box-sizing:border-box;margin-top:10px;padding:12px;border-radius:9px;border:1px solid #4b5563;background:#030712;color:#fff;">
+            <input id="admin-setup-password" type="password" autocomplete="new-password"
+                placeholder="Mật khẩu tối thiểu 12 ký tự"
+                style="width:100%;box-sizing:border-box;margin-top:10px;padding:12px;border-radius:9px;border:1px solid #4b5563;background:#030712;color:#fff;">
             <div id="admin-setup-error" style="min-height:22px;margin-top:10px;color:#fca5a5;font-size:13px;"></div>
-            <button id="admin-setup-save" onclick="app.createInitialAdmin()" style="width:100%;padding:13px;border:0;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;cursor:pointer;">Tạo tài khoản admin</button>
+            <button id="admin-setup-save" onclick="app.createInitialAdmin()"
+                style="width:100%;padding:13px;border:0;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800;cursor:pointer;">Tạo
+                tài khoản admin</button>
         </div>
     </div>
     <!-- App Loading Overlay (Bảng chờ tải dữ liệu khi Đăng nhập/Khởi động) -->
-    <div id="app-loading-overlay" style="display:flex; opacity:1; position:fixed; inset:0; background:rgba(2,6,23,0.95); z-index:9999999; align-items:center; justify-content:center; backdrop-filter:blur(16px); transition:opacity 0.3s ease;">
-        <div style="background:rgba(15,23,42,0.95); border:1px solid rgba(124,58,237,0.35); border-radius:24px; padding:36px 44px; text-align:center; width:360px; max-width:90vw; box-shadow:0 24px 80px rgba(124,58,237,0.25); display:flex; flex-direction:column; align-items:center; gap:16px; animation:scaleUp 0.25s ease-out;">
-            <img src="assets/images/live-flow-app-icon.png" alt="LiveFlow" style="width:72px; height:72px; border-radius:18px; box-shadow:0 8px 24px rgba(124,58,237,0.4);">
-            <h3 style="margin:0; font-size:22px; font-weight:800; background:linear-gradient(135deg,#a78bfa,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">LiveFlow Premium</h3>
-            <p id="app-loading-status" style="margin:0; font-size:13px; color:#cbd5e1; font-weight:500;">Đang chuẩn bị hệ thống...</p>
-            <div style="width:100%; height:8px; background:rgba(255,255,255,0.08); border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
-                <div id="app-loading-progress-fill" style="width:15%; height:100%; background:linear-gradient(90deg, #7c3aed, #ec4899); border-radius:10px; transition:width 0.3s ease-out;"></div>
+    <div id="app-loading-overlay"
+        style="display:flex; opacity:1; position:fixed; inset:0; background:rgba(2,6,23,0.95); z-index:9999999; align-items:center; justify-content:center; backdrop-filter:blur(16px); transition:opacity 0.3s ease;">
+        <div
+            style="background:rgba(15,23,42,0.95); border:1px solid rgba(124,58,237,0.35); border-radius:24px; padding:36px 44px; text-align:center; width:360px; max-width:90vw; box-shadow:0 24px 80px rgba(124,58,237,0.25); display:flex; flex-direction:column; align-items:center; gap:16px; animation:scaleUp 0.25s ease-out;">
+            <img src="assets/images/live-flow-app-icon.png" alt="LiveFlow"
+                style="width:72px; height:72px; border-radius:18px; box-shadow:0 8px 24px rgba(124,58,237,0.4);">
+            <h3
+                style="margin:0; font-size:22px; font-weight:800; background:linear-gradient(135deg,#a78bfa,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+                LiveFlow Premium</h3>
+            <p id="app-loading-status" style="margin:0; font-size:13px; color:#cbd5e1; font-weight:500;">Đang chuẩn bị
+                hệ thống...</p>
+            <div
+                style="width:100%; height:8px; background:rgba(255,255,255,0.08); border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
+                <div id="app-loading-progress-fill"
+                    style="width:15%; height:100%; background:linear-gradient(90deg, #7c3aed, #ec4899); border-radius:10px; transition:width 0.3s ease-out;">
+                </div>
             </div>
             <span id="app-loading-percent" style="font-size:11px; color:#94a3b8; font-weight:600;">15%</span>
-            <button id="app-loading-retry" onclick="app.retryBootstrap()" style="display:none;width:100%;padding:11px 16px;border:1px solid rgba(167,139,250,.55);border-radius:10px;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-weight:800;cursor:pointer;">Thử đồng bộ lại</button>
+            <button id="app-loading-retry" onclick="app.retryBootstrap()"
+                style="display:none;width:100%;padding:11px 16px;border:1px solid rgba(167,139,250,.55);border-radius:10px;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-weight:800;cursor:pointer;">Thử
+                đồng bộ lại</button>
         </div>
     </div>
 
@@ -618,7 +739,8 @@
                 </div>
                 <div class="auth-form-group">
                     <label>🔑 Mật khẩu</label>
-                    <input type="password" id="register-password" required minlength="8" maxlength="128" placeholder="Ít nhất 8 ký tự">
+                    <input type="password" id="register-password" required minlength="8" maxlength="128"
+                        placeholder="Ít nhất 8 ký tự">
                 </div>
                 <div class="auth-form-group">
                     <label>📱 Số điện thoại / Zalo</label>
@@ -627,23 +749,46 @@
                 <details class="auth-profile-details">
                     <summary>Thêm thông tin để được hỗ trợ tốt hơn <span>Không bắt buộc</span></summary>
                     <div class="auth-profile-details-body">
-                        <div class="auth-form-group"><label>🎵 TikTok username</label><input type="text" id="register-tiktok" maxlength="50" placeholder="@username"></div>
+                        <div class="auth-form-group"><label>🎵 TikTok username</label><input type="text"
+                                id="register-tiktok" maxlength="50" placeholder="@username"></div>
                         <div class="auth-profile-grid">
-                            <div class="auth-form-group"><label>🎂 Ngày sinh</label><input type="date" id="register-birthday"></div>
-                            <div class="auth-form-group"><label>📍 Tỉnh/thành phố</label><input type="text" id="register-region" maxlength="80" placeholder="TP. Hồ Chí Minh"></div>
+                            <div class="auth-form-group"><label>🎂 Ngày sinh</label><input type="date"
+                                    id="register-birthday"></div>
+                            <div class="auth-form-group"><label>📍 Tỉnh/thành phố</label><input type="text"
+                                    id="register-region" maxlength="80" placeholder="TP. Hồ Chí Minh"></div>
                         </div>
                         <div class="auth-profile-grid">
-                            <div class="auth-form-group"><label>Loại người dùng</label><select id="register-user-type"><option value="">Chọn loại</option><option value="streamer">Streamer cá nhân</option><option value="agency">Agency/Team livestream</option><option value="shop">Shop bán hàng</option><option value="studio">Studio</option></select></div>
-                            <div class="auth-form-group"><label>Nhu cầu chính</label><select id="register-primary-need"><option value="">Chọn nhu cầu</option><option value="gift-effects">Hiệu ứng quà tặng</option><option value="tts">TTS</option><option value="gift-menu">Bảng quà</option><option value="pk-game">PK/Mini game</option></select></div>
+                            <div class="auth-form-group"><label>Loại người dùng</label><select id="register-user-type">
+                                    <option value="">Chọn loại</option>
+                                    <option value="streamer">Streamer cá nhân</option>
+                                    <option value="agency">Agency/Team livestream</option>
+                                    <option value="shop">Shop bán hàng</option>
+                                    <option value="studio">Studio</option>
+                                </select></div>
+                            <div class="auth-form-group"><label>Nhu cầu chính</label><select id="register-primary-need">
+                                    <option value="">Chọn nhu cầu</option>
+                                    <option value="gift-effects">Hiệu ứng quà tặng</option>
+                                    <option value="tts">TTS</option>
+                                    <option value="gift-menu">Bảng quà</option>
+                                    <option value="pk-game">PK/Mini game</option>
+                                </select></div>
                         </div>
                         <div class="auth-profile-grid">
-                            <div class="auth-form-group"><label>Kênh hỗ trợ</label><select id="register-preferred-contact"><option value="zalo">Zalo</option><option value="phone">Điện thoại</option><option value="email">Email</option></select></div>
-                            <div class="auth-form-group"><label>Giờ thuận tiện</label><input type="text" id="register-contact-time" maxlength="80" placeholder="Ví dụ: 18:00–21:00"></div>
+                            <div class="auth-form-group"><label>Kênh hỗ trợ</label><select
+                                    id="register-preferred-contact">
+                                    <option value="zalo">Zalo</option>
+                                    <option value="phone">Điện thoại</option>
+                                    <option value="email">Email</option>
+                                </select></div>
+                            <div class="auth-form-group"><label>Giờ thuận tiện</label><input type="text"
+                                    id="register-contact-time" maxlength="80" placeholder="Ví dụ: 18:00–21:00"></div>
                         </div>
                     </div>
                 </details>
-                <label class="auth-consent-row"><input type="checkbox" id="register-terms" required><span>Tôi đồng ý với Điều khoản dịch vụ và Chính sách bảo mật.</span></label>
-                <label class="auth-consent-row"><input type="checkbox" id="register-marketing"><span>Tôi đồng ý nhận hướng dẫn và ưu đãi phù hợp. Có thể tắt bất cứ lúc nào.</span></label>
+                <label class="auth-consent-row"><input type="checkbox" id="register-terms" required><span>Tôi đồng ý với
+                        Điều khoản dịch vụ và Chính sách bảo mật.</span></label>
+                <label class="auth-consent-row"><input type="checkbox" id="register-marketing"><span>Tôi đồng ý nhận
+                        hướng dẫn và ưu đãi phù hợp. Có thể tắt bất cứ lúc nào.</span></label>
                 <button type="submit" class="auth-submit-btn">🚀 Đăng ký ngay</button>
                 <div class="auth-divider"><span>hoặc</span></div>
                 <button type="button" class="auth-btn-secondary" onclick="app.switchAuthTab('login')">← Quay lại đăng
@@ -677,9 +822,11 @@
                 <span class="badge" id="cart-count">0</span>
             </div>
 
-            <div class="icon-btn" id="header-admin-bell" style="position:relative; cursor:pointer;" onclick="app.openPendingPaymentsModal()" title="Thông báo đơn thanh toán chờ duyệt">
+            <div class="icon-btn" id="header-admin-bell" style="position:relative; cursor:pointer;"
+                onclick="app.openPendingPaymentsModal()" title="Thông báo đơn thanh toán chờ duyệt">
                 <i class="fas fa-bell"></i>
-                <span class="badge" id="admin-notification-badge" style="display:none; background:#ef4444; color:#fff; font-weight:800;">0</span>
+                <span class="badge" id="admin-notification-badge"
+                    style="display:none; background:#ef4444; color:#fff; font-weight:800;">0</span>
             </div>
         </div>
     </nav>
@@ -704,7 +851,8 @@
                 </div>
                 <div class="menu-item-new" id="admin-nav-item" style="display:none;" onclick="switchView('admin')">
                     <i class="fas fa-user-shield"></i> Trang quản trị
-                    <span id="admin-sidebar-pending-badge" style="display:none; margin-left:auto; background:#ef4444; color:#fff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px;">0</span>
+                    <span id="admin-sidebar-pending-badge"
+                        style="display:none; margin-left:auto; background:#ef4444; color:#fff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:10px;">0</span>
                 </div>
                 <div class="menu-item-new" onclick="switchView('settings')">
                     <i class="fas fa-cog"></i> Cài đặt
@@ -720,7 +868,8 @@
                     <span class="sidebar-promo-badge" id="sidebar-promo-badge">TỪ 6.600Đ/NGÀY</span>
                 </div>
                 <h4 class="sidebar-promo-title" id="sidebar-promo-title">Nâng tầm livestream</h4>
-                <p class="sidebar-promo-description" id="sidebar-promo-description">Mở thêm hiệu ứng, TTS và thiết kế chuyên nghiệp.</p>
+                <p class="sidebar-promo-description" id="sidebar-promo-description">Mở thêm hiệu ứng, TTS và thiết kế
+                    chuyên nghiệp.</p>
                 <button class="premium-cta-btn sidebar-promo-button" id="sidebar-promo-button" type="button"
                     onclick="event.stopPropagation();app.handleSidebarPromo()">XEM GÓI BASIC <span>→</span></button>
             </div>
@@ -757,27 +906,50 @@
             <!-- Warning Banner for Admin (hiện khi có payment cần duyệt) -->
             <style>
                 @keyframes pulseGlow {
-                    0% { box-shadow: 0 0 15px rgba(255, 78, 80, 0.4); }
-                    100% { box-shadow: 0 0 30px rgba(255, 78, 80, 0.8); }
+                    0% {
+                        box-shadow: 0 0 15px rgba(255, 78, 80, 0.4);
+                    }
+
+                    100% {
+                        box-shadow: 0 0 30px rgba(255, 78, 80, 0.8);
+                    }
                 }
+
                 @keyframes scaleUp {
-                    0% { transform: scale(0.9); opacity: 0; }
-                    100% { transform: scale(1); opacity: 1; }
+                    0% {
+                        transform: scale(0.9);
+                        opacity: 0;
+                    }
+
+                    100% {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
                 }
+
                 @keyframes bounceAlert {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(-10px); }
+                    0% {
+                        transform: translateY(0);
+                    }
+
+                    100% {
+                        transform: translateY(-10px);
+                    }
                 }
             </style>
-            <div id="admin-pending-payments-banner" class="admin-warning-banner" style="display: none; background: linear-gradient(90deg, #ff4e50, #f9d423); color: #000; padding: 12px 20px; border-radius: 12px; font-weight: 800; align-items: center; justify-content: space-between; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(255, 78, 80, 0.4); animation: pulseGlow 2s infinite alternate;">
+            <div id="admin-pending-payments-banner" class="admin-warning-banner"
+                style="display: none; background: linear-gradient(90deg, #ff4e50, #f9d423); color: #000; padding: 12px 20px; border-radius: 12px; font-weight: 800; align-items: center; justify-content: space-between; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(255, 78, 80, 0.4); animation: pulseGlow 2s infinite alternate;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 20px;">⚠️</span>
                     <div>
                         <div style="font-size: 14px;">CÓ YÊU CẦU DUYỆT CHUYỂN KHOẢN MỚI!</div>
-                        <div style="font-size: 11px; opacity: 0.8; font-weight: 500;">Có <span id="admin-banner-pending-count">0</span> giao dịch đang chờ bạn xác nhận.</div>
+                        <div style="font-size: 11px; opacity: 0.8; font-weight: 500;">Có <span
+                                id="admin-banner-pending-count">0</span> giao dịch đang chờ bạn xác nhận.</div>
                     </div>
                 </div>
-                <button onclick="app.openPendingPaymentsModal()" style="background: #000; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;">Xem yêu cầu (<span id="admin-banner-pending-button-count">0</span>)</button>
+                <button onclick="app.openPendingPaymentsModal()"
+                    style="background: #000; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;">Xem
+                    yêu cầu (<span id="admin-banner-pending-button-count">0</span>)</button>
             </div>
 
             <!-- ===== SYSTEM STATUS CARDS ===== -->
@@ -794,15 +966,17 @@
                 </div>
 
                 <!-- OBS -->
-                <div class="status-card-horizontal status-disconnected" id="status-card-obs" onclick="app.openObsGuide()" style="cursor:pointer;" title="Nhấn để xem trang hướng dẫn kết nối OBS">
+                <div class="status-card-horizontal status-disconnected" id="status-card-obs">
                     <div class="status-icon"><i class="fas fa-times"
                             style="font-style: normal; font-family: sans-serif;">×</i></div>
                     <div class="status-info">
                         <div class="status-title">PHẦN MỀM OBS</div>
-                        <div class="status-subtext" id="status-sub-obs">Chưa tìm thấy OBS (Click xem hướng dẫn)</div>
-                        <div id="obs-source-diagnostic" style="display:none;font-size:10px;line-height:1.35;margin-top:3px;color:var(--text-muted);">
+                        <div class="status-subtext" id="status-sub-obs">Chưa tìm thấy OBS</div>
+                        <div id="obs-source-diagnostic"
+                            style="display:none;font-size:10px;line-height:1.35;margin-top:3px;color:var(--text-muted);">
                             <span>gift_menu → <b id="obs-source-gift-menu">--</b></span>
-                            <span style="margin-left:8px;">effect_player → <b id="obs-source-effect-player">--</b></span>
+                            <span style="margin-left:8px;">effect_player → <b
+                                    id="obs-source-effect-player">--</b></span>
                         </div>
                     </div>
                     <div class="status-badge" id="status-badge-obs">OFFLINE</div>
@@ -835,7 +1009,7 @@
                             <div class="feature"><i class="fas fa-chart-line"></i> Cập nhật mỗi ngày</div>
                         </div>
 
-                        <button class="cta-btn" onclick="app.openObsGuide()"><i class="fas fa-play-circle"></i> Xem hướng dẫn kết nối OBS</button>
+                        <button class="cta-btn"><i class="fas fa-play-circle"></i> Xem hướng dẫn</button>
                     </div>
 
                     <div class="visual">
@@ -881,22 +1055,38 @@
                 </div>
 
                 <!-- Store Toolbar: Categories & Sort -->
-                <div class="store-toolbar" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 16px 0 20px 0; flex-wrap: wrap;">
+                <div class="store-toolbar"
+                    style="display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 16px 0 20px 0; flex-wrap: wrap;">
                     <div class="filter-categories-new" style="margin: 0; flex: 1; min-width: 0;">
-                        <button class="filter-btn-new active" data-cat="all" onclick="filterCategory('all')">🛍️ Tất cả <span class="cat-badge" id="cat-count-all">0</span></button>
-                        <button class="filter-btn-new" data-cat="free" onclick="filterCategory('free')">🆓 Miễn phí <span class="cat-badge" id="cat-count-free">0</span></button>
-                        <button class="filter-btn-new" data-cat="transformation" onclick="filterCategory('transformation')">🔥 Biến hình <span class="cat-badge" id="cat-count-transformation">0</span></button>
-                        <button class="filter-btn-new" data-cat="gift" onclick="filterCategory('gift')">🎁 Quà tặng <span class="cat-badge" id="cat-count-gift">0</span></button>
-                        <button class="filter-btn-new" data-cat="background" onclick="filterCategory('background')">🎨 Phông nền <span class="cat-badge" id="cat-count-background">0</span></button>
-                        <button class="filter-btn-new" data-cat="animation" onclick="filterCategory('animation')">🎬 Hoạt ảnh <span class="cat-badge" id="cat-count-animation">0</span></button>
-                        <button class="filter-btn-new" data-cat="pk" onclick="filterCategory('pk')">🥊 PK <span class="cat-badge" id="cat-count-pk">0</span></button>
-                        <button class="filter-btn-new" data-cat="meme" onclick="filterCategory('meme')">😂 Meme <span class="cat-badge" id="cat-count-meme">0</span></button>
-                        <button class="filter-btn-new" data-cat="team_heart" onclick="filterCategory('team_heart')">❤️ Tym đội <span class="cat-badge" id="cat-count-team_heart">0</span></button>
-                        <button class="filter-btn-new" data-cat="menu_template" onclick="filterCategory('menu_template')">📋 Mẫu Menu <span class="cat-badge" id="cat-count-menu_template">0</span></button>
+                        <button class="filter-btn-new active" data-cat="all" onclick="filterCategory('all')">🛍️ Tất cả
+                            <span class="cat-badge" id="cat-count-all">0</span></button>
+                        <button class="filter-btn-new" data-cat="free" onclick="filterCategory('free')">🆓 Miễn phí
+                            <span class="cat-badge" id="cat-count-free">0</span></button>
+                        <button class="filter-btn-new" data-cat="transformation"
+                            onclick="filterCategory('transformation')">🔥 Biến hình <span class="cat-badge"
+                                id="cat-count-transformation">0</span></button>
+                        <button class="filter-btn-new" data-cat="gift" onclick="filterCategory('gift')">🎁 Quà tặng
+                            <span class="cat-badge" id="cat-count-gift">0</span></button>
+                        <button class="filter-btn-new" data-cat="background" onclick="filterCategory('background')">🎨
+                            Phông nền <span class="cat-badge" id="cat-count-background">0</span></button>
+                        <button class="filter-btn-new" data-cat="animation" onclick="filterCategory('animation')">🎬
+                            Hoạt ảnh <span class="cat-badge" id="cat-count-animation">0</span></button>
+                        <button class="filter-btn-new" data-cat="pk" onclick="filterCategory('pk')">🥊 PK <span
+                                class="cat-badge" id="cat-count-pk">0</span></button>
+                        <button class="filter-btn-new" data-cat="meme" onclick="filterCategory('meme')">😂 Meme <span
+                                class="cat-badge" id="cat-count-meme">0</span></button>
+                        <button class="filter-btn-new" data-cat="team_heart" onclick="filterCategory('team_heart')">❤️
+                            Tym đội <span class="cat-badge" id="cat-count-team_heart">0</span></button>
+                        <button class="filter-btn-new" data-cat="menu_template"
+                            onclick="filterCategory('menu_template')">📋 Mẫu Menu <span class="cat-badge"
+                                id="cat-count-menu_template">0</span></button>
                     </div>
-                    <div class="store-sort-container" style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                        <span style="font-size: 12px; color: var(--text-muted); white-space: nowrap;"><i class="fas fa-sort-amount-down"></i> Sắp xếp:</span>
-                        <select id="store-sort-select" onchange="app.sortEffects(this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; outline: none;">
+                    <div class="store-sort-container"
+                        style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                        <span style="font-size: 12px; color: var(--text-muted); white-space: nowrap;"><i
+                                class="fas fa-sort-amount-down"></i> Sắp xếp:</span>
+                        <select id="store-sort-select" onchange="app.sortEffects(this.value)"
+                            style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; outline: none;">
                             <option value="newest">Mới nhất</option>
                             <option value="hot">🔥 Hot nhất</option>
                             <option value="price-asc">Giá: Thấp ➔ Cao</option>
@@ -947,47 +1137,64 @@
             <!-- VIEW: LIBRARY (HIỆU ỨNG CỦA TÔI - 2 TABS) -->
             <div id="library-view" class="hidden">
                 <!-- Tabs Header -->
-                <div class="library-tabs-nav" style="display:flex; gap:12px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
-                    <button id="lib-tab-effects-btn" class="lib-tab-btn active" onclick="app.switchLibraryTab('effects')" style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:12px; border:1px solid rgba(139,92,246,0.4); background:linear-gradient(135deg,rgba(139,92,246,0.2),rgba(236,72,153,0.1)); color:#fff; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s;">
+                <div class="library-tabs-nav"
+                    style="display:flex; gap:12px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
+                    <button id="lib-tab-effects-btn" class="lib-tab-btn active"
+                        onclick="app.switchLibraryTab('effects')"
+                        style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:12px; border:1px solid rgba(139,92,246,0.4); background:linear-gradient(135deg,rgba(139,92,246,0.2),rgba(236,72,153,0.1)); color:#fff; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s;">
                         <i class="fas fa-play-circle" style="color:#a78bfa;"></i>
                         <span>Hiệu ứng quà tặng</span>
-                        <span id="lib-tab-effects-count" style="font-size:11px; background:rgba(255,255,255,0.12); padding:2px 8px; border-radius:10px; color:#cbd5e1;">0</span>
+                        <span id="lib-tab-effects-count"
+                            style="font-size:11px; background:rgba(255,255,255,0.12); padding:2px 8px; border-radius:10px; color:#cbd5e1;">0</span>
                     </button>
-                    <button id="lib-tab-templates-btn" class="lib-tab-btn" onclick="app.switchLibraryTab('templates')" style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); color:#94a3b8; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s;">
+                    <button id="lib-tab-templates-btn" class="lib-tab-btn" onclick="app.switchLibraryTab('templates')"
+                        style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); color:#94a3b8; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s;">
                         <i class="fas fa-wand-magic-sparkles" style="color:#f472b6;"></i>
                         <span>Mẫu thiết kế bảng quà</span>
-                        <span id="lib-tab-templates-count" style="font-size:11px; background:rgba(255,255,255,0.12); padding:2px 8px; border-radius:10px; color:#cbd5e1;">0</span>
+                        <span id="lib-tab-templates-count"
+                            style="font-size:11px; background:rgba(255,255,255,0.12); padding:2px 8px; border-radius:10px; color:#cbd5e1;">0</span>
                     </button>
                 </div>
 
                 <!-- Tab 1: Effects Content -->
                 <div id="library-tab-effects-content">
-                    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;">
+                    <div class="section-header"
+                        style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;">
                         <div>
                             <h2 style="margin:0;font-size:20px;">🎬 Hiệu ứng quà tặng đã sở hữu</h2>
-                            <p style="margin:4px 0 0;font-size:12px;color:#94a3b8;">Hiệu ứng video/hoạt ảnh xuất hiện trên màn hình khi người xem tặng quà.</p>
+                            <p style="margin:4px 0 0;font-size:12px;color:#94a3b8;">Hiệu ứng video/hoạt ảnh xuất hiện
+                                trên màn hình khi người xem tặng quà.</p>
                         </div>
-                        <button onclick="app.openPersonalEffectUpload()" class="pro-btn" style="padding:10px 16px;"><i class="fas fa-upload"></i> Tải hiệu ứng cá nhân</button>
+                        <button onclick="app.openPersonalEffectUpload()" class="pro-btn" style="padding:10px 16px;"><i
+                                class="fas fa-upload"></i> Tải hiệu ứng cá nhân</button>
                     </div>
-                    <div style="margin:0 0 16px;padding:10px 14px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#93c5fd;font-size:12px;display:flex;align-items:center;gap:8px;">
+                    <div
+                        style="margin:0 0 16px;padding:10px 14px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#93c5fd;font-size:12px;display:flex;align-items:center;gap:8px;">
                         <i class="fas fa-info-circle" style="font-size:14px;"></i>
-                        <span>Quản lý tất cả hiệu ứng bạn sở hữu: <b>🏬 Hiệu ứng Cửa hàng</b> (đồng bộ theo tài khoản) và <b>💻 Hiệu ứng cá nhân</b> (lưu trên máy tính này).</span>
+                        <span>Quản lý tất cả hiệu ứng bạn sở hữu: <b>🏬 Hiệu ứng Cửa hàng</b> (đồng bộ theo tài khoản)
+                            và <b>💻 Hiệu ứng cá nhân</b> (lưu trên máy tính này).</span>
                     </div>
                     <div class="effects-grid-new" id="library-grid"> </div>
                 </div>
 
                 <!-- Tab 2: Templates Content -->
                 <div id="library-tab-templates-content" style="display:none;">
-                    <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;">
+                    <div class="section-header"
+                        style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;">
                         <div>
                             <h2 style="margin:0;font-size:20px;">📋 Mẫu thiết kế bảng quà đã sở hữu</h2>
-                            <p style="margin:4px 0 0;font-size:12px;color:#94a3b8;">Các gói thiết kế Menu & Bảng quà bạn đã mua hoặc sở hữu từ Cửa hàng.</p>
+                            <p style="margin:4px 0 0;font-size:12px;color:#94a3b8;">Các gói thiết kế Menu & Bảng quà bạn
+                                đã mua hoặc sở hữu từ Cửa hàng.</p>
                         </div>
-                        <button onclick="switchView('gift-menu-designer')" class="pro-btn" style="padding:10px 16px;background:linear-gradient(135deg,#7c3aed,#ec4899);"><i class="fas fa-plus"></i> Vào Trình thiết kế</button>
+                        <button onclick="switchView('gift-menu-designer')" class="pro-btn"
+                            style="padding:10px 16px;background:linear-gradient(135deg,#7c3aed,#ec4899);"><i
+                                class="fas fa-plus"></i> Vào Trình thiết kế</button>
                     </div>
-                    <div style="margin:0 0 16px;padding:10px 14px;border-radius:10px;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);color:#d8b4fe;font-size:12px;display:flex;align-items:center;gap:8px;">
+                    <div
+                        style="margin:0 0 16px;padding:10px 14px;border-radius:10px;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);color:#d8b4fe;font-size:12px;display:flex;align-items:center;gap:8px;">
                         <i class="fas fa-sparkles" style="font-size:14px;"></i>
-                        <span>Bấm <b>🛠️ Mở thiết kế</b> trên bất kỳ mẫu nào để tải trực tiếp lên Trình thiết kế bảng quà và xuất OBS!</span>
+                        <span>Bấm <b>🛠️ Mở thiết kế</b> trên bất kỳ mẫu nào để tải trực tiếp lên Trình thiết kế bảng
+                            quà và xuất OBS!</span>
                     </div>
                     <div class="effects-grid-new" id="library-templates-grid"> </div>
                 </div>
@@ -1042,7 +1249,8 @@
                     <div class="admin-card-full"
                         style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px;">
                         <div class="card-header" style="margin-bottom:20px;">
-                            <h2 style="font-size:18px; margin:0;"><i class="fas fa-cloud-upload-alt"></i> Thêm hiệu ứng Cửa hàng mới</h2>
+                            <h2 style="font-size:18px; margin:0;"><i class="fas fa-cloud-upload-alt"></i> Thêm hiệu ứng
+                                Cửa hàng mới</h2>
                         </div>
                         <div class="admin-form">
                             <div class="form-grid"
@@ -1240,8 +1448,10 @@
                     <div class="card-header"
                         style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;">
                         <div>
-                            <h2 style="font-size:18px;margin:0;"><i class="fas fa-chart-line" style="color:#22d3ee;"></i> Khách hàng & hiệu ứng</h2>
-                            <p style="font-size:11px;color:var(--text-muted);margin:5px 0 0;">Theo dõi hiệu ứng miễn phí, trả phí và mức độ sử dụng.</p>
+                            <h2 style="font-size:18px;margin:0;"><i class="fas fa-chart-line"
+                                    style="color:#22d3ee;"></i> Khách hàng & hiệu ứng</h2>
+                            <p style="font-size:11px;color:var(--text-muted);margin:5px 0 0;">Theo dõi hiệu ứng miễn
+                                phí, trả phí và mức độ sử dụng.</p>
                         </div>
                         <button onclick="app.loadAdminEffectAcquisitions()"
                             style="padding:8px 14px;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);border-radius:8px;color:#67e8f9;cursor:pointer;">
@@ -1249,9 +1459,11 @@
                         </button>
                     </div>
                     <div id="admin-acquisition-summary"
-                        style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px;"></div>
+                        style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px;">
+                    </div>
                     <div style="display:flex;gap:10px;margin-bottom:14px;">
-                        <input id="admin-acquisition-search" type="search" placeholder="Tìm tên, email, SĐT hoặc hiệu ứng..."
+                        <input id="admin-acquisition-search" type="search"
+                            placeholder="Tìm tên, email, SĐT hoặc hiệu ứng..."
                             oninput="app.renderAdminEffectAcquisitions()"
                             style="flex:1;padding:10px 12px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#fff;">
                         <select id="admin-acquisition-filter" onchange="app.renderAdminEffectAcquisitions()"
@@ -1268,28 +1480,43 @@
                 </div>
 
                 <!-- Admin System AI Security Status Card -->
-                <div style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px; margin-top:24px;">
+                <div
+                    style="background:var(--bg-card); border:1px solid var(--card-border); border-radius:16px; padding:24px; margin-top:24px;">
                     <h3 style="color:#fff; font-size:16px; margin:0 0 6px; display:flex; align-items:center; gap:8px;">
                         🔐 Bảo Mật Dịch Vụ AI
                     </h3>
-                    <p style="color:var(--text-muted); font-size:12px; margin:0 0 16px 0;">API key chỉ được đọc từ biến môi trường trên backend và không bao giờ gửi xuống ứng dụng.</p>
+                    <p style="color:var(--text-muted); font-size:12px; margin:0 0 16px 0;">API key chỉ được đọc từ biến
+                        môi trường trên backend và không bao giờ gửi xuống ứng dụng.</p>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <span id="admin-gemini-status" style="padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.05);color:#94a3b8;font-size:12px;">Gemini: đang kiểm tra</span>
-                        <span id="admin-eleven-status" style="padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.05);color:#94a3b8;font-size:12px;">ElevenLabs: đang kiểm tra</span>
+                        <span id="admin-gemini-status"
+                            style="padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.05);color:#94a3b8;font-size:12px;">Gemini:
+                            đang kiểm tra</span>
+                        <span id="admin-eleven-status"
+                            style="padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.05);color:#94a3b8;font-size:12px;">ElevenLabs:
+                            đang kiểm tra</span>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
                         <div>
-                            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:5px;">Key Gemini mới</label>
-                            <input id="admin-gemini-secret-input" type="password" autocomplete="new-password" class="upload-form-input" placeholder="Để trống nếu không thay đổi" style="width:100%;box-sizing:border-box;">
+                            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:5px;">Key
+                                Gemini mới</label>
+                            <input id="admin-gemini-secret-input" type="password" autocomplete="new-password"
+                                class="upload-form-input" placeholder="Để trống nếu không thay đổi"
+                                style="width:100%;box-sizing:border-box;">
                         </div>
                         <div>
-                            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:5px;">Key ElevenLabs mới</label>
-                            <input id="admin-eleven-secret-input" type="password" autocomplete="new-password" class="upload-form-input" placeholder="Để trống nếu không thay đổi" style="width:100%;box-sizing:border-box;">
+                            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:5px;">Key
+                                ElevenLabs mới</label>
+                            <input id="admin-eleven-secret-input" type="password" autocomplete="new-password"
+                                class="upload-form-input" placeholder="Để trống nếu không thay đổi"
+                                style="width:100%;box-sizing:border-box;">
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;">
-                        <span style="font-size:10px;color:#94a3b8;">Key hiện tại không thể xem lại. Nhập key mới chỉ khi cần thêm hoặc thay thế.</span>
-                        <button onclick="app.saveSystemAiSecrets()" class="pro-btn" style="padding:9px 16px;white-space:nowrap;cursor:pointer;">🔐 Lưu key an toàn</button>
+                    <div
+                        style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;">
+                        <span style="font-size:10px;color:#94a3b8;">Key hiện tại không thể xem lại. Nhập key mới chỉ khi
+                            cần thêm hoặc thay thế.</span>
+                        <button onclick="app.saveSystemAiSecrets()" class="pro-btn"
+                            style="padding:9px 16px;white-space:nowrap;cursor:pointer;">🔐 Lưu key an toàn</button>
                     </div>
                 </div>
             </div>
@@ -1357,10 +1584,13 @@
                                 <div>
                                     <label
                                         style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:4px;">Mật
-                                        khẩu OBS</label>
+                                        khẩu OBS (nếu có)</label>
                                     <input type="password" id="settings-obs-password" value="obs123"
                                         class="upload-form-input" style="width:100%;">
                                 </div>
+                            </div>
+                            <div style="font-size:11px; color:#94a3b8; line-height:1.4; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                                💡 <strong>Mẹo:</strong> Trong OBS ➔ <i>Công cụ (Tools) ➔ Cài đặt máy chủ WebSocket</i>. Nếu OBS có bật xác thực, bấm <i>"Hiển thị thông tin kết nối"</i> để lấy mật khẩu dán vào đây (hoặc bỏ tích xác thực trong OBS nếu muốn kết nối tự do).
                             </div>
                             <button onclick="app.saveOBSSettings()" class="pro-btn"
                                 style="width:100%; padding:12px; background:linear-gradient(135deg, #3b82f6, #2563eb); font-size: 14px;">
@@ -1472,7 +1702,8 @@
                     </div>
                     <div style="display:flex;gap:10px;align-items:center;">
                         <button id="btn-repair-obs" onclick="app.repairOBSSources()"
-                            style="background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:10px;color:#fff;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">🛠️ Sửa lỗi OBS</button>
+                            style="background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:10px;color:#fff;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">🛠️
+                            Sửa lỗi OBS</button>
                         <button onclick="app.loadMappings();app.loadEffectsForMapping();"
                             style="background:linear-gradient(135deg,#f093fb,#f5576c);border:none;border-radius:10px;color:#fff;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">🔄
                             Tải lại</button>
@@ -1484,8 +1715,8 @@
                     <h3 style="color:#fbbf24;font-size:16px;margin:0 0 12px 0;display:flex;align-items:center;gap:8px;">
                         🔌 Kết Nối TikTok Live</h3>
                     <div style="display:flex;gap:10px;align-items:center;">
-                        <input type="text" id="room-id" placeholder="Nhập tên tài khoản hoặc mã phòng TikTok" class="es-input"
-                            style="flex:1;">
+                        <input type="text" id="room-id" placeholder="Nhập tên tài khoản hoặc mã phòng TikTok"
+                            class="es-input" style="flex:1;">
 
                         <button id="btn-prepare" onclick="app.prepareTikTok()"
                             style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:120px;justify-content:center;">🎬
@@ -1502,19 +1733,30 @@
                 </div>
 
                 <!-- AI Streamer Assistant Panel (Gán hiệu ứng) -->
-                <div style="background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.2); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative; margin-bottom:18px;">
+                <div
+                    style="background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.2); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative; margin-bottom:18px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <input type="checkbox" id="ai-assistant-enabled-gm" class="ai-assistant-enabled-input" style="width:16px; height:16px; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
-                            <label for="ai-assistant-enabled-gm" style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">🤖 Trợ lý AI Cà Khịa Live Chat</label>
+                            <input type="checkbox" id="ai-assistant-enabled-gm" class="ai-assistant-enabled-input"
+                                style="width:16px; height:16px; cursor:pointer;"
+                                onchange="app.saveAiAssistantConfig(this)">
+                            <label for="ai-assistant-enabled-gm"
+                                style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">🤖
+                                Trợ lý AI Cà Khịa Live Chat</label>
                         </div>
-                        <span style="font-size:10px; background:rgba(139,92,246,0.2); color:#a78bfa; padding:2px 8px; border-radius:10px; font-weight:700;">PRO AI</span>
+                        <span
+                            style="font-size:10px; background:rgba(139,92,246,0.2); color:#a78bfa; padding:2px 8px; border-radius:10px; font-weight:700;">PRO
+                            AI</span>
                     </div>
 
                     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:8px;">
                         <div>
-                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Tính cách AI</label>
-                            <select class="ai-assistant-persona-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
+                            <label
+                                style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Tính
+                                cách AI</label>
+                            <select class="ai-assistant-persona-input"
+                                style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;"
+                                onchange="app.saveAiAssistantConfig(this)">
                                 <option value="sassy" selected>🔥 Xéo sắc, Cà khịa</option>
                                 <option value="funny">😂 Hài hước, Nhí nhảnh</option>
                                 <option value="sweet">🌸 Ngọt ngào, Dịu dàng</option>
@@ -1522,17 +1764,27 @@
                             </select>
                         </div>
                         <div>
-                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Giọng nói AI</label>
-                            <select class="ai-assistant-eleven-voice-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.onElevenVoiceSelectChange(this)">
-                                <option value="pNInz6obpgDQGcFmaJgB" selected>👨 Adam (Nam trầm ấm - v3 Mặc định)</option>
+                            <label
+                                style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Giọng
+                                nói AI</label>
+                            <select class="ai-assistant-eleven-voice-input"
+                                style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;"
+                                onchange="app.onElevenVoiceSelectChange(this)">
+                                <option value="pNInz6obpgDQGcFmaJgB" selected>👨 Adam (Nam trầm ấm - v3 Mặc định)
+                                </option>
                                 <option value="N2lVS1w4EtoT3dr4eOWO">👦 Callum (Nam trẻ sôi nổi - v3 Hào hứng)</option>
                                 <option value="google_female_vi">👩 Google TTS (Nữ Tiếng Việt)</option>
-                                <option value="custom">✏️ Dán Voice ID Tùy Chỉnh (Dành cho Giọng Thư viện / Voice Lab)</option>
+                                <option value="custom">✏️ Dán Voice ID Tùy Chỉnh (Dành cho Giọng Thư viện / Voice Lab)
+                                </option>
                             </select>
                         </div>
                         <div>
-                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Thời gian chờ (Cooldown)</label>
-                            <select class="ai-assistant-cooldown-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
+                            <label
+                                style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Thời
+                                gian chờ (Cooldown)</label>
+                            <select class="ai-assistant-cooldown-input"
+                                style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;"
+                                onchange="app.saveAiAssistantConfig(this)">
                                 <option value="15">15 giây</option>
                                 <option value="20" selected>20 giây</option>
                                 <option value="30">30 giây</option>
@@ -1540,54 +1792,87 @@
                             </select>
                         </div>
                         <div>
-                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Chế độ phản hồi</label>
-                            <select class="ai-assistant-donator-only-input" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;" onchange="app.saveAiAssistantConfig(this)">
+                            <label
+                                style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Chế
+                                độ phản hồi</label>
+                            <select class="ai-assistant-donator-only-input"
+                                style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;"
+                                onchange="app.saveAiAssistantConfig(this)">
                                 <option value="false" selected>🌐 Tất cả Viewer</option>
                                 <option value="true">👑 Chỉ Viewer đã Tặng quà (VIP)</option>
                             </select>
                         </div>
                         <div>
-                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Ngưỡng quà VIP trong phiên</label>
+                            <label
+                                style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Ngưỡng
+                                quà VIP trong phiên</label>
                             <div style="display:flex;align-items:center;gap:5px;">
-                                <input type="number" class="ai-assistant-min-donator-coins-input" value="10" min="1" step="1" inputmode="numeric" style="width:100%;font-size:10px;padding:3px 7px;height:24px;box-sizing:border-box;background:#181d2a;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;outline:none;" onchange="app.saveAiAssistantConfig(this)">
+                                <input type="number" class="ai-assistant-min-donator-coins-input" value="10" min="1"
+                                    step="1" inputmode="numeric"
+                                    style="width:100%;font-size:10px;padding:3px 7px;height:24px;box-sizing:border-box;background:#181d2a;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;outline:none;"
+                                    onchange="app.saveAiAssistantConfig(this)">
                                 <span style="font-size:10px;color:#fbbf24;white-space:nowrap;">xu+</span>
                             </div>
                         </div>
                     </div>
-                    <input type="text" class="ai-assistant-custom-voice-input upload-form-input" placeholder="👉 Dán mã Voice ID tại đây (Ví dụ: AZnzlk1XvdvUeBnXmlld)..." style="display:none; width:100%; font-size:11px; padding:6px 10px; margin-top:6px; border-color:#8b5cf6; box-sizing:border-box;" oninput="app.saveAiAssistantConfig(this)" onchange="app.saveAiAssistantConfig(this)">
+                    <input type="text" class="ai-assistant-custom-voice-input upload-form-input"
+                        placeholder="👉 Dán mã Voice ID tại đây (Ví dụ: AZnzlk1XvdvUeBnXmlld)..."
+                        style="display:none; width:100%; font-size:11px; padding:6px 10px; margin-top:6px; border-color:#8b5cf6; box-sizing:border-box;"
+                        oninput="app.saveAiAssistantConfig(this)" onchange="app.saveAiAssistantConfig(this)">
 
                     <!-- AI Character Usage & Top-Up Bar -->
-                    <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(15,23,42,0.6); border:1px solid rgba(139,92,246,0.3); border-radius:10px; padding:10px 14px; margin-top:8px;">
+                    <div
+                        style="display:flex; align-items:center; justify-content:space-between; background:rgba(15,23,42,0.6); border:1px solid rgba(139,92,246,0.3); border-radius:10px; padding:10px 14px; margin-top:8px;">
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="color:#c4b5fd; font-weight:700; font-size:12px;">📊 Dung lượng AI tháng này:</span>
-                            <span id="ai-usage-meter-text" style="color:#fff; font-weight:800; font-size:12px;">0 / 1,000 ký tự giọng tùy chỉnh</span>
-                            <span id="ai-system-gift-meter-text" style="color:#86efac; font-weight:800; font-size:11px;">🎁 Quà tặng kèm: 0 / 5.000 ký tự giọng hệ thống</span>
-                            <span id="ai-usage-plan-badge" style="background:rgba(139,92,246,0.25); color:#ddd6fe; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800; border:1px solid rgba(139,92,246,0.4);">Gói Free</span>
+                            <span style="color:#c4b5fd; font-weight:700; font-size:12px;">📊 Dung lượng AI tháng
+                                này:</span>
+                            <span id="ai-usage-meter-text" style="color:#fff; font-weight:800; font-size:12px;">0 /
+                                1,000 ký tự giọng tùy chỉnh</span>
+                            <span id="ai-system-gift-meter-text"
+                                style="color:#86efac; font-weight:800; font-size:11px;">🎁 Quà tặng kèm: 0 / 5.000 ký tự
+                                giọng hệ thống</span>
+                            <span id="ai-usage-plan-badge"
+                                style="background:rgba(139,92,246,0.25); color:#ddd6fe; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800; border:1px solid rgba(139,92,246,0.4);">Gói
+                                Free</span>
                         </div>
-                        <button onclick="app.showBuyAiAddonModal()" style="background:linear-gradient(135deg, #f59e0b, #ec4899); border:none; color:#fff; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:800; cursor:pointer; outline:none; box-shadow:0 4px 12px rgba(245,158,11,0.35); transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
+                        <button onclick="app.showBuyAiAddonModal()"
+                            style="background:linear-gradient(135deg, #f59e0b, #ec4899); border:none; color:#fff; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:800; cursor:pointer; outline:none; box-shadow:0 4px 12px rgba(245,158,11,0.35); transition:transform 0.15s;"
+                            onmouseover="this.style.transform='scale(1.04)'"
+                            onmouseout="this.style.transform='scale(1)'">
                             ⚡ Nạp lẻ ký tự (Chỉ từ 10k)
                         </button>
                     </div>
 
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
-                        <span style="font-size:10px; color:#a78bfa;">✨ Hết ký tự giọng tùy chỉnh sẽ dùng Quà tặng kèm 5.000 ký tự giọng hệ thống. Hết cả hai, bình luận vẫn hiển thị nhưng Trợ lý sẽ tạm ngừng phản hồi.</span>
-                        <button onclick="app.testAiAssistantSpeech()" style="background:rgba(139,92,246,0.25); border:1px solid rgba(139,92,246,0.4); color:#c4b5fd; padding:4px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe thử AI Cà Khịa</button>
+                        <span style="font-size:10px; color:#a78bfa;">✨ Hết ký tự giọng tùy chỉnh sẽ dùng Quà tặng kèm
+                            5.000 ký tự giọng hệ thống. Hết cả hai, bình luận vẫn hiển thị nhưng Trợ lý sẽ tạm ngừng
+                            phản hồi.</span>
+                        <button onclick="app.testAiAssistantSpeech()"
+                            style="background:rgba(139,92,246,0.25); border:1px solid rgba(139,92,246,0.4); color:#c4b5fd; padding:4px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;"
+                            onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe thử AI Cà
+                            Khịa</button>
                     </div>
                 </div>
 
                 <!-- TTS & Quick Settings Bar (UPGRADED VOICE SCRIPT) -->
                 <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 0.8fr; gap: 12px; margin-bottom: 18px;">
                     <!-- Gift Voice Script Panel -->
-                    <div style="background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.1); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative;">
+                    <div
+                        style="background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.1); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative;">
                         <!-- Title and Checkbox -->
                         <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <input type="checkbox" id="settings-tts-gift" checked style="width:16px; height:16px; cursor:pointer;">
-                                <label for="settings-tts-gift" style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">🎤 Kịch bản thoại quà</label>
+                                <input type="checkbox" id="settings-tts-gift" checked
+                                    style="width:16px; height:16px; cursor:pointer;">
+                                <label for="settings-tts-gift"
+                                    style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">🎤
+                                    Kịch bản thoại quà</label>
                             </div>
                             <div style="display:flex; align-items:center; gap:6px;">
-                                <label style="font-size:10px; color:var(--text-muted); white-space:nowrap;">Ngưỡng đọc:</label>
-                                <input type="number" id="settings-tts-threshold" value="10" style="width:40px; padding:2px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; font-size:10px; outline:none; text-align:center;">
+                                <label style="font-size:10px; color:var(--text-muted); white-space:nowrap;">Ngưỡng
+                                    đọc:</label>
+                                <input type="number" id="settings-tts-threshold" value="10"
+                                    style="width:40px; padding:2px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; font-size:10px; outline:none; text-align:center;">
                                 <span style="font-size:10px; color:var(--text-muted);">xu</span>
                             </div>
                         </div>
@@ -1595,8 +1880,11 @@
                         <!-- Voice Settings Row -->
                         <div style="display:grid; grid-template-columns:1fr; gap:8px;">
                             <div>
-                                <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Tốc độ đọc</label>
-                                <select id="settings-tts-speed" style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;">
+                                <label
+                                    style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Tốc
+                                    độ đọc</label>
+                                <select id="settings-tts-speed"
+                                    style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;">
                                     <option value="0.8">Chậm (0.8x)</option>
                                     <option value="1.0" selected>Bình thường (1.0x)</option>
                                     <option value="1.2">Nhanh (1.2x)</option>
@@ -1607,51 +1895,103 @@
 
                         <!-- Script Template Textarea -->
                         <div>
-                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Mẫu thoại</label>
-                            <textarea id="settings-tts-template" rows="2" style="width:100%; font-size:11px; padding:6px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; resize:none; outline:none; font-family:inherit; line-height:1.4;" placeholder="Ví dụ: Cảm ơn {username} đã tặng {quantity} {giftName} ❤️"></textarea>
+                            <label
+                                style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Mẫu
+                                thoại</label>
+                            <textarea id="settings-tts-template" rows="2"
+                                style="width:100%; font-size:11px; padding:6px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; resize:none; outline:none; font-family:inherit; line-height:1.4;"
+                                placeholder="Ví dụ: Cảm ơn {username} đã tặng {quantity} {giftName} ❤️"></textarea>
                         </div>
 
                         <!-- Insert variables & Templates Actions -->
                         <div style="display:flex; align-items:center; gap:8px; position:relative;">
                             <!-- Insert variables dropdown -->
                             <div style="position:relative;">
-                                <button onclick="app.toggleVariableMenu(event)" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">➕ Chèn biến</button>
-                                <div id="variable-menu-dropdown" style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:145px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-                                    <div onclick="app.insertVariable('{username}')" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">👤 Tên người tặng</div>
-                                    <div onclick="app.insertVariable('{giftName}')" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">🎁 Tên quà</div>
-                                    <div onclick="app.insertVariable('{quantity}')" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">🔢 Số lượng</div>
-                                    <div onclick="app.insertVariable('{coin}')" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">💰 Xu</div>
+                                <button onclick="app.toggleVariableMenu(event)"
+                                    style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">➕
+                                    Chèn biến</button>
+                                <div id="variable-menu-dropdown"
+                                    style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:145px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                                    <div onclick="app.insertVariable('{username}')"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        👤 Tên người tặng</div>
+                                    <div onclick="app.insertVariable('{giftName}')"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        🎁 Tên quà</div>
+                                    <div onclick="app.insertVariable('{quantity}')"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        🔢 Số lượng</div>
+                                    <div onclick="app.insertVariable('{coin}')"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        💰 Xu</div>
                                 </div>
                             </div>
 
                             <!-- Sample templates dropdown -->
                             <div style="position:relative;">
-                                <button onclick="app.toggleTemplateMenu(event)" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">📋 Mẫu thoại</button>
-                                <div id="template-menu-dropdown" style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-                                    <div onclick="app.applyVoiceTemplate(1)" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">1. Cảm ơn cơ bản</div>
-                                    <div onclick="app.applyVoiceTemplate(2)" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">2. Nhiệt tình</div>
-                                    <div onclick="app.applyVoiceTemplate(3)" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">3. Bán hàng</div>
-                                    <div onclick="app.applyVoiceTemplate(4)" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">4. Idol</div>
+                                <button onclick="app.toggleTemplateMenu(event)"
+                                    style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">📋
+                                    Mẫu thoại</button>
+                                <div id="template-menu-dropdown"
+                                    style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                                    <div onclick="app.applyVoiceTemplate(1)"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        1. Cảm ơn cơ bản</div>
+                                    <div onclick="app.applyVoiceTemplate(2)"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        2. Nhiệt tình</div>
+                                    <div onclick="app.applyVoiceTemplate(3)"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        3. Bán hàng</div>
+                                    <div onclick="app.applyVoiceTemplate(4)"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        4. Idol</div>
                                 </div>
                             </div>
 
                             <!-- Test Voice Button -->
-                            <button onclick="app.testVoicePreview()" style="margin-left:auto; background:rgba(16,185,129,0.2); border:none; color:#10b981; padding:5px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe thử</button>
+                            <button onclick="app.testVoicePreview()"
+                                style="margin-left:auto; background:rgba(16,185,129,0.2); border:none; color:#10b981; padding:5px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;"
+                                onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe
+                                thử</button>
                         </div>
 
                         <!-- Help Wording and Example (LARGER AND MORE CONTRAST) -->
-                        <div style="font-size:11px; color:#a3aed0; line-height:1.5; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; margin-top:auto;">
-                            <span style="color:#10b981; font-weight:700;">💡</span> BH Studio sẽ tự thay các biến bằng thông tin thật khi livestream.<br/>
-                            <span style="font-weight:700; color:#fff;">Ví dụ:</span> Cảm ơn {username} đã tặng {quantity} {giftName} ❤️
+                        <div
+                            style="font-size:11px; color:#a3aed0; line-height:1.5; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; margin-top:auto;">
+                            <span style="color:#10b981; font-weight:700;">💡</span> BH Studio sẽ tự thay các biến bằng
+                            thông tin thật khi livestream.<br />
+                            <span style="font-weight:700; color:#fff;">Ví dụ:</span> Cảm ơn {username} đã tặng
+                            {quantity} {giftName} ❤️
                         </div>
                     </div>
 
                     <!-- Follow Voice Script Panel -->
-                    <div style="background:rgba(245,158,11,0.05); border:1px solid rgba(245,158,11,0.1); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative;">
+                    <div
+                        style="background:rgba(245,158,11,0.05); border:1px solid rgba(245,158,11,0.1); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative;">
                         <!-- Title and Checkbox -->
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <input type="checkbox" id="settings-tts-follow" checked style="width:16px; height:16px; cursor:pointer;">
-                            <label for="settings-tts-follow" style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">👤 Chào mừng Follow</label>
+                            <input type="checkbox" id="settings-tts-follow" checked
+                                style="width:16px; height:16px; cursor:pointer;">
+                            <label for="settings-tts-follow"
+                                style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">👤
+                                Chào mừng Follow</label>
                         </div>
 
                         <!-- Spacer to balance rows with Gift card -->
@@ -1659,48 +1999,84 @@
 
                         <!-- Script Template Textarea -->
                         <div>
-                            <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Mẫu thoại</label>
-                            <textarea id="settings-tts-follow-template" rows="2" style="width:100%; font-size:11px; padding:6px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; resize:none; outline:none; font-family:inherit; line-height:1.4;" placeholder="Ví dụ: Cảm ơn {username} đã follow kênh nhé! ❤️"></textarea>
+                            <label
+                                style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Mẫu
+                                thoại</label>
+                            <textarea id="settings-tts-follow-template" rows="2"
+                                style="width:100%; font-size:11px; padding:6px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; resize:none; outline:none; font-family:inherit; line-height:1.4;"
+                                placeholder="Ví dụ: Cảm ơn {username} đã follow kênh nhé! ❤️"></textarea>
                         </div>
 
                         <!-- Insert variables & Templates Actions -->
                         <div style="display:flex; align-items:center; gap:8px; position:relative;">
                             <!-- Insert variables dropdown -->
                             <div style="position:relative;">
-                                <button onclick="app.toggleFollowVariableMenu(event)" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">➕ Chèn biến</button>
-                                <div id="follow-variable-menu-dropdown" style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:145px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-                                    <div onclick="app.insertFollowVariable('{username}')" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">👤 Tên người follow</div>
+                                <button onclick="app.toggleFollowVariableMenu(event)"
+                                    style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">➕
+                                    Chèn biến</button>
+                                <div id="follow-variable-menu-dropdown"
+                                    style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:145px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                                    <div onclick="app.insertFollowVariable('{username}')"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        👤 Tên người follow</div>
                                 </div>
                             </div>
 
                             <!-- Sample templates dropdown -->
                             <div style="position:relative;">
-                                <button onclick="app.toggleFollowTemplateMenu(event)" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">📋 Mẫu thoại</button>
-                                <div id="follow-template-menu-dropdown" style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-                                    <div onclick="app.applyFollowVoiceTemplate(1)" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">1. Cảm ơn cơ bản</div>
-                                    <div onclick="app.applyFollowVoiceTemplate(2)" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">2. Thân thiện</div>
-                                    <div onclick="app.applyFollowVoiceTemplate(3)" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'" style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">3. Chào mừng</div>
+                                <button onclick="app.toggleFollowTemplateMenu(event)"
+                                    style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">📋
+                                    Mẫu thoại</button>
+                                <div id="follow-template-menu-dropdown"
+                                    style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                                    <div onclick="app.applyFollowVoiceTemplate(1)"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        1. Cảm ơn cơ bản</div>
+                                    <div onclick="app.applyFollowVoiceTemplate(2)"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        2. Thân thiện</div>
+                                    <div onclick="app.applyFollowVoiceTemplate(3)"
+                                        onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+                                        onmouseout="this.style.background='transparent'"
+                                        style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
+                                        3. Chào mừng</div>
                                 </div>
                             </div>
 
                             <!-- Test Voice Button -->
-                            <button onclick="app.testFollowVoicePreview()" style="margin-left:auto; background:rgba(245,158,11,0.2); border:none; color:#f59e0b; padding:5px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe thử</button>
+                            <button onclick="app.testFollowVoicePreview()"
+                                style="margin-left:auto; background:rgba(245,158,11,0.2); border:none; color:#f59e0b; padding:5px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;"
+                                onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe
+                                thử</button>
                         </div>
 
                         <!-- Help Wording and Example (LARGER AND MORE CONTRAST) -->
-                        <div style="font-size:11px; color:#a3aed0; line-height:1.5; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; margin-top:auto;">
-                            <span style="color:#f59e0b; font-weight:700;">💡</span> BH Studio sẽ tự thay thế tên người follow thực tế.<br/>
-                            <span style="font-weight:700; color:#fff;">Ví dụ:</span> Cảm ơn {username} đã follow kênh nhé! ❤️
+                        <div
+                            style="font-size:11px; color:#a3aed0; line-height:1.5; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; margin-top:auto;">
+                            <span style="color:#f59e0b; font-weight:700;">💡</span> BH Studio sẽ tự thay thế tên người
+                            follow thực tế.<br />
+                            <span style="font-weight:700; color:#fff;">Ví dụ:</span> Cảm ơn {username} đã follow kênh
+                            nhé! ❤️
                         </div>
                     </div>
 
                     <!-- Sound Alert -->
-                    <div style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.1); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px;">
+                    <div
+                        style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.1); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px;">
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <input type="checkbox" id="settings-sound-alert-quick" checked style="width:16px; height:16px; cursor:pointer;">
-                            <label for="settings-sound-alert-quick" style="font-size:13px; color:#fff; font-weight:700; cursor:pointer;">🔔 Âm thanh báo quà</label>
+                            <input type="checkbox" id="settings-sound-alert-quick" checked
+                                style="width:16px; height:16px; cursor:pointer;">
+                            <label for="settings-sound-alert-quick"
+                                style="font-size:13px; color:#fff; font-weight:700; cursor:pointer;">🔔 Âm thanh báo
+                                quà</label>
                         </div>
-                        
+
                         <div style="font-size:11px; color:#a3aed0; line-height:1.5; margin-top:4px;">
                             Phát âm thanh thông báo ngắn ("Ping") khi nhận được quà tặng bất kỳ để thu hút sự chú ý.
                         </div>
@@ -1743,147 +2119,213 @@
                 </div>
 
                 <!-- Queue Status Panel -->
-                <div id="queue-status-panel" style="background:var(--bg-card);border:1px solid var(--card-border);border-radius:16px;padding:18px;margin-bottom:18px;display:block;">
-                    <h3 style="font-size:15px;font-weight:700;margin:0 0 12px 0;color:#f093fb;display:flex;align-items:center;gap:8px;">
+                <div id="queue-status-panel"
+                    style="background:var(--bg-card);border:1px solid var(--card-border);border-radius:16px;padding:18px;margin-bottom:18px;display:block;">
+                    <h3
+                        style="font-size:15px;font-weight:700;margin:0 0 12px 0;color:#f093fb;display:flex;align-items:center;gap:8px;">
                         📊 Trạng thái Hàng đợi Hiệu ứng
                     </h3>
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
                         <!-- Now Playing Section -->
-                        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
-                            <span style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Đang chạy</span>
+                        <div
+                            style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
+                            <span
+                                style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Đang
+                                chạy</span>
                             <div id="queue-current-effect" style="font-size:15px;font-weight:700;color:#fff;">--</div>
-                            <div id="queue-current-details" style="font-size:12px;color:var(--text-muted);margin-top:4px;">Người gửi: -- | Quà: --</div>
+                            <div id="queue-current-details"
+                                style="font-size:12px;color:var(--text-muted);margin-top:4px;">Người gửi: -- | Quà: --
+                            </div>
                         </div>
                         <!-- Remaining & Type Section -->
-                        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
-                            <span style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Thời gian còn lại</span>
+                        <div
+                            style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
+                            <span
+                                style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Thời
+                                gian còn lại</span>
                             <div id="queue-current-time" style="font-size:15px;font-weight:700;color:#ef4444;">--</div>
-                            <div id="queue-current-type" style="font-size:12px;color:var(--text-muted);margin-top:4px;">Loại: --</div>
+                            <div id="queue-current-type" style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+                                Loại: --</div>
                         </div>
                         <!-- Queue Info Section -->
-                        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
-                            <span style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Hàng đợi chờ</span>
-                            <div id="queue-length-info" style="font-size:15px;font-weight:700;color:#10b981;">0 đang chờ</div>
-                            <div id="queue-next-effect" style="font-size:12px;color:var(--text-muted);margin-top:4px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">Tiếp theo: --</div>
+                        <div
+                            style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
+                            <span
+                                style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Hàng
+                                đợi chờ</span>
+                            <div id="queue-length-info" style="font-size:15px;font-weight:700;color:#10b981;">0 đang chờ
+                            </div>
+                            <div id="queue-next-effect"
+                                style="font-size:12px;color:var(--text-muted);margin-top:4px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">
+                                Tiếp theo: --</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Mapping Editor / Confirmation Panel -->
-                <div id="mapping-config-panel" style="background:var(--bg-card);border:1px solid var(--card-border);border-radius:16px;padding:18px;margin-bottom:18px;display:none;">
-                    <h3 style="font-size:15px;font-weight:700;margin:0 0 14px 0;color:#fbbf24;display:flex;align-items:center;gap:8px;">
+                <div id="mapping-config-panel"
+                    style="background:var(--bg-card);border:1px solid var(--card-border);border-radius:16px;padding:18px;margin-bottom:18px;display:none;">
+                    <h3
+                        style="font-size:15px;font-weight:700;margin:0 0 14px 0;color:#fbbf24;display:flex;align-items:center;gap:8px;">
                         ⚙️ Thiết lập cách quà kích hoạt hiệu ứng
                     </h3>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;">
                         <!-- Selection Info -->
-                        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
-                            <span style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Đang chọn</span>
+                        <div
+                            style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
+                            <span
+                                style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Đang
+                                chọn</span>
                             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
                                 <div id="config-selected-gift" style="font-weight:700;color:#fff;">Chưa chọn Gift</div>
                                 <span style="color:var(--text-muted);">▶</span>
-                                <div id="config-selected-effects" style="font-weight:700;color:#f093fb;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:200px;">Chưa chọn Effect</div>
-                              </div>
-                              <!-- Playback Mode (for random effect group) -->
-                              <div id="config-playback-mode-field" style="display:none;margin-top:10px;">
-                                  <label style="font-size:12px;color:#fff;display:block;margin-bottom:4px;font-weight:600;">Chế độ phát nhóm (Multiple Effects)</label>
-                                  <select id="mapping-playback-mode" class="es-input" style="width:100%;padding:6px 10px;font-size:12px;">
-                                      <option value="random">Ngẫu nhiên (Random)</option>
-                                      <option value="sequential">Tuần tự (Sequential)</option>
-                                  </select>
-                              </div>
-                              <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px;">
-                                  <label style="font-size:12px;color:#fff;display:block;margin-bottom:4px;font-weight:600;">Hành động khi nhận quà</label>
-                                  <select id="mapping-trigger-type" class="es-input" style="width:100%;padding:6px 10px;font-size:12px;">
-                                      <option value="effect">Phát hiệu ứng</option>
-                                      <option value="wheel">Kích hoạt vòng quay thử thách</option>
-                                      <option value="effect_and_wheel">Phát hiệu ứng + vòng quay</option>
-                                  </select>
-                                  <div id="mapping-wheel-field" style="display:none;margin-top:8px;">
-                                      <div style="display:flex;gap:6px;">
-                                          <select id="mapping-wheel-id" class="es-input" style="flex:1;padding:6px 10px;font-size:12px;"></select>
-                                          <button type="button" onclick="app.createChallengeWheelPrompt()" class="btn-sm" style="white-space:nowrap;">+ Tạo vòng quay</button>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-                          
-                          <!-- Cooldown Settings -->
-                          <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
-                              <span style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Thời gian chờ (Cooldown)</span>
-                              <div style="display:flex;gap:10px;margin-bottom:8px;">
-                                  <div style="flex:1;">
-                                      <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Thời gian (giây)</label>
-                                      <input type="number" id="mapping-cooldown" value="0" min="0" class="es-input" style="width:100%;padding:6px 10px;font-size:12px;">
-                                  </div>
-                                  <div style="flex:1.5;">
-                                      <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Khi trùng cooldown</label>
-                                      <select id="mapping-cooldown-action" class="es-input" style="width:100%;padding:6px 10px;font-size:12px;">
-                                          <option value="queue">Chờ phát lần lượt</option>
-                                          <option value="ignore">Bỏ qua (Ignore)</option>
-                                      </select>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                      
-                      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;margin-bottom:14px;">
-                          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
-                              <div>
-                                  <div style="font-size:12px;color:#fff;font-weight:700;">🔊 Âm thanh hiệu ứng</div>
-                                  <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Chỉ áp dụng cho effect của mapping này</div>
-                              </div>
-                              <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#fff;cursor:pointer;">
-                                  <input type="checkbox" id="mapping-audio-enabled" checked>
-                                  Bật âm thanh
-                              </label>
-                          </div>
-                          <div style="display:flex;align-items:center;gap:10px;">
-                              <input type="range" id="mapping-audio-volume" min="0" max="100" step="1" value="100" style="flex:1;">
-                              <output id="mapping-audio-volume-value" style="width:42px;text-align:right;font-size:12px;color:#fbbf24;font-weight:700;">100%</output>
-                          </div>
-                      </div>
+                                <div id="config-selected-effects"
+                                    style="font-weight:700;color:#f093fb;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:200px;">
+                                    Chưa chọn Effect</div>
+                            </div>
+                            <!-- Playback Mode (for random effect group) -->
+                            <div id="config-playback-mode-field" style="display:none;margin-top:10px;">
+                                <label
+                                    style="font-size:12px;color:#fff;display:block;margin-bottom:4px;font-weight:600;">Chế
+                                    độ phát nhóm (Multiple Effects)</label>
+                                <select id="mapping-playback-mode" class="es-input"
+                                    style="width:100%;padding:6px 10px;font-size:12px;">
+                                    <option value="random">Ngẫu nhiên (Random)</option>
+                                    <option value="sequential">Tuần tự (Sequential)</option>
+                                </select>
+                            </div>
+                            <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px;">
+                                <label
+                                    style="font-size:12px;color:#fff;display:block;margin-bottom:4px;font-weight:600;">Hành
+                                    động khi nhận quà</label>
+                                <select id="mapping-trigger-type" class="es-input"
+                                    style="width:100%;padding:6px 10px;font-size:12px;">
+                                    <option value="effect">Phát hiệu ứng</option>
+                                    <option value="wheel">Kích hoạt vòng quay thử thách</option>
+                                    <option value="effect_and_wheel">Phát hiệu ứng + vòng quay</option>
+                                </select>
+                                <div id="mapping-wheel-field" style="display:none;margin-top:8px;">
+                                    <div style="display:flex;gap:6px;">
+                                        <select id="mapping-wheel-id" class="es-input"
+                                            style="flex:1;padding:6px 10px;font-size:12px;"></select>
+                                        <button type="button" onclick="app.createChallengeWheelPrompt()" class="btn-sm"
+                                            style="white-space:nowrap;">+ Tạo vòng quay</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                      <!-- Collapsible Trigger Conditions (Smart Mapping) -->
-                      <details style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:8px 12px;margin-bottom:14px;cursor:pointer;">
-                          <summary style="font-size:12px;font-weight:700;color:#fff;outline:none;user-select:none;">🛡️ Điều kiện nâng cao theo số lượng quà</summary>
-                          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:10px;cursor:default;" onclick="event.stopPropagation();">
-                              <div>
-                                  <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Số lượng tối thiểu (Min)</label>
-                                  <input type="number" id="mapping-min-qty" value="1" min="1" class="es-input" style="width:100%;padding:6px 10px;font-size:12px;">
-                              </div>
-                              <div>
-                                  <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Số lượng tối đa (Max - Tùy chọn)</label>
-                                  <input type="number" id="mapping-max-qty" placeholder="Không giới hạn" min="1" class="es-input" style="width:100%;padding:6px 10px;font-size:12px;">
-                              </div>
-                              <div>
-                                  <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Số lượng chính xác (Exact - Tùy chọn)</label>
-                                  <input type="number" id="mapping-exact-qty" placeholder="Không bắt buộc" min="1" class="es-input" style="width:100%;padding:6px 10px;font-size:12px;">
-                              </div>
-                          </div>
-                      </details>
-                      
-                      <!-- Confirm Buttons -->
-                      <div style="display:flex;justify-content:flex-end;gap:10px;">
-                          <button onclick="app.clearSelection()" class="btn-sm" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;">Hủy chọn</button>
-                          <button onclick="app.createMapping()" style="background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff;border:none;border-radius:8px;padding:8px 24px;font-weight:700;cursor:pointer;">➕ Lưu cách gán (phím Enter)</button>
-                      </div>
-                  </div>
+                        <!-- Cooldown Settings -->
+                        <div
+                            style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;">
+                            <span
+                                style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Thời
+                                gian chờ (Cooldown)</span>
+                            <div style="display:flex;gap:10px;margin-bottom:8px;">
+                                <div style="flex:1;">
+                                    <label
+                                        style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Thời
+                                        gian (giây)</label>
+                                    <input type="number" id="mapping-cooldown" value="0" min="0" class="es-input"
+                                        style="width:100%;padding:6px 10px;font-size:12px;">
+                                </div>
+                                <div style="flex:1.5;">
+                                    <label
+                                        style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">Khi
+                                        trùng cooldown</label>
+                                    <select id="mapping-cooldown-action" class="es-input"
+                                        style="width:100%;padding:6px 10px;font-size:12px;">
+                                        <option value="queue">Chờ phát lần lượt</option>
+                                        <option value="ignore">Bỏ qua (Ignore)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;margin-bottom:14px;">
+                        <div
+                            style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
+                            <div>
+                                <div style="font-size:12px;color:#fff;font-weight:700;">🔊 Âm thanh hiệu ứng</div>
+                                <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Chỉ áp dụng cho
+                                    effect của mapping này</div>
+                            </div>
+                            <label
+                                style="display:flex;align-items:center;gap:6px;font-size:11px;color:#fff;cursor:pointer;">
+                                <input type="checkbox" id="mapping-audio-enabled" checked>
+                                Bật âm thanh
+                            </label>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <input type="range" id="mapping-audio-volume" min="0" max="100" step="1" value="100"
+                                style="flex:1;">
+                            <output id="mapping-audio-volume-value"
+                                style="width:42px;text-align:right;font-size:12px;color:#fbbf24;font-weight:700;">100%</output>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible Trigger Conditions (Smart Mapping) -->
+                    <details
+                        style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:8px 12px;margin-bottom:14px;cursor:pointer;">
+                        <summary style="font-size:12px;font-weight:700;color:#fff;outline:none;user-select:none;">🛡️
+                            Điều kiện nâng cao theo số lượng quà</summary>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:10px;cursor:default;"
+                            onclick="event.stopPropagation();">
+                            <div>
+                                <label
+                                    style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Số
+                                    lượng tối thiểu (Min)</label>
+                                <input type="number" id="mapping-min-qty" value="1" min="1" class="es-input"
+                                    style="width:100%;padding:6px 10px;font-size:12px;">
+                            </div>
+                            <div>
+                                <label
+                                    style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Số
+                                    lượng tối đa (Max - Tùy chọn)</label>
+                                <input type="number" id="mapping-max-qty" placeholder="Không giới hạn" min="1"
+                                    class="es-input" style="width:100%;padding:6px 10px;font-size:12px;">
+                            </div>
+                            <div>
+                                <label
+                                    style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Số
+                                    lượng chính xác (Exact - Tùy chọn)</label>
+                                <input type="number" id="mapping-exact-qty" placeholder="Không bắt buộc" min="1"
+                                    class="es-input" style="width:100%;padding:6px 10px;font-size:12px;">
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Confirm Buttons -->
+                    <div style="display:flex;justify-content:flex-end;gap:10px;">
+                        <button onclick="app.clearSelection()" class="btn-sm"
+                            style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;">Hủy
+                            chọn</button>
+                        <button onclick="app.createMapping()"
+                            style="background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff;border:none;border-radius:8px;padding:8px 24px;font-weight:700;cursor:pointer;">➕
+                            Lưu cách gán (phím Enter)</button>
+                    </div>
+                </div>
 
                 <!-- Libraries Row -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
                     <!-- Gift Library -->
                     <div
                         style="background:var(--bg-card);border:1px solid var(--card-border);border-radius:16px;padding:18px;">
-                        <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                        <div
+                            style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                             <div>
                                 <h3 style="font-size:15px;font-weight:700;margin:0;">🎁 Thư Viện Gifts</h3>
-                                <p style="color:var(--text-muted);font-size:12px;margin-top:3px;">Chọn gift để mapping với effect</p>
+                                <p style="color:var(--text-muted);font-size:12px;margin-top:3px;">Chọn gift để mapping
+                                    với effect</p>
                             </div>
                             <div style="display:flex;align-items:center;gap:8px;flex:1;max-width:260px;">
-                                <input type="text" id="gift-search-input" placeholder="🔍 Tìm quà..." 
-                                    oninput="app.filterGiftsForMapping()" 
+                                <input type="text" id="gift-search-input" placeholder="🔍 Tìm quà..."
+                                    oninput="app.filterGiftsForMapping()"
                                     style="width:100%;padding:6px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-size:12px;outline:none;">
-                                <button onclick="app.toggleGiftSortOrder()" id="btn-gift-sort" title="Sắp xếp xu tăng dần"
+                                <button onclick="app.toggleGiftSortOrder()" id="btn-gift-sort"
+                                    title="Sắp xếp xu tăng dần"
                                     style="padding:6px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#9ca3af;cursor:pointer;font-size:12px;white-space:nowrap;">
                                     🪙 ⬆️
                                 </button>
@@ -1891,13 +2333,26 @@
                         </div>
 
                         <!-- Quick Coin Range Filters -->
-                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px;" id="gift-coin-pills">
-                            <button onclick="app.setGiftCoinFilter('all', this)" class="coin-filter-pill active" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.2);color:#c084fc;cursor:pointer;white-space:nowrap;">Tất cả</button>
-                            <button onclick="app.setGiftCoinFilter('1-10', this)" class="coin-filter-pill" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🥉 1-10 xu</button>
-                            <button onclick="app.setGiftCoinFilter('11-99', this)" class="coin-filter-pill" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🥈 11-99 xu</button>
-                            <button onclick="app.setGiftCoinFilter('100-500', this)" class="coin-filter-pill" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🥇 100-500 xu</button>
-                            <button onclick="app.setGiftCoinFilter('501-999', this)" class="coin-filter-pill" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🔥 501-999 xu</button>
-                            <button onclick="app.setGiftCoinFilter('1000+', this)" class="coin-filter-pill" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">💎 ≥ 1.000 xu</button>
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px;"
+                            id="gift-coin-pills">
+                            <button onclick="app.setGiftCoinFilter('all', this)" class="coin-filter-pill active"
+                                style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.2);color:#c084fc;cursor:pointer;white-space:nowrap;">Tất
+                                cả</button>
+                            <button onclick="app.setGiftCoinFilter('1-10', this)" class="coin-filter-pill"
+                                style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🥉
+                                1-10 xu</button>
+                            <button onclick="app.setGiftCoinFilter('11-99', this)" class="coin-filter-pill"
+                                style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🥈
+                                11-99 xu</button>
+                            <button onclick="app.setGiftCoinFilter('100-500', this)" class="coin-filter-pill"
+                                style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🥇
+                                100-500 xu</button>
+                            <button onclick="app.setGiftCoinFilter('501-999', this)" class="coin-filter-pill"
+                                style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">🔥
+                                501-999 xu</button>
+                            <button onclick="app.setGiftCoinFilter('1000+', this)" class="coin-filter-pill"
+                                style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#9ca3af;cursor:pointer;white-space:nowrap;">💎
+                                ≥ 1.000 xu</button>
                         </div>
 
                         <div id="gifts-grid"
@@ -1932,30 +2387,39 @@
         <!-- RIGHT SIDEBAR -->
         <aside class="sidebar-right">
             <section class="live-control-deck" id="live-control-deck">
-                <div class="lcd-heading" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                <div class="lcd-heading"
+                    style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
                     <div><span class="lcd-live-dot"></span><strong>Live Control</strong></div>
-                    <button class="btn-remote-connect" onclick="app.handleRemoteButtonClick()" title="Kết nối bằng điện thoại từ xa" style="background: linear-gradient(135deg, rgba(236,72,153,0.25), rgba(139,92,246,0.25)); border: 1px solid rgba(236,72,153,0.45); color: #f472b6; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s ease;">
+                    <button class="btn-remote-connect" onclick="app.handleRemoteButtonClick()"
+                        title="Kết nối bằng điện thoại từ xa"
+                        style="background: linear-gradient(135deg, rgba(236,72,153,0.25), rgba(139,92,246,0.25)); border: 1px solid rgba(236,72,153,0.45); color: #f472b6; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s ease;">
                         <i class="fas fa-mobile-alt"></i> 📱 Remote
                     </button>
                 </div>
                 <div class="lcd-scroll-area">
                     <section class="lcd-section">
-                        <div class="lcd-section-head"><strong><i class="fas fa-wand-magic-sparkles"></i> Hiệu ứng</strong><span id="lcd-effect-limit">0/20</span></div>
+                        <div class="lcd-section-head"><strong><i class="fas fa-wand-magic-sparkles"></i> Hiệu
+                                ứng</strong><span id="lcd-effect-limit">0/20</span></div>
                         <div class="lcd-grid" id="lcd-effect-grid"></div>
-                        <button class="lcd-add lcd-add-wide" onclick="app.addControlDeckSlot(undefined,'effect')"><i class="fas fa-plus"></i> Thêm nút hiệu ứng</button>
+                        <button class="lcd-add lcd-add-wide" onclick="app.addControlDeckSlot(undefined,'effect')"><i
+                                class="fas fa-plus"></i> Thêm nút hiệu ứng</button>
                     </section>
                     <div class="lcd-divider"></div>
                     <section class="lcd-section lcd-sound-section">
-                        <div class="lcd-section-head"><strong><i class="fas fa-volume-high"></i> Soundboard</strong><span id="lcd-sound-limit">0/20</span></div>
+                        <div class="lcd-section-head"><strong><i class="fas fa-volume-high"></i>
+                                Soundboard</strong><span id="lcd-sound-limit">0/20</span></div>
                         <p class="lcd-section-note">Bấm để phát ngay trong lúc livestream</p>
                         <div class="lcd-grid" id="lcd-sound-grid"></div>
                         <div class="lcd-footer">
-                            <button class="lcd-add" onclick="app.addControlDeckSlot(undefined,'sound')"><i class="fas fa-plus"></i> Thêm sound</button>
-                            <button class="lcd-stop" onclick="app.stopControlDeckSounds()" title="Dừng toàn bộ sound"><i class="fas fa-stop"></i></button>
+                            <button class="lcd-add" onclick="app.addControlDeckSlot(undefined,'sound')"><i
+                                    class="fas fa-plus"></i> Thêm sound</button>
+                            <button class="lcd-stop" onclick="app.stopControlDeckSounds()" title="Dừng toàn bộ sound"><i
+                                    class="fas fa-stop"></i></button>
                         </div>
                     </section>
                 </div>
-                <div class="lcd-performance"><i class="fas fa-shield-halved"></i> 1 effect · tối đa 3 sound cùng lúc</div>
+                <div class="lcd-performance"><i class="fas fa-shield-halved"></i> 1 effect · tối đa 3 sound cùng lúc
+                </div>
             </section>
             <div class="ranking-card ranking-card-hot">
                 <div class="ranking-card-heading">
@@ -2002,8 +2466,12 @@
 
     <div id="lcd-effect-picker" class="lcd-modal" onclick="if(event.target===this) app.closeControlDeckPicker()">
         <div class="lcd-modal-card">
-            <div class="lcd-modal-head"><div><strong>Chọn hiệu ứng</strong><small>Hiệu ứng đã sở hữu hoặc khách đã tải lên</small></div><button onclick="app.closeControlDeckPicker()">×</button></div>
-            <button class="lcd-upload-sound" onclick="app.uploadControlDeckEffect()"><i class="fas fa-upload"></i> Tải hiệu ứng từ máy tính</button>
+            <div class="lcd-modal-head">
+                <div><strong>Chọn hiệu ứng</strong><small>Hiệu ứng đã sở hữu hoặc khách đã tải lên</small></div><button
+                    onclick="app.closeControlDeckPicker()">×</button>
+            </div>
+            <button class="lcd-upload-sound" onclick="app.uploadControlDeckEffect()"><i class="fas fa-upload"></i> Tải
+                hiệu ứng từ máy tính</button>
             <div class="lcd-effect-list" id="lcd-effect-list"></div>
         </div>
     </div>
@@ -2011,10 +2479,12 @@
     <div id="lcd-sound-picker" class="lcd-modal" onclick="if(event.target===this) app.closeControlDeckSoundPicker()">
         <div class="lcd-modal-card">
             <div class="lcd-modal-head">
-                <div><strong>Thư viện Soundboard</strong><small>Sound được lưu cục bộ trên máy đang dùng LiveFlow</small></div>
+                <div><strong>Thư viện Soundboard</strong><small>Sound được lưu cục bộ trên máy đang dùng
+                        LiveFlow</small></div>
                 <button onclick="app.closeControlDeckSoundPicker()">×</button>
             </div>
-            <button class="lcd-upload-sound" onclick="app.uploadControlDeckSound()"><i class="fas fa-upload"></i> Tải sound từ máy tính</button>
+            <button class="lcd-upload-sound" onclick="app.uploadControlDeckSound()"><i class="fas fa-upload"></i> Tải
+                sound từ máy tính</button>
             <div class="lcd-effect-list" id="lcd-sound-list"></div>
         </div>
     </div>
@@ -2036,7 +2506,8 @@
                 <h2 id="custom-request-title"
                     style="font-size: 26px; font-weight: 800; margin-bottom: 10px; background: linear-gradient(to right, #fff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
                     Tạo Hiệu Ứng Riêng</h2>
-                <p id="custom-request-subtitle" style="color: #9ca3af; font-size: 14px;">Hãy gửi yêu cầu thiết kế của bạn, chúng tôi sẽ liên hệ lại
+                <p id="custom-request-subtitle" style="color: #9ca3af; font-size: 14px;">Hãy gửi yêu cầu thiết kế của
+                    bạn, chúng tôi sẽ liên hệ lại
                     sớm nhất!</p>
             </div>
 
@@ -2080,11 +2551,36 @@
                     grid-template-columns: repeat(4, 1fr) !important;
                 }
             }
-            #pricing-modal .pricing-card { padding: 28px 20px; }
-            #pricing-modal .plan-header { margin-bottom: 18px; }
-            #pricing-modal .plan-features { gap: 10px; margin-bottom: 22px; }
-            #pricing-modal .plan-trust { min-height: 28px; margin-top: 9px; color: #94a3b8; font-size: 10px; line-height: 1.35; text-align: center; }
-            #pricing-modal .free-reassurance { color:#86efac; font-size:11px; font-weight:700; margin-top:8px; text-align:center; }
+
+            #pricing-modal .pricing-card {
+                padding: 28px 20px;
+            }
+
+            #pricing-modal .plan-header {
+                margin-bottom: 18px;
+            }
+
+            #pricing-modal .plan-features {
+                gap: 10px;
+                margin-bottom: 22px;
+            }
+
+            #pricing-modal .plan-trust {
+                min-height: 28px;
+                margin-top: 9px;
+                color: #94a3b8;
+                font-size: 10px;
+                line-height: 1.35;
+                text-align: center;
+            }
+
+            #pricing-modal .free-reassurance {
+                color: #86efac;
+                font-size: 11px;
+                font-weight: 700;
+                margin-top: 8px;
+                text-align: center;
+            }
         </style>
         <div class="modal-content pricing-content"
             style="max-width: 1100px; padding: 40px; border-radius: 24px; background: rgba(11, 15, 26, 0.95); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.05); max-height: 90vh; overflow-y: auto; overflow-x: hidden;">
@@ -2097,107 +2593,184 @@
                 <h2
                     style="font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 10px; background: linear-gradient(to right, #fff, var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
                     Chọn trải nghiệm phù hợp với bạn</h2>
-                <p style="color: var(--text-secondary); font-size: 15px;">Bạn luôn có thể tiếp tục dùng LiveFlow miễn phí. Nâng cấp khi cần thêm hiệu ứng và công cụ chuyên nghiệp.</p>
-                <p style="color:#86efac;font-size:11px;margin-top:8px;font-weight:700;">Không ép nâng cấp • Effect đã mua vẫn sở hữu vĩnh viễn • Kết nối OBS tự động</p>
+                <p style="color: var(--text-secondary); font-size: 15px;">Bạn luôn có thể tiếp tục dùng LiveFlow miễn
+                    phí. Nâng cấp khi cần thêm hiệu ứng và công cụ chuyên nghiệp.</p>
+                <p style="color:#86efac;font-size:11px;margin-top:8px;font-weight:700;">Không ép nâng cấp • Effect đã
+                    mua vẫn sở hữu vĩnh viễn • Kết nối OBS tự động</p>
             </div>
 
             <div class="pricing-grid">
                 <!-- Free Plan -->
                 <div class="pricing-card" id="plan-free-card">
                     <div class="plan-header">
-                        <div style="background: #3b82f6; color: white; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">FREE</div>
+                        <div
+                            style="background: #3b82f6; color: white; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            FREE</div>
                         <h3>Miễn phí</h3>
                         <div class="plan-price">0₫ <span>/tháng</span></div>
                         <div class="free-reassurance">Dùng lâu dài, không giới hạn thời gian</div>
                     </div>
                     <div class="plan-features">
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 1 thiết bị</div>
-                        <div class="feature" style="color: #60a5fa; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Dùng thử toàn bộ trình thiết kế — mọi hiệu ứng, mọi bảng nâng cao</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 5 hiệu ứng gắn quà</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 5 hiệu ứng cá nhân</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 🤖 Trợ lý AI cà khịa trả lời bình luận — 1.000 ký tự/tháng</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 1 bảng mục tiêu livestream</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Lưu & xuất lên OBS: 1 thiết kế (tính năng cơ bản)</div>
-                        <div class="feature" style="color:#94a3b8;font-size:11px;font-style:italic;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;margin-top:4px;"><i class="fas fa-arrow-up" style="margin-right:8px;"></i> Muốn lưu và phát trực tiếp bản nâng cao lên OBS? Đó là lúc bạn cần Basic.</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> 1 thiết bị</div>
+                        <div class="feature" style="color: #60a5fa; font-weight: 700;"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Dùng thử toàn bộ trình thiết kế — mọi
+                            hiệu ứng, mọi bảng nâng cao</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> 5 hiệu ứng gắn quà</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> 5 hiệu ứng cá nhân</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> 🤖 Trợ lý AI cà khịa trả lời bình luận —
+                            1.000 ký tự/tháng</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> 1 bảng mục tiêu livestream</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Lưu & xuất lên OBS: 1 thiết kế (tính
+                            năng cơ bản)</div>
+                        <div class="feature"
+                            style="color:#94a3b8;font-size:11px;font-style:italic;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;margin-top:4px;">
+                            <i class="fas fa-arrow-up" style="margin-right:8px;"></i> Muốn lưu và phát trực tiếp bản
+                            nâng cao lên OBS? Đó là lúc bạn cần Basic.</div>
                     </div>
                     <button class="plan-btn" id="plan-btn-free">TIẾP TỤC DÙNG MIỄN PHÍ</button>
                     <div class="plan-trust">Không cần thanh toán • Nâng cấp bất cứ khi nào bạn cần</div>
                 </div>
 
                 <!-- Basic Plan -->
-                <div class="pricing-card featured" id="plan-pro-card" style="border:2px solid #f59e0b;box-shadow:0 18px 50px rgba(245,158,11,.24),0 0 0 1px rgba(251,191,36,.2);background:linear-gradient(180deg,rgba(245,158,11,.10),rgba(17,24,39,.96));">
+                <div class="pricing-card featured" id="plan-pro-card"
+                    style="border:2px solid #f59e0b;box-shadow:0 18px 50px rgba(245,158,11,.24),0 0 0 1px rgba(251,191,36,.2);background:linear-gradient(180deg,rgba(245,158,11,.10),rgba(17,24,39,.96));">
                     <div class="featured-badge">⭐ ĐƯỢC CHỌN NHIỀU NHẤT</div>
                     <div class="plan-header">
-                        <span class="plan-icon" style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(251,191,36,0.5));">⭐</span>
+                        <span class="plan-icon"
+                            style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(251,191,36,0.5));">⭐</span>
                         <h3>Basic</h3>
                         <div class="plan-price">
-                            <del style="font-size: 14px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px;">250.000₫</del>
-                            <div style="color: #fbbf24; font-size: 30px; font-weight: 900; text-shadow:0 0 18px rgba(251,191,36,.22);">199.000₫ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tháng</span></div>
+                            <del
+                                style="font-size: 14px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px;">250.000₫</del>
+                            <div
+                                style="color: #fbbf24; font-size: 30px; font-weight: 900; text-shadow:0 0 18px rgba(251,191,36,.22);">
+                                199.000₫ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tháng</span>
+                            </div>
                         </div>
-                        <div style="font-size: 11px; color: #fbbf24; margin-top: 8px; font-weight: 800;">Dành cho streamer đang phát triển</div>
+                        <div style="font-size: 11px; color: #fbbf24; margin-top: 8px; font-weight: 800;">Dành cho
+                            streamer đang phát triển</div>
                     </div>
                     <div class="plan-features">
-                        <div class="feature" style="color:#fef3c7;font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;margin-right:8px;"></i> Bao gồm mọi tính năng Free</div>
-                        <div class="feature" style="color:#fbbf24;font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;margin-right:8px;"></i> 🎨 Toàn bộ tính năng thiết kế nâng cao (ngang Pro) — khoá lớp, hoạt ảnh, hào quang, màu tùy chỉnh</div>
-                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 30 hiệu ứng gắn quà</div>
-                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 100 hiệu ứng cá nhân</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 20 ảnh/video tải lên menu</div>
-                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn bình luận</div>
-                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> 🤖 Trợ lý AI cà khịa trả lời bình luận — 3.000 ký tự/tháng</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Lưu tối đa 2 thiết kế trong thư viện + 10 bảng mục tiêu</div>
-                        <div class="feature" style="color:#94a3b8;font-size:11px;font-style:italic;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;margin-top:4px;"><i class="fas fa-arrow-up" style="margin-right:8px;"></i> Cần lưu nhiều hơn 2 thiết kế trong thư viện? Đó là lúc bạn cần Pro.</div>
+                        <div class="feature" style="color:#fef3c7;font-weight:800;"><i class="fas fa-check-circle"
+                                style="color:#10b981;margin-right:8px;"></i> Bao gồm mọi tính năng Free</div>
+                        <div class="feature" style="color:#fbbf24;font-weight:800;"><i class="fas fa-check-circle"
+                                style="color:#10b981;margin-right:8px;"></i> 🎨 Toàn bộ tính năng thiết kế nâng cao
+                            (ngang Pro) — khoá lớp, hoạt ảnh, hào quang, màu tùy chỉnh</div>
+                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> 30 hiệu ứng gắn quà</div>
+                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> 100 hiệu ứng cá nhân</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> 20 ảnh/video tải lên menu</div>
+                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Không giới hạn bình luận</div>
+                        <div class="feature" style="color: #38bdf8; font-weight: 700;"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> 🤖 Trợ lý AI cà khịa trả lời bình luận —
+                            3.000 ký tự/tháng</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Lưu tối đa 2 thiết kế trong thư viện +
+                            10 bảng mục tiêu</div>
+                        <div class="feature"
+                            style="color:#94a3b8;font-size:11px;font-style:italic;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;margin-top:4px;">
+                            <i class="fas fa-arrow-up" style="margin-right:8px;"></i> Cần lưu nhiều hơn 2 thiết kế trong
+                            thư viện? Đó là lúc bạn cần Pro.</div>
                     </div>
-                    <button class="plan-btn active" id="plan-btn-pro" onclick="app.buySubscription('basic')" style="background:linear-gradient(135deg,#f59e0b,#f97316);box-shadow:0 10px 28px rgba(249,115,22,.3);">NÂNG CẤP BASIC</button>
+                    <button class="plan-btn active" id="plan-btn-pro" onclick="app.buySubscription('basic')"
+                        style="background:linear-gradient(135deg,#f59e0b,#f97316);box-shadow:0 10px 28px rgba(249,115,22,.3);">NÂNG
+                        CẤP BASIC</button>
                     <div class="plan-trust">Chỉ khoảng 6.600đ/ngày • Không ảnh hưởng effect đã mua</div>
                 </div>
 
                 <!-- Pro Plan -->
-                <div class="pricing-card" id="plan-business-card" style="border-color:rgba(167,139,250,.24);box-shadow:0 10px 28px rgba(76,29,149,.10);">
-                    <div class="featured-badge" style="background: rgba(255, 62, 62, 0.15); color: #ff3e3e; border: 1px solid rgba(255, 62, 62, 0.3); font-size: 9px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap;">🔥 CHO STREAMER CHUYÊN NGHIỆP</div>
+                <div class="pricing-card" id="plan-business-card"
+                    style="border-color:rgba(167,139,250,.24);box-shadow:0 10px 28px rgba(76,29,149,.10);">
+                    <div class="featured-badge"
+                        style="background: rgba(255, 62, 62, 0.15); color: #ff3e3e; border: 1px solid rgba(255, 62, 62, 0.3); font-size: 9px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap;">
+                        🔥 CHO STREAMER CHUYÊN NGHIỆP</div>
                     <div class="plan-header">
-                        <span class="plan-icon" style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(255,107,0,0.5));">🔥</span>
+                        <span class="plan-icon"
+                            style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(255,107,0,0.5));">🔥</span>
                         <h3>Pro</h3>
                         <div class="plan-price">
-                            <del style="font-size: 14px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px;">450.000₫</del>
-                            <div style="color: #a78bfa; font-size: 28px; font-weight: 900;">399.000₫ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tháng</span></div>
+                            <del
+                                style="font-size: 14px; opacity: 0.5; font-weight: 400; display: block; margin-bottom: 2px;">450.000₫</del>
+                            <div style="color: #a78bfa; font-size: 28px; font-weight: 900;">399.000₫ <span
+                                    style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tháng</span></div>
                         </div>
                     </div>
                     <div class="plan-features">
-                        <div class="feature" style="color:#ddd6fe;font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;margin-right:8px;"></i> Bao gồm mọi tính năng Basic</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn hiệu ứng</div>
-                        <div class="feature" style="color:#a78bfa;font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;margin-right:8px;"></i> ♾️ Không giới hạn thiết kế đã lưu (Basic chỉ 2)</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Không giới hạn bảng mục tiêu & ảnh/video tải lên</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Gộp nhiều hiệu ứng/1 quà, chạy tuần tự, cooldown thông minh</div>
-                        <div class="feature" style="color:#a78bfa;font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;margin-right:8px;"></i> 🤖 Trợ lý AI cà khịa — 10.000 ký tự/tháng</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Sử dụng trên 1 thiết bị</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hỗ trợ ưu tiên</div>
+                        <div class="feature" style="color:#ddd6fe;font-weight:800;"><i class="fas fa-check-circle"
+                                style="color:#10b981;margin-right:8px;"></i> Bao gồm mọi tính năng Basic</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Không giới hạn hiệu ứng</div>
+                        <div class="feature" style="color:#a78bfa;font-weight:800;"><i class="fas fa-check-circle"
+                                style="color:#10b981;margin-right:8px;"></i> ♾️ Không giới hạn thiết kế đã lưu (Basic
+                            chỉ 2)</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Không giới hạn bảng mục tiêu & ảnh/video
+                            tải lên</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Gộp nhiều hiệu ứng/1 quà, chạy tuần tự,
+                            cooldown thông minh</div>
+                        <div class="feature" style="color:#a78bfa;font-weight:800;"><i class="fas fa-check-circle"
+                                style="color:#10b981;margin-right:8px;"></i> 🤖 Trợ lý AI cà khịa — 10.000 ký tự/tháng
+                        </div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Sử dụng trên 1 thiết bị</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Hỗ trợ ưu tiên</div>
                     </div>
-                    <button class="plan-btn" id="plan-btn-business" onclick="app.buySubscription('pro')">NÂNG CẤP PRO</button>
+                    <button class="plan-btn" id="plan-btn-business" onclick="app.buySubscription('pro')">NÂNG CẤP
+                        PRO</button>
                     <div class="plan-trust">Cho streamer livestream thường xuyên và cần tự động hóa</div>
                 </div>
 
                 <!-- Studio Plan -->
                 <div class="pricing-card" id="plan-studio-card">
-                    <div class="featured-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 9px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap;">🏢 GIẢI PHÁP DOANH NGHIỆP</div>
+                    <div class="featured-badge"
+                        style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 9px; font-weight: 800; padding: 4px 12px; border-radius: 20px; white-space: nowrap;">
+                        🏢 GIẢI PHÁP DOANH NGHIỆP</div>
                     <div class="plan-header">
-                        <span class="plan-icon" style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(0, 242, 254, 0.5));">💎</span>
+                        <span class="plan-icon"
+                            style="font-size: 36px; margin-bottom: 8px; display: block; filter: drop-shadow(0 0 10px rgba(0, 242, 254, 0.5));">💎</span>
                         <h3>Studio</h3>
-                        <div style="color: #10b981; font-size: 28px; font-weight: 800; margin-top: 10px; height: 58px; display: flex; align-items: center; justify-content: center; gap: 4px;">Liên hệ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tùy chỉnh</span></div>
+                        <div
+                            style="color: #10b981; font-size: 28px; font-weight: 800; margin-top: 10px; height: 58px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            Liên hệ <span style="font-size: 13px; color: #94a3b8; font-weight: 400;">/tùy chỉnh</span>
+                        </div>
                     </div>
                     <div class="plan-features">
-                        <div class="feature" style="color:#a7f3d0;font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;margin-right:8px;"></i> Bao gồm mọi tính năng Pro</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Có thể triển khai nhiều tài khoản và thiết bị</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Có thể thiết lập vận hành cho team</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tư vấn đồng bộ thiết kế theo nhu cầu</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Tích hợp API theo phạm vi thỏa thuận</div>
-                        <div class="feature"><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i> Hỗ trợ triển khai theo thỏa thuận</div>
+                        <div class="feature" style="color:#a7f3d0;font-weight:800;"><i class="fas fa-check-circle"
+                                style="color:#10b981;margin-right:8px;"></i> Bao gồm mọi tính năng Pro</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Có thể triển khai nhiều tài khoản và
+                            thiết bị</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Có thể thiết lập vận hành cho team</div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Tư vấn đồng bộ thiết kế theo nhu cầu
+                        </div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Tích hợp API theo phạm vi thỏa thuận
+                        </div>
+                        <div class="feature"><i class="fas fa-check-circle"
+                                style="color: #10b981; margin-right: 8px;"></i> Hỗ trợ triển khai theo thỏa thuận</div>
                     </div>
-                    <button class="plan-btn" id="plan-btn-studio" onclick="app.openStudioContact();" style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white;">NHẬN TƯ VẤN</button>
+                    <button class="plan-btn" id="plan-btn-studio" onclick="app.openStudioContact();"
+                        style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white;">NHẬN TƯ
+                        VẤN</button>
                     <div class="plan-trust">Trao đổi nhu cầu trước • Không cam kết mua</div>
                 </div>
             </div>
 
-            <div style="margin-top:22px;padding:13px 18px;border-radius:14px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.18);text-align:center;color:#cbd5e1;font-size:12px;line-height:1.55;">
+            <div
+                style="margin-top:22px;padding:13px 18px;border-radius:14px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.18);text-align:center;color:#cbd5e1;font-size:12px;line-height:1.55;">
                 <strong style="color:#86efac;">Free để bắt đầu. Basic khi bạn muốn mở rộng.</strong>
                 Bạn không mất thiết kế hay effect đã mua khi chưa nâng cấp.
             </div>
@@ -2213,24 +2786,30 @@
                         <div style="font-size: 24px; margin-bottom: 10px;">💰</div>
                         <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Tăng tương tác
                         </div>
-                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Bạn muốn quà tặng tạo phản hồi nổi bật và chuyên nghiệp hơn.</p>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Bạn muốn quà tặng
+                            tạo phản hồi nổi bật và chuyên nghiệp hơn.</p>
                     </div>
                     <div style="text-align: center;">
                         <div style="font-size: 24px; margin-bottom: 10px;">⚡</div>
-                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Tiết kiệm thao tác</div>
-                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Bạn cần tự động hóa nhiều hơn để tập trung vào nội dung livestream.</p>
+                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Tiết kiệm thao
+                            tác</div>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Bạn cần tự động hóa
+                            nhiều hơn để tập trung vào nội dung livestream.</p>
                     </div>
                     <div style="text-align: center;">
                         <div style="font-size: 24px; margin-bottom: 10px;">🌟</div>
-                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Sáng tạo không giới hạn
+                        <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Sáng tạo không
+                            giới hạn
                         </div>
-                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Bạn cần thêm hiệu ứng, thiết kế và tài nguyên riêng cho kênh.</p>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Bạn cần thêm hiệu
+                            ứng, thiết kế và tài nguyên riêng cho kênh.</p>
                     </div>
                     <div style="text-align: center;">
                         <div style="font-size: 24px; margin-bottom: 10px;">🛡️</div>
                         <div style="color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 5px;">Hỗ trợ ưu tiên
                         </div>
-                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Livestream là công việc và bạn cần được hỗ trợ nhanh khi có vấn đề.</p>
+                        <p style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">Livestream là công
+                            việc và bạn cần được hỗ trợ nhanh khi có vấn đề.</p>
                     </div>
                 </div>
             </div>
@@ -2557,64 +3136,90 @@
         </div>
     </div>
     <!-- Admin payment review queue -->
-    <div id="admin-alert-modal" class="modal-new-overlay" onclick="if(event.target===this) app.closePendingPaymentsModal()" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(10px);padding:24px;">
-        <div class="modal-new-content" style="background:#0b1220;border:1px solid rgba(251,191,36,.35);border-radius:20px;width:min(1120px,96vw);height:min(760px,90vh);color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.65);display:flex;flex-direction:column;overflow:hidden;animation:scaleUp .2s ease-out;">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);">
+    <div id="admin-alert-modal" class="modal-new-overlay"
+        onclick="if(event.target===this) app.closePendingPaymentsModal()"
+        style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(10px);padding:24px;">
+        <div class="modal-new-content"
+            style="background:#0b1220;border:1px solid rgba(251,191,36,.35);border-radius:20px;width:min(1120px,96vw);height:min(760px,90vh);color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.65);display:flex;flex-direction:column;overflow:hidden;animation:scaleUp .2s ease-out;">
+            <div
+                style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);">
                 <div>
-                    <h2 style="margin:0;font-size:20px;">Yêu cầu thanh toán <span id="admin-modal-pending-count" style="color:#fbbf24;">0</span></h2>
-                    <p style="margin:5px 0 0;color:#94a3b8;font-size:12px;">Xem và đối chiếu thông tin trước khi kích hoạt gói.</p>
+                    <h2 style="margin:0;font-size:20px;">Yêu cầu thanh toán <span id="admin-modal-pending-count"
+                            style="color:#fbbf24;">0</span></h2>
+                    <p style="margin:5px 0 0;color:#94a3b8;font-size:12px;">Xem và đối chiếu thông tin trước khi kích
+                        hoạt gói.</p>
                 </div>
-                <button onclick="app.closePendingPaymentsModal()" aria-label="Đóng" style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;cursor:pointer;font-size:18px;">×</button>
+                <button onclick="app.closePendingPaymentsModal()" aria-label="Đóng"
+                    style="width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;cursor:pointer;font-size:18px;">×</button>
             </div>
             <div style="display:grid;grid-template-columns:minmax(290px,36%) 1fr;min-height:0;flex:1;">
-                <div style="border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;min-height:0;">
-                    <div style="padding:12px 14px;color:#94a3b8;font-size:11px;border-bottom:1px solid rgba(255,255,255,.06);">Đơn cũ nhất được xếp trước để tránh bỏ sót</div>
-                    <div id="admin-payment-review-list" style="padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px;"></div>
+                <div
+                    style="border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;min-height:0;">
+                    <div
+                        style="padding:12px 14px;color:#94a3b8;font-size:11px;border-bottom:1px solid rgba(255,255,255,.06);">
+                        Đơn cũ nhất được xếp trước để tránh bỏ sót</div>
+                    <div id="admin-payment-review-list"
+                        style="padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px;"></div>
                 </div>
                 <div id="admin-payment-review-detail" style="padding:20px;overflow:auto;min-width:0;"></div>
             </div>
         </div>
-    <!-- Modal Nạp Lẻ Ký Tự AI -->
-    <div id="ai-addon-modal" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
-        <div style="width:min(520px,100%);background:#111827;border:1px solid rgba(139,92,246,0.3);border-radius:20px;padding:24px;color:#fff;box-shadow:0 24px 80px rgba(139,92,246,0.3);position:relative;">
-            <span onclick="document.getElementById('ai-addon-modal').style.display='none';" style="position:absolute;top:16px;right:20px;font-size:24px;color:#94a3b8;cursor:pointer;">&times;</span>
-            <h3 style="margin:0 0 6px;font-size:18px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;">⚡ Nạp Lẻ Ký Tự AI Cà Khịa (Giọng Đọc VIP)</h3>
-            <p style="margin:0 0 16px;color:#94a3b8;font-size:11px;line-height:1.5;">Hết ký tự giọng AI? Nạp gói lẻ siêu tiết kiệm để tiếp tục đọc giọng AI siêu mượt mà trên LiveStream!</p>
-            
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
-                <div onclick="app.buyAiAddon('10k')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:transform 0.15s, border-color 0.15s;" onmouseover="this.style.borderColor='#a78bfa';this.style.transform='scale(1.02)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.transform='scale(1)'">
-                    <div style="font-size:10px;color:#f59e0b;font-weight:800;">GÓI NHỎ</div>
-                    <div style="font-size:16px;font-weight:800;color:#fff;margin:4px 0;">10.000₫</div>
-                    <div style="font-size:11px;color:#a78bfa;font-weight:700;">+1,000 ký tự</div>
-                    <div style="font-size:9px;color:#94a3b8;margin-top:4px;">~10-12 câu đọc</div>
-                </div>
-                <div onclick="app.buyAiAddon('50k')" style="background:rgba(139,92,246,0.1);border:1px solid #8b5cf6;border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-                    <div style="font-size:10px;color:#ec4899;font-weight:800;">⭐ BÁN CHẠY</div>
-                    <div style="font-size:16px;font-weight:800;color:#fff;margin:4px 0;">50.000₫</div>
-                    <div style="font-size:11px;color:#ec4899;font-weight:700;">+5,500 ký tự</div>
-                    <div style="font-size:9px;color:#cbd5e1;margin-top:4px;">Thưởng thêm 10%</div>
-                </div>
-                <div onclick="app.buyAiAddon('100k')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:transform 0.15s, border-color 0.15s;" onmouseover="this.style.borderColor='#a78bfa';this.style.transform='scale(1.02)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.transform='scale(1)'">
-                    <div style="font-size:10px;color:#10b981;font-weight:800;">SIÊU HỜI</div>
-                    <div style="font-size:16px;font-weight:800;color:#fff;margin:4px 0;">100.000₫</div>
-                    <div style="font-size:11px;color:#10b981;font-weight:700;">+12,000 ký tự</div>
-                    <div style="font-size:9px;color:#94a3b8;margin-top:4px;">Thưởng thêm 20%</div>
-                </div>
-            </div>
-            
-            <p style="margin:0;color:#94a3b8;font-size:10px;text-align:center;">💡 Ký tự nạp lẻ được cộng dồn vĩnh viễn và không bao giờ bị hết hạn!</p>
-        </div>
-    </div>
+        <!-- Modal Nạp Lẻ Ký Tự AI -->
+        <div id="ai-addon-modal"
+            style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,18,.92);align-items:center;justify-content:center;padding:24px;">
+            <div
+                style="width:min(520px,100%);background:#111827;border:1px solid rgba(139,92,246,0.3);border-radius:20px;padding:24px;color:#fff;box-shadow:0 24px 80px rgba(139,92,246,0.3);position:relative;">
+                <span onclick="document.getElementById('ai-addon-modal').style.display='none';"
+                    style="position:absolute;top:16px;right:20px;font-size:24px;color:#94a3b8;cursor:pointer;">&times;</span>
+                <h3
+                    style="margin:0 0 6px;font-size:18px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;">
+                    ⚡ Nạp Lẻ Ký Tự AI Cà Khịa (Giọng Đọc VIP)</h3>
+                <p style="margin:0 0 16px;color:#94a3b8;font-size:11px;line-height:1.5;">Hết ký tự giọng AI? Nạp gói lẻ
+                    siêu tiết kiệm để tiếp tục đọc giọng AI siêu mượt mà trên LiveStream!</p>
 
-    <!-- Load JavaScript -->
-    <script src="js/matter.min.js"></script>
-    <script src="js/gift-jar-physics.js"></script>
-    <script src="js/home.js"></script>
-    <script src="js/item-registry.js"></script>
-    <script src="js/coordinate-engine.js"></script>
-    <script src="js/shared-render-engine.js"></script>
-    <script src="js/inspector-engine.js"></script>
-    <script src="js/gift-menu-designer.js" charset="UTF-8"></script>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+                    <div onclick="app.buyAiAddon('10k')"
+                        style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:transform 0.15s, border-color 0.15s;"
+                        onmouseover="this.style.borderColor='#a78bfa';this.style.transform='scale(1.02)'"
+                        onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.transform='scale(1)'">
+                        <div style="font-size:10px;color:#f59e0b;font-weight:800;">GÓI NHỎ</div>
+                        <div style="font-size:16px;font-weight:800;color:#fff;margin:4px 0;">10.000₫</div>
+                        <div style="font-size:11px;color:#a78bfa;font-weight:700;">+1,000 ký tự</div>
+                        <div style="font-size:9px;color:#94a3b8;margin-top:4px;">~10-12 câu đọc</div>
+                    </div>
+                    <div onclick="app.buyAiAddon('50k')"
+                        style="background:rgba(139,92,246,0.1);border:1px solid #8b5cf6;border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:transform 0.15s;"
+                        onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        <div style="font-size:10px;color:#ec4899;font-weight:800;">⭐ BÁN CHẠY</div>
+                        <div style="font-size:16px;font-weight:800;color:#fff;margin:4px 0;">50.000₫</div>
+                        <div style="font-size:11px;color:#ec4899;font-weight:700;">+5,500 ký tự</div>
+                        <div style="font-size:9px;color:#cbd5e1;margin-top:4px;">Thưởng thêm 10%</div>
+                    </div>
+                    <div onclick="app.buyAiAddon('100k')"
+                        style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:transform 0.15s, border-color 0.15s;"
+                        onmouseover="this.style.borderColor='#a78bfa';this.style.transform='scale(1.02)'"
+                        onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.transform='scale(1)'">
+                        <div style="font-size:10px;color:#10b981;font-weight:800;">SIÊU HỜI</div>
+                        <div style="font-size:16px;font-weight:800;color:#fff;margin:4px 0;">100.000₫</div>
+                        <div style="font-size:11px;color:#10b981;font-weight:700;">+12,000 ký tự</div>
+                        <div style="font-size:9px;color:#94a3b8;margin-top:4px;">Thưởng thêm 20%</div>
+                    </div>
+                </div>
+
+                <p style="margin:0;color:#94a3b8;font-size:10px;text-align:center;">💡 Ký tự nạp lẻ được cộng dồn vĩnh
+                    viễn và không bao giờ bị hết hạn!</p>
+            </div>
+        </div>
+
+        <!-- Load JavaScript -->
+        <script src="js/matter.min.js"></script>
+        <script src="js/gift-jar-physics.js"></script>
+        <script src="js/home.js"></script>
+        <script src="js/item-registry.js"></script>
+        <script src="js/coordinate-engine.js"></script>
+        <script src="js/shared-render-engine.js"></script>
+        <script src="js/inspector-engine.js"></script>
+        <script src="js/gift-menu-designer.js" charset="UTF-8"></script>
 </body>
 
 </html>

@@ -971,13 +971,74 @@ class EffectStoreApp {
             this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Lỗi khi kiểm tra phiên bản:</p><p>${err?.message || err}</p></div>`);
             this._manualUpdateCheck = false;
         }
+    }
+
     openObsGuide() {
-        const guideUrl = `${this.API_URL || 'http://localhost:8080'}/obs-guide.html`;
-        if (window.electronAPI?.openExternal) {
-            window.electronAPI.openExternal(guideUrl);
-        } else {
-            window.open('obs-guide.html', '_blank', 'width=1200,height=850');
-        }
+        const isConnected = document.getElementById('status-badge-obs')?.textContent === 'ĐÃ KẾT NỐI';
+        const obsStatus = isConnected ? 
+            '<span style="color:#10b981;font-weight:700;"><i class="fas fa-circle-check"></i> ĐÃ KẾT NỐI</span>' : 
+            '<span style="color:#ef4444;font-weight:700;"><i class="fas fa-circle-xmark"></i> CHƯA KẾT NỐI (OFFLINE)</span>';
+
+        const html = `
+        <div style="display:flex;flex-direction:column;gap:18px;color:#e2e8f0;font-size:13px;line-height:1.6;">
+            <!-- Box hướng dẫn chính -->
+            <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(34,211,238,0.25);border-radius:14px;padding:18px;position:relative;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,rgba(34,211,238,0.2),rgba(168,85,247,0.2));border:1px solid rgba(34,211,238,0.4);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#22d3ee;flex-shrink:0;">1</div>
+                    <div>
+                        <h4 style="color:#fff;font-size:15px;font-weight:800;margin:0;">Bật Máy Chủ WebSocket Trên OBS Studio</h4>
+                        <p style="color:#94a3b8;font-size:12px;margin:2px 0 0 0;">Chỉ cần bật 1 lần để LiveFlow tự động kích hoạt hiệu ứng mượt mà.</p>
+                    </div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:#cbd5e1;">
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <span style="color:#10b981;font-weight:bold;">✓</span>
+                        <span>Mở phần mềm <strong>OBS Studio</strong> trên máy tính.</span>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <span style="color:#10b981;font-weight:bold;">✓</span>
+                        <span>Trên thanh Menu trên cùng, chọn: <strong>Công cụ (Tools)</strong> ➔ <strong>Cài đặt máy chủ WebSocket (WebSocket Server Settings)</strong>.</span>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <span style="color:#10b981;font-weight:bold;">✓</span>
+                        <span>Tích chọn: <strong>✅ Bật máy chủ WebSocket (Enable WebSocket server)</strong> (Cổng mặc định: <strong>4455</strong>).</span>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <span style="color:#f59e0b;font-weight:bold;">🔑</span>
+                        <span><strong>Lưu ý Mật khẩu:</strong> Nếu OBS có bật xác thực mật khẩu, hãy vào tab <strong>Cài đặt</strong> trên LiveFlow để nhập đúng mật khẩu (hoặc bỏ tích xác thực trong OBS để kết nối tự do).</span>
+                    </div>
+                </div>
+
+                <!-- Mockup Box -->
+                <div style="margin-top:14px;background:#090d18;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 16px;font-size:12px;">
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                        <span style="color:#94a3b8;">Enable WebSocket:</span>
+                        <span style="color:#34d399;font-weight:700;">✅ Enabled</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                        <span style="color:#94a3b8;">Server Port:</span>
+                        <span style="color:#fff;font-weight:700;">4455</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;">
+                        <span style="color:#94a3b8;">Trạng thái LiveFlow:</span>
+                        <span>${obsStatus}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nút hành động -->
+            <div style="display:flex;gap:10px;">
+                <button onclick="app.closeModal();switchView('settings');" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                    <i class="fas fa-cog"></i> Mở Cài Đặt OBS & Mật Khẩu
+                </button>
+                <button onclick="app.closeModal();" style="padding:12px 24px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.05);color:#cbd5e1;font-weight:700;cursor:pointer;">
+                    Đã hiểu
+                </button>
+            </div>
+        </div>
+        `;
+        this.showModal('🎬 Hướng Dẫn Kết Nối OBS Studio', html);
     }
 
     async downloadAppUpdate() {
@@ -5402,7 +5463,7 @@ class EffectStoreApp {
                 if (fileInput.files && fileInput.files[0]) filePath = window.electronAPI.getPathForFile(fileInput.files[0]) || '';
                 if (thumbInput && thumbInput.files && thumbInput.files[0]) thumbPath = window.electronAPI.getPathForFile(thumbInput.files[0]) || '';
             }
-        } catch (_e) {}
+        } catch (_e) { }
         if (!filePath && fileInput.files && fileInput.files[0]) filePath = fileInput.files[0].path || '';
         if (!thumbPath && thumbInput && thumbInput.files && thumbInput.files[0]) thumbPath = thumbInput.files[0].path || '';
 
@@ -5437,7 +5498,7 @@ class EffectStoreApp {
                 uploadBtn.disabled = true;
                 uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang mã hóa & đồng bộ Cloud R2...';
             }
-            
+
             let response;
             if (filePath) {
                 // Direct local file path mode: instantaneous 1KB JSON payload
@@ -5853,20 +5914,19 @@ class EffectStoreApp {
             const data = await response.json().catch(() => ({}));
             if (!response.ok || !data.success) throw new Error(data.error || 'Không thể tải thống kê hiệu ứng.');
             this.adminEffectAcquisitions = data.records || [];
-            this.adminEffectCustomers = data.customers || [];
 
             const summary = data.summary || {};
             const summaryEl = document.getElementById('admin-acquisition-summary');
             if (summaryEl) {
                 const cards = [
                     ['Tổng lượt sở hữu', summary.totalAcquisitions || 0, '#a78bfa'],
-                    ['Khách hàng', summary.totalCustomers || (this.adminEffectCustomers || []).length, '#38bdf8'],
-                    ['Miễn phí / Trả phí', `${summary.freeAcquisitions || 0} free · ${summary.paidAcquisitions || 0} paid`, '#34d399'],
-                    ['Tổng lượt sử dụng', summary.totalUses || 0, '#fbbf24']
+                    ['Miễn phí', summary.freeAcquisitions || 0, '#34d399'],
+                    ['Trả phí', summary.paidAcquisitions || 0, '#fbbf24'],
+                    ['Lượt sử dụng', summary.totalUses || 0, '#22d3ee']
                 ];
                 summaryEl.innerHTML = cards.map(([label, value, color]) => `
                     <div style="padding:12px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);">
-                        <div style="font-size:16px;font-weight:800;color:${color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${value}</div>
+                        <div style="font-size:18px;font-weight:800;color:${color};">${value}</div>
                         <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${label}</div>
                     </div>
                 `).join('');
@@ -5877,213 +5937,56 @@ class EffectStoreApp {
         }
     }
 
-    toggleCustomerAcquisition(userId) {
-        if (!userId) return;
-        this._expandedCustomerIds = this._expandedCustomerIds || new Set();
-        if (this._expandedCustomerIds.has(String(userId))) {
-            this._expandedCustomerIds.delete(String(userId));
-        } else {
-            this._expandedCustomerIds.add(String(userId));
-        }
-        this.renderAdminEffectAcquisitions();
-    }
-
-    changeAcquisitionsPage(deltaOrPage) {
-        this._acquisitionsPage = Math.max(1, typeof deltaOrPage === 'number' ? deltaOrPage : 1);
-        this.renderAdminEffectAcquisitions();
-    }
-
     renderAdminEffectAcquisitions() {
         const container = document.getElementById('admin-acquisitions-list');
         if (!container) return;
         const safe = (value) => this.adminPaymentText(value == null ? '' : value);
         const query = String(document.getElementById('admin-acquisition-search')?.value || '').trim().toLowerCase();
         const filter = document.getElementById('admin-acquisition-filter')?.value || 'all';
-
-        this._expandedCustomerIds = this._expandedCustomerIds || new Set();
-        this._acquisitionsPage = this._acquisitionsPage || 1;
-        const pageSize = 15;
-
-        // Build customer groups from API response or fall back from records
-        let customers = this.adminEffectCustomers || [];
-        if (!customers.length && this.adminEffectAcquisitions?.length) {
-            const byUser = new Map();
-            for (const r of this.adminEffectAcquisitions) {
-                const uid = r.user?.id || r.user?.email || 'unknown';
-                if (!byUser.has(uid)) {
-                    byUser.set(uid, {
-                        user: r.user,
-                        totalEffects: 0,
-                        freeCount: 0,
-                        paidCount: 0,
-                        totalSpent: 0,
-                        totalUses: 0,
-                        latestAcquisition: r.acquiredAt,
-                        effects: []
-                    });
-                }
-                const entry = byUser.get(uid);
-                entry.totalEffects += 1;
-                if (r.acquisitionType === 'paid') {
-                    entry.paidCount += 1;
-                    entry.totalSpent += Number(r.acquisitionPrice || 0);
-                } else {
-                    entry.freeCount += 1;
-                }
-                entry.totalUses += Number(r.useCount || 0);
-                entry.effects.push(r);
-            }
-            customers = Array.from(byUser.values());
-        }
-
-        const filteredCustomers = customers.filter((customer) => {
-            if (filter === 'free' && customer.paidCount > 0 && customer.freeCount === 0) return false;
-            if (filter === 'paid' && customer.paidCount === 0) return false;
+        const records = (this.adminEffectAcquisitions || []).filter((record) => {
+            if (filter !== 'all' && record.acquisitionType !== filter) return false;
             if (!query) return true;
-            const matchesUser = [customer.user?.name, customer.user?.email, customer.user?.phone]
-                .some((val) => String(val || '').toLowerCase().includes(query));
-            if (matchesUser) return true;
-            return (customer.effects || []).some((e) => String(e.name || e.effect?.name || '').toLowerCase().includes(query));
+            return [record.user?.name, record.user?.email, record.user?.phone, record.effect?.name]
+                .some((value) => String(value || '').toLowerCase().includes(query));
         });
 
-        if (!filteredCustomers.length) {
-            container.innerHTML = '<div class="empty-state">Không tìm thấy khách hàng hoặc hiệu ứng phù hợp.</div>';
+        if (!records.length) {
+            container.innerHTML = '<div class="empty-state">Không tìm thấy lượt sở hữu phù hợp.</div>';
             return;
         }
-
-        const totalPages = Math.ceil(filteredCustomers.length / pageSize) || 1;
-        const page = Math.min(Math.max(1, this._acquisitionsPage), totalPages);
-        this._acquisitionsPage = page;
-        const pagedCustomers = filteredCustomers.slice((page - 1) * pageSize, page * pageSize);
-
         const typeLabel = {
             free: ['MIỄN PHÍ', '#34d399', 'rgba(52,211,153,.1)'],
             paid: ['TRẢ PHÍ', '#fbbf24', 'rgba(251,191,36,.1)'],
             legacy: ['DỮ LIỆU CŨ', '#94a3b8', 'rgba(148,163,184,.1)']
         };
-
-        const rowsHTML = pagedCustomers.map((customer) => {
-            const user = customer.user || {};
-            const uid = String(user.id || user._id || user.email);
-            const isExpanded = this._expandedCustomerIds.has(uid);
-            const effects = customer.effects || [];
-            const latestDate = customer.latestAcquisition ? new Date(customer.latestAcquisition).toLocaleString('vi-VN') : '—';
-
-            let subTableHTML = '';
-            if (isExpanded) {
-                subTableHTML = `
-                    <tr style="background:rgba(8,13,24,0.7);">
-                        <td colspan="6" style="padding:10px 14px 16px 32px;">
-                            <div style="border:1px solid rgba(34,211,238,0.22);border-radius:10px;overflow:hidden;background:rgba(15,23,42,0.75);box-shadow:inset 0 0 15px rgba(0,0,0,0.4);">
-                                <div style="padding:8px 12px;background:rgba(34,211,238,0.08);border-bottom:1px solid rgba(34,211,238,0.15);font-size:11px;font-weight:700;color:#67e8f9;display:flex;justify-content:space-between;align-items:center;">
-                                    <span>🎬 Danh sách ${effects.length} hiệu ứng của ${safe(user.name || user.email)}</span>
-                                    <span style="color:#94a3b8;font-weight:400;font-size:10px;">Click dòng chính để thu gọn ▲</span>
-                                </div>
-                                <table style="width:100%;border-collapse:collapse;font-size:11px;">
-                                    <thead>
-                                        <tr style="color:#94a3b8;border-bottom:1px solid rgba(255,255,255,0.05);text-align:left;">
-                                            <th style="padding:8px 12px;">Tên hiệu ứng</th>
-                                            <th style="padding:8px 12px;">Hình thức</th>
-                                            <th style="padding:8px 12px;">Giá trị</th>
-                                            <th style="padding:8px 12px;text-align:center;">Lượt dùng</th>
-                                            <th style="padding:8px 12px;">Dùng gần nhất</th>
-                                            <th style="padding:8px 12px;">Ngày sở hữu</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${effects.map((item) => {
-                                            const eff = item.effect || item;
-                                            const t = typeLabel[item.acquisitionType] || typeLabel.legacy;
-                                            const acqDate = item.acquiredAt ? new Date(item.acquiredAt).toLocaleString('vi-VN') : '—';
-                                            const lastUse = item.lastUsedAt ? new Date(item.lastUsedAt).toLocaleString('vi-VN') : 'Chưa dùng';
-                                            const pr = item.acquisitionPrice != null ? this.formatPrice(item.acquisitionPrice) : '0đ';
-                                            return `
-                                                <tr style="border-top:1px solid rgba(255,255,255,0.04);">
-                                                    <td style="padding:8px 12px;font-weight:600;color:#f1f5f9;">${safe(eff.icon || '🎬')} ${safe(eff.name || 'Hiệu ứng')}</td>
-                                                    <td style="padding:8px 12px;"><span style="padding:2px 6px;border-radius:4px;color:${t[1]};background:${t[2]};font-size:9px;font-weight:800;">${t[0]}</span></td>
-                                                    <td style="padding:8px 12px;color:#f8fafc;">${safe(pr)}</td>
-                                                    <td style="padding:8px 12px;text-align:center;font-weight:700;color:#22d3ee;">${Number(item.useCount || 0)}</td>
-                                                    <td style="padding:8px 12px;color:#94a3b8;">${safe(lastUse)}</td>
-                                                    <td style="padding:8px 12px;color:#cbd5e1;">${safe(acqDate)}</td>
-                                                </tr>
-                                            `;
-                                        }).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
-
-            return `
-                <tr onclick="app.toggleCustomerAcquisition('${safe(uid)}')" style="border-top:1px solid rgba(255,255,255,.055);cursor:pointer;background:${isExpanded ? 'rgba(34,211,238,.04)' : 'transparent'};transition:background 0.15s ease;" onmouseenter="this.style.background='rgba(255,255,255,.03)'" onmouseleave="this.style.background='${isExpanded ? 'rgba(34,211,238,.04)' : 'transparent'}'">
-                    <td style="padding:12px 10px;">
-                        <div style="display:flex;align-items:center;gap:9px;">
-                            <span style="color:#22d3ee;font-size:11px;width:14px;text-align:center;">${isExpanded ? '▼' : '▶'}</span>
-                            <div>
-                                <div style="font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">
-                                    ${safe(user.name || 'Chưa đặt tên')}
-                                    <span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.08);color:#cbd5e1;font-weight:500;">${safe(user.subscription || 'free')}</span>
-                                </div>
-                                <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${safe(user.email)} ${user.phone ? `· <span style="color:#64748b;">${safe(user.phone)}</span>` : ''}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td style="padding:12px 10px;">
-                        <div style="display:flex;align-items:center;gap:6px;">
-                            <span style="font-weight:800;color:#f8fafc;font-size:13px;">${customer.totalEffects}</span>
-                            <span style="font-size:10px;color:#34d399;background:rgba(52,211,153,.1);padding:1px 6px;border-radius:4px;font-weight:600;">${customer.freeCount} free</span>
-                            ${customer.paidCount > 0 ? `<span style="font-size:10px;color:#fbbf24;background:rgba(251,191,36,.1);padding:1px 6px;border-radius:4px;font-weight:600;">${customer.paidCount} paid</span>` : ''}
-                        </div>
-                    </td>
-                    <td style="padding:12px 10px;font-weight:800;color:${customer.totalSpent > 0 ? '#fbbf24' : '#94a3b8'};font-size:13px;">
-                        ${this.formatPrice(customer.totalSpent)}
-                    </td>
-                    <td style="padding:12px 10px;text-align:center;font-weight:800;color:#22d3ee;font-size:13px;">
-                        ${customer.totalUses}
-                    </td>
-                    <td style="padding:12px 10px;color:#cbd5e1;font-size:11px;">
-                        ${safe(latestDate)}
-                    </td>
-                    <td style="padding:12px 10px;text-align:right;">
-                        <button onclick="event.stopPropagation();app.toggleCustomerAcquisition('${safe(uid)}')" style="padding:5px 10px;border-radius:7px;background:${isExpanded ? 'rgba(34,211,238,.2)' : 'rgba(255,255,255,.06)'};border:1px solid ${isExpanded ? '#22d3ee' : 'rgba(255,255,255,.12)'};color:${isExpanded ? '#67e8f9' : '#cbd5e1'};cursor:pointer;font-size:11px;font-weight:700;transition:all 0.15s ease;">
-                            ${isExpanded ? 'Thu gọn ▲' : `Xem ${customer.totalEffects} hiệu ứng ▼`}
-                        </button>
-                    </td>
-                </tr>
-                ${subTableHTML}
-            `;
-        }).join('');
-
-        const startIdx = (page - 1) * pageSize + 1;
-        const endIdx = Math.min(page * pageSize, filteredCustomers.length);
-
         container.innerHTML = `
-            <table style="width:100%;border-collapse:collapse;min-width:850px;font-size:12px;">
-                <thead style="position:sticky;top:0;background:#151b26;z-index:2;">
+            <table style="width:100%;border-collapse:collapse;min-width:900px;font-size:12px;">
+                <thead style="position:sticky;top:0;background:#151b26;z-index:1;">
                     <tr style="color:#94a3b8;text-align:left;">
-                        <th style="padding:11px 10px;">Khách hàng</th>
-                        <th style="padding:11px 10px;">Hiệu ứng sở hữu</th>
-                        <th style="padding:11px 10px;">Tổng chi tiêu</th>
-                        <th style="padding:11px 10px;text-align:center;">Lượt dùng</th>
-                        <th style="padding:11px 10px;">Ngày gần nhất</th>
-                        <th style="padding:11px 10px;text-align:right;">Chi tiết</th>
+                        <th style="padding:10px;">Khách hàng</th><th style="padding:10px;">Hiệu ứng</th>
+                        <th style="padding:10px;">Hình thức</th><th style="padding:10px;">Giá trị</th>
+                        <th style="padding:10px;">Ngày sở hữu</th><th style="padding:10px;text-align:center;">Lượt dùng</th>
+                        <th style="padding:10px;">Dùng gần nhất</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${rowsHTML}
+                    ${records.map((record) => {
+            const type = typeLabel[record.acquisitionType] || typeLabel.legacy;
+            const acquiredAt = record.acquiredAt ? new Date(record.acquiredAt).toLocaleString('vi-VN') : '—';
+            const lastUsedAt = record.lastUsedAt ? new Date(record.lastUsedAt).toLocaleString('vi-VN') : 'Chưa sử dụng';
+            const price = record.acquisitionPrice == null ? 'Chưa ghi nhận' : this.formatPrice(record.acquisitionPrice);
+            return `<tr style="border-top:1px solid rgba(255,255,255,.055);">
+                            <td style="padding:11px 10px;"><div style="font-weight:700;color:#fff;">${safe(record.user?.name || 'Chưa đặt tên')}</div><div style="font-size:10px;color:#94a3b8;margin-top:3px;">${safe(record.user?.email)}</div><div style="font-size:10px;color:#64748b;">${safe(record.user?.phone || 'Chưa có SĐT')}</div></td>
+                            <td style="padding:11px 10px;font-weight:650;color:#e2e8f0;">${safe(record.effect?.icon)} ${safe(record.effect?.name)}</td>
+                            <td style="padding:11px 10px;"><span style="padding:4px 8px;border-radius:999px;color:${type[1]};background:${type[2]};font-size:9px;font-weight:800;">${type[0]}</span></td>
+                            <td style="padding:11px 10px;color:#f8fafc;">${safe(price)}</td>
+                            <td style="padding:11px 10px;color:#cbd5e1;">${safe(acquiredAt)}</td>
+                            <td style="padding:11px 10px;text-align:center;font-weight:800;color:#22d3ee;">${Number(record.useCount || 0)}</td>
+                            <td style="padding:11px 10px;color:#94a3b8;">${safe(lastUsedAt)}</td>
+                        </tr>`;
+        }).join('')}
                 </tbody>
-            </table>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 10px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#94a3b8;margin-top:6px;">
-                <span>Hiển thị <strong>${startIdx} - ${endIdx}</strong> trên tổng số <strong>${filteredCustomers.length}</strong> khách hàng</span>
-                <div style="display:flex;gap:6px;align-items:center;">
-                    <button onclick="app.changeAcquisitionsPage(${page - 1})" ${page <= 1 ? 'disabled style="opacity:0.35;cursor:not-allowed;"' : 'style="cursor:pointer;"'} class="btn-sm" style="padding:4px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:6px;font-size:11px;">◀ Trước</button>
-                    <span style="color:#fff;font-weight:800;padding:0 8px;">Trang ${page} / ${totalPages}</span>
-                    <button onclick="app.changeAcquisitionsPage(${page + 1})" ${page >= totalPages ? 'disabled style="opacity:0.35;cursor:not-allowed;"' : 'style="cursor:pointer;"'} class="btn-sm" style="padding:4px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:6px;font-size:11px;">Sau ▶</button>
-                </div>
-            </div>
-        `;
+            </table>`;
     }
 
     async loadAdminDashboard() {
@@ -6541,10 +6444,10 @@ class EffectStoreApp {
                             localStorage.setItem('es_cache_store_effects', JSON.stringify(this.storeEffects));
                         } catch (_e) { }
                         this.renderEffects();
-                        if (typeof this.loadTrending === 'function') this.loadTrending().catch(() => {});
+                        if (typeof this.loadTrending === 'function') this.loadTrending().catch(() => { });
                     }
                 }
-            } catch (_e) {}
+            } catch (_e) { }
         };
         this._storeCatalogPollInterval = setInterval(poll, 5000);
     }
@@ -7989,7 +7892,7 @@ class EffectStoreApp {
             console.log('🧪 Starting test for mapping:', id);
             this.activeTestMappingId = String(id);
             this.isTestingFetch = true;
-            
+
             const liveBtn = getActiveBtn();
             if (liveBtn) {
                 liveBtn.disabled = true;
