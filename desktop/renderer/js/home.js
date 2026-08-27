@@ -2154,10 +2154,12 @@ class EffectStoreApp {
             }
             this.showNotification('success', '✅ Đã cập nhật ảnh đại diện Thumbnail thành công!');
             await this.loadPersonalEffects();
+            this.mappingEffects = [];
             this._mappingLibraryLoaded = false;
-            await this.loadEffectsForMapping();
+            await this.loadEffectsForMapping({ force: true });
             this.renderEffects();
             this.updateUI();
+            this.renderControlDeck();
         } catch (error) {
             if (this.isCustomEffectBridgeMissing(error)) return this.showCustomEffectRestartNotice();
             console.error('Update personal effect thumbnail error:', error);
@@ -7354,9 +7356,12 @@ class EffectStoreApp {
             const effectId = e._id || e.id;
             const isChallengeWheel = e.isChallengeWheel === true;
             const thumbUrl = isChallengeWheel ? '' : resolveMediaUrl(e.thumbUrl);
-            const videoUrl = !isChallengeWheel && effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
+            const videoUrl = !isChallengeWheel && effectId ? (e.previewUrl ? resolveMediaUrl(e.previewUrl) : `${this.API_URL}/api/stream/effect/${effectId}`) : '';
             let previewHTML = '';
-            const effectiveThumb = thumbUrl || (!isChallengeWheel && effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
+            const fallbackThumb = String(effectId).startsWith('custom-')
+                ? `${this.API_URL}/custom-effects/${effectId}/thumbnail.jpg`
+                : resolveMediaUrl(`/uploads/thumbs/${effectId}.png`);
+            const effectiveThumb = thumbUrl || (!isChallengeWheel && effectId ? fallbackThumb : '');
             const videoWithFrame = videoUrl ? (videoUrl.includes('#') ? videoUrl : `${videoUrl}#t=0.001`) : '';
 
             if (isChallengeWheel) {
