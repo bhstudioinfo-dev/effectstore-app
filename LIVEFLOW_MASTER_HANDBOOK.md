@@ -129,16 +129,17 @@ Tính năng **Trợ lý AI Cà Khịa Live Chat (PRO AI)** mang lại trải ngh
 4. **Đồng bộ đám mây:** Đẩy file `.enc` và thumbnail lên Cloudflare R2 (`liveflow-effects`) và ghi danh mục vào MongoDB Atlas Online.
 
 ### B. Quy trình Hiệu Ứng Cá Nhân Cục Bộ (Personal Custom Effects):
-1. **Tải lên Video cá nhân:**
+1. **Tải lên Video cá nhân & Giữ trọn âm thanh:**
    - Hỗ trợ định dạng MP4, MOV, AVI, WebM dưới 500MB.
    - Lưu trữ trực tiếp trên máy tính người dùng (`userData/custom-effects/`), không chiếm dung lượng đám mây.
-   - Tự động nén thành WebM VP9 dọc 9:16 (tối đa 15 giây) để phát mượt mà trên OBS.
-2. **Tùy chọn Thumbnail khi tải lên:**
+   - Tự động nén thành WebM VP9 dọc 9:16 (tối đa 15 giây), **giữ nguyên và nén âm thanh chuẩn Opus 96k**, phát mượt mà kèm tiếng trên OBS.
+2. **Tùy chọn Thumbnail nén JPG siêu nhẹ:**
    - Người dùng có thể chọn ảnh đại diện riêng (PNG, JPG, JPEG, WebP) kèm khung xem trước (Preview) trực quan.
-   - Nếu không chọn, hệ thống tự động trích xuất khung hình từ video.
-3. **Đổi / Cập nhật Thumbnail linh hoạt:**
-   - Trong mục **"Hiệu ứng của tôi"**, trên mỗi thẻ hiệu ứng cá nhân có nút **"🖼️ Đổi ảnh"**.
-   - Cho phép chọn ảnh mới và cập nhật tức thì vào `thumbnail.png` với cơ chế phá cache (`?v=timestamp`), hiển thị ngay trên giao diện mà không cần tải lại app.
+   - Nếu không chọn, hệ thống tự động trích xuất khung hình đầu tiên của video và nén thành `thumbnail.jpg` (chuẩn `-q:v 3` siêu nhẹ 20KB-40KB).
+3. **Đổi / Cập nhật Thumbnail & Hiệu ứng Di chuột (Hover Preview):**
+   - Trong mục **"Thư viện"**, trên mỗi thẻ hiệu ứng cá nhân có nút **"🖼️ Đổi ảnh"**.
+   - Cho phép chọn ảnh mới và cập nhật tức thì vào `thumbnail.jpg` với cơ chế phá cache (`?v=timestamp`), hiển thị ngay trên giao diện mà không cần tải lại app.
+   - Bình thường hiển thị ảnh thumbnail, khi di chuột vào thẻ sẽ tự động phát video chuyển động mượt mà.
 
 ---
 
