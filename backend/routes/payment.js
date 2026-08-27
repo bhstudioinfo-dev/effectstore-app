@@ -157,6 +157,25 @@ router.get('/status/:orderId', authMiddleware, async (req, res) => {
     }
 });
 
+router.get('/my-orders', authMiddleware, async (req, res) => {
+    try {
+        const payments = await Payment.find({ userId: String(req.userId) })
+            .sort({ createdAt: -1 })
+            .limit(30)
+            .lean();
+        const user = await User.findById(req.userId).select('subscription subscriptionExpiresAt purchasedEffects').lean();
+        return res.json({
+            success: true,
+            payments,
+            subscription: user?.subscription || 'free',
+            subscriptionExpiresAt: user?.subscriptionExpiresAt || null,
+            purchasedEffects: user?.purchasedEffects || []
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message || 'Unable to load my orders.' });
+    }
+});
+
 router.post('/sepay-webhook', async (req, res) => {
     try {
         // Production policy is manual approval from the in-app Admin account.

@@ -748,6 +748,7 @@ class EffectStoreApp {
                     this.loadAdminDashboard();
                 }
                 this.startAdminPendingPaymentsPoll();
+                this.startUserOrdersPoll();
             } else {
                 this.clearAuthToken();
                 localStorage.removeItem('currentUser');
@@ -1301,6 +1302,7 @@ class EffectStoreApp {
                 this.updateUI();
                 this.startSystemStatusPoll();
                 this.startAdminPendingPaymentsPoll();
+                this.startUserOrdersPoll();
 
                 this.updateAppLoadingProgress('✨ Đã sẵn sàng!', 100);
                 setTimeout(() => this.hideAppLoadingOverlay(), 300);
@@ -1381,6 +1383,7 @@ class EffectStoreApp {
                 await this.preloadAllAppData();
                 this.loadCart();
                 this.updateUI();
+                this.startUserOrdersPoll();
                 this.updateAppLoadingProgress('✨ Đã sẵn sàng!', 100);
                 setTimeout(() => this.hideAppLoadingOverlay(), 300);
                 this.showNotification('success', 'Đăng ký thành công!');
@@ -1485,6 +1488,10 @@ class EffectStoreApp {
         if (this._adminPollInterval) {
             clearInterval(this._adminPollInterval);
             this._adminPollInterval = null;
+        }
+        if (this._userOrdersPollInterval) {
+            clearInterval(this._userOrdersPollInterval);
+            this._userOrdersPollInterval = null;
         }
         this._prevPendingCount = 0;
         this.adminPendingPayments = [];
@@ -6136,6 +6143,82 @@ class EffectStoreApp {
         };
         poll();
         this._adminPollInterval = setInterval(poll, 8000);
+    }
+
+    startUserOrdersPoll() {
+        if (this._userOrdersPollInterval) clearInterval(this._userOrdersPollInterval);
+        this._knownPendingOrderIds = this._knownPendingOrderIds || new Set();
+
+        const poll = async () => {
+            if (!this.currentUser || !this.authToken) return;
+            const token = this.authToken || localStorage.getItem('token');
+            if (!token) return;
+            try {
+                const res = await fetch(`${this.API_URL}/api/payment/my-orders`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (data.success && Array.isArray(data.payments)) {
+                    let hasNewlyApproved = false;
+                    let hasNewlyRejected = false;
+                    let rejectedReason = '';
+                    const currentlyPendingIds = new Set();
+                    const pendingEffectIds = [];
+
+                    for (const payment of data.payments) {
+                        const orderId = payment.orderId || String(payment._id);
+                        const effectIds = (payment.effectIds || []).map(String);
+
+                        if (payment.status === 'pending' || payment.status === 'processing') {
+                            currentlyPendingIds.add(orderId);
+                            this._knownPendingOrderIds.add(orderId);
+                            pendingEffectIds.push(...effectIds);
+                        } else if (payment.status === 'approved') {
+                            if (this._knownPendingOrderIds.has(orderId)) {
+                                hasNewlyApproved = true;
+                                this._knownPendingOrderIds.delete(orderId);
+                            }
+                        } else if (payment.status === 'rejected') {
+                            if (this._knownPendingOrderIds.has(orderId)) {
+                                hasNewlyRejected = true;
+                                rejectedReason = payment.rejectionReason || '';
+                                this._knownPendingOrderIds.delete(orderId);
+                            }
+                        }
+                    }
+
+                    // Đồng bộ lại pendingPaymentEffects cục bộ
+                    const prevPending = this.pendingPaymentEffects || [];
+                    this.pendingPaymentEffects = [...new Set(pendingEffectIds)];
+                    this.savePendingPaymentEffects();
+
+                    // Kiểm tra nếu có hiệu ứng mới được kích hoạt trên tài khoản
+                    const prevOwnedCount = this.ownedEffects ? this.ownedEffects.length : 0;
+                    const serverPurchased = data.purchasedEffects || [];
+                    const currentOwnedCount = serverPurchased.length;
+
+                    if (hasNewlyApproved || (currentOwnedCount > prevOwnedCount && prevOwnedCount > 0)) {
+                        this.playNotificationChime();
+                        this.showNotification('success', '🎉 Đơn hàng đã được Admin duyệt! Hiệu ứng đã sẵn sàng sử dụng.');
+                        await this.checkAuth({ loadDependentData: false });
+                        await this.loadOwnedEffects();
+                        this._mappingLibraryLoaded = false;
+                        await this.loadEffectsForMapping();
+                        this.renderEffects();
+                        this.updateUI();
+                    } else if (hasNewlyRejected) {
+                        this.showNotification('error', `❌ Đơn hàng chưa được duyệt: ${rejectedReason || 'Thông tin chuyển khoản không khớp.'}`);
+                        await this.loadOwnedEffects();
+                        this.renderEffects();
+                        this.updateUI();
+                    } else if (JSON.stringify(prevPending) !== JSON.stringify(this.pendingPaymentEffects)) {
+                        this.renderEffects();
+                    }
+                }
+            } catch (_e) { }
+        };
+        poll();
+        this._userOrdersPollInterval = setInterval(poll, 4000);
     }
 
     async addToTrending() {
