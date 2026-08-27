@@ -132,12 +132,14 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
 
     if (config.INITIAL_SETUP_TOKEN.length < 32) config.INITIAL_SETUP_TOKEN = crypto.randomBytes(48).toString('hex');
 
-    // Prefer process.env.MONGODB_URI or backend .env or SHARED_MONGODB_URI
-    if (process.env.MONGODB_URI && !isLegacyDefaultMongoUri(process.env.MONGODB_URI)) {
+    // Prefer process.env.MONGODB_URI, or user-persisted external cloud URI, or SHARED_MONGODB_URI (Atlas)
+    if (process.env.MONGODB_URI && !isLegacyDefaultMongoUri(process.env.MONGODB_URI) && !isPort27117MongoUri(process.env.MONGODB_URI)) {
         config.MONGODB_URI = process.env.MONGODB_URI;
-    } else if (defaultMongodbUri) {
+    } else if (defaultMongodbUri && !isLegacyDefaultMongoUri(defaultMongodbUri) && !isPort27117MongoUri(defaultMongodbUri)) {
         config.MONGODB_URI = defaultMongodbUri;
-    } else if (!config.MONGODB_URI || isPort27117MongoUri(config.MONGODB_URI) || isLegacyDefaultMongoUri(config.MONGODB_URI)) {
+    } else if (config.MONGODB_URI && !isLegacyDefaultMongoUri(config.MONGODB_URI) && !isPort27117MongoUri(config.MONGODB_URI)) {
+        // preserve explicitly saved custom cloud URI
+    } else {
         config.MONGODB_URI = SHARED_MONGODB_URI;
     }
 

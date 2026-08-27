@@ -44,9 +44,8 @@ assert.strictEqual(isLegacyDefaultMongoUri('mongodb://127.0.0.1:27018/effectstor
 assert.strictEqual(isLegacyDefaultMongoUri('mongodb+srv://example.invalid/effectstore'), false);
 
 const legacyUserDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'effectstore-manager-legacy-'));
-ensureBackendConfig(legacyUserDataPath, codec);
-const bundledUri = 'mongodb://127.0.0.1:27117/effectstore';
-assert.strictEqual(ensureBackendConfig(legacyUserDataPath, codec, {}, bundledUri).MONGODB_URI, bundledUri);
+const customCloudUri = 'mongodb+srv://custom.atlas.example/effectstore';
+assert.strictEqual(ensureBackendConfig(legacyUserDataPath, codec, {}, customCloudUri).MONGODB_URI, customCloudUri);
 
 const atlasUri = 'mongodb+srv://example.invalid/effectstore';
 assert.strictEqual(updateMongoUri(userDataPath, atlasUri, codec).MONGODB_URI, atlasUri);
