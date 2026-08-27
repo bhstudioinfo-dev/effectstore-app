@@ -749,6 +749,7 @@ class EffectStoreApp {
                 }
                 this.startAdminPendingPaymentsPoll();
                 this.startUserOrdersPoll();
+                this.startStoreCatalogPoll();
             } else {
                 this.clearAuthToken();
                 localStorage.removeItem('currentUser');
@@ -1303,6 +1304,7 @@ class EffectStoreApp {
                 this.startSystemStatusPoll();
                 this.startAdminPendingPaymentsPoll();
                 this.startUserOrdersPoll();
+                this.startStoreCatalogPoll();
 
                 this.updateAppLoadingProgress('✨ Đã sẵn sàng!', 100);
                 setTimeout(() => this.hideAppLoadingOverlay(), 300);
@@ -1384,6 +1386,7 @@ class EffectStoreApp {
                 this.loadCart();
                 this.updateUI();
                 this.startUserOrdersPoll();
+                this.startStoreCatalogPoll();
                 this.updateAppLoadingProgress('✨ Đã sẵn sàng!', 100);
                 setTimeout(() => this.hideAppLoadingOverlay(), 300);
                 this.showNotification('success', 'Đăng ký thành công!');
@@ -1492,6 +1495,10 @@ class EffectStoreApp {
         if (this._userOrdersPollInterval) {
             clearInterval(this._userOrdersPollInterval);
             this._userOrdersPollInterval = null;
+        }
+        if (this._storeCatalogPollInterval) {
+            clearInterval(this._storeCatalogPollInterval);
+            this._storeCatalogPollInterval = null;
         }
         this._prevPendingCount = 0;
         this.adminPendingPayments = [];
@@ -4557,6 +4564,7 @@ class EffectStoreApp {
                     this.loadBanner();
                 }
                 this.renderEffects();
+                this.loadEffects();
             } else if (view === 'library') {
                 document.getElementById('page-title').textContent = '📚 Thư Viện';
                 this.renderEffects();
@@ -6300,6 +6308,35 @@ class EffectStoreApp {
         };
         poll();
         this._userOrdersPollInterval = setInterval(poll, 4000);
+    }
+
+    startStoreCatalogPoll() {
+        if (this._storeCatalogPollInterval) clearInterval(this._storeCatalogPollInterval);
+        const poll = async () => {
+            try {
+                const prevCount = (this.storeEffects || []).length;
+                const prevSignature = (this.storeEffects || []).map(e => `${e._id || e.id}:${e.price}:${e.name}:${e.isTrending}:${e.isFlashSale}:${e.flashSalePrice}:${e.thumbUrl}`).join('|');
+
+                const headers = {};
+                if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+                const res = await fetch(this.API_URL + '/api/effects', { headers });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success !== false && Array.isArray(data.effects)) {
+                    const newCount = data.effects.length;
+                    const newSignature = data.effects.map(e => `${e._id || e.id}:${e.price}:${e.name}:${e.isTrending}:${e.isFlashSale}:${e.flashSalePrice}:${e.thumbUrl}`).join('|');
+                    if (newSignature !== prevSignature || newCount !== prevCount) {
+                        this.storeEffects = data.effects;
+                        this.effects = this.storeEffects;
+                        try {
+                            localStorage.setItem('es_cache_store_effects', JSON.stringify(this.storeEffects));
+                        } catch (_e) { }
+                        this.renderEffects();
+                        if (typeof this.loadTrending === 'function') this.loadTrending().catch(() => {});
+                    }
+                }
+            } catch (_e) {}
+        };
+        this._storeCatalogPollInterval = setInterval(poll, 5000);
     }
 
     async addToTrending() {
