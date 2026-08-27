@@ -1975,12 +1975,30 @@ class EffectStoreApp {
     openPersonalEffectUpload(assignToControlDeck = false) {
         this.pendingPersonalEffectDeckIndex = assignToControlDeck ? this.pendingControlDeckIndex : null;
         this.pendingPersonalEffectFiles = null;
+        this.pendingPersonalEffectThumbnail = null;
         this.showModal('Tải hiệu ứng cá nhân', `<div style="display:grid;gap:14px;color:#cbd5e1;">
             <div style="padding:12px;border-radius:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);font-size:12px;line-height:1.6;"><b style="color:#93c5fd;">ℹ️ Lưu ý về hiệu ứng cá nhân</b><br>File được lưu trực tiếp trên máy tính này và không tải lên máy chủ LiveFlow.<br>• Chỉ nhận video MP4, MOV, AVI hoặc WebM dưới 500MB.<br>• File trên 200MB có thể mất vài phút để tối ưu, nên làm trước khi livestream.<br>• App sẽ tối ưu thành WebM VP9 dọc 9:16, tối đa 15 giây để chạy mượt hơn.<br>• App không tự xóa nền; nền trong suốt chỉ có nếu video gốc có alpha.<br>• Đổi máy hoặc cài lại ứng dụng sẽ không tự khôi phục.</div>
             <label style="display:grid;gap:6px;font-size:12px;">Tên hiệu ứng<input id="personal-effect-name" maxlength="80" class="upload-form-input" placeholder="Ví dụ: Pháo hoa cảm ơn"></label>
-            <button onclick="app.choosePersonalEffectFiles()" style="padding:12px;border:1px dashed rgba(167,139,250,.55);border-radius:10px;background:rgba(124,58,237,.1);color:#ddd6fe;cursor:pointer;font-weight:700;">Chọn video hiệu ứng</button>
-            <div id="personal-effect-file-status" style="font-size:12px;color:#94a3b8;">Chưa chọn video</div>
-            <button id="personal-effect-save-btn" onclick="app.savePersonalEffect()" class="pro-btn" style="padding:12px;">Tối ưu & lưu hiệu ứng</button></div>`);
+            
+            <div style="display:grid;gap:6px;">
+                <div style="font-size:12px;font-weight:700;color:#e2e8f0;">1. Video hiệu ứng <span style="color:#ef4444;">*</span></div>
+                <button onclick="app.choosePersonalEffectFiles()" style="padding:12px;border:1px dashed rgba(167,139,250,.55);border-radius:10px;background:rgba(124,58,237,.1);color:#ddd6fe;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fas fa-video"></i> Chọn video hiệu ứng</button>
+                <div id="personal-effect-file-status" style="font-size:12px;color:#94a3b8;">Chưa chọn video</div>
+            </div>
+
+            <div style="display:grid;gap:6px;background:rgba(255,255,255,0.02);padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);">
+                <div style="font-size:12px;font-weight:700;color:#e2e8f0;">2. Ảnh đại diện / Thumbnail <span style="color:#94a3b8;font-weight:400;">(Tùy chọn - PNG/JPG/WebP)</span></div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button onclick="app.choosePersonalEffectThumbnail()" style="flex:1;padding:10px;border:1px dashed rgba(56,189,248,.55);border-radius:10px;background:rgba(56,189,248,.08);color:#7dd3fc;cursor:pointer;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;"><i class="fas fa-image"></i> Chọn ảnh đại diện</button>
+                    <button id="personal-effect-clear-thumb-btn" onclick="app.clearPersonalEffectThumbnail()" style="display:none;padding:10px 14px;border:1px solid rgba(239,68,68,.4);border-radius:10px;background:rgba(239,68,68,.1);color:#fca5a5;cursor:pointer;font-size:12px;font-weight:600;"><i class="fas fa-times"></i> Xóa ảnh</button>
+                </div>
+                <div id="personal-effect-thumb-status" style="font-size:12px;color:#94a3b8;">Mặc định: Tự động trích xuất ảnh từ video nếu không chọn ảnh riêng</div>
+                <div id="personal-effect-thumb-preview" style="display:none;margin-top:6px;text-align:center;">
+                    <img id="personal-effect-thumb-preview-img" style="max-height:110px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                </div>
+            </div>
+
+            <button id="personal-effect-save-btn" onclick="app.savePersonalEffect()" class="pro-btn" style="padding:12px;margin-top:4px;">Tối ưu & lưu hiệu ứng</button></div>`);
     }
 
     async choosePersonalEffectFiles() {
@@ -2002,6 +2020,37 @@ class EffectStoreApp {
         }
     }
 
+    async choosePersonalEffectThumbnail() {
+        try {
+            if (!window.electronAPI?.invoke) return this.showCustomEffectRestartNotice();
+            const result = await window.electronAPI.invoke('custom-effects:choose-thumbnail');
+            if (!result?.success) return;
+            this.pendingPersonalEffectThumbnail = result;
+            const status = document.getElementById('personal-effect-thumb-status');
+            const preview = document.getElementById('personal-effect-thumb-preview');
+            const previewImg = document.getElementById('personal-effect-thumb-preview-img');
+            const clearBtn = document.getElementById('personal-effect-clear-thumb-btn');
+            if (status) status.textContent = `✓ Đã chọn ảnh riêng: ${result.thumbName}`;
+            if (preview && previewImg && result.thumbPath) {
+                previewImg.src = `file:///${result.thumbPath.replace(/\\/g, '/')}`;
+                preview.style.display = 'block';
+            }
+            if (clearBtn) clearBtn.style.display = 'inline-block';
+        } catch (error) {
+            console.error('Choose personal effect thumbnail error:', error);
+        }
+    }
+
+    clearPersonalEffectThumbnail() {
+        this.pendingPersonalEffectThumbnail = null;
+        const status = document.getElementById('personal-effect-thumb-status');
+        const preview = document.getElementById('personal-effect-thumb-preview');
+        const clearBtn = document.getElementById('personal-effect-clear-thumb-btn');
+        if (status) status.textContent = 'Mặc định: Tự động trích xuất ảnh từ video nếu không chọn ảnh riêng';
+        if (preview) preview.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+    }
+
     async savePersonalEffect() {
         const name = document.getElementById('personal-effect-name')?.value.trim();
         if (!name || !this.pendingPersonalEffectFiles?.videoPath) return this.showNotification('warning', 'Vui lòng nhập tên và chọn video hiệu ứng.');
@@ -2012,12 +2061,17 @@ class EffectStoreApp {
             if (!window.electronAPI?.invoke) return this.showCustomEffectRestartNotice();
             if (saveBtn) {
                 saveBtn.disabled = true;
-                saveBtn.textContent = 'Đang tối ưu video...';
+                saveBtn.textContent = 'Đang tối ưu video & ảnh...';
                 saveBtn.style.opacity = '0.7';
                 saveBtn.style.cursor = 'wait';
             }
-            if (status) status.textContent = 'Đang chuyển video sang WebM VP9, vui lòng chờ...';
-            const saved = await window.electronAPI.invoke('custom-effects:save', { id: registerId, name, ...this.pendingPersonalEffectFiles });
+            if (status) status.textContent = 'Đang chuyển video sang WebM VP9 & xử lý thumbnail, vui lòng chờ...';
+            const saved = await window.electronAPI.invoke('custom-effects:save', {
+                id: registerId,
+                name,
+                ...this.pendingPersonalEffectFiles,
+                thumbPath: this.pendingPersonalEffectThumbnail?.thumbPath || null
+            });
             if (!saved?.success) {
                 throw new Error(saved?.error || 'Không thể lưu file.');
             }
@@ -2052,6 +2106,7 @@ class EffectStoreApp {
                 ? this.pendingPersonalEffectDeckIndex
                 : null;
             this.pendingPersonalEffectDeckIndex = null;
+            this.pendingPersonalEffectThumbnail = null;
             this.closeModal();
             await this.loadOwnedEffects();
             if (this.currentView === 'gift-mapping') await this.loadEffectsForMapping();
@@ -2078,6 +2133,28 @@ class EffectStoreApp {
                 saveBtn.style.opacity = '';
                 saveBtn.style.cursor = '';
             }
+        }
+    }
+
+    async changePersonalEffectThumbnail(effectId) {
+        if (!effectId) return;
+        try {
+            if (!window.electronAPI?.invoke) return this.showCustomEffectRestartNotice();
+            const result = await window.electronAPI.invoke('custom-effects:update-thumbnail', { effectId });
+            if (!result?.success) {
+                if (result?.error) this.showNotification('error', result.error);
+                return;
+            }
+            this.showNotification('success', '✅ Đã cập nhật ảnh đại diện Thumbnail thành công!');
+            await this.loadPersonalEffects();
+            this._mappingLibraryLoaded = false;
+            await this.loadEffectsForMapping();
+            this.renderEffects();
+            this.updateUI();
+        } catch (error) {
+            if (this.isCustomEffectBridgeMissing(error)) return this.showCustomEffectRestartNotice();
+            console.error('Update personal effect thumbnail error:', error);
+            this.showNotification('error', 'Không thể cập nhật ảnh thumbnail.');
         }
     }
 
@@ -3572,7 +3649,11 @@ class EffectStoreApp {
                                 </div>
                                 `}
                                 <button class="${btnClass}" onclick="${btnAction}">${btnText}</button>
-                                ${effect.isCustom && viewName === 'library' ? `<button onclick="app.deletePersonalEffect('${effectId}')" style="margin-top:7px;width:100%;padding:7px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#fca5a5;cursor:pointer;">Xóa khỏi máy</button>` : ''}
+                                ${effect.isCustom && viewName === 'library' ? `
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px;">
+                                    <button onclick="app.changePersonalEffectThumbnail('${effectId}')" title="Đổi ảnh đại diện Thumbnail cho hiệu ứng này" style="padding:7px 4px;border-radius:8px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.1);color:#7dd3fc;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:4px;"><i class="fas fa-image"></i> Đổi ảnh</button>
+                                    <button onclick="app.deletePersonalEffect('${effectId}')" title="Xóa hiệu ứng cá nhân khỏi máy tính" style="padding:7px 4px;border-radius:8px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:#fca5a5;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:4px;"><i class="fas fa-trash-alt"></i> Xóa máy</button>
+                                </div>` : ''}
                             </div>
                         </div>`;
             }).join('');

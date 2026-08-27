@@ -952,14 +952,17 @@ async function readCustomEffects() {
                         fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
                     }
                 }
+                const thumbFile = path.join(dir, 'thumbnail.png');
+                const hasThumb = fs.existsSync(thumbFile);
+                const thumbMtime = hasThumb ? fs.statSync(thumbFile).mtimeMs : Date.now();
                 return {
                     ...metadata,
                     id: entry.name,
                     _id: entry.name,
                     isCustom: true,
                     previewUrl: `http://127.0.0.1:${PORT}/custom-effects/${entry.name}/effect.webm`,
-                    thumbUrl: fs.existsSync(path.join(dir, 'thumbnail.png'))
-                        ? `http://127.0.0.1:${PORT}/custom-effects/${entry.name}/thumbnail.png`
+                    thumbUrl: hasThumb
+                        ? `http://127.0.0.1:${PORT}/custom-effects/${entry.name}/thumbnail.png?v=${thumbMtime}`
                         : ''
                 };
             } catch (_error) { return null; }
@@ -968,6 +971,23 @@ async function readCustomEffects() {
 }
 
 ipcMain.handle('custom-effects:list', async () => ({ success: true, effects: await readCustomEffects() }));
+
+ipcMain.handle('custom-effects:choose-thumbnail', async () => {
+    const thumbResult = await dialog.showOpenDialog(mainWindow, {
+        title: 'Chọn ảnh đại diện / Thumbnail hiệu ứng',
+        properties: ['openFile'],
+        filters: [{ name: 'Hình ảnh', extensions: ['png', 'jpg', 'jpeg', 'webp'] }]
+    });
+    if (thumbResult.canceled || !thumbResult.filePaths[0]) return { success: false, canceled: true };
+    const thumbPath = thumbResult.filePaths[0];
+    const stat = fs.statSync(thumbPath);
+    return {
+        success: true,
+        thumbPath,
+        thumbName: path.basename(thumbPath),
+        thumbBytes: stat.size
+    };
+});
 
 ipcMain.handle('custom-effects:choose-files', async () => {
     const videoResult = await dialog.showOpenDialog(mainWindow, {
@@ -1027,7 +1047,22 @@ ipcMain.handle('custom-effects:save', async (_event, payload = {}) => {
 
         try {
             await createCustomEffectWebm(videoPath, outputPath);
-            await createCustomEffectThumbnail(outputPath, thumbOutputPath);
+            if (payload.thumbPath && fs.existsSync(path.resolve(String(payload.thumbPath)))) {
+                try {
+                    await runFfmpeg([
+                        '-hide_banner',
+                        '-loglevel', 'error',
+                        '-y',
+                        '-i', path.resolve(String(payload.thumbPath)),
+                        '-vf', 'scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black@0',
+                        thumbOutputPath
+                    ]);
+                } catch (_tErr) {
+                    await createCustomEffectThumbnail(outputPath, thumbOutputPath);
+                }
+            } else {
+                await createCustomEffectThumbnail(outputPath, thumbOutputPath);
+            }
         } catch (error) {
             fs.rmSync(dir, { recursive: true, force: true });
             return { success: false, error: `Không thể tối ưu video sang WebM: ${error.message}` };
@@ -1053,6 +1088,42 @@ ipcMain.handle('custom-effects:save', async (_event, payload = {}) => {
         }, null, 2), 'utf8');
         return { success: true, effect: (await readCustomEffects()).find(item => item.id === id) };
     } catch (error) { return { success: false, error: error.message }; }
+});
+
+ipcMain.handle('custom-effects:update-thumbnail', async (_event, payload = {}) => {
+    try {
+        const effectId = String(payload.effectId || '');
+        if (!/^custom-[a-zA-Z0-9-]+$/.test(effectId)) return { success: false, error: 'Mã hiệu ứng không hợp lệ.' };
+        const dir = path.join(customEffectsPath, effectId);
+        if (!fs.existsSync(dir)) return { success: false, error: 'Không tìm thấy thư mục hiệu ứng.' };
+
+        let thumbPath = payload.thumbPath ? path.resolve(String(payload.thumbPath)) : null;
+        if (!thumbPath || !fs.existsSync(thumbPath)) {
+            const thumbResult = await dialog.showOpenDialog(mainWindow, {
+                title: 'Chọn ảnh đại diện mới cho hiệu ứng',
+                properties: ['openFile'],
+                filters: [{ name: 'Hình ảnh', extensions: ['png', 'jpg', 'jpeg', 'webp'] }]
+            });
+            if (thumbResult.canceled || !thumbResult.filePaths[0]) return { success: false, canceled: true };
+            thumbPath = thumbResult.filePaths[0];
+        }
+
+        const thumbOutputPath = path.join(dir, 'thumbnail.png');
+        await runFfmpeg([
+            '-hide_banner',
+            '-loglevel', 'error',
+            '-y',
+            '-i', thumbPath,
+            '-vf', 'scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black@0',
+            thumbOutputPath
+        ]);
+
+        const effects = await readCustomEffects();
+        const updated = effects.find(item => item.id === effectId);
+        return { success: true, effect: updated };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
 });
 
 ipcMain.handle('custom-effects:delete', async (_event, effectId) => {
