@@ -163,6 +163,13 @@ function normalizeCustomEffect(customEffect, user) {
     if (!id) return null;
 
     const baseUrl = getCustomEffectBaseUrl();
+    let thumbFile = 'thumbnail.jpg';
+    try {
+        const customDir = path.join(dataPaths.customEffectsDir, id);
+        if (!fs.existsSync(path.join(customDir, 'thumbnail.jpg')) && fs.existsSync(path.join(customDir, 'thumbnail.png'))) {
+            thumbFile = 'thumbnail.png';
+        }
+    } catch (_e) {}
     return {
         id,
         _id: id,
@@ -170,7 +177,7 @@ function normalizeCustomEffect(customEffect, user) {
         name: customEffect.name || 'Hiệu ứng cá nhân',
         fileUrl: `${baseUrl}/${id}/effect.webm`,
         previewUrl: `${baseUrl}/${id}/effect.webm`,
-        thumbUrl: `${baseUrl}/${id}/thumbnail.png`,
+        thumbUrl: `${baseUrl}/${id}/${thumbFile}`,
         duration: toDuration(customEffect.duration),
         ownerId: toEffectId(user?._id || user?.id),
         isCustom: true,

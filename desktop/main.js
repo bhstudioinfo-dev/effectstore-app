@@ -198,7 +198,8 @@ async function createCustomEffectThumbnail(inputPath, outputPath) {
         '-ss', '0',
         '-i', inputPath,
         '-frames:v', '1',
-        '-vf', `scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black@0`,
+        '-vf', 'scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black',
+        '-q:v', '3',
         outputPath
     ]);
 }
@@ -954,17 +955,19 @@ async function readCustomEffects() {
                         fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
                     }
                 }
-                const thumbFile = path.join(dir, 'thumbnail.png');
-                const hasThumb = fs.existsSync(thumbFile);
-                const thumbMtime = hasThumb ? fs.statSync(thumbFile).mtimeMs : Date.now();
+                const thumbJpg = path.join(dir, 'thumbnail.jpg');
+                const thumbPng = path.join(dir, 'thumbnail.png');
+                const thumbFile = fs.existsSync(thumbJpg) ? thumbJpg : (fs.existsSync(thumbPng) ? thumbPng : null);
+                const thumbName = thumbFile ? path.basename(thumbFile) : 'thumbnail.jpg';
+                const thumbMtime = thumbFile ? fs.statSync(thumbFile).mtimeMs : Date.now();
                 return {
                     ...metadata,
                     id: entry.name,
                     _id: entry.name,
                     isCustom: true,
                     previewUrl: `http://127.0.0.1:${PORT}/custom-effects/${entry.name}/effect.webm`,
-                    thumbUrl: hasThumb
-                        ? `http://127.0.0.1:${PORT}/custom-effects/${entry.name}/thumbnail.png?v=${thumbMtime}`
+                    thumbUrl: thumbFile
+                        ? `http://127.0.0.1:${PORT}/custom-effects/${entry.name}/${thumbName}?v=${thumbMtime}`
                         : ''
                 };
             } catch (_error) { return null; }
@@ -1045,7 +1048,7 @@ ipcMain.handle('custom-effects:save', async (_event, payload = {}) => {
         const dir = path.join(customEffectsPath, id);
         fs.mkdirSync(dir, { recursive: false });
         const outputPath = path.join(dir, 'effect.webm');
-        const thumbOutputPath = path.join(dir, 'thumbnail.png');
+        const thumbOutputPath = path.join(dir, 'thumbnail.jpg');
 
         try {
             await createCustomEffectWebm(videoPath, outputPath);
@@ -1056,7 +1059,8 @@ ipcMain.handle('custom-effects:save', async (_event, payload = {}) => {
                         '-loglevel', 'error',
                         '-y',
                         '-i', path.resolve(String(payload.thumbPath)),
-                        '-vf', 'scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black@0',
+                        '-vf', 'scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black',
+                        '-q:v', '3',
                         thumbOutputPath
                     ]);
                 } catch (_tErr) {
@@ -1110,15 +1114,20 @@ ipcMain.handle('custom-effects:update-thumbnail', async (_event, payload = {}) =
             thumbPath = thumbResult.filePaths[0];
         }
 
-        const thumbOutputPath = path.join(dir, 'thumbnail.png');
+        const thumbOutputPath = path.join(dir, 'thumbnail.jpg');
         await runFfmpeg([
             '-hide_banner',
             '-loglevel', 'error',
             '-y',
             '-i', thumbPath,
-            '-vf', 'scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black@0',
+            '-vf', 'scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black',
+            '-q:v', '3',
             thumbOutputPath
         ]);
+        const legacyPng = path.join(dir, 'thumbnail.png');
+        if (fs.existsSync(legacyPng)) {
+            try { fs.unlinkSync(legacyPng); } catch (_e) {}
+        }
 
         const effects = await readCustomEffects();
         const updated = effects.find(item => item.id === effectId);

@@ -97,7 +97,7 @@ async function saveRemoteEffect(uploadedFile, requestedName) {
     const id = `custom-${crypto.randomUUID()}`;
     const targetDir = path.join(dataPaths.customEffectsDir, id);
     const outputPath = path.join(targetDir, 'effect.webm');
-    const thumbnailPath = path.join(targetDir, 'thumbnail.png');
+    const thumbnailPath = path.join(targetDir, 'thumbnail.jpg');
     fs.mkdirSync(targetDir, { recursive: false });
     try {
         await runFfmpeg([
@@ -110,7 +110,8 @@ async function saveRemoteEffect(uploadedFile, requestedName) {
         ]);
         await runFfmpeg([
             '-ss', '0', '-i', outputPath, '-frames:v', '1',
-            '-vf', 'scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black@0',
+            '-vf', 'scale=360:640:force_original_aspect_ratio=decrease,pad=360:640:(ow-iw)/2:(oh-ih)/2:color=black',
+            '-q:v', '3',
             thumbnailPath
         ], 120000);
         const duration = await getDurationSeconds(outputPath);
@@ -135,7 +136,7 @@ async function saveRemoteEffect(uploadedFile, requestedName) {
             height: 1280,
             fps: 30,
             previewUrl: `http://127.0.0.1:${PORT}/custom-effects/${id}/effect.webm`,
-            thumbUrl: `http://127.0.0.1:${PORT}/custom-effects/${id}/thumbnail.png`
+            thumbUrl: `http://127.0.0.1:${PORT}/custom-effects/${id}/thumbnail.jpg`
         };
         fs.writeFileSync(path.join(targetDir, 'metadata.json'), JSON.stringify(effect, null, 2), 'utf8');
         return effect;
