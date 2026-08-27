@@ -971,6 +971,13 @@ class EffectStoreApp {
             this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Lỗi khi kiểm tra phiên bản:</p><p>${err?.message || err}</p></div>`);
             this._manualUpdateCheck = false;
         }
+    openObsGuide() {
+        const guideUrl = `${this.API_URL || 'http://localhost:8080'}/obs-guide.html`;
+        if (window.electronAPI?.openExternal) {
+            window.electronAPI.openExternal(guideUrl);
+        } else {
+            window.open('obs-guide.html', '_blank', 'width=1200,height=850');
+        }
     }
 
     async downloadAppUpdate() {

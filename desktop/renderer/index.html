@@ -794,12 +794,12 @@
                 </div>
 
                 <!-- OBS -->
-                <div class="status-card-horizontal status-disconnected" id="status-card-obs">
+                <div class="status-card-horizontal status-disconnected" id="status-card-obs" onclick="app.openObsGuide()" style="cursor:pointer;" title="Nhấn để xem trang hướng dẫn kết nối OBS">
                     <div class="status-icon"><i class="fas fa-times"
                             style="font-style: normal; font-family: sans-serif;">×</i></div>
                     <div class="status-info">
                         <div class="status-title">PHẦN MỀM OBS</div>
-                        <div class="status-subtext" id="status-sub-obs">Chưa tìm thấy OBS</div>
+                        <div class="status-subtext" id="status-sub-obs">Chưa tìm thấy OBS (Click xem hướng dẫn)</div>
                         <div id="obs-source-diagnostic" style="display:none;font-size:10px;line-height:1.35;margin-top:3px;color:var(--text-muted);">
                             <span>gift_menu → <b id="obs-source-gift-menu">--</b></span>
                             <span style="margin-left:8px;">effect_player → <b id="obs-source-effect-player">--</b></span>
@@ -835,7 +835,7 @@
                             <div class="feature"><i class="fas fa-chart-line"></i> Cập nhật mỗi ngày</div>
                         </div>
 
-                        <button class="cta-btn"><i class="fas fa-play-circle"></i> Xem hướng dẫn</button>
+                        <button class="cta-btn" onclick="app.openObsGuide()"><i class="fas fa-play-circle"></i> Xem hướng dẫn kết nối OBS</button>
                     </div>
 
                     <div class="visual">

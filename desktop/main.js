@@ -436,6 +436,10 @@ function startLocalServer() {
         res.sendFile(path.join(__dirname, 'renderer', 'overlay.html'));
     });
     
+    expressApp.get(['/guide', '/obs-guide', '/obs-guide.html'], (req, res) => {
+        res.sendFile(path.join(__dirname, 'renderer', 'obs-guide.html'));
+    });
+    
     expressApp.get('/legacy-preview/api/trigger/:effectId', (req, res) => {
         triggerLegacyPreviewEffect(req.params.effectId);
         res.json({ success: true });
