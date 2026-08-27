@@ -487,7 +487,6 @@ function convertVideoToWebmVp9(inputPath, outputPath) {
             '-hide_banner', '-loglevel', 'error', '-y',
             '-i', inputPath,
             '-vf', videoFilter,
-            '-an',
             '-c:v', 'libvpx-vp9',
             '-pix_fmt', 'yuva420p',
             '-crf', '30',
@@ -496,6 +495,9 @@ function convertVideoToWebmVp9(inputPath, outputPath) {
             '-cpu-used', '8',
             '-row-mt', '1',
             '-threads', '0',
+            '-c:a', 'libopus',
+            '-b:a', '96k',
+            '-ar', '48000',
             outputPath
         ], { windowsHide: true });
 

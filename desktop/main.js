@@ -176,7 +176,6 @@ async function createCustomEffectWebm(inputPath, outputPath) {
         '-i', inputPath,
         '-t', String(CUSTOM_EFFECT_MAX_SECONDS),
         '-vf', videoFilter,
-        '-an',
         '-c:v', 'libvpx-vp9',
         '-pix_fmt', 'yuva420p',
         '-crf', '30',
@@ -184,6 +183,9 @@ async function createCustomEffectWebm(inputPath, outputPath) {
         '-deadline', 'good',
         '-cpu-used', '4',
         '-row-mt', '1',
+        '-c:a', 'libopus',
+        '-b:a', '96k',
+        '-ar', '48000',
         outputPath
     ]);
 }
