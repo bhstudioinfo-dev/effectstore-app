@@ -828,28 +828,64 @@ body[data-current-view="gift-mapping"] .contact-card { display:none; }
 .stat-card-new .value { font-size: 24px; font-weight: 800; color: white; margin-bottom: 4px; }
 .stat-card-new .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
-.filter-categories-new { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 28px 0; }
-.filter-categories-new::-webkit-scrollbar { height: 4px; }
-.filter-categories-new::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 2px; }
+.filter-categories-new {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin: 14px 0 20px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(124,58,237,0.3) transparent;
+    -webkit-overflow-scrolling: touch;
+}
+.filter-categories-new::-webkit-scrollbar { height: 3px; }
+.filter-categories-new::-webkit-scrollbar-track { background: transparent; }
+.filter-categories-new::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 3px; }
+.filter-categories-new::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.6); }
+
 .filter-btn-new {
-    padding: 10px 22px; /* Tăng độ dày nút */
-    border-radius: 12px;
-    font-size: 13px; /* Chữ to hơn một chút */
+    padding: 7px 14px;
+    border-radius: 10px;
+    font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
+    flex-shrink: 0;
     cursor: pointer;
     background: rgba(255,255,255,0.05);
     border: 1px solid var(--border-subtle);
     color: var(--text-secondary);
-    transition: all 0.3s;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
 }
-.filter-btn-new.active, 
 .filter-btn-new:hover {
+    background: rgba(255,255,255,0.09);
+    color: #fff;
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+.filter-btn-new.active {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     color: white;
     border-color: transparent;
-    box-shadow: 0 4px 15px rgba(124,58,237,0.4);
+    box-shadow: 0 4px 14px rgba(124,58,237,0.35);
     transform: translateY(-1px);
+}
+
+.cat-badge {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1px 6px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    transition: all 0.25s ease;
+}
+.filter-btn-new.active .cat-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
 }
 
 /* ===== 7. EFFECTS GRID ===== */

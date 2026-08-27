@@ -3250,7 +3250,20 @@ class EffectStoreApp {
             // when the Designer's own buy button adds one to the cart.
             const isHiddenFromStore = (e) => e.category === 'menu_template' && e.isWidgetTemplate;
             if (storeGrid) {
-                const visibleStoreEffects = this.storeEffects.filter(e => !isHiddenFromStore(e));
+                let visibleStoreEffects = this.storeEffects.filter(e => !isHiddenFromStore(e));
+                this.updateCategoryCounts(visibleStoreEffects);
+
+                const sortType = this.currentSortType || 'newest';
+                if (sortType === 'hot') {
+                    visibleStoreEffects.sort((a, b) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0));
+                } else if (sortType === 'price-asc') {
+                    visibleStoreEffects.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+                } else if (sortType === 'price-desc') {
+                    visibleStoreEffects.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+                } else if (sortType === 'newest') {
+                    visibleStoreEffects.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+                }
+
                 this._renderGrid(storeGrid, visibleStoreEffects, filter, search, 'store');
             }
             if (flashSaleGrid) {
@@ -3284,6 +3297,31 @@ class EffectStoreApp {
                 this._renderGrid(libraryTemplatesGrid, templateEffects, filter, search, 'library');
             }
         }
+    }
+
+    updateCategoryCounts(visibleEffects) {
+        if (!Array.isArray(visibleEffects)) return;
+        const counts = {
+            all: visibleEffects.length,
+            free: visibleEffects.filter(e => Number(e.price) === 0).length,
+            transformation: visibleEffects.filter(e => e.category === 'transformation').length,
+            gift: visibleEffects.filter(e => e.category === 'gift').length,
+            background: visibleEffects.filter(e => e.category === 'background').length,
+            animation: visibleEffects.filter(e => e.category === 'animation').length,
+            pk: visibleEffects.filter(e => e.category === 'pk').length,
+            meme: visibleEffects.filter(e => e.category === 'meme').length,
+            team_heart: visibleEffects.filter(e => e.category === 'team_heart').length,
+            menu_template: visibleEffects.filter(e => e.category === 'menu_template').length
+        };
+        Object.entries(counts).forEach(([cat, count]) => {
+            const el = document.getElementById(`cat-count-${cat}`);
+            if (el) el.textContent = count;
+        });
+    }
+
+    sortEffects(sortType) {
+        this.currentSortType = sortType;
+        this.renderEffects();
     }
 
     switchLibraryTab(tab) {
@@ -3410,7 +3448,8 @@ class EffectStoreApp {
             .map(template => [template?._id || template?.id, template?.updatedAt || template?.savedAt || '', (template?.exportedItems || template?.items || []).length].join(':'))
             .sort()
             .join('|');
-        const cacheKey = `_hasRendered_${viewName}_${contentSignature}_${templateSignature}_${usageSignature}_${ownershipSignature}_${ownedProductSignature}_${cartSignature}_${pendingSignature}`;
+        const sortSignature = this.currentSortType || 'newest';
+        const cacheKey = `_hasRendered_${viewName}_${sortSignature}_${contentSignature}_${templateSignature}_${usageSignature}_${ownershipSignature}_${ownedProductSignature}_${cartSignature}_${pendingSignature}`;
 
         if (!grid[cacheKey]) {
             grid[cacheKey] = true;
@@ -9242,11 +9281,20 @@ function toggleCart() {
     if (overlay) overlay.style.display = isOpen ? 'none' : 'block';
 }
 function filterCategory(cat) {
-    document.querySelectorAll('.filter-btn-new').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    app.renderEffects(cat, document.getElementById('search-input').value);
+    document.querySelectorAll('.filter-btn-new').forEach(b => {
+        if (b.dataset.cat === cat || b.getAttribute('onclick')?.includes(`'${cat}'`)) {
+            b.classList.add('active');
+        } else {
+            b.classList.remove('active');
+        }
+    });
+    app.renderEffects(cat, document.getElementById('search-input')?.value || '');
 }
-function filterEffects() { const active = document.querySelector('.filter-btn-new.active'); const cat = active?.dataset?.cat || 'all'; app.renderEffects(cat, document.getElementById('search-input').value); }
+function filterEffects() {
+    const active = document.querySelector('.filter-btn-new.active');
+    const cat = active?.dataset?.cat || 'all';
+    app.renderEffects(cat, document.getElementById('search-input')?.value || '');
+}
 function switchView(view) { app.switchView(view); }
 function showAccount() {
     let u = app.currentUser;

@@ -880,18 +880,29 @@
                     </div>
                 </div>
 
-                <!-- Filters -->
-                <div class="filter-categories-new">
-                    <button class="filter-btn-new active" onclick="filterCategory('all')">🛍️ Tất cả</button>
-                    <button class="filter-btn-new" onclick="filterCategory('free')">🆓 Miễn phí</button>
-                    <button class="filter-btn-new" onclick="filterCategory('transformation')">🔥 Biến hình</button>
-                    <button class="filter-btn-new" onclick="filterCategory('gift')">🎁 Quà tặng</button>
-                    <button class="filter-btn-new" onclick="filterCategory('background')">🎨 Phông nền</button>
-                    <button class="filter-btn-new" onclick="filterCategory('animation')">🎬 Hoạt ảnh</button>
-                    <button class="filter-btn-new" onclick="filterCategory('pk')">🥊 PK</button>
-                    <button class="filter-btn-new" onclick="filterCategory('meme')">😂 Meme</button>
-                    <button class="filter-btn-new" onclick="filterCategory('team_heart')">❤️ Tym đội</button>
-                    <button class="filter-btn-new" onclick="filterCategory('menu_template')">📋 Mẫu Menu Quà</button>
+                <!-- Store Toolbar: Categories & Sort -->
+                <div class="store-toolbar" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 16px 0 20px 0; flex-wrap: wrap;">
+                    <div class="filter-categories-new" style="margin: 0; flex: 1; min-width: 0;">
+                        <button class="filter-btn-new active" data-cat="all" onclick="filterCategory('all')">🛍️ Tất cả <span class="cat-badge" id="cat-count-all">0</span></button>
+                        <button class="filter-btn-new" data-cat="free" onclick="filterCategory('free')">🆓 Miễn phí <span class="cat-badge" id="cat-count-free">0</span></button>
+                        <button class="filter-btn-new" data-cat="transformation" onclick="filterCategory('transformation')">🔥 Biến hình <span class="cat-badge" id="cat-count-transformation">0</span></button>
+                        <button class="filter-btn-new" data-cat="gift" onclick="filterCategory('gift')">🎁 Quà tặng <span class="cat-badge" id="cat-count-gift">0</span></button>
+                        <button class="filter-btn-new" data-cat="background" onclick="filterCategory('background')">🎨 Phông nền <span class="cat-badge" id="cat-count-background">0</span></button>
+                        <button class="filter-btn-new" data-cat="animation" onclick="filterCategory('animation')">🎬 Hoạt ảnh <span class="cat-badge" id="cat-count-animation">0</span></button>
+                        <button class="filter-btn-new" data-cat="pk" onclick="filterCategory('pk')">🥊 PK <span class="cat-badge" id="cat-count-pk">0</span></button>
+                        <button class="filter-btn-new" data-cat="meme" onclick="filterCategory('meme')">😂 Meme <span class="cat-badge" id="cat-count-meme">0</span></button>
+                        <button class="filter-btn-new" data-cat="team_heart" onclick="filterCategory('team_heart')">❤️ Tym đội <span class="cat-badge" id="cat-count-team_heart">0</span></button>
+                        <button class="filter-btn-new" data-cat="menu_template" onclick="filterCategory('menu_template')">📋 Mẫu Menu <span class="cat-badge" id="cat-count-menu_template">0</span></button>
+                    </div>
+                    <div class="store-sort-container" style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                        <span style="font-size: 12px; color: var(--text-muted); white-space: nowrap;"><i class="fas fa-sort-amount-down"></i> Sắp xếp:</span>
+                        <select id="store-sort-select" onchange="app.sortEffects(this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: #fff; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; outline: none;">
+                            <option value="newest">Mới nhất</option>
+                            <option value="hot">🔥 Hot nhất</option>
+                            <option value="price-asc">Giá: Thấp ➔ Cao</option>
+                            <option value="price-desc">Giá: Cao ➔ Thấp</option>
+                        </select>
+                    </div>
                 </div>
                 <!-- Effects Grid -->
                 <div class="effects-grid-new" id="effects-grid">
