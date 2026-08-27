@@ -8896,8 +8896,8 @@ class EffectStoreApp {
         if (!targetAudioSrc) {
             const apiUrl = this.API_URL || 'http://127.0.0.1:9000';
             const candidateUrls = [
-                `${apiUrl}/assets/audio/voice-samples/${safeVoiceId}.mp3`,
                 `${apiUrl}/assets/audio/voice-samples/${activePersona}_${safeVoiceId}.mp3`,
+                `${apiUrl}/assets/audio/voice-samples/${safeVoiceId}.mp3`,
                 `${apiUrl}/assets/audio/voice-samples/sample_${safeVoiceId}.mp3`
             ];
             for (const candidate of candidateUrls) {
