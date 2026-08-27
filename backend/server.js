@@ -175,6 +175,42 @@ app.use('/uploads/thumbs', express.static(dataPaths.thumbsDir, {
     etag: true,
     lastModified: true
 }));
+app.get('/uploads/banners/:filename', async (req, res, next) => {
+    try {
+        const localPath = path.join(dataPaths.bannersDir, req.params.filename);
+        if (fs.existsSync(localPath)) return next();
+        const legacyPath = path.join(__dirname, 'uploads', 'banners', req.params.filename);
+        if (fs.existsSync(legacyPath)) {
+            try {
+                fs.mkdirSync(dataPaths.bannersDir, { recursive: true });
+                fs.copyFileSync(legacyPath, localPath);
+            } catch (_e) { }
+            return next();
+        }
+        const { isAssetStoreConfigured, downloadBanner } = require('./services/effectAssetStore');
+        if (!isAssetStoreConfigured()) return next();
+        const remoteStream = await downloadBanner(req.params.filename);
+        if (!remoteStream) return next();
+        fs.mkdirSync(dataPaths.bannersDir, { recursive: true });
+        const tempPath = `${localPath}.downloading-${process.pid}-${Date.now()}`;
+        await new Promise((resolve, reject) => {
+            const fileStream = fs.createWriteStream(tempPath);
+            remoteStream.on('error', reject);
+            fileStream.on('error', reject);
+            fileStream.on('finish', resolve);
+            remoteStream.pipe(fileStream);
+        });
+        fs.renameSync(tempPath, localPath);
+        return next();
+    } catch (_error) {
+        return next();
+    }
+});
+app.use('/uploads/banners', express.static(dataPaths.bannersDir, {
+    maxAge: 0,
+    etag: true,
+    lastModified: true
+}));
 const voiceSamplesDir = path.join(__dirname, 'public', 'assets', 'audio', 'voice-samples');
 app.get('/assets/audio/voice-samples/:filename', async (req, res, next) => {
     const filename = String(req.params.filename || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');

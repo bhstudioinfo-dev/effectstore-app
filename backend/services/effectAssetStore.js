@@ -186,6 +186,47 @@ async function downloadVoiceSample(filename) {
     }
 }
 
+function keyForBanner(filename) {
+    const safeFilename = String(filename || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+    return `banners/${safeFilename}`;
+}
+
+async function uploadBanner(filename, localFilePathOrBuffer) {
+    if (!isAssetStoreConfigured()) return;
+    const fs = require('fs');
+    const body = Buffer.isBuffer(localFilePathOrBuffer) ? localFilePathOrBuffer : fs.readFileSync(localFilePathOrBuffer);
+    await getClient().send(new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: keyForBanner(filename),
+        Body: body,
+        ContentType: 'image/png',
+        CacheControl: 'public, max-age=31536000, immutable'
+    }));
+}
+
+async function downloadBanner(filename) {
+    if (!isAssetStoreConfigured()) return null;
+    try {
+        const result = await getClient().send(new GetObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: keyForBanner(filename)
+        }));
+        return result.Body;
+    } catch (_error) {
+        return null;
+    }
+}
+
+async function deleteBanner(filename) {
+    if (!isAssetStoreConfigured()) return;
+    try {
+        await getClient().send(new DeleteObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: keyForBanner(filename)
+        }));
+    } catch (_error) {}
+}
+
 module.exports = {
     isAssetStoreConfigured,
     uploadEncryptedEffect,
@@ -199,5 +240,8 @@ module.exports = {
     downloadReleaseArtifact,
     keyForRelease,
     uploadVoiceSample,
-    downloadVoiceSample
+    downloadVoiceSample,
+    uploadBanner,
+    downloadBanner,
+    deleteBanner
 };

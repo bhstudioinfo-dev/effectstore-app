@@ -80,10 +80,23 @@ router.post('/', authMiddleware, adminMiddleware, upload.single('banner'), async
         const bannerPath = path.join(bannersDir, fileName);
         
         fs.copyFileSync(req.file.path, bannerPath);
+
+        const { uploadBanner, deleteBanner } = require('../services/effectAssetStore');
+        try {
+            await uploadBanner(fileName, bannerPath);
+        } catch (r2Err) {
+            console.error('Failed to sync banner to R2:', r2Err.message);
+        }
         
         const oldBanner = await Banner.findOne({ isActive: true });
-        if (oldBanner && fs.existsSync(oldBanner.filePath)) {
-            try { fs.unlinkSync(oldBanner.filePath); } catch (e) {}
+        if (oldBanner) {
+            if (fs.existsSync(oldBanner.filePath)) {
+                try { fs.unlinkSync(oldBanner.filePath); } catch (e) {}
+            }
+            if (oldBanner.publicUrl) {
+                const oldFileName = path.basename(oldBanner.publicUrl);
+                try { await deleteBanner(oldFileName); } catch (e) {}
+            }
         }
         
         const banner = await Banner.findOneAndUpdate(
@@ -109,8 +122,15 @@ router.post('/', authMiddleware, adminMiddleware, upload.single('banner'), async
 router.delete('/', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const banner = await Banner.findOne({ isActive: true });
-        if (banner && fs.existsSync(banner.filePath)) {
-            try { fs.unlinkSync(banner.filePath); } catch (e) {}
+        if (banner) {
+            if (fs.existsSync(banner.filePath)) {
+                try { fs.unlinkSync(banner.filePath); } catch (e) {}
+            }
+            if (banner.publicUrl) {
+                const { deleteBanner } = require('../services/effectAssetStore');
+                const oldFileName = path.basename(banner.publicUrl);
+                try { await deleteBanner(oldFileName); } catch (e) {}
+            }
         }
         await Banner.deleteMany({});
         res.json({ success: true, message: 'Đã xóa banner' });
