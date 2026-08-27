@@ -6295,7 +6295,6 @@ class EffectStoreApp {
                     let hasNewlyApproved = false;
                     let hasNewlyRejected = false;
                     let rejectedReason = '';
-                    const currentlyPendingIds = new Set();
                     const pendingEffectIds = [];
 
                     for (const payment of data.payments) {
@@ -6303,7 +6302,6 @@ class EffectStoreApp {
                         const effectIds = (payment.effectIds || []).map(String);
 
                         if (payment.status === 'pending' || payment.status === 'processing') {
-                            currentlyPendingIds.add(orderId);
                             this._knownPendingOrderIds.add(orderId);
                             pendingEffectIds.push(...effectIds);
                         } else if (payment.status === 'approved') {
@@ -6325,12 +6323,15 @@ class EffectStoreApp {
                     this.pendingPaymentEffects = [...new Set(pendingEffectIds)];
                     this.savePendingPaymentEffects();
 
-                    // Kiểm tra nếu có hiệu ứng mới được kích hoạt trên tài khoản
-                    const prevOwnedCount = this.ownedEffects ? this.ownedEffects.length : 0;
-                    const serverPurchased = data.purchasedEffects || [];
-                    const currentOwnedCount = serverPurchased.length;
+                    // Kiểm tra nếu có hiệu ứng mới được kích hoạt trên tài khoản (dựa trên tập hợp ID thực tế)
+                    const serverPurchased = (data.purchasedEffects || []).map(String);
+                    let hasNewPurchasedId = false;
+                    if (this._lastKnownPurchasedEffectIds instanceof Set) {
+                        hasNewPurchasedId = serverPurchased.some(id => !this._lastKnownPurchasedEffectIds.has(id));
+                    }
+                    this._lastKnownPurchasedEffectIds = new Set(serverPurchased);
 
-                    if (hasNewlyApproved || (currentOwnedCount > prevOwnedCount && prevOwnedCount > 0)) {
+                    if (hasNewlyApproved || hasNewPurchasedId) {
                         this.playNotificationChime();
                         this.showNotification('success', '🎉 Đơn hàng đã được Admin duyệt! Hiệu ứng đã sẵn sàng sử dụng.');
                         await this.checkAuth({ loadDependentData: false });
