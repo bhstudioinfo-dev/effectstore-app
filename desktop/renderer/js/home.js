@@ -3511,8 +3511,7 @@ class EffectStoreApp {
                 let previewHTML = '';
                 const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value);
                 const thumbUrl = effect.thumbUrl ? resolveMediaUrl(effect.thumbUrl) : '';
-                const fallbackIcon = effect.icon || '🎬';
-                const effectiveVideo = (effect.previewUrl && !effect.isCustom)
+                const effectiveVideo = effect.previewUrl
                     ? resolveMediaUrl(effect.previewUrl)
                     : (effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '');
 
@@ -3895,8 +3894,9 @@ class EffectStoreApp {
         const isBusiness = this.currentUser && this.currentUser.subscription === 'business';
         const hasPurchased = this.ownedProductIds.has(String(effectId)) ||
             this.ownedEffects.some(e => String(e.id || e._id) === String(effectId));
-        const isOwned = isAdmin || isBusiness || hasPurchased;
-        const videoUrl = effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
+        const videoUrl = effect.previewUrl
+            ? this.resolveCatalogMediaUrl(effect.previewUrl)
+            : (effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '');
 
         document.getElementById('detail-name').textContent = `${effect.icon || '🎬'} ${effect.name}`;
         const templateKindSuffix = effect.category === 'menu_template'
