@@ -48,7 +48,7 @@ class EffectStoreApp {
         let cachedStore = [];
         try {
             cachedStore = JSON.parse(localStorage.getItem('es_cache_store_effects') || '[]');
-        } catch (_e) {}
+        } catch (_e) { }
         this.effects = cachedStore;
         this.storeEffects = cachedStore;
         this.mappingEffects = [];
@@ -70,9 +70,6 @@ class EffectStoreApp {
         this.ws = null;
         this.WS_URL = 'ws://127.0.0.1:9001';
         this.API_URL = 'http://127.0.0.1:9000';
-        // Public, non-secret central origin. Catalog JSON is requested through
-        // the local backend, but media paths returned by that cloud response
-        // live on the central host rather than on each customer's machine.
         this.CLOUD_API_URL = 'https://effectstore-app.onrender.com';
         this.selectedGift = null;
         this.selectedEffect = null;
@@ -103,7 +100,7 @@ class EffectStoreApp {
         if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis) {
             try {
                 window.speechSynthesis.onvoiceschanged = () => this.loadVoices();
-            } catch (_e) {}
+            } catch (_e) { }
         }
 
         // Thêm lắng nghe phím Enter để mapping
@@ -134,6 +131,26 @@ class EffectStoreApp {
             console.error('App init error:', initErr);
             this.hideAppLoadingOverlay();
         }
+    }
+
+    async request(url, options = {}, retries = 2) {
+        let lastError = null;
+        for (let i = 0; i <= retries; i++) {
+            try {
+                const response = await fetch(url, options);
+                return response;
+            } catch (err) {
+                lastError = err;
+                const msg = String(err?.message || '');
+                const isNetworkChanged = msg.includes('Failed to fetch') || msg.includes('NETWORK_CHANGED') || msg.includes('network') || err.name === 'TypeError';
+                if (i < retries && isNetworkChanged) {
+                    await new Promise((r) => setTimeout(r, 120 * (i + 1)));
+                    continue;
+                }
+                throw err;
+            }
+        }
+        throw lastError;
     }
 
     showAppLoadingOverlay(statusText = 'Đang chuẩn bị hệ thống...', percent = 15) {
@@ -283,7 +300,7 @@ class EffectStoreApp {
             if (cachedTemplates && (!this._templatesCache || !this._templatesCache.length)) {
                 this._templatesCache = JSON.parse(cachedTemplates);
             }
-        } catch (_error) {}
+        } catch (_error) { }
         // Retired global keys could expose the previous account's state on a
         // shared PC. Never migrate ambiguous ownership/payment data.
         localStorage.removeItem('es_cache_owned_effects');
@@ -383,7 +400,7 @@ class EffectStoreApp {
             img.onload = async () => {
                 try {
                     if (typeof img.decode === 'function') await img.decode();
-                } catch (_error) {}
+                } catch (_error) { }
                 finish();
             };
             img.onerror = finish;
@@ -440,7 +457,7 @@ class EffectStoreApp {
                 if (window.getMachineId) {
                     savedMachineId = await window.getMachineId();
                 }
-            } catch (_e) {}
+            } catch (_e) { }
             if (!savedMachineId) {
                 // Fallback only when running outside Electron (no real machine ID available).
                 savedMachineId = localStorage.getItem('es_machine_id');
@@ -455,7 +472,7 @@ class EffectStoreApp {
             let cachedUser = null;
             try {
                 cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
-            } catch (_e) {}
+            } catch (_e) { }
             this.currentUser = cachedUser;
             this.hydrateAccountCaches();
 
@@ -481,14 +498,14 @@ class EffectStoreApp {
             window.electronAPI?.onControlDeckTrigger?.((slotId) => this.triggerControlDeckSlot(slotId));
 
             // Wait for the backend to respond
-            await this.waitForBackendReady(30, 400).catch(() => {});
+            await this.waitForBackendReady(30, 400).catch(() => { });
             // Begin OBS health polling before the slower catalog/account
             // preload so the first visible state cannot remain stale.
             this.startSystemStatusPoll();
             this.updateAppLoadingProgress('🔐 Đang xác minh phiên đăng nhập...', 45);
 
             // Validate authentication token
-            await this.checkAuth().catch(() => {});
+            await this.checkAuth().catch(() => { });
 
             // A user can arrive at the login screen after a prior process
             // crashed, its token expired, or localStorage was cleared. In all
@@ -510,7 +527,7 @@ class EffectStoreApp {
             this.syncControlDeckToRemote();
             this.updateAppLoadingProgress('✨ Dữ liệu đã sẵn sàng!', 100);
             setTimeout(() => this.hideAppLoadingOverlay(), 250);
-            
+
             this.loadAiAssistantConfig();
             this.connectWebSocket();
 
@@ -653,13 +670,13 @@ class EffectStoreApp {
                 const secure = await window.electronAPI.invoke('session-token:load');
                 if (secure?.token) return secure.token;
             }
-        } catch (_e) {}
+        } catch (_e) { }
         // Migration path: an older app version stored the token in
         // localStorage. Move it into secure storage once, so existing
         // logged-in users aren't forced to log in again after this update.
         const legacyToken = localStorage.getItem('token');
         if (legacyToken) {
-            this.saveAuthToken(legacyToken).catch(() => {});
+            this.saveAuthToken(legacyToken).catch(() => { });
             localStorage.removeItem('token');
             return legacyToken;
         }
@@ -672,7 +689,7 @@ class EffectStoreApp {
                 await window.electronAPI.invoke('session-token:save', token);
                 return;
             }
-        } catch (_e) {}
+        } catch (_e) { }
         // Outside Electron there is no secure store available.
         localStorage.setItem('token', token);
     }
@@ -682,7 +699,7 @@ class EffectStoreApp {
             if (window.electronAPI?.invoke) {
                 await window.electronAPI.invoke('session-token:clear');
             }
-        } catch (_e) {}
+        } catch (_e) { }
         localStorage.removeItem('token');
     }
 
@@ -745,7 +762,7 @@ class EffectStoreApp {
             let cachedUser = null;
             try {
                 cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
-            } catch (_e) {}
+            } catch (_e) { }
             if (cachedUser && token) {
                 this.currentUser = cachedUser;
                 this.authToken = token;
@@ -808,7 +825,7 @@ class EffectStoreApp {
             let cachedUser = null;
             try {
                 cachedUser = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
-            } catch (_e) {}
+            } catch (_e) { }
             this.currentUser = cachedUser || null;
         }
         document.getElementById('auth-modal')?.classList.remove('show');
@@ -1284,7 +1301,7 @@ class EffectStoreApp {
                 this.updateUI();
                 this.startSystemStatusPoll();
                 this.startAdminPendingPaymentsPoll();
-                
+
                 this.updateAppLoadingProgress('✨ Đã sẵn sàng!', 100);
                 setTimeout(() => this.hideAppLoadingOverlay(), 300);
                 this.showNotification('success', `✅ Chào mừng ${data.user.name || data.user.email}!`);
@@ -1486,6 +1503,8 @@ class EffectStoreApp {
         this.updateAdminBadges(0);
         await this.resetRemoteControlSession();
         await this.resetGiftMenuDesignerSession();
+        await fetch(`${this.API_URL}/api/tiktok/gift-menu-overlay-clear`, { method: 'POST' }).catch(() => { });
+        await this.hideGiftMenuOverlayOnLogout();
         this.switchView('store');
         this.updateUserUI();
         this.openAuthModal();
@@ -1665,7 +1684,7 @@ class EffectStoreApp {
                 this.bannerUrl = bannerUrl;
                 try {
                     localStorage.setItem('es_cached_banner_url', bannerUrl);
-                } catch (_e) {}
+                } catch (_e) { }
 
                 heroBanner.style.backgroundImage = `url('${bannerUrl}')`;
                 heroBanner.style.backgroundSize = 'cover';
@@ -1677,7 +1696,7 @@ class EffectStoreApp {
                     preloadImg.onerror = () => {
                         const cloudBannerUrl = `${encodeURI(fallbackUrl)}?v=${bannerVersion}`;
                         this.bannerUrl = cloudBannerUrl;
-                        try { localStorage.setItem('es_cached_banner_url', cloudBannerUrl); } catch (_e) {}
+                        try { localStorage.setItem('es_cached_banner_url', cloudBannerUrl); } catch (_e) { }
                         heroBanner.style.backgroundImage = `url('${cloudBannerUrl}')`;
                     };
                     preloadImg.src = bannerUrl;
@@ -1721,7 +1740,7 @@ class EffectStoreApp {
                 this.effects = this.storeEffects;
                 try {
                     localStorage.setItem('es_cache_store_effects', JSON.stringify(this.storeEffects));
-                } catch (_e) {}
+                } catch (_e) { }
             }
             this.menuTemplateUsage = new Map();
             this.menuTemplateLayoutIds = new Map();
@@ -1753,7 +1772,7 @@ class EffectStoreApp {
                     this._templatesCache = templateData.templates;
                     try {
                         localStorage.setItem('es_cache_templates', JSON.stringify(templateData.templates));
-                    } catch (_e) {}
+                    } catch (_e) { }
                     if (window.giftMenuDesigner) window.giftMenuDesigner.serverTemplates = templateData.templates;
                     templateData.templates.forEach(template => {
                         this.menuTemplateUsage.set(String(template._id), Boolean(template.isUsed));
@@ -1773,7 +1792,7 @@ class EffectStoreApp {
                 try {
                     this.effects = JSON.parse(localStorage.getItem('es_cache_store_effects') || '[]');
                     this.storeEffects = this.effects;
-                } catch (_e) {}
+                } catch (_e) { }
                 if (this.effects.length === 0) {
                     this.storeEffects = [];
                     this.effects = [];
@@ -1843,7 +1862,7 @@ class EffectStoreApp {
                     this.ownedProductIds = new Set((cached.map(e => e.id || e._id)).map(String));
                 }
             }
-        } catch (_e) {}
+        } catch (_e) { }
         try {
             const response = await fetch(this.API_URL + '/api/user/effects', {
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
@@ -1861,7 +1880,7 @@ class EffectStoreApp {
                 try {
                     const ownedKey = this.accountStorageKey('es_cache_owned_effects');
                     if (ownedKey) localStorage.setItem(ownedKey, JSON.stringify(this.ownedEffects));
-                } catch (_e) {}
+                } catch (_e) { }
 
                 const ownedIds = this.ownedEffects.map(e => (e.id || e._id));
                 const oldPendingCount = (this.pendingPaymentEffects || []).length;
@@ -1911,7 +1930,7 @@ class EffectStoreApp {
             if (!(this.ownedProductIds instanceof Set)) this.ownedProductIds = new Set();
             data.templates.filter((template) => template?.isPurchased && template?.storeProductId)
                 .forEach((template) => this.ownedProductIds.add(String(template.storeProductId)));
-            try { localStorage.setItem('es_cache_templates', JSON.stringify(data.templates)); } catch (_error) {}
+            try { localStorage.setItem('es_cache_templates', JSON.stringify(data.templates)); } catch (_error) { }
             if (window.giftMenuDesigner) window.giftMenuDesigner.serverTemplates = data.templates;
             return data.templates;
         } catch (error) {
@@ -1959,16 +1978,16 @@ class EffectStoreApp {
 
     async choosePersonalEffectFiles() {
         try {
-        if (!window.electronAPI?.invoke) return this.showCustomEffectRestartNotice();
-        const result = await window.electronAPI.invoke('custom-effects:choose-files');
-        if (!result?.success) {
-            if (result?.error) this.showNotification('warning', result.error);
-            return;
-        }
-        this.pendingPersonalEffectFiles = result;
-        const status = document.getElementById('personal-effect-file-status');
-        if (status) status.textContent = `✓ Đã chọn ${result.videoName || 'video'} • sẽ tối ưu thành ${result.outputLabel || 'WebM VP9'} • tối đa ${result.maxDurationSeconds || 15}s${result.warning ? ` • ${result.warning}` : ''}`;
-        if (result.warning) this.showNotification('warning', result.warning);
+            if (!window.electronAPI?.invoke) return this.showCustomEffectRestartNotice();
+            const result = await window.electronAPI.invoke('custom-effects:choose-files');
+            if (!result?.success) {
+                if (result?.error) this.showNotification('warning', result.error);
+                return;
+            }
+            this.pendingPersonalEffectFiles = result;
+            const status = document.getElementById('personal-effect-file-status');
+            if (status) status.textContent = `✓ Đã chọn ${result.videoName || 'video'} • sẽ tối ưu thành ${result.outputLabel || 'WebM VP9'} • tối đa ${result.maxDurationSeconds || 15}s${result.warning ? ` • ${result.warning}` : ''}`;
+            if (result.warning) this.showNotification('warning', result.warning);
         } catch (error) {
             if (this.isCustomEffectBridgeMissing(error)) return this.showCustomEffectRestartNotice();
             console.error('Choose personal effect files error:', error);
@@ -2171,7 +2190,7 @@ class EffectStoreApp {
         if (!response || response.status !== 401) return response;
         // Do not let a dependent request recursively start itself again while
         // refreshing auth (AI config used to create an unbounded 401 loop).
-        await this.checkAuth({ loadDependentData: false }).catch(() => {});
+        await this.checkAuth({ loadDependentData: false }).catch(() => { });
         if (this.authToken && typeof authenticatedRequest === 'function') {
             return authenticatedRequest(this.authToken);
         }
@@ -2424,7 +2443,7 @@ class EffectStoreApp {
 
     testVoicePreview() {
         this.savePreferences();
-        
+
         const templateText = this.ttsTemplate || 'Cảm ơn {username} đã tặng {quantity} {giftName} ❤️';
         if (!templateText.trim()) {
             this.showNotification('error', 'Vui lòng kiểm tra lại nội dung mẫu thoại.');
@@ -2504,7 +2523,7 @@ class EffectStoreApp {
 
     testFollowVoicePreview() {
         this.savePreferences();
-        
+
         const templateText = this.ttsFollowTemplate || 'Cảm ơn {username} đã follow kênh nhé! ❤️';
         if (!templateText.trim()) {
             this.showNotification('error', 'Vui lòng kiểm tra lại nội dung mẫu thoại.');
@@ -2556,10 +2575,10 @@ class EffectStoreApp {
                         const dataUrl = reader.result;
                         try {
                             localStorage.setItem('es_voice_cache_' + cacheKey, dataUrl);
-                        } catch (_e) {}
+                        } catch (_e) { }
 
                     };
-                }).catch(() => {});
+                }).catch(() => { });
 
             this.currentAudio = new Audio(googleTTSUrl);
             this.currentAudio.volume = this.ttsVolume;
@@ -2808,7 +2827,7 @@ class EffectStoreApp {
         try {
             const headers = {};
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
-            
+
             let res;
             if (hasProof) {
                 const formData = new FormData();
@@ -2826,7 +2845,7 @@ class EffectStoreApp {
                     body: JSON.stringify({ orderId, noProof: true })
                 });
             }
-            
+
             const data = await res.json().catch(() => ({}));
             if (!res.ok || !data.success) {
                 throw new Error(data.error || data.message || ('Không thể xác nhận thanh toán (Mã: ' + res.status + ')'));
@@ -2962,7 +2981,7 @@ class EffectStoreApp {
         }
 
         try {
-            const response = await fetch(this.API_URL + '/api/obs/preview-effect-player', {
+            const response = await this.request(this.API_URL + '/api/obs/preview-effect-player', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -3298,7 +3317,7 @@ class EffectStoreApp {
             .sort()
             .join('|');
         const cacheKey = `_hasRendered_${viewName}_${contentSignature}_${templateSignature}_${usageSignature}_${ownershipSignature}_${ownedProductSignature}_${cartSignature}_${pendingSignature}`;
-        
+
         if (!grid[cacheKey]) {
             grid[cacheKey] = true;
             // Clear other cache keys
@@ -3360,7 +3379,9 @@ class EffectStoreApp {
                 const resolveMediaUrl = value => this.resolveCatalogMediaUrl(value);
                 const thumbUrl = effect.thumbUrl ? resolveMediaUrl(effect.thumbUrl) : '';
                 const fallbackIcon = effect.icon || '🎬';
-                const effectiveVideo = effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '';
+                const effectiveVideo = (effect.previewUrl && !effect.isCustom)
+                    ? resolveMediaUrl(effect.previewUrl)
+                    : (effectId ? `${this.API_URL}/api/stream/effect/${effectId}` : '');
 
                 if (effect.category === 'menu_template') {
                     previewHTML = `
@@ -3495,7 +3516,7 @@ class EffectStoreApp {
                                             <span class="price-current" style="color: #ffcc00; font-weight: 900; font-size: 26px; text-shadow: 0 0 20px rgba(255,204,0,0.6); letter-spacing: -0.5px;">${this.formatPrice(currentPrice)}</span>
                                             <span class="price-original" style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 13px; font-weight: 500;">${this.formatPrice(origPrice)}</span>
                                         </div>
-                                        <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
+                                        ${effect.category === 'menu_template' ? '' : `<span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>`}
                                     </div>
                                     ${countdownHTML}
                                     <button class="${activeBtnClass}" onclick="${activeBtnAction}">${activeBtnText}</button>
@@ -3527,12 +3548,12 @@ class EffectStoreApp {
                                 <div class="effect-price-row" style="margin-bottom: 5px;">
                                     <div style="display: flex; align-items: center; gap: 6px;">
                                         <span class="price-current" style="color: var(--success); font-weight: 600; font-size: 13px;"><i class="fas fa-check-circle" style="margin-right: 4px;"></i> Đã sở hữu</span>
-                                        ${effect.isCustom 
-                                            ? '<span style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">💻 Cá nhân</span>'
-                                            : '<span style="background:rgba(124,58,237,0.15);color:#c4b5fd;border:1px solid rgba(124,58,237,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">🏬 Cửa hàng</span>'
-                                        }
+                                        ${effect.isCustom
+                            ? '<span style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">💻 Cá nhân</span>'
+                            : '<span style="background:rgba(124,58,237,0.15);color:#c4b5fd;border:1px solid rgba(124,58,237,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">🏬 Cửa hàng</span>'
+                        }
                                     </div>
-                                    <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
+                                    ${effect.category === 'menu_template' ? '' : `<span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>`}
                                 </div>
                                 ` : `
                                 <div class="effect-price-row" style="margin-bottom: 5px;">
@@ -3540,7 +3561,7 @@ class EffectStoreApp {
                                         <span class="price-current" style="color: ${priceColor}; font-weight: 800; font-size: 15px;">${this.formatPrice(currentPrice)}</span>
                                         ${originalPriceHTML}
                                     </div>
-                                    <span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>
+                                    ${effect.category === 'menu_template' ? '' : `<span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>`}
                                 </div>
                                 `}
                                 <button class="${btnClass}" onclick="${btnAction}">${btnText}</button>
@@ -3556,22 +3577,17 @@ class EffectStoreApp {
                 if (video) {
                     container.addEventListener('mouseenter', () => {
                         if (video.getAttribute('data-error') === 'true') return;
-                        // Do not reveal the video early: Flash Sale cards have
-                        // a large image and used to look blank until the first
-                        // decoded frame was ready.
-                        const revealPreview = () => {
-                            if (container.matches(':hover')) container.classList.add('is-previewing');
-                        };
-                        video.addEventListener('playing', revealPreview, { once: true });
-                        video.currentTime = 0;
-                        video.play().catch(err => {
-                            if (err.name !== 'AbortError') console.error('Video play error:', err);
-                        });
+                        container.classList.add('is-previewing');
+                        const playPromise = video.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(err => {
+                                if (err.name !== 'AbortError') console.error('Video play error:', err);
+                            });
+                        }
                     });
                     container.addEventListener('mouseleave', () => {
                         container.classList.remove('is-previewing');
                         video.pause();
-                        video.currentTime = 0;
                     });
                 }
             });
@@ -3705,9 +3721,8 @@ class EffectStoreApp {
         // thumbnails locally. Prefer that stable local cache over Render so
         // cold/cloud asset responses cannot leave otherwise-ready cards blank.
         // Protected playback routes must also remain local because Render does
-        // not have their per-machine effect files.
         const isLocalMediaRoute = /^\/api\/(?:stream\/effect\/|obs\/effect-player-media\/)/i.test(raw)
-            || /^\/(?:effects\/|uploads\/(?:thumbs|banners)\/)/i.test(raw);
+            || /^\/(?:effects\/|uploads\/(?:thumbs|banners|previews)\/)/i.test(raw);
         const baseUrl = isLocalMediaRoute ? this.API_URL : this.CLOUD_API_URL;
         try {
             return new URL(raw, baseUrl).toString();
@@ -3842,25 +3857,38 @@ class EffectStoreApp {
             const product = (this.storeEffects || []).find((effect) =>
                 String(effect?._id || effect?.id || '') === String(productOrTemplateId || '')
             );
-            // Old rendered cards only carried the template id.  New cards
-            // carry both IDs, so resolve from the canonical Store product
-            // before navigating rather than ever sending /undefined/use.
             const templateId = [explicitTemplateId, product?.fileUrl, productOrTemplateId]
                 .map(value => String(value || '').trim())
                 .find(isResourceId);
             if (!templateId) {
                 throw new Error('Mẫu thiết kế này chưa đồng bộ xong. Vui lòng tải lại Cửa hàng.');
             }
+
+            const designer = window.giftMenuDesigner;
+            const targetName = product?.name || 'Mẫu thiết kế';
+            const userPlan = this.userPlan || this.user?.plan || 'free';
+            const limit = userPlan === 'free' ? 1 : (userPlan === 'basic' ? 2 : Infinity);
+            const layouts = designer?.layouts || [];
+            const isWheelProduct = /vòng quay|wheel/i.test(targetName) || product?.type === 'wheel' || product?.category === 'wheel';
+            const existingLayoutHasWheel = layouts.some(l => (l.items || []).some(i => i.type === 'challenge-wheel'));
+
+            // If user already reached library limit and does not have an existing layout specifically containing this widget:
+            if (Number.isFinite(limit) && layouts.length >= limit && (!isWheelProduct || !existingLayoutHasWheel)) {
+                const templateObj = {
+                    name: targetName,
+                    productType: isWheelProduct ? 'challenge-wheel' : '',
+                    id: isWheelProduct ? 'tmpl_challenge_wheel' : templateId
+                };
+                if (designer && typeof designer.showLibraryLimitModal === 'function') {
+                    designer.showLibraryLimitModal(templateObj);
+                    return;
+                }
+            }
+
             this.switchView('gift-menu-designer');
             const tryOpen = async (retries = 5) => {
                 if (window.giftMenuDesigner && typeof window.giftMenuDesigner.buyOrUseTemplateFromSidebar === 'function') {
-                    const usedLayoutId = this.menuTemplateLayoutIds?.get(String(templateId));
-                    let result = usedLayoutId
-                        ? await window.giftMenuDesigner.openLibraryLayout(usedLayoutId)
-                        : await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
-                    if (!result || !result.success) {
-                        result = await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
-                    }
+                    const result = await window.giftMenuDesigner.buyOrUseTemplateFromSidebar(templateId);
                     if (result && result.success) {
                         if (!this.menuTemplateUsage) this.menuTemplateUsage = new Map();
                         this.menuTemplateUsage.set(String(templateId), true);
@@ -4488,7 +4516,7 @@ class EffectStoreApp {
                     fallback[type].slots = Array.isArray(saved?.[type]?.slots) ? saved[type].slots.slice(0, 20) : [];
                 }
             }
-        } catch (_error) {}
+        } catch (_error) { }
         return fallback;
     }
 
@@ -4506,10 +4534,10 @@ class EffectStoreApp {
         // the previous account's saved menus visible. Clear local state first
         // so nothing lingers even if the reload below fails.
         if (window.giftMenuDesigner && typeof window.giftMenuDesigner.resetDesignerSession === 'function') {
-            try { window.giftMenuDesigner.resetDesignerSession(); } catch (_e) {}
+            try { window.giftMenuDesigner.resetDesignerSession(); } catch (_e) { }
         }
         if (window.giftMenuDesigner && typeof window.giftMenuDesigner.loadLayoutsList === 'function') {
-            try { await window.giftMenuDesigner.loadLayoutsList(); } catch (_e) {}
+            try { await window.giftMenuDesigner.loadLayoutsList(); } catch (_e) { }
         }
     }
 
@@ -4522,7 +4550,7 @@ class EffectStoreApp {
                 signal: controller.signal
             });
             clearTimeout(timeout);
-        } catch (_e) {}
+        } catch (_e) { }
     }
 
     async syncGiftMenuOverlayToActiveAccount() {
@@ -4535,7 +4563,7 @@ class EffectStoreApp {
                 signal: controller.signal
             });
             clearTimeout(timeout);
-        } catch (_e) {}
+        } catch (_e) { }
     }
 
     async syncControlDeckToRemote() {
@@ -4604,7 +4632,7 @@ class EffectStoreApp {
             if (response.ok && Number.isFinite(Number(result.revision))) {
                 this.lastRemoteDeckRevision = Number(result.revision);
             }
-        } catch (_e) {}
+        } catch (_e) { }
     }
 
     async showRemoteConnectModal() {
@@ -4803,7 +4831,7 @@ class EffectStoreApp {
                     this.applyRemoteDeckState(data.deck, revision);
                 }
             }
-        } catch (_e) {}
+        } catch (_e) { }
     }
 
     applyRemoteDeckState(remoteDeck, revision) {
@@ -5052,9 +5080,9 @@ class EffectStoreApp {
     findControlDeckSlot(slotId, deckType = null) {
         const types = deckType && ['effect', 'sound'].includes(deckType) ? [deckType] : ['effect', 'sound'];
         for (const type of types) {
-            const slot = this.controlDeck[type].slots.find(item => 
-                String(item.id) === String(slotId) || 
-                String(item.effectId) === String(slotId) || 
+            const slot = this.controlDeck[type].slots.find(item =>
+                String(item.id) === String(slotId) ||
+                String(item.effectId) === String(slotId) ||
                 String(item.soundId) === String(slotId) ||
                 String(item.index) === String(slotId)
             );
@@ -5076,7 +5104,7 @@ class EffectStoreApp {
                 }
             } catch (e) {
                 console.error('Trigger effect error:', e);
-                await this._legacyPreviewTriggerDoNotUse(slot.effectId).catch(() => {});
+                await this._legacyPreviewTriggerDoNotUse(slot.effectId).catch(() => { });
             }
             setTimeout(() => element?.classList.remove('running'), 900);
             return;
@@ -5203,44 +5231,90 @@ class EffectStoreApp {
             return;
         }
 
+        const isComposite = document.getElementById('upload-composite') ? document.getElementById('upload-composite').checked : false;
+        const isFlashSale = document.getElementById('upload-flash-sale') ? document.getElementById('upload-flash-sale').checked : false;
+        const fsPrice = document.getElementById('upload-flash-sale-price') ? document.getElementById('upload-flash-sale-price').value : '';
+        const fsEnds = document.getElementById('upload-flash-sale-ends') ? document.getElementById('upload-flash-sale-ends').value : '';
+
         const formData = new FormData();
         formData.append('name', name);
         formData.append('category', category);
         formData.append('price', price);
         formData.append('originalPrice', originalPrice || '0');
-        formData.append('description', description);
-        formData.append('icon', icon);
-
-        // ✅ Thêm thumb vào formData nếu có
-        if (thumbInput && thumbInput.files[0]) {
-            formData.append('thumb', thumbInput.files[0]);
-        }
-
-        formData.append('effectFile', fileInput.files[0]);
-
-        const isComposite = document.getElementById('upload-composite').checked;
-        formData.append('isComposite', isComposite);
-
-        const isFlashSale = document.getElementById('upload-flash-sale') ? document.getElementById('upload-flash-sale').checked : false;
-        formData.append('isFlashSale', isFlashSale);
-
-        const fsPrice = document.getElementById('upload-flash-sale-price') ? document.getElementById('upload-flash-sale-price').value : '';
-        const fsEnds = document.getElementById('upload-flash-sale-ends') ? document.getElementById('upload-flash-sale-ends').value : '';
-
+        formData.append('description', description || '');
+        formData.append('icon', icon || '🎬');
+        formData.append('isComposite', String(isComposite));
+        formData.append('isFlashSale', String(isFlashSale));
         formData.append('flashSalePrice', fsPrice || '0');
         formData.append('flashSaleEndsAt', fsEnds || '');
 
+        let filePath = '';
+        let thumbPath = '';
         try {
-            this.showNotification('info', '⏳ Đang upload...');
-            const response = await fetch(this.API_URL + '/api/effects', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${this.authToken}` },
-                body: formData
-            });
+            if (window.electronAPI && typeof window.electronAPI.getPathForFile === 'function') {
+                if (fileInput.files && fileInput.files[0]) filePath = window.electronAPI.getPathForFile(fileInput.files[0]) || '';
+                if (thumbInput && thumbInput.files && thumbInput.files[0]) thumbPath = window.electronAPI.getPathForFile(thumbInput.files[0]) || '';
+            }
+        } catch (_e) {}
+        if (!filePath && fileInput.files && fileInput.files[0]) filePath = fileInput.files[0].path || '';
+        if (!thumbPath && thumbInput && thumbInput.files && thumbInput.files[0]) thumbPath = thumbInput.files[0].path || '';
+
+        const metaObj = {
+            name,
+            category,
+            price: parseFloat(price) || 0,
+            originalPrice: parseFloat(originalPrice) || 0,
+            description: description || '',
+            icon: icon || '🎬',
+            isComposite,
+            isFlashSale,
+            flashSalePrice: parseFloat(fsPrice) || 0,
+            flashSaleEndsAt: fsEnds || '',
+            filePath,
+            thumbPath
+        };
+        formData.append('metadata', JSON.stringify(metaObj));
+        if (filePath) formData.append('filePath', filePath);
+        if (thumbPath) formData.append('thumbPath', thumbPath);
+
+        if (thumbInput && thumbInput.files && thumbInput.files[0]) {
+            formData.append('thumb', thumbInput.files[0]);
+        }
+        formData.append('effectFile', fileInput.files[0]);
+
+        const uploadBtn = document.querySelector('#admin-view button[onclick="app.uploadEffect()"]');
+        const originalBtnHtml = uploadBtn ? uploadBtn.innerHTML : '<i class="fas fa-rocket"></i> Thêm hiệu ứng ngay';
+
+        try {
+            if (uploadBtn) {
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang mã hóa & đồng bộ Cloud R2...';
+            }
+            
+            let response;
+            if (filePath) {
+                // Direct local file path mode: instantaneous 1KB JSON payload
+                response = await fetch(this.API_URL + '/api/effects', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(metaObj)
+                });
+            } else {
+                // Fallback stream mode
+                const uploadUrl = this.API_URL + '/api/effects?meta=' + encodeURIComponent(JSON.stringify(metaObj));
+                response = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${this.authToken}` },
+                    body: formData
+                });
+            }
             const data = await response.json();
 
             if (data.success) {
-                this.showNotification('success', '✅ Đã tải lên thành công!');
+                this.showNotification('success', '✅ Đã tải lên và đồng bộ Cloud R2 thành công!');
                 document.getElementById('upload-name').value = '';
                 document.getElementById('upload-price').value = '';
                 document.getElementById('upload-original-price').value = '';
@@ -5250,22 +5324,27 @@ class EffectStoreApp {
                 document.getElementById('upload-icon').value = '';
                 fileInput.value = '';
                 if (thumbInput) thumbInput.value = ''; // ✅ Reset thumb input
-                
+
                 localStorage.removeItem('es_cache_store_effects');
                 try {
                     const ownedKey = this.accountStorageKey('es_cache_owned_effects');
                     if (ownedKey) localStorage.removeItem(ownedKey);
-                } catch (_e) {}
+                } catch (_e) { }
                 this.loadAdminDashboard();
                 await this.loadEffects();
                 await this.loadOwnedEffects();
-                if (typeof this.loadEffectsForMapping === 'function') await this.loadEffectsForMapping().catch(() => {});
-                if (typeof this.loadTrending === 'function') await this.loadTrending().catch(() => {});
+                if (typeof this.loadEffectsForMapping === 'function') await this.loadEffectsForMapping().catch(() => { });
+                if (typeof this.loadTrending === 'function') await this.loadTrending().catch(() => { });
             } else {
                 throw new Error(data.error);
             }
         } catch (error) {
             this.showNotification('error', '❌ ' + error.message);
+        } finally {
+            if (uploadBtn) {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = originalBtnHtml;
+            }
         }
     }
 
@@ -5354,12 +5433,12 @@ class EffectStoreApp {
                 try {
                     const ownedKey = this.accountStorageKey('es_cache_owned_effects');
                     if (ownedKey) localStorage.removeItem(ownedKey);
-                } catch (_e) {}
+                } catch (_e) { }
                 this.loadAdminDashboard();
                 await this.loadEffects();
                 await this.loadOwnedEffects();
-                if (typeof this.loadEffectsForMapping === 'function') await this.loadEffectsForMapping().catch(() => {});
-                if (typeof this.loadTrending === 'function') await this.loadTrending().catch(() => {});
+                if (typeof this.loadEffectsForMapping === 'function') await this.loadEffectsForMapping().catch(() => { });
+                if (typeof this.loadTrending === 'function') await this.loadTrending().catch(() => { });
             } else {
                 this.showNotification('error', 'Lỗi: ' + (data.error || data.message));
             }
@@ -5550,11 +5629,13 @@ class EffectStoreApp {
             return;
         }
         this._paymentApprovals.add(String(paymentId));
-        document.querySelectorAll('[data-payment-id]').forEach((button) => {
-            if (button.dataset.paymentId === String(paymentId)) button.disabled = true;
+        const buttons = document.querySelectorAll(`[data-payment-id="${paymentId}"]`);
+        buttons.forEach((button) => {
+            button.disabled = true;
+            button.dataset.origText = button.innerHTML;
+            button.innerHTML = '⏳ Đang duyệt...';
         });
         try {
-            this.showAppLoadingOverlay('⏳ Đang duyệt đơn và kích hoạt dịch vụ...', 30);
             const res = await fetch(`${this.API_URL}/api/payment/admin/approve`, {
                 method: 'POST',
                 headers: {
@@ -5565,26 +5646,30 @@ class EffectStoreApp {
             });
             const data = await res.json().catch(() => ({}));
             if (res.ok && data.success) {
-                if (data.processing) {
-                    this.showNotification('info', 'Đơn đang được máy chủ xử lý. Danh sách sẽ tự cập nhật.');
-                    setTimeout(() => this.loadAdminDashboard(), 1200);
-                    return;
+                // Optimistically remove the approved row from DOM immediately
+                document.querySelectorAll(`[data-payment-id="${paymentId}"]`).forEach((b) => {
+                    const row = b.closest('.effect-item-row');
+                    if (row) row.remove();
+                });
+                const container = document.getElementById('admin-payments-list');
+                if (container && container.querySelectorAll('.effect-item-row').length === 0) {
+                    container.innerHTML = '<div class="empty-state">💳 Không có payment chờ</div>';
                 }
                 this.showNotification('success', data.duplicate
                     ? '✅ Đơn này đã được duyệt trước đó; quyền lợi không bị cộng trùng.'
                     : '✅ Đã duyệt đơn và kích hoạt dịch vụ thành công!');
                 if (closeModal) this.closePendingPaymentsModal();
-                await this.loadAdminDashboard();
+                this.loadAdminDashboard();
             } else {
                 this.showNotification('error', '❌ ' + (data.message || data.error || 'Không thể duyệt đơn.'));
             }
         } catch (e) {
             this.showNotification('error', '❌ Lỗi kết nối máy chủ: ' + e.message);
         } finally {
-            this.hideAppLoadingOverlay();
             this._paymentApprovals.delete(String(paymentId));
-            document.querySelectorAll('[data-payment-id]').forEach((button) => {
-                if (button.dataset.paymentId === String(paymentId)) button.disabled = false;
+            buttons.forEach((button) => {
+                button.disabled = false;
+                if (button.dataset.origText) button.innerHTML = button.dataset.origText;
             });
         }
     }
@@ -5678,11 +5763,11 @@ class EffectStoreApp {
                 </thead>
                 <tbody>
                     ${records.map((record) => {
-                        const type = typeLabel[record.acquisitionType] || typeLabel.legacy;
-                        const acquiredAt = record.acquiredAt ? new Date(record.acquiredAt).toLocaleString('vi-VN') : '—';
-                        const lastUsedAt = record.lastUsedAt ? new Date(record.lastUsedAt).toLocaleString('vi-VN') : 'Chưa sử dụng';
-                        const price = record.acquisitionPrice == null ? 'Chưa ghi nhận' : this.formatPrice(record.acquisitionPrice);
-                        return `<tr style="border-top:1px solid rgba(255,255,255,.055);">
+            const type = typeLabel[record.acquisitionType] || typeLabel.legacy;
+            const acquiredAt = record.acquiredAt ? new Date(record.acquiredAt).toLocaleString('vi-VN') : '—';
+            const lastUsedAt = record.lastUsedAt ? new Date(record.lastUsedAt).toLocaleString('vi-VN') : 'Chưa sử dụng';
+            const price = record.acquisitionPrice == null ? 'Chưa ghi nhận' : this.formatPrice(record.acquisitionPrice);
+            return `<tr style="border-top:1px solid rgba(255,255,255,.055);">
                             <td style="padding:11px 10px;"><div style="font-weight:700;color:#fff;">${safe(record.user?.name || 'Chưa đặt tên')}</div><div style="font-size:10px;color:#94a3b8;margin-top:3px;">${safe(record.user?.email)}</div><div style="font-size:10px;color:#64748b;">${safe(record.user?.phone || 'Chưa có SĐT')}</div></td>
                             <td style="padding:11px 10px;font-weight:650;color:#e2e8f0;">${safe(record.effect?.icon)} ${safe(record.effect?.name)}</td>
                             <td style="padding:11px 10px;"><span style="padding:4px 8px;border-radius:999px;color:${type[1]};background:${type[2]};font-size:9px;font-weight:800;">${type[0]}</span></td>
@@ -5691,7 +5776,7 @@ class EffectStoreApp {
                             <td style="padding:11px 10px;text-align:center;font-weight:800;color:#22d3ee;">${Number(record.useCount || 0)}</td>
                             <td style="padding:11px 10px;color:#94a3b8;">${safe(lastUsedAt)}</td>
                         </tr>`;
-                    }).join('')}
+        }).join('')}
                 </tbody>
             </table>`;
     }
@@ -5917,12 +6002,12 @@ class EffectStoreApp {
                 try {
                     const ownedKey = this.accountStorageKey('es_cache_owned_effects');
                     if (ownedKey) localStorage.removeItem(ownedKey);
-                } catch (_e) {}
+                } catch (_e) { }
                 this.loadAdminDashboard();
                 await this.loadEffects();
                 await this.loadOwnedEffects();
-                if (typeof this.loadChallengeWheels === 'function') await this.loadChallengeWheels().catch(() => {});
-                if (typeof this.loadEffectsForMapping === 'function') await this.loadEffectsForMapping().catch(() => {});
+                if (typeof this.loadChallengeWheels === 'function') await this.loadChallengeWheels().catch(() => { });
+                if (typeof this.loadEffectsForMapping === 'function') await this.loadEffectsForMapping().catch(() => { });
             } else {
                 this.showNotification('error', '❌ Lỗi xóa: ' + (data.error || data.message || 'Không thể xóa'));
             }
@@ -5974,7 +6059,7 @@ class EffectStoreApp {
             if (!AudioCtx) return;
             const ctx = new AudioCtx();
             const now = ctx.currentTime;
-            
+
             const osc1 = ctx.createOscillator();
             const gain1 = ctx.createGain();
             osc1.type = 'sine';
@@ -5996,7 +6081,7 @@ class EffectStoreApp {
             gain2.connect(ctx.destination);
             osc2.start(now + 0.12);
             osc2.stop(now + 0.55);
-        } catch (_e) {}
+        } catch (_e) { }
     }
 
     updateAdminBadges(count) {
@@ -6036,7 +6121,7 @@ class EffectStoreApp {
                     const pendingList = data.payments.filter(p => p.status === 'pending' || p.status === 'processing');
                     const count = pendingList.length;
                     this.updateAdminBadges(count);
-                    
+
                     const prevCount = this._prevPendingCount;
                     if (prevCount !== undefined && count > prevCount) {
                         this.playNotificationChime();
@@ -6047,7 +6132,7 @@ class EffectStoreApp {
                     }
                     this._prevPendingCount = count;
                 }
-            } catch (_e) {}
+            } catch (_e) { }
         };
         poll();
         this._adminPollInterval = setInterval(poll, 8000);
@@ -6113,7 +6198,7 @@ class EffectStoreApp {
                 throw new Error(data.error || 'Không thể tải danh sách người dùng.');
             }
 
-                        const planBadge = (u) => {
+            const planBadge = (u) => {
                 const plan = resolvePlanDisplay(u);
                 return `<span style="padding:2px 10px;border-radius:12px;background:${plan.bg};color:${plan.color};border:1px solid ${plan.border};font-size:11px;font-weight:700;">${plan.label}</span>`;
             };
@@ -6195,7 +6280,7 @@ class EffectStoreApp {
         }
     }
 
-        async upgradeSubscription(userId, plan, durationDays, extend = false) {
+    async upgradeSubscription(userId, plan, durationDays, extend = false) {
         const planLabel = { basic: 'Basic', pro: 'Pro', business: 'Pro', studio: 'Studio', free: 'Miễn phí' }[plan] || plan;
         const msg = plan === 'free'
             ? `Chuyển tài khoản về gói miễn phí?`
@@ -6483,6 +6568,11 @@ class EffectStoreApp {
         this.connectWebSocket();
         this.loadGifts();
         this.loadAiAssistantConfig();
+        if (!this.testMappingTimer || this.testMappingTimer.until <= Date.now()) {
+            this.activeTestMappingId = null;
+            this.testMappingTimer = null;
+            this.isTestingFetch = false;
+        }
         // Usually already completed by preloadAllAppData; this is a safe
         // fallback for sessions that entered the view before authentication.
         this.loadEffectsForMapping();
@@ -6506,7 +6596,7 @@ class EffectStoreApp {
                 return;
             }
             this.refreshEffectQueueStatus();
-        }, 500);
+        }, 3000);
     }
 
     stopEffectQueueStatusPolling() {
@@ -6517,21 +6607,28 @@ class EffectStoreApp {
     }
 
     isEffectQueueBusy() {
-        return this.effectQueueStatus?.status && this.effectQueueStatus.status !== 'idle';
+        if (!this.effectQueueStatus) return false;
+        if (this.effectQueueStatus.status === 'idle') return false;
+        if (this.effectQueueStatus.queueLength === 0 && (!this.effectQueueStatus.remainingMs || this.effectQueueStatus.remainingMs <= 0)) {
+            return false;
+        }
+        return Boolean(this.effectQueueStatus.status && this.effectQueueStatus.status !== 'idle');
     }
 
     async refreshEffectQueueStatus() {
+        if (this._effectQueueStatusInFlight) return;
+        this._effectQueueStatusInFlight = true;
         try {
-            const res = await fetch(`${this.API_URL}/api/queue/status`);
-            if (!res.ok) return;
-            const status = await res.json();
+            const res = await this.request(`${this.API_URL}/api/queue/status`).catch(() => null);
+            if (!res || !res.ok) return;
+            const status = await res.json().catch(() => null);
+            if (!status) return;
             this.effectQueueStatus = status;
             this.updateControlDeckQueueStatus(status);
             const hasLocalTestTimer = Boolean(
-                (this.testMappingTimer && this.testMappingTimer.until > Date.now()) ||
-                this.isTestingFetch
+                this.testMappingTimer && this.testMappingTimer.until > Date.now()
             );
-            if (!this.isEffectQueueBusy() && !hasLocalTestTimer) {
+            if (!this.isEffectQueueBusy() && !hasLocalTestTimer && !this.isTestingFetch) {
                 this.activeTestMappingId = null;
             }
             this.updateMappingTestButtons();
@@ -6559,9 +6656,9 @@ class EffectStoreApp {
                         currentTime.textContent = `${remSec}s`;
                     }
                     if (currentType) {
-                        const typeText = status.currentPlaybackType === 'live_mapping' ? 'TikTok Live' : 
-                                         status.currentPlaybackType === 'test_mapping' ? 'Phát thử cách gán' :
-                                         status.currentPlaybackType === 'preview_effect' ? 'Xem thử' : 'OBS Layer';
+                        const typeText = status.currentPlaybackType === 'live_mapping' ? 'TikTok Live' :
+                            status.currentPlaybackType === 'test_mapping' ? 'Phát thử cách gán' :
+                                status.currentPlaybackType === 'preview_effect' ? 'Xem thử' : 'OBS Layer';
                         currentType.textContent = `Loại: ${typeText}`;
                     }
                     if (lengthInfo) {
@@ -6581,6 +6678,8 @@ class EffectStoreApp {
             }
         } catch (error) {
             console.warn('Queue status check failed:', error);
+        } finally {
+            this._effectQueueStatusInFlight = false;
         }
     }
 
@@ -6589,32 +6688,37 @@ class EffectStoreApp {
         if (!buttons.length) return;
 
         const hasTimer = Boolean(this.testMappingTimer && this.testMappingTimer.until > Date.now());
-        const localTestBusy = hasTimer || Boolean(this.activeTestMappingId) || Boolean(this.isTestingFetch);
-        const busy = this.isEffectQueueBusy() || localTestBusy;
-        const remainingSeconds = hasTimer
-            ? Math.max(0, (this.testMappingTimer.until - Date.now()) / 1000).toFixed(1)
-            : Math.max(0, Number(this.effectQueueStatus?.remainingMs || 0) / 1000).toFixed(1);
+        const activeTimerMappingId = hasTimer ? this.testMappingTimer.mappingId : null;
+        const queueBusy = this.isEffectQueueBusy();
+        const busy = queueBusy || hasTimer || Boolean(this.isTestingFetch);
         const queueLength = Number(this.effectQueueStatus?.queueLength || 0);
-        const busyLabel = queueLength > 0 ? `⏳ Đang chạy (${queueLength} chờ)` : `⏳ ${remainingSeconds}s`;
 
         buttons.forEach((btn) => {
             const defaultLabel = btn.dataset.defaultLabel || '▶ Test';
             const mappingId = btn.dataset.mappingId;
-            const isActiveTest = (this.activeTestMappingId && mappingId === this.activeTestMappingId)
-                || (hasTimer && mappingId === this.testMappingTimer?.mappingId);
+            const isLocalActive = Boolean(activeTimerMappingId && mappingId === activeTimerMappingId);
 
-            if (isActiveTest) return;
+            if (isLocalActive) {
+                // Active countdown is controlled by the timer interval
+                return;
+            }
 
             btn.disabled = busy;
             btn.style.cursor = busy ? 'not-allowed' : 'pointer';
-            btn.style.opacity = busy && !isActiveTest ? '0.55' : '';
+            btn.style.opacity = busy ? '0.6' : '';
 
             if (busy) {
-                btn.innerHTML = isActiveTest ? busyLabel : '⏸ Đang bận';
+                if (this.isTestingFetch && this.activeTestMappingId === mappingId) {
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang phát...';
+                } else {
+                    btn.innerHTML = queueLength > 0 ? `⏳ Đang chạy (${queueLength} chờ)` : '⏸ Đang bận';
+                }
             } else {
                 btn.innerHTML = defaultLabel;
                 btn.style.background = '';
                 btn.style.transition = '0.3s';
+                btn.style.opacity = '';
+                btn.style.cursor = 'pointer';
             }
         });
     }
@@ -6800,7 +6904,7 @@ class EffectStoreApp {
             let matchesSearch = true;
             if (searchTerm) {
                 matchesSearch = (g.name && String(g.name).toLowerCase().includes(searchTerm)) ||
-                                (g.id && String(g.id).toLowerCase().includes(searchTerm));
+                    (g.id && String(g.id).toLowerCase().includes(searchTerm));
             }
 
             return matchesRange && matchesSearch;
@@ -6821,7 +6925,7 @@ class EffectStoreApp {
                     ? `<img src="${this.API_URL}${g.icon}" style="width:40px;height:40px;object-fit:contain;margin-bottom:5px;display:block;margin:0 auto;">`
                     : `<div style="font-size:32px;margin-bottom:5px;">${g.icon || '🎁'}</div>`;
                 return `
-                    <div class="gift-item" onclick="app.selectGift('${g.id}','${g.name}','${g.icon}')">
+                    <div class="gift-item" data-gift-id="${g.id}" onclick="app.selectGiftById('${g.id}', this)">
                         ${iconHtml}
                         <div class="gift-name">${g.name}</div>
                         <div class="gift-coins">${g.coins} xu</div>
@@ -6836,26 +6940,21 @@ class EffectStoreApp {
     async preloadMappingLibrary() {
         try {
             if (typeof this.loadChallengeWheels === 'function') {
-                await this.loadChallengeWheels().catch(() => {});
+                await this.loadChallengeWheels().catch(() => { });
             }
             await this.loadEffectsForMapping();
-            this.precacheOwnedEffectsMedia();
-        } catch (_e) {}
+        } catch (_e) { }
     }
 
     precacheOwnedEffectsMedia(effects = []) {
         try {
-            const token = this.authToken || localStorage.getItem('token');
-            if (!token) return;
             const list = Array.isArray(effects) && effects.length > 0 ? effects : (this.ownedEffects || []);
             list.forEach(effect => {
                 const effectId = String(effect._id || effect.id || '').trim();
                 if (!effectId || effect.isCustom || effect.isChallengeWheel || effect.category === 'menu_template') return;
-                fetch(`${this.API_URL}/api/stream/effect/${encodeURIComponent(effectId)}?authToken=${encodeURIComponent(token)}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                }).catch(() => {});
+                // Effects are streamed on demand to maintain optimal local connection pool
             });
-        } catch (_e) {}
+        } catch (_e) { }
     }
 
     async loadEffectsForMapping(options = {}) {
@@ -6865,10 +6964,28 @@ class EffectStoreApp {
             if (!grid) return;
 
             // 1. Instant Cache Render: If we already have mappingEffects or ownedEffects in memory, render immediately
+            const wheelCacheKey = this.accountStorageKey('es_cache_challenge_wheels');
+            let cachedWheels = [];
+            if (wheelCacheKey) {
+                try {
+                    cachedWheels = JSON.parse(localStorage.getItem(wheelCacheKey) || '[]');
+                } catch (_e) { }
+            }
+            const formattedCachedWheels = (cachedWheels || []).map(wheel => ({
+                _id: `challenge-wheel:${wheel._id}`,
+                name: wheel.displayName || wheel.name || 'Vòng quay thử thách',
+                icon: '🎡',
+                isChallengeWheel: true,
+                challengeWheelId: String(wheel._id),
+                segments: Array.isArray(wheel.segments) ? wheel.segments : [],
+                presentation: wheel.presentation && typeof wheel.presentation === 'object' ? wheel.presentation : {}
+            }));
+
             if (Array.isArray(this.mappingEffects) && this.mappingEffects.length > 0) {
                 this.renderMappingEffectsGrid(this.mappingEffects);
             } else if (Array.isArray(this.ownedEffects) && this.ownedEffects.length > 0) {
                 const initialEffects = this.ownedEffects.filter(e => e && e.category !== 'menu_template' && e.isChallengeWheel !== true);
+                initialEffects.push(...formattedCachedWheels.filter(w => !initialEffects.some(e => e._id === w._id)));
                 if (initialEffects.length > 0) this.renderMappingEffectsGrid(initialEffects);
             } else {
                 try {
@@ -6877,15 +6994,18 @@ class EffectStoreApp {
                         const cached = JSON.parse(localStorage.getItem(ownedKey) || '[]');
                         if (Array.isArray(cached) && cached.length > 0) {
                             const initial = cached.filter(e => e && e.category !== 'menu_template' && e.isChallengeWheel !== true);
+                            initial.push(...formattedCachedWheels.filter(w => !initial.some(e => e._id === w._id)));
                             if (initial.length > 0) this.renderMappingEffectsGrid(initial);
+                        } else if (formattedCachedWheels.length > 0) {
+                            this.renderMappingEffectsGrid(formattedCachedWheels);
                         }
                     }
-                } catch (_e) {}
+                } catch (_e) { }
             }
 
             // 2. Parallel Data Fetching: Fetch challenge wheels and available effects simultaneously
             const wheelPromise = (options?.force || !this._challengeWheelsLoaded) && typeof this.loadChallengeWheels === 'function'
-                ? this.loadChallengeWheels(options).catch(() => {})
+                ? this.loadChallengeWheels(options).catch(() => { })
                 : Promise.resolve();
 
             const effectsPromise = (async () => {
@@ -6930,6 +7050,11 @@ class EffectStoreApp {
             const visibleWheels = uniqueWheels.filter((wheel) =>
                 Boolean(wheel.sourceTemplateId) && catalogWheelIds.has(String(wheel.sourceTemplateId))
             );
+            if (wheelCacheKey && visibleWheels.length > 0) {
+                try {
+                    localStorage.setItem(wheelCacheKey, JSON.stringify(visibleWheels));
+                } catch (_e) { }
+            }
             displayEffects.push(...visibleWheels.map((wheel) => ({
                 _id: `challenge-wheel:${wheel._id}`,
                 name: wheel.displayName || wheel.name || 'Vòng quay thử thách',
@@ -6990,7 +7115,7 @@ class EffectStoreApp {
             let previewHTML = '';
             const effectiveThumb = thumbUrl || (!isChallengeWheel && effectId ? resolveMediaUrl(`/uploads/thumbs/${effectId}.png`) : '');
             const videoWithFrame = videoUrl ? (videoUrl.includes('#') ? videoUrl : `${videoUrl}#t=0.001`) : '';
-            
+
             if (isChallengeWheel) {
                 const segments = (e.segments || []).filter(segment => segment && segment.label).slice(0, 8);
                 const presentation = e.presentation || {};
@@ -7015,7 +7140,7 @@ class EffectStoreApp {
                     });
                     previewHTML = `<div style="width:${previewSize}px;height:${previewSize}px;position:relative;overflow:hidden;"><div style="position:absolute;left:50%;top:50%;width:${refW}px;height:${refH}px;transform:translate(-50%,-50%) scale(${previewScale});transform-origin:center;pointer-events:none;">${renderedWheel}</div></div>`;
                 } else {
-                    const colors = segments.map((segment, index) => segment.color || ['#4c00ff','#ec4899','#f59e0b','#06b6d4','#22c55e'][index % 5]);
+                    const colors = segments.map((segment, index) => segment.color || ['#4c00ff', '#ec4899', '#f59e0b', '#06b6d4', '#22c55e'][index % 5]);
                     const gradient = colors.length > 1
                         ? `conic-gradient(${colors.map((color, index) => `${color} ${(index / colors.length) * 100}% ${((index + 1) / colors.length) * 100}%`).join(',')})`
                         : 'conic-gradient(#8b5cf6 0 25%,#ec4899 25% 50%,#f59e0b 50% 75%,#06b6d4 75% 100%)';
@@ -7043,10 +7168,10 @@ class EffectStoreApp {
                 </div>
                 <div class="effect-mapping-info">
                     <div class="effect-mapping-name">${e.icon || '🎬'} ${e.name}</div>
-                    ${e.isCustom 
-                        ? '<div style="margin-top:3px;color:#34d399;font-size:10px;font-weight:800;">💻 Cá nhân</div>' 
-                        : '<div style="margin-top:3px;color:#a78bfa;font-size:10px;font-weight:800;">🏬 Cửa hàng</div>'
-                    }
+                    ${e.isCustom
+                    ? '<div style="margin-top:3px;color:#34d399;font-size:10px;font-weight:800;">💻 Cá nhân</div>'
+                    : '<div style="margin-top:3px;color:#a78bfa;font-size:10px;font-weight:800;">🏬 Cửa hàng</div>'
+                }
                 </div>
             </div>
             `;
@@ -7086,6 +7211,13 @@ class EffectStoreApp {
         return this.selectEffect(id, name, element);
     }
 
+    selectGiftById(giftId, element) {
+        const g = (this.allGiftsLibrary || []).find((x) => String(x.id) === String(giftId));
+        if (g) {
+            this.selectGift(g.id, g.name, g.icon, element);
+        }
+    }
+
     selectGift(id, name, icon, element) {
         this.selectedGift = { id, name, icon };
         document.querySelectorAll('.gift-item').forEach(el => el.classList.remove('selected'));
@@ -7119,7 +7251,7 @@ class EffectStoreApp {
         if (!this.selectedEffects) this.selectedEffects = [];
         const idx = this.selectedEffects.findIndex(x => x.id === id);
         const itemEl = element || (typeof event !== 'undefined' && event && event.currentTarget);
-        
+
         if (idx >= 0) {
             this.selectedEffects.splice(idx, 1);
             if (itemEl) {
@@ -7147,7 +7279,7 @@ class EffectStoreApp {
         // Vòng quay không dùng selectedEffects, nhưng vẫn phải mở panel để lưu mapping.
         if (this.selectedGift && ((this.selectedEffects && this.selectedEffects.length > 0) || hasWheelSelection)) {
             panel.style.display = 'block';
-            
+
             const giftEl = document.getElementById('config-selected-gift');
             const effectEl = document.getElementById('config-selected-effects');
             if (giftEl) {
@@ -7159,7 +7291,7 @@ class EffectStoreApp {
                 const iconHtml = isImg
                     ? `<img src="${this.selectedGift.icon.startsWith('http') ? this.selectedGift.icon : this.API_URL + this.selectedGift.icon}" style="width:24px;height:24px;object-fit:contain;border-radius:4px;vertical-align:middle;margin-right:6px;">`
                     : `<span style="font-size:20px;vertical-align:middle;margin-right:6px;">${this.selectedGift.icon || '🎁'}</span>`;
-                
+
                 giftEl.innerHTML = `${iconHtml}<span style="vertical-align:middle;font-weight:700;">${this.selectedGift.name}</span>`;
             }
             if (effectEl) {
@@ -7169,7 +7301,7 @@ class EffectStoreApp {
                 effectEl.textContent = names;
                 effectEl.title = names;
             }
-            
+
             const modeField = document.getElementById('config-playback-mode-field');
             if (modeField) {
                 modeField.style.display = this.selectedEffects.length > 1 ? 'block' : 'none';
@@ -7182,7 +7314,7 @@ class EffectStoreApp {
             panel.style.display = 'none';
         }
     }
-    
+
     clearSelection() {
         this.selectedGift = null;
         this.selectedEffect = null;
@@ -7216,8 +7348,8 @@ class EffectStoreApp {
             const audioVolumeVal = Number(document.getElementById('mapping-audio-volume')?.value ?? 100);
 
             const payload = {
-                giftId: this.selectedGift.id, 
-                giftName: this.selectedGift.name, 
+                giftId: this.selectedGift.id,
+                giftName: this.selectedGift.name,
                 giftIcon: this.selectedGift.icon,
                 effectId: this.selectedEffects[0]?.id || null,
                 effectName: this.selectedEffects[0]?.name || '',
@@ -7234,7 +7366,7 @@ class EffectStoreApp {
                 audioVolume: Math.max(0, Math.min(100, audioVolumeVal)) / 100
             };
 
-            const res = await fetch(`${this.API_URL}/api/tiktok/map-gift`, {
+            const res = await this.request(`${this.API_URL}/api/tiktok/map-gift`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -7260,12 +7392,12 @@ class EffectStoreApp {
             console.log('📋 Loading mappings...');
             const headers = {};
             if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
-            let res = await fetch(`${this.API_URL}/api/tiktok/mappings`, { headers });
+            let res = await this.request(`${this.API_URL}/api/tiktok/mappings`, { headers });
             if (res.status === 401 && this.authToken) {
                 res = await this.retryUnauthorized(
                     res,
-                    (token) => fetch(`${this.API_URL}/api/tiktok/mappings`, { headers: { Authorization: `Bearer ${token}` } }),
-                    () => fetch(`${this.API_URL}/api/tiktok/mappings`)
+                    (token) => this.request(`${this.API_URL}/api/tiktok/mappings`, { headers: { Authorization: `Bearer ${token}` } }),
+                    () => this.request(`${this.API_URL}/api/tiktok/mappings`)
                 );
             }
             const data = await res.json().catch(() => ({ success: true, mappings: [] }));
@@ -7292,13 +7424,13 @@ class EffectStoreApp {
                             ? `<img src="${giftIconUrl}" style="width:32px;height:32px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,0.05);padding:2px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/679/679821.png'">`
                             : `<span style="font-size:24px;">${m.giftIcon || '🎁'}</span>`;
 
-                                                let detailBadges = '';
+                        let detailBadges = '';
                         let badges = [];
                         if (m.effects && m.effects.length > 1) {
                             const modeText = m.playbackMode === 'sequential' ? 'Tuần tự' : 'Ngẫu nhiên';
                             badges.push(`<span style="font-size:11px;color:#a78bfa;background:rgba(167,139,250,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(167,139,250,0.2);margin-left:6px;">Group: ${m.effects.length} effect (${modeText})</span>`);
                         }
-                        
+
                         // Quantity triggers
                         if (m.exactQuantity !== undefined && m.exactQuantity !== null && m.exactQuantity > 0) {
                             badges.push(`<span style="font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(251,191,36,0.2);margin-left:6px;">SL: chính xác ${m.exactQuantity}</span>`);
@@ -7309,13 +7441,13 @@ class EffectStoreApp {
                             else if (m.maxQuantity) qtyText = `SL: <= ${m.maxQuantity}`;
                             badges.push(`<span style="font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(251,191,36,0.2);margin-left:6px;">${qtyText}</span>`);
                         }
-                        
+
                         // Cooldown
                         if (m.cooldown && m.cooldown > 0) {
                             const actionText = m.cooldownAction === 'ignore' ? 'Bỏ qua' : 'Vẫn xếp hàng';
                             badges.push(`<span style="font-size:11px;color:#ef4444;background:rgba(239,68,68,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(239,68,68,0.2);margin-left:6px;">Chờ: ${m.cooldown}s (${actionText})</span>`);
                         }
-                        
+
                         if (badges.length > 0) {
                             detailBadges = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;width:100%;">${badges.join('')}</div>`;
                         }
@@ -7353,12 +7485,12 @@ class EffectStoreApp {
                                     </div>
                                 </div>
                             `
-}).join('');
+                    }).join('');
                     console.log('✅ Rendered', data.mappings.length, 'mappings');
                 } else {
                     list.innerHTML = '<p style="text-align:center;color:var(--text-muted);">Chưa có mapping nào. Chọn gift và effect để tạo mapping!</p>';
                 }
-                        } else {
+            } else {
                 console.error('❌ No mappings data or list element not found');
             }
         } catch (e) {
@@ -7427,24 +7559,32 @@ class EffectStoreApp {
 
     async testMapping(event, id) {
         const btn = event.currentTarget;
-        if (btn.disabled) return;
+        if (btn && btn.disabled) return;
 
+        if (this.testMappingTimer?.interval) clearInterval(this.testMappingTimer.interval);
         if (this.testMappingTimer?.raf) cancelAnimationFrame(this.testMappingTimer.raf);
         this.testMappingTimer = null;
+        this.activeTestMappingId = null;
 
-        btn.blur();
+        if (btn) btn.blur();
+        const originalContent = btn?.dataset?.defaultLabel || '▶ Test';
 
-        const originalContent = btn.innerHTML;
+        const getActiveBtn = () => document.querySelector(`.btn-test[data-mapping-id="${id}"]`) || btn;
 
         try {
-            this.activeTestMappingId = id;
+            console.log('🧪 Starting test for mapping:', id);
+            this.activeTestMappingId = String(id);
             this.isTestingFetch = true;
-            btn.disabled = true;
-            btn.style.cursor = 'not-allowed';
-            btn.style.position = 'relative';
-            btn.style.overflow = 'hidden';
-            btn.style.transition = 'none';
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang phát...';
+            
+            const liveBtn = getActiveBtn();
+            if (liveBtn) {
+                liveBtn.disabled = true;
+                liveBtn.style.cursor = 'not-allowed';
+                liveBtn.style.position = 'relative';
+                liveBtn.style.overflow = 'hidden';
+                liveBtn.style.transition = 'none';
+                liveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang phát...';
+            }
             this.updateMappingTestButtons();
 
             const token = this.authToken || localStorage.getItem('token');
@@ -7454,14 +7594,45 @@ class EffectStoreApp {
                 ? `${this.API_URL}/api/tiktok/challenge-wheels/${encodeURIComponent(mapping.wheelId)}/test`
                 : `${this.API_URL}/api/tiktok/test-trigger`;
             const testBody = wheelOnly ? {} : { mappingId: id };
-            const res = await fetch(testUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(testBody)
-            });
+            const controller = new AbortController();
+            const fetchTimeout = setTimeout(() => controller.abort(), 12000);
+            let res;
+            try {
+                res = await this.request(testUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(testBody),
+                    signal: controller.signal
+                });
+            } catch (fetchErr) {
+                if (fetchErr.name === 'AbortError') {
+                    throw new Error('Yêu cầu kiểm tra hiệu ứng quá thời gian chờ (Timeout). Vui lòng thử lại.');
+                }
+                throw fetchErr;
+            } finally {
+                clearTimeout(fetchTimeout);
+            }
+            if (res.status === 401 && this.authToken) {
+                res = await this.retryUnauthorized(
+                    res,
+                    (newToken) => this.request(testUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${newToken}`
+                        },
+                        body: JSON.stringify(testBody)
+                    }),
+                    () => this.request(testUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(testBody)
+                    })
+                );
+            }
             const data = await res.json().catch(() => ({}));
             this.isTestingFetch = false;
 
@@ -7472,53 +7643,62 @@ class EffectStoreApp {
             this.showNotification('success', '🎬 Đã chạy thử hiệu ứng trên OBS!');
 
             const resolvedDuration = Number(data.duration) || (wheelOnly ? 6.5 : 0);
-            if (!Number.isFinite(resolvedDuration) || resolvedDuration <= 0) {
-                throw new Error('Không đọc được thời lượng hiệu ứng. Hãy kiểm tra tệp rồi thử lại.');
-            }
-            const totalDuration = Math.max(resolvedDuration * 1000, 1000);
+            const totalDuration = Math.max((Number.isFinite(resolvedDuration) && resolvedDuration > 0 ? resolvedDuration : 5) * 1000, 1000);
             const finishAt = Date.now() + totalDuration;
-            this.testMappingTimer = { mappingId: String(id), until: finishAt, raf: null };
-            let lastShown = null;
-            btn.style.background = `linear-gradient(90deg, #10b981 100%, rgba(0,0,0,0.3) 100%)`;
-            this.updateMappingTestButtons();
 
-            const tick = () => {
-                const timeLeft = Math.max(0, finishAt - Date.now());
-                const seconds = (timeLeft / 1000).toFixed(1);
-                if (seconds !== lastShown) {
-                    lastShown = seconds;
-                    const percent = Math.max(0, (timeLeft / totalDuration) * 100);
-                    btn.innerHTML = `<i class="fas fa-hourglass-half"></i> ${seconds}s`;
-                    btn.style.background = `linear-gradient(90deg, #10b981 ${percent}%, rgba(0,0,0,0.3) ${percent}%)`;
+            const cleanupTest = () => {
+                if (this.testMappingTimer?.interval) clearInterval(this.testMappingTimer.interval);
+                this.testMappingTimer = null;
+                this.activeTestMappingId = null;
+                this.isTestingFetch = false;
+                const currentBtn = getActiveBtn();
+                if (currentBtn) {
+                    currentBtn.disabled = false;
+                    currentBtn.innerHTML = originalContent;
+                    currentBtn.style.background = '';
+                    currentBtn.style.cursor = 'pointer';
+                    currentBtn.style.opacity = '';
+                    currentBtn.style.transition = '0.3s';
                 }
+                this.updateMappingTestButtons();
+                this.loadLogs?.();
+            };
+
+            const updateTick = () => {
+                const timeLeft = finishAt - Date.now();
                 if (timeLeft <= 0) {
-                    this.activeTestMappingId = null;
-                    this.testMappingTimer = null;
-                    this.isTestingFetch = false;
-                    btn.disabled = false;
-                    btn.innerHTML = originalContent;
-                    btn.style.background = '';
-                    btn.style.cursor = 'pointer';
-                    btn.style.transition = '0.3s';
-                    this.updateMappingTestButtons();
-                    this.loadLogs?.();
+                    cleanupTest();
                     return;
                 }
-                if (this.testMappingTimer) {
-                    this.testMappingTimer.raf = requestAnimationFrame(tick);
+                const seconds = (timeLeft / 1000).toFixed(1);
+                const percent = Math.max(0, (timeLeft / totalDuration) * 100);
+                const currentBtn = getActiveBtn();
+                if (currentBtn) {
+                    currentBtn.innerHTML = `<i class="fas fa-hourglass-half"></i> ${seconds}s`;
+                    currentBtn.style.background = `linear-gradient(90deg, #10b981 ${percent}%, rgba(0,0,0,0.3) ${percent}%)`;
                 }
             };
-            tick();
+            updateTick();
+            const interval = setInterval(updateTick, 100);
+
+            this.testMappingTimer = { mappingId: String(id), until: finishAt, interval };
+            this.updateMappingTestButtons();
+
         } catch (e) {
+            console.error('❌ Test mapping error:', e);
             this.showNotification('error', 'Lỗi test OBS: ' + e.message);
             this.activeTestMappingId = null;
             this.testMappingTimer = null;
             this.isTestingFetch = false;
+            const currentBtn = getActiveBtn();
+            if (currentBtn) {
+                currentBtn.disabled = false;
+                currentBtn.innerHTML = originalContent;
+                currentBtn.style.background = '';
+                currentBtn.style.cursor = 'pointer';
+                currentBtn.style.opacity = '';
+            }
             this.updateMappingTestButtons();
-            btn.disabled = false;
-            btn.innerHTML = originalContent;
-            btn.style.background = '';
-            btn.style.cursor = 'pointer';
         }
     }
     showConfirmDialog(title, message, onConfirm) {
@@ -7560,12 +7740,16 @@ class EffectStoreApp {
     async deleteMapping(id) {
         this.showConfirmDialog('Xác nhận xóa Mapping', 'Bạn có chắc chắn muốn xóa mapping này không?', async () => {
             try {
-                await fetch(`${this.API_URL}/api/tiktok/mappings/${id}`, {
+                const res = await fetch(`${this.API_URL}/api/tiktok/mappings/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${this.authToken}` }
                 });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    throw new Error(data.message || data.error || 'Không thể xóa mapping');
+                }
                 this.showNotification('success', 'Đã xóa mapping thành công!');
-                this.loadMappings();
+                await this.loadMappings();
             } catch (e) { this.showNotification('error', 'Lỗi: ' + e.message); }
         });
     }
@@ -7616,6 +7800,21 @@ class EffectStoreApp {
                 break;
             case 'control_deck_remove':
                 if (data.data?.slotId) this.removeControlDeckSlot(String(data.data.slotId));
+                break;
+            case 'queue_updated':
+                this.effectQueueStatus = data.data;
+                this.updateControlDeckQueueStatus(data.data);
+                this.updateMappingTestButtons();
+                break;
+            case 'effect_playback_started':
+                this.refreshEffectQueueStatus();
+                break;
+            case 'effect_playback_finished':
+            case 'effect_queue_empty':
+                this.effectQueueStatus = { status: 'idle', queueLength: 0, remainingMs: 0 };
+                this.updateControlDeckQueueStatus(this.effectQueueStatus);
+                this.updateMappingTestButtons();
+                this.refreshEffectQueueStatus();
                 break;
             case 'effect_warning':
                 this.showNotification('warning', data.data?.message || 'Hiệu ứng đã bị bỏ qua vì thiếu thời lượng.');
@@ -7915,9 +8114,9 @@ class EffectStoreApp {
                 }
                 const templateData = await templateRes.json().catch(() => ({}));
                 const templates = Array.isArray(templateData.templates) ? templateData.templates : [];
-                
+
                 if (!this.ownedProductIds || !this.ownedProductIds.size) {
-                    await this.loadOwnedEffects().catch(() => {});
+                    await this.loadOwnedEffects().catch(() => { });
                 }
 
                 let catalogEffects = Array.isArray(this.storeEffects) ? this.storeEffects : [];
@@ -7966,7 +8165,7 @@ class EffectStoreApp {
                             durationMs: item.durationMs,
                             autoHideMs: item.autoHideMs
                         })
-                    }).catch(() => {});
+                    }).catch(() => { });
                 }
                 if (eligible.length) {
                     const refreshed = await fetch(`${this.API_URL}/api/tiktok/challenge-wheels`, { headers: { 'Authorization': `Bearer ${this.authToken}` } });
@@ -7990,6 +8189,12 @@ class EffectStoreApp {
             const mappingWheels = uniqueMappingWheels.filter((wheel) =>
                 Boolean(wheel.sourceTemplateId) && catalogWheelIds.has(String(wheel.sourceTemplateId))
             );
+            const wheelCacheKey = this.accountStorageKey('es_cache_challenge_wheels');
+            if (wheelCacheKey && mappingWheels.length > 0) {
+                try {
+                    localStorage.setItem(wheelCacheKey, JSON.stringify(mappingWheels));
+                } catch (_e) { }
+            }
             const select = document.getElementById('mapping-wheel-id');
             if (select) select.innerHTML = mappingWheels.length
                 ? mappingWheels.map((wheel) => `<option value="${wheel._id}">${wheel.displayName || wheel.name} (${(wheel.segments || []).length} thử thách)</option>`).join('')
@@ -8114,7 +8319,7 @@ class EffectStoreApp {
             this.showNotification('info', '⏳ Đang lưu cấu hình OBS...');
             const res = await fetch(`${this.API_URL}/api/settings/obs`, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.authToken}`
                 },
@@ -8215,7 +8420,7 @@ class EffectStoreApp {
             if (data.success && data.config) {
                 const c = data.config;
                 this.aiAssistantConfig = c;
-                const presetVoices = ['21m00Tcm4TlvDq8ikWAM', 'EXAVITQu4vr4xnSDxMaL', 'AZnzlk1XvdvUeBnXmlld', 'pNInz6obpgDQGcFmaJgB', 'ErXwobaYiN019PkySvjV', 'MF3mGyEYCl7XYWbV9V6O'];
+                const presetVoices = ['pNInz6obpgDQGcFmaJgB', 'N2lVS1w4EtoT3dr4eOWO', 'N2lVS1w4EtoT3dr4eOW0', 'H2IVS1w4EtoT3dr4eOW0', 'google_female_vi', '21m00Tcm4TlvDq8ikWAM', 'EXAVITQu4vr4xnSDxMaL', 'AZnzlk1XvdvUeBnXmlld', 'ErXwobaYiN019PkySvjV', 'MF3mGyEYCl7XYWbV9V6O'];
                 const savedVoice = c.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB';
 
                 document.querySelectorAll('.ai-assistant-enabled-input').forEach(el => el.checked = Boolean(c.enabled));
@@ -8223,7 +8428,10 @@ class EffectStoreApp {
                 document.querySelectorAll('.ai-assistant-cooldown-input').forEach(el => el.value = String(c.cooldownSeconds || 20));
                 document.querySelectorAll('.ai-assistant-donator-only-input').forEach(el => el.value = String(c.donatorOnly || false));
                 document.querySelectorAll('.ai-assistant-min-donator-coins-input').forEach(el => el.value = String(c.minimumDonatorCoins || 10));
-                document.querySelectorAll('.ai-assistant-eleven-voice-input').forEach(el => el.value = presetVoices.includes(savedVoice) ? savedVoice : 'custom');
+                document.querySelectorAll('.ai-assistant-eleven-voice-input').forEach(el => {
+                    const matchedPreset = presetVoices.includes(savedVoice);
+                    el.value = matchedPreset ? (['N2lVS1w4EtoT3dr4eOW0', 'H2IVS1w4EtoT3dr4eOW0'].includes(savedVoice) ? 'N2lVS1w4EtoT3dr4eOWO' : savedVoice) : 'custom';
+                });
                 document.querySelectorAll('.ai-assistant-custom-voice-input').forEach(el => {
                     if (!presetVoices.includes(savedVoice)) {
                         el.style.display = 'block';
@@ -8281,7 +8489,7 @@ class EffectStoreApp {
             });
             const data = await response.json().catch(() => ({}));
             if (response.ok && data.success) this.renderSystemAiSecretStatus(data.status);
-        } catch (_error) {}
+        } catch (_error) { }
     }
 
     async saveSystemAiSecrets() {
@@ -8666,11 +8874,7 @@ class EffectStoreApp {
             const testSentence = personaSentences[voiceId] || 'Xin chào! Giọng đọc AI đã sẵn sàng phục vụ bạn!';
 
             this.showNotification('success', `🤖 AI (${persona}): "${testSentence}"`);
-            if (voiceId === 'google_female_vi') {
-                await this.speakText(testSentence, true);
-            } else {
-                await this.playAiAssistantVoicePreview(testSentence, voiceId);
-            }
+            await this.playAiAssistantVoicePreview(testSentence, voiceId);
         } catch (e) {
             this.showNotification('error', '❌ Lỗi: ' + e.message);
         }
@@ -8680,32 +8884,58 @@ class EffectStoreApp {
         const safeVoiceId = String(voiceId || '').replace(/[^a-zA-Z0-9_-]/g, '');
         if (!safeVoiceId) throw new Error('Giọng AI không hợp lệ.');
 
-        const cacheKey = `es_ai_voice_cache_${safeVoiceId}_${text}`;
-        let audioDataUrl = localStorage.getItem(cacheKey);
-        if (!audioDataUrl) {
-            const response = await fetch(`${this.API_URL}/api/ai/speech`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.authToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ text, voiceId: safeVoiceId })
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok || !data.success || !data.audioDataUrl) {
-                throw new Error(data.error || 'Không thể tạo giọng nghe thử từ ElevenLabs.');
-            }
-            audioDataUrl = data.audioDataUrl;
+        const personaSelect = document.querySelector('.ai-assistant-persona-input');
+        const activePersona = personaSelect ? personaSelect.value : (this.aiAssistantConfig?.persona || 'sassy');
+
+        // 1. Kiểm tra bộ nhớ đệm máy tính (localStorage)
+        const cacheKey = `es_ai_voice_cache_${safeVoiceId}_${activePersona}_${text}`;
+        const legacyCacheKey = `es_ai_voice_cache_${safeVoiceId}_${text}`;
+        let targetAudioSrc = localStorage.getItem(cacheKey) || localStorage.getItem(legacyCacheKey);
+
+        // 2. Kiểm tra file âm thanh mẫu chuẩn từ Backend / Cloud R2
+        if (!targetAudioSrc) {
+            const apiUrl = this.API_URL || 'http://127.0.0.1:9000';
+            const sampleUrl = `${apiUrl}/assets/audio/voice-samples/${activePersona}_${safeVoiceId}.mp3`;
             try {
-                localStorage.setItem(cacheKey, audioDataUrl);
-            } catch (_cacheError) {}
+                const check = await fetch(sampleUrl, { method: 'HEAD' });
+                if (check.ok) {
+                    targetAudioSrc = sampleUrl;
+                }
+            } catch (_e) { }
+        }
+
+        // 3. Gọi Cloud API nếu chưa có và lưu vào cache
+        if (!targetAudioSrc) {
+            try {
+                const response = await fetch(`${this.API_URL}/api/ai/speech`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text, voiceId: safeVoiceId, persona: activePersona })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data.success && data.audioDataUrl) {
+                    targetAudioSrc = data.audioDataUrl;
+                    try {
+                        localStorage.setItem(cacheKey, targetAudioSrc);
+                    } catch (_cacheError) { }
+                }
+            } catch (_err) { }
+        }
+
+        if (!targetAudioSrc) {
+            // Fallback sang Web Speech / Google TTS để luôn phát được âm thanh cho streamer
+            await this.speakText(text, true);
+            return;
         }
 
         if (this.currentAudio) {
             this.currentAudio.pause();
             this.currentAudio = null;
         }
-        this.currentAudio = new Audio(audioDataUrl);
+        this.currentAudio = new Audio(targetAudioSrc);
         this.currentAudio.volume = this.ttsVolume;
         this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
         await this.currentAudio.play();
@@ -8809,18 +9039,21 @@ function filterEffects() { const active = document.querySelector('.filter-btn-ne
 function switchView(view) { app.switchView(view); }
 function showAccount() {
     let u = app.currentUser;
-    if (!u) {
+    if (!u || !u.email || u.email.endsWith('@local.user')) {
         try {
-            u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
-        } catch (_e) {}
+            const stored = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
+            if (stored && stored.email && !stored.email.endsWith('@local.user')) {
+                u = { ...u, ...stored };
+            }
+        } catch (_e) { }
     }
-    if (!u) {
-        const nameEl = document.querySelector('.user-card .name')?.textContent?.trim() || 'teest';
-        const planEl = document.querySelector('.user-card .plan')?.textContent?.trim() || 'BASIC';
+    if (!u || !u.email) {
+        const nameEl = document.querySelector('.user-card .name')?.textContent?.trim() || 'Người dùng';
+        const planEl = document.querySelector('.user-card .plan')?.textContent?.trim() || 'Miễn phí';
         const planElLower = planEl.toLowerCase();
         u = {
             name: nameEl,
-            email: `${nameEl}@liveflow.app`,
+            email: 'user@liveflow.app',
             subscription: planElLower.includes('basic') ? 'basic' : (planElLower.includes('pro') ? 'pro' : 'free')
         };
     }
@@ -8828,12 +9061,14 @@ function showAccount() {
     const plan = resolvePlanDisplay(u);
     const avatarBg = plan.avatarBg;
     const avatarColor = plan.avatarColor;
+    const displayEmail = (u.email && !u.email.endsWith('@local.user')) ? u.email : (u.phone || 'Tài khoản người dùng');
+    const displayName = (u.name && u.name !== 'Người dùng') ? u.name : (displayEmail.includes('@') ? displayEmail.split('@')[0] : (u.name || 'Người dùng'));
 
     app.showModal('Tài khoản của tôi', `
                 <div style="text-align:center; padding: 12px 0;">
-                    <div style="width:72px;height:72px;border-radius:50%;background:${avatarBg};display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:${avatarColor};margin:0 auto 14px;box-shadow:0 8px 24px rgba(0,0,0,0.3);">${(u.name || 'U')[0].toUpperCase()}</div>
-                    <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;">${u.name || 'Người dùng'}</div>
-                    <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">${u.email || 'test@liveflow.app'}</div>
+                    <div style="width:72px;height:72px;border-radius:50%;background:${avatarBg};display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:${avatarColor};margin:0 auto 14px;box-shadow:0 8px 24px rgba(0,0,0,0.3);">${(displayName || 'U')[0].toUpperCase()}</div>
+                    <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;">${displayName}</div>
+                    <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">${displayEmail}</div>
                     <div style="font-size:12px;padding:5px 16px;border-radius:20px;display:inline-block;background:${plan.bg};color:${plan.color};border:1px solid ${plan.border};font-weight:700;">${plan.label}</div>
                 </div>
                 <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);">

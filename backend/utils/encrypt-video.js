@@ -18,8 +18,12 @@ const IV_LENGTH = 16;
  * @param {string} inputPath - Path to original video
  * @param {string} outputPath - Path for encrypted file
  */
-async function encryptVideo(inputPath, outputPath) {
+async function encryptVideo(inputPath, outputPath, deleteOriginal = false) {
     return new Promise((resolve, reject) => {
+        const outputDir = path.dirname(outputPath);
+        if (!fs.existsSync(outputDir)) {
+            try { fs.mkdirSync(outputDir, { recursive: true }); } catch (_e) {}
+        }
         const input = fs.createReadStream(inputPath);
         const output = fs.createWriteStream(outputPath);
         
@@ -32,12 +36,12 @@ async function encryptVideo(inputPath, outputPath) {
         input.pipe(cipher).pipe(output);
         
         output.on('finish', () => {
-            // Delete original file after encryption
-            try {
-                fs.unlinkSync(inputPath);
-                console.log(`✅ Encrypted: ${inputPath} → ${outputPath}`);
-            } catch (err) {
-                console.error('⚠️ Could not delete original file:', err);
+            if (deleteOriginal) {
+                try {
+                    fs.unlinkSync(inputPath);
+                } catch (err) {
+                    console.error('⚠️ Could not delete original file:', err);
+                }
             }
             resolve(outputPath);
         });

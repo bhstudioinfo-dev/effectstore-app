@@ -12,7 +12,7 @@ process.on('unhandledRejection', (reason) => {
     console.error('❌ [unhandledRejection] Backend continues running despite:', reason);
 });
 
-try { require('dotenv').config(); } catch (_e) { }
+try { require('dotenv').config({ override: true }); } catch (_e) { }
 const startupTrace = (label) => {
     if (process.env.EFFECTSTORE_STARTUP_TRACE === 'true') console.log(`[startup] ${label}`);
 };
@@ -175,7 +175,34 @@ app.use('/uploads/thumbs', express.static(dataPaths.thumbsDir, {
     etag: true,
     lastModified: true
 }));
-app.use('/assets/audio/voice-samples', express.static(path.join(__dirname, 'public', 'assets', 'audio', 'voice-samples'), {
+const voiceSamplesDir = path.join(__dirname, 'public', 'assets', 'audio', 'voice-samples');
+app.get('/assets/audio/voice-samples/:filename', async (req, res, next) => {
+    const filename = String(req.params.filename || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+    if (!filename) return res.status(400).end();
+    const localFile = path.join(voiceSamplesDir, filename);
+    if (fs.existsSync(localFile)) {
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        return fs.createReadStream(localFile).pipe(res);
+    }
+    const { downloadVoiceSample } = require('./services/effectAssetStore');
+    const remoteStream = await downloadVoiceSample(filename);
+    if (!remoteStream) return next();
+    try {
+        if (!fs.existsSync(voiceSamplesDir)) fs.mkdirSync(voiceSamplesDir, { recursive: true });
+        const writeStream = fs.createWriteStream(localFile);
+        remoteStream.pipe(writeStream);
+    } catch (_cacheErr) {}
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    const directStream = await downloadVoiceSample(filename);
+    if (directStream) {
+        directStream.pipe(res);
+    } else {
+        next();
+    }
+});
+app.use('/assets/audio/voice-samples', express.static(voiceSamplesDir, {
     maxAge: '1y',
     immutable: true
 }));
@@ -358,7 +385,7 @@ try {
                 if (ws.messageWindow.count > 30) return ws.close(1008, 'Message rate exceeded');
                 const packet = JSON.parse(raw);
                 if (!packet || typeof packet !== 'object') return;
-                if (packet.event === 'effect_player_ready' || packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
+                if (packet.event === 'effect_player_ready' || packet.event === 'effect_player_play_started' || packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
                     if (packet.event === 'effect_player_ready') effectPlayerClients.add(ws);
                     effectQueue.handleEffectPlayerEvent(packet.event, packet.data || {});
                     broadcastToClients(packet.event, packet.data || {});

@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const exposedChannels = new Set([
     'control-deck-trigger',
@@ -12,6 +12,14 @@ const exposedChannels = new Set([
 
 contextBridge.exposeInMainWorld('getMachineId', () => ipcRenderer.invoke('get-machine-id'));
 contextBridge.exposeInMainWorld('electronAPI', {
+    getPathForFile: (file) => {
+        try {
+            if (webUtils && typeof webUtils.getPathForFile === 'function') {
+                return webUtils.getPathForFile(file);
+            }
+        } catch (_e) {}
+        return file?.path || '';
+    },
     invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
     on: (channel, callback) => {
         if (!exposedChannels.has(channel) || typeof callback !== 'function') return () => {};

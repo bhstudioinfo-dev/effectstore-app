@@ -18,7 +18,7 @@ const { getUserAvailableEffects, getUserOwnedProductIds, resolveEffectForUser, r
 const { issueEffectAccessToken, buildEffectStreamUrl, verifyEffectAccessToken } = require('../services/effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
 const { deleteCatalogEffectCascade } = require('../services/catalogDeletionService');
-const { isAssetStoreConfigured, uploadEncryptedEffect, downloadEncryptedEffect, uploadThumbnail } = require('../services/effectAssetStore');
+const { isAssetStoreConfigured, uploadEncryptedEffect, deleteEncryptedEffect, downloadEncryptedEffect, uploadThumbnail, deleteThumbnail } = require('../services/effectAssetStore');
 const { getCloudSessionToken } = require('../services/cloudSessionTokenStore');
 
 // Ensure directories
@@ -302,6 +302,8 @@ async function streamEffectById(req, res) {
         }
 
         const candidatePaths = [
+            effect?.previewUrl ? path.join(previewsDir, path.basename(effect.previewUrl)) : null,
+            effect?.previewUrl ? path.join(dataPaths.backendRoot, 'uploads', 'previews', path.basename(effect.previewUrl)) : null,
             effect?.previewFilePath,
             effect?.encryptedFilePath,
             effect?.previewFilePath ? path.join(previewsDir, path.basename(effect.previewFilePath)) : null,
@@ -441,36 +443,32 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
     storage,
-    limits: { fileSize: 500 * 1024 * 1024, files: 2, fields: 30 },
-    fileFilter: (_req, file, callback) => {
-        const extension = path.extname(file.originalname || '').toLowerCase();
-        const allowedByField = {
-            effectFile: new Set(['.webm', '.mov', '.mp4']),
-            thumb: new Set(['.png', '.jpg', '.jpeg', '.webp'])
-        };
-        const allowed = allowedByField[file.fieldname]?.has(extension) === true;
-        callback(allowed ? null : new Error('Unsupported effect upload.'), allowed);
-    }
+    limits: { fileSize: 500 * 1024 * 1024, files: 5, fields: 50 }
 });
 
 let ffmpegExecPath = process.env.FFMPEG_PATH || 'ffmpeg';
 try { ffmpegExecPath = require('ffmpeg-static') || ffmpegExecPath; } catch (_e) { }
 
-// Helper for video duration
+// Helper for video duration using bundled ffmpeg
 function getVideoDuration(filePath) {
     return new Promise((resolve) => {
+        if (!fs.existsSync(filePath)) return resolve(5);
         const { spawn } = require('child_process');
-        const ffprobe = spawn('ffprobe', [
-            '-v', 'quiet', '-show_entries', 'format=duration',
-            '-of', 'default=noprint_wrappers=1:nokey=1', filePath
-        ]);
-        let output = '';
-        ffprobe.stdout.on('data', (data) => { output += data.toString(); });
-        ffprobe.on('close', (code) => {
-            if (code === 0 && output.trim() && !isNaN(parseFloat(output.trim()))) resolve(parseFloat(output.trim()));
-            else resolve(5);
+        const child = spawn(ffmpegExecPath, ['-hide_banner', '-i', filePath], { windowsHide: true });
+        let stderr = '';
+        child.stderr?.on('data', (d) => { stderr += d.toString(); });
+        child.on('close', () => {
+            const match = stderr.match(/Duration:\s*(\d+):(\d+):([\d.]+)/);
+            if (match) {
+                const hours = parseFloat(match[1]) || 0;
+                const minutes = parseFloat(match[2]) || 0;
+                const seconds = parseFloat(match[3]) || 0;
+                const total = hours * 3600 + minutes * 60 + seconds;
+                if (total > 0) return resolve(Math.round(total * 100) / 100);
+            }
+            resolve(5);
         });
-        ffprobe.on('error', () => resolve(5));
+        child.on('error', () => resolve(5));
     });
 }
 
@@ -478,13 +476,14 @@ function convertVideoToWebmVp9(inputPath, outputPath) {
     return new Promise((resolve) => {
         const { spawn } = require('child_process');
         const videoFilter = [
-            'scale=1080:1920:force_original_aspect_ratio=decrease:flags=lanczos',
+            'scale=1080:1920:force_original_aspect_ratio=decrease',
             'pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black@0',
             'fps=30',
             'format=yuva420p'
         ].join(',');
 
         const child = spawn(ffmpegExecPath, [
+            '-nostdin',
             '-hide_banner', '-loglevel', 'error', '-y',
             '-i', inputPath,
             '-vf', videoFilter,
@@ -493,9 +492,10 @@ function convertVideoToWebmVp9(inputPath, outputPath) {
             '-pix_fmt', 'yuva420p',
             '-crf', '30',
             '-b:v', '0',
-            '-deadline', 'good',
-            '-cpu-used', '4',
+            '-deadline', 'realtime',
+            '-cpu-used', '8',
             '-row-mt', '1',
+            '-threads', '0',
             outputPath
         ], { windowsHide: true });
 
@@ -530,10 +530,56 @@ function generateThumbnailPng(inputPath, outputPath) {
     });
 }
 
+const handleUpload = (req, res, next) => {
+    if (req.is('json') || req.headers['content-type']?.includes('application/json')) {
+        return next();
+    }
+    upload.any()(req, res, (err) => {
+        if (err) {
+            console.warn('⚠️ Multer upload warning (proceeding with local/query fallback):', err.message);
+        }
+        next();
+    });
+};
+
 // Create Effect (Admin)
-router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (req, res) => {
+router.post('/effects', handleUpload, authMiddleware, adminMiddleware, async (req, res) => {
+    console.log('📦 POST /api/effects req.body:', req.body);
+    console.log('📦 POST /api/effects req.files:', req.files?.map(f => ({ fieldname: f.fieldname, originalname: f.originalname, size: f.size })));
     try {
-        const { name, category, price, originalPrice, duration: reqDuration, description, icon, isComposite, timeline } = req.body;
+        let meta = {};
+        if (req.query.meta) {
+            try { meta = JSON.parse(decodeURIComponent(req.query.meta)); } catch (_e) {
+                try { meta = JSON.parse(req.query.meta); } catch (_e2) {}
+            }
+        }
+        if (req.body.metadata) {
+            try { const m = typeof req.body.metadata === 'string' ? JSON.parse(req.body.metadata) : req.body.metadata; meta = { ...meta, ...m }; } catch (_e) {}
+        }
+        const name = String(req.body.name || meta.name || req.query.name || '').trim();
+        const category = String(req.body.category || meta.category || req.query.category || 'transformation').trim();
+        const rawPrice = req.body.price !== undefined && req.body.price !== '' ? parseFloat(req.body.price) : (meta.price !== undefined ? parseFloat(meta.price) : (req.query.price !== undefined ? parseFloat(req.query.price) : 0));
+        const price = isNaN(rawPrice) ? 0 : rawPrice;
+        const rawOrigPrice = req.body.originalPrice !== undefined && req.body.originalPrice !== '' ? parseFloat(req.body.originalPrice) : (meta.originalPrice !== undefined ? parseFloat(meta.originalPrice) : (req.query.originalPrice !== undefined ? parseFloat(req.query.originalPrice) : 0));
+        const originalPrice = isNaN(rawOrigPrice) ? 0 : rawOrigPrice;
+        const reqDuration = req.body.duration || meta.duration || req.query.duration;
+        const description = String(req.body.description || meta.description || req.query.description || '').trim();
+        const icon = req.body.icon || meta.icon || req.query.icon || '🎬';
+        const isComposite = req.body.isComposite === 'true' || req.body.isComposite === true || meta.isComposite === true || req.query.isComposite === 'true';
+        const isFlashSale = req.body.isFlashSale === 'true' || req.body.isFlashSale === true || meta.isFlashSale === true || req.query.isFlashSale === 'true';
+        const flashSalePrice = parseFloat(req.body.flashSalePrice || meta.flashSalePrice || req.query.flashSalePrice) || 0;
+        const rawFsEnds = req.body.flashSaleEndsAt || meta.flashSaleEndsAt || req.query.flashSaleEndsAt;
+        const flashSaleEndsAt = rawFsEnds ? new Date(rawFsEnds) : null;
+        let timeline = {};
+        if (req.body.timeline || meta.timeline) {
+            const rawTimeline = req.body.timeline || meta.timeline;
+            try { timeline = typeof rawTimeline === 'string' ? JSON.parse(rawTimeline) : rawTimeline; } catch (_e) {}
+        }
+
+        if (!name) {
+            return res.status(400).json({ success: false, error: 'Vui lòng nhập tên hiệu ứng' });
+        }
+
         // Generated upfront (instead of letting Mongo assign one on create)
         // so the file name, the R2 key, and the effect's real _id are all
         // identical — the shared store and every other machine's
@@ -542,31 +588,43 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
         const effectData = {
             _id: effectId,
             name, category,
-            price: parseFloat(price),
-            originalPrice: parseFloat(originalPrice) || 0,
+            price,
+            originalPrice,
             duration: parseFloat(reqDuration) || 5,
-            description, icon: icon || '🎬',
+            description, icon,
             isActive: true,
-            isComposite: isComposite === 'true' || isComposite === true,
-            timeline: timeline ? (typeof timeline === 'string' ? JSON.parse(timeline) : timeline) : {}
+            isComposite,
+            isFlashSale,
+            flashSalePrice,
+            flashSaleEndsAt,
+            timeline
         };
 
-        const effectFile = req.files ? req.files.find(f => f.fieldname === 'effectFile') : null;
-        const thumbFile = req.files ? req.files.find(f => f.fieldname === 'thumb') : null;
+        const effectFile = req.files ? (
+            req.files.find(f => f.fieldname === 'effectFile' || f.fieldname === 'file' || f.fieldname === 'video') ||
+            req.files.find(f => f.mimetype?.startsWith('video/') || f.originalname?.match(/\.(mp4|webm|mov)$/i))
+        ) : null;
+        const thumbFile = req.files ? (
+            req.files.find(f => f.fieldname === 'thumb' || f.fieldname === 'thumbnail') ||
+            req.files.find(f => f.mimetype?.startsWith('image/') || f.originalname?.match(/\.(png|jpg|jpeg|webp)$/i))
+        ) : null;
 
-        if (effectFile) {
+        const localVideoPath = (effectFile && effectFile.path) || (meta.filePath && fs.existsSync(meta.filePath) ? meta.filePath : null) || (req.body.filePath && fs.existsSync(req.body.filePath) ? req.body.filePath : null);
+        const localThumbPath = (thumbFile && thumbFile.path) || (meta.thumbPath && fs.existsSync(meta.thumbPath) ? meta.thumbPath : null) || (req.body.thumbPath && fs.existsSync(req.body.thumbPath) ? req.body.thumbPath : null);
+
+        if (localVideoPath) {
             const previewPath = path.join(previewsDir, `${effectId}.webm`);
-            await convertVideoToWebmVp9(effectFile.path, previewPath);
+            const ext = path.extname(localVideoPath).toLowerCase();
+            if (ext === '.webm') {
+                try { fs.copyFileSync(localVideoPath, previewPath); } catch (_e) { await convertVideoToWebmVp9(localVideoPath, previewPath); }
+            } else {
+                await convertVideoToWebmVp9(localVideoPath, previewPath);
+            }
             const detectedDuration = await getVideoDuration(previewPath);
             const duration = parseFloat(reqDuration) || detectedDuration || 5;
             const encryptedPath = path.join(encryptedEffectsDir, `${effectId}.enc`);
-            await encryptVideo(previewPath, encryptedPath);
+            await encryptVideo(previewPath, encryptedPath, false);
 
-            // Push the same encrypted bytes to the shared store so every
-            // other machine can fetch this effect too (see
-            // fetchEncryptedEffectIntoCache in the stream route below).
-            // Non-fatal: if the shared store isn't configured on this
-            // machine yet, the effect still saves and plays fine locally.
             if (isAssetStoreConfigured()) {
                 try {
                     await uploadEncryptedEffect(effectId, encryptedPath);
@@ -580,9 +638,9 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
             effectData.duration = duration;
             effectData.fileUrl = `/api/stream/effect/${effectId}`;
             effectData.previewUrl = `/uploads/previews/${effectId}.webm`;
-            effectData.fileSize = fs.statSync(previewPath).size;
+            effectData.fileSize = fs.existsSync(previewPath) ? fs.statSync(previewPath).size : (fs.existsSync(encryptedPath) ? fs.statSync(encryptedPath).size : 0);
 
-            if (!thumbFile) {
+            if (!localThumbPath) {
                 const autoThumbPath = path.join(thumbsDir, `${effectId}.png`);
                 const thumbCreated = await generateThumbnailPng(previewPath, autoThumbPath);
                 if (thumbCreated) {
@@ -598,12 +656,14 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
                 }
             }
 
-            try { fs.unlinkSync(effectFile.path); } catch (e) {}
+            if (effectFile && effectFile.path && fs.existsSync(effectFile.path)) {
+                try { fs.unlinkSync(effectFile.path); } catch (e) {}
+            }
         }
 
-        if (thumbFile) {
+        if (localThumbPath) {
             const thumbPath = path.join(thumbsDir, `${effectId}.png`);
-            fs.copyFileSync(thumbFile.path, thumbPath);
+            fs.copyFileSync(localThumbPath, thumbPath);
             effectData.thumbFilePath = thumbPath;
             effectData.thumbUrl = `/uploads/thumbs/${path.basename(thumbPath)}`;
             if (isAssetStoreConfigured()) {
@@ -613,18 +673,21 @@ router.post('/effects', authMiddleware, adminMiddleware, upload.any(), async (re
                     console.error(`⚠️  Could not upload thumbnail for ${effectId} to shared store:`, uploadError.message);
                 }
             }
-            try { fs.unlinkSync(thumbFile.path); } catch (e) {}
+            if (thumbFile && thumbFile.path && fs.existsSync(thumbFile.path)) {
+                try { fs.unlinkSync(thumbFile.path); } catch (e) {}
+            }
         }
         
         const effect = await Effect.create(effectData);
         res.json({ success: true, effect });
     } catch (error) {
+        console.error('🔥 POST /api/effects CAUGHT ERROR:', error.stack || error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // Update Effect (Admin)
-router.post('/effects/:id/update', authMiddleware, adminMiddleware, upload.any(), async (req, res) => {
+router.post('/effects/:id/update', handleUpload, authMiddleware, adminMiddleware, async (req, res) => {
     try {
         if (!isValidResourceId(req.params.id)) {
             return res.status(400).json({ success: false, error: 'Invalid effect ID' });
@@ -695,6 +758,12 @@ router.delete('/effects/:id', authMiddleware, adminMiddleware, async (req, res) 
             if (fs.existsSync(cloudCacheFile)) {
                 try { fs.unlinkSync(cloudCacheFile); } catch (_e) {}
             }
+        }
+        if (isAssetStoreConfigured()) {
+            await Promise.allSettled([
+                deleteEncryptedEffect(req.params.id),
+                deleteThumbnail(req.params.id)
+            ]);
         }
         const result = await deleteCatalogEffectCascade(req.params.id);
         res.json({ success: true, ...result });

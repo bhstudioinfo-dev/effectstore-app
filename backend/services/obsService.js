@@ -1,11 +1,25 @@
 const { OBSWebSocket } = require('obs-websocket-js');
 const { getOverlayAccessToken } = require('../config/networkSecurity');
 
+function normalizeHost(host) {
+    const raw = String(host || '').trim();
+    if (!raw || raw.toLowerCase() === 'localhost' || raw === '::1') return '127.0.0.1';
+    return raw;
+}
+
+function withTimeout(promise, ms = 4000) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('OBS request timed out')), ms))
+    ]);
+}
+
 class OBSService {
     constructor() {
         this.obs = new OBSWebSocket();
         this._isConnected = false;
         this._reconnectTimer = null;
+        this._connectingPromise = null;
         this._lastConfig = null;
         this._triggerTokens = new Map();
 
@@ -67,22 +81,33 @@ class OBSService {
     }
 
     async connect(host = '127.0.0.1', port = 4455, password = 'obs123') {
-        this._lastConfig = { host, port, password };
-        try {
-            await this.obs.connect(`ws://${host}:${port}`, password);
-            return true;
-        } catch (err) {
-            console.error(`❌ OBS Connection failed (${host}:${port}):`, err.message || 'Check if OBS is running and WebSocket is enabled');
-            this._isConnected = false;
-            this.startReconnect();
-            return false;
-        }
+        const safeHost = normalizeHost(host);
+        this._lastConfig = { host: safeHost, port, password };
+        if (this._isConnected) return true;
+        if (this._connectingPromise) return this._connectingPromise;
+
+        this._connectingPromise = (async () => {
+            try {
+                await withTimeout(this.obs.connect(`ws://${safeHost}:${port}`, password), 4000);
+                this._isConnected = true;
+                return true;
+            } catch (err) {
+                console.error(`❌ OBS Connection failed (${safeHost}:${port}):`, err.message || 'Check if OBS is running and WebSocket is enabled');
+                this._isConnected = false;
+                this.startReconnect();
+                return false;
+            } finally {
+                this._connectingPromise = null;
+            }
+        })();
+
+        return this._connectingPromise;
     }
 
     async ensureConnected() {
         if (this._isConnected) return true;
 
-        const fallbackHost = process.env.OBS_HOST || '127.0.0.1';
+        const fallbackHost = normalizeHost(process.env.OBS_HOST || '127.0.0.1');
         const fallbackPort = process.env.OBS_PORT || 4455;
         const fallbackPassword = process.env.OBS_PASSWORD || 'obs123';
         const config = this._lastConfig || {
@@ -121,39 +146,89 @@ class OBSService {
     async ensureEffectPlayerSource() {
         if (!this._isConnected) return false;
 
-        const sceneName = 'EffectStore';
         const sourceName = 'effect_player';
         const PORT = process.env.PORT || 9000;
         const wsToken = encodeURIComponent(getOverlayAccessToken('effect-player'));
-        const sourceUrl = `http://localhost:${PORT}/effect-player-overlay.html?wsToken=${wsToken}`;
-        const { scenes } = await this.obs.call('GetSceneList');
+        const sourceUrl = `http://127.0.0.1:${PORT}/effect-player-overlay.html?wsToken=${wsToken}`;
+        
+        try {
+            const { scenes, currentProgramSceneName } = await this.obs.call('GetSceneList');
+            const targetScenes = new Set(['EffectStore']);
+            if (currentProgramSceneName) targetScenes.add(currentProgramSceneName);
 
-        if (!scenes.some((scene) => scene.sceneName === sceneName)) {
-            await this.obs.call('CreateScene', { sceneName });
-        }
-
-        const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName });
-        if (sceneItems.some((item) => item.sourceName === sourceName)) {
-            return true;
-        }
-
-        await this.obs.call('CreateInput', {
-            sceneName,
-            inputName: sourceName,
-            inputKind: 'browser_source',
-            inputSettings: {
-                url: sourceUrl,
-                width: 1080,
-                height: 1920,
-                fps: 30,
-                css: '',
-                shutdown: false,
-                restart_when_active: false,
-                reroute_audio: true
+            // First ensure EffectStore scene exists
+            if (!scenes.some((scene) => scene.sceneName === 'EffectStore')) {
+                await this.obs.call('CreateScene', { sceneName: 'EffectStore' }).catch(() => {});
             }
-        });
-        console.log('Prepared future OBS browser source: effect_player');
-        return true;
+
+            const { inputs } = await this.obs.call('GetInputList').catch(() => ({ inputs: [] }));
+            const inputExists = inputs.some((inp) => inp.inputName === sourceName);
+
+            if (!inputExists) {
+                await this.obs.call('CreateInput', {
+                    sceneName: 'EffectStore',
+                    inputName: sourceName,
+                    inputKind: 'browser_source',
+                    inputSettings: {
+                        url: sourceUrl,
+                        width: 1080,
+                        height: 1920,
+                        fps: 30,
+                        css: '',
+                        shutdown: false,
+                        restart_when_active: false,
+                        reroute_audio: true
+                    }
+                }).catch(() => {});
+            } else {
+                await this.obs.call('SetInputSettings', {
+                    inputName: sourceName,
+                    inputSettings: {
+                        url: sourceUrl,
+                        width: 1080,
+                        height: 1920,
+                        fps: 30,
+                        css: '',
+                        shutdown: false,
+                        restart_when_active: false,
+                        reroute_audio: true
+                    }
+                }).catch(() => {});
+            }
+
+            // Ensure source is in the active scene so the streamer sees it
+            for (const targetScene of targetScenes) {
+                try {
+                    const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName: targetScene });
+                    let item = sceneItems.find((x) => x.sourceName === sourceName);
+                    if (!item) {
+                        await this.obs.call('CreateSceneItem', { sceneName: targetScene, sourceName }).catch(() => {});
+                        const updated = await this.obs.call('GetSceneItemList', { sceneName: targetScene }).catch(() => ({ sceneItems: [] }));
+                        item = updated.sceneItems?.find((x) => x.sourceName === sourceName);
+                    }
+                    if (item && typeof item.sceneItemId === 'number') {
+                        await this.obs.call('SetSceneItemEnabled', {
+                            sceneName: targetScene,
+                            sceneItemId: item.sceneItemId,
+                            sceneItemEnabled: true
+                        }).catch(() => {});
+                    }
+                } catch (_e) {}
+            }
+
+            try {
+                await this.obs.call('PressInputPropertiesButton', {
+                    inputName: sourceName,
+                    propertyName: 'refreshnocache'
+                });
+            } catch (_e) {}
+
+            console.log('Prepared OBS browser source: effect_player');
+            return true;
+        } catch (err) {
+            console.warn('ensureEffectPlayerSource error:', err.message);
+            return false;
+        }
     }
 
     async ensureGiftMenuOverlaySourceUrl() {
@@ -161,7 +236,7 @@ class OBSService {
 
         const PORT = process.env.PORT || 9000;
         const wsToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
-        const sourceUrl = `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}`;
+        const sourceUrl = `http://127.0.0.1:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}`;
         const candidateSources = ['gift_menu_overlay', 'gift_menu'];
 
         try {

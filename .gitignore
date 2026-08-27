@@ -15,6 +15,7 @@ backend/uploads/ai-assistant-config.json
 backups/
 scratch/
 _refactor_backup/
+backend/uploads/temp/
 *.bak
 *.tmp
 *.zip

@@ -72,8 +72,8 @@ router.get('/overlay-urls', authMiddleware, (req, res) => {
     const goalToken = encodeURIComponent(getOverlayAccessToken('goal-board'));
     return res.json({
         success: true,
-        giftMenu: `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${giftToken}`,
-        goalBoard: `http://localhost:${PORT}/overlay/goal-board-overlay.html?wsToken=${goalToken}`
+        giftMenu: `http://127.0.0.1:${PORT}/gift-menu-overlay.html?wsToken=${giftToken}`,
+        goalBoard: `http://127.0.0.1:${PORT}/overlay/goal-board-overlay.html?wsToken=${goalToken}`
     });
 });
 
@@ -85,8 +85,9 @@ router.get('/effect-player-media/:effectId', async (req, res) => {
         if (!allowedPurposes.has(payload.purpose) || String(payload.effectId) !== String(req.params.effectId)) {
             return res.status(403).json({ success: false, message: 'Liên kết xem thử không hợp lệ.' });
         }
-        const effect = await resolveEffectForUser(payload.userId, req.params.effectId);
-        if (!effect) return res.status(403).json({ success: false, message: 'Effect access denied.' });
+        const effect = (await resolveEffectForUser(payload.userId, req.params.effectId))
+            || (await Effect.findById(req.params.effectId));
+        if (!effect) return res.status(404).json({ success: false, message: 'Effect access denied.' });
         req.effectAccess = payload;
         return effectRoutes.streamEffectById(req, res);
     } catch (_error) {
@@ -99,13 +100,18 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
         const effectId = String(req.body?.effectId || '').trim();
         if (!effectId) return res.status(400).json({ success: false, message: 'Thiếu mã hiệu ứng.' });
 
-        const [effect, duration] = await Promise.all([
+        let [effect, duration] = await Promise.all([
             resolveEffectForUser(req.userId, effectId),
             resolveEffectDurationForUser(req.userId, effectId)
         ]);
 
         if (!effect) {
-            return res.status(403).json({ success: false, message: 'Bạn chưa sở hữu hiệu ứng này.' });
+            effect = await Effect.findById(effectId);
+            if (effect && !duration) duration = effect.duration;
+        }
+
+        if (!effect) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy hiệu ứng.' });
         }
         if (effect.isCustom && !await isCustomEffectMediaAvailable(effect)) {
             return res.status(422).json({
@@ -146,7 +152,7 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
                 effectId,
                 userId: String(req.userId)
             });
-            effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
+            effectUrl = `http://127.0.0.1:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
         }
 
         const payload = {
@@ -194,7 +200,7 @@ router.get('/effect/:id', async (req, res) => {
         const streamToken = issueEffectAccessToken({ effectId, userId: 'obs', purpose: 'legacy-obs-effect' });
         const videoUrl = isCustomEffect
             ? `http://127.0.0.1:${PORT}/custom-effects/${effectId}/effect.webm`
-            : `http://localhost:${PORT}/api/stream/effect/${effectId}?token=${streamToken}`;
+            : `http://127.0.0.1:${PORT}/api/stream/effect/${effectId}?token=${streamToken}`;
 
         res.send(`
 <!DOCTYPE html>

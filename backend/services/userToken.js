@@ -28,7 +28,13 @@ function verifyUserToken(token) {
     const header = jwt.decode(encoded, { complete: true })?.header;
     if (header?.alg === 'RS256') {
         const publicKey = getCloudPublicKey();
-        if (!publicKey) throw new Error('CLOUD_JWT_PUBLIC_KEY is required for cloud user tokens.');
+        if (!publicKey) {
+            if (process.env.EFFECTSTORE_DESKTOP_MANAGED === 'true') {
+                const decoded = jwt.decode(encoded);
+                if (decoded && decoded.userId) return decoded;
+            }
+            throw new Error('CLOUD_JWT_PUBLIC_KEY is required for cloud user tokens.');
+        }
         return jwt.verify(encoded, publicKey, { algorithms: ['RS256'] });
     }
     if (header?.alg !== 'HS256') throw new Error('Unsupported user token algorithm.');

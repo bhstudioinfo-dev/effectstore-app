@@ -56,7 +56,7 @@ function getManagedBackendOptions(defaultMongodbUri = '') {
         defaultMongodbUri,
         // Central server that accounts/Store/purchases sync through — same
         // URL for every install, not a per-user secret (docs/COMMERCIAL_CLOUD_ROADMAP.md).
-        cloudApiUrl: process.env.LIVEFLOW_CLOUD_API_URL || 'https://effectstore-app.onrender.com',
+        cloudApiUrl: process.env.LIVEFLOW_CLOUD_API_URL || '',
         // Public verification key is safe to distribute. The matching private
         // signing key remains only on the central server.
         cloudJwtPublicKey: getCloudJwtPublicKey(),
@@ -412,6 +412,7 @@ function startLocalServer() {
     
     // Serve static files from renderer folder
     expressApp.use('/renderer', express.static(path.join(__dirname, 'renderer')));
+    expressApp.use('/assets', express.static(path.join(__dirname, 'renderer', 'assets')));
     expressApp.use('/effects', express.static(effectsPath));
     expressApp.use('/custom-effects', express.static(customEffectsPath, {
         fallthrough: false,

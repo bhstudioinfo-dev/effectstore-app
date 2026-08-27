@@ -24,7 +24,7 @@ async function syncUserEffectEntitlementsFromCloud(userId) {
     try {
         const { getCloudSessionToken } = require('./cloudSessionTokenStore');
         const token = getCloudSessionToken(userId);
-        const cloudApiUrl = String(process.env.CLOUD_API_URL || 'https://effectstore-app.onrender.com').trim().replace(/\/+$/, '');
+        const cloudApiUrl = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
         if (!token || !cloudApiUrl) return false;
 
         const controller = new AbortController();

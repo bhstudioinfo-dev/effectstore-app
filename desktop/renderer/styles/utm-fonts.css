@@ -1,0 +1,2342 @@
+/* Auto-generated UTM Fonts CSS with comprehensive fallbacks */
+
+@font-face {
+    font-family: 'UTM A&S Graceland';
+    src: local('UTM A&S Graceland'),
+         url('../assets/fonts/utm/UTM%20A%26S%20Graceland.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM A&S Graceland.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20A%26S%20Graceland.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM A&S Graceland.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20A%26S%20Graceland.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM A&S Graceland.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM A&S Heartbeat';
+    src: local('UTM A&S Heartbeat'),
+         url('../assets/fonts/utm/UTM%20A%26S%20Heartbeat.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM A&S Heartbeat.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20A%26S%20Heartbeat.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM A&S Heartbeat.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20A%26S%20Heartbeat.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM A&S Heartbeat.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM A&S Signwriter';
+    src: local('UTM A&S Signwriter'),
+         url('../assets/fonts/utm/UTM%20A%26S%20Signwriter.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM A&S Signwriter.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20A%26S%20Signwriter.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM A&S Signwriter.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20A%26S%20Signwriter.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM A&S Signwriter.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Agin';
+    src: local('UTM Agin'),
+         url('../assets/fonts/utm/UTM%20Agin.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Agin.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Agin.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Agin.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Agin.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Agin.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Aircona';
+    src: local('UTM Aircona'),
+         url('../assets/fonts/utm/UTM%20Aircona.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Aircona.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Aircona.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Aircona.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Aircona.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Aircona.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Akashi';
+    src: local('UTM Akashi'),
+         url('../assets/fonts/utm/UTM%20Akashi.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Akashi.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Akashi.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Akashi.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Akashi.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Akashi.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Alba Matter';
+    src: local('UTM Alba Matter'),
+         url('../assets/fonts/utm/UTM%20Alba%20Matter.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Alba Matter.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Alba%20Matter.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Alba Matter.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Alba%20Matter.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Alba Matter.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Alberta Heavy';
+    src: local('UTM Alberta Heavy'),
+         url('../assets/fonts/utm/UTM%20Alberta%20Heavy.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Alberta Heavy.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Alberta%20Heavy.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Alberta Heavy.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Alberta%20Heavy.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Alberta Heavy.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Alexander';
+    src: local('UTM Alexander'),
+         url('../assets/fonts/utm/UTM%20Alexander.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Alexander.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Alexander.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Alexander.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Alexander.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Alexander.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Alpine KT';
+    src: local('UTM Alpine KT'),
+         url('../assets/fonts/utm/UTM%20Alpine%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Alpine KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Alpine%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Alpine KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Alpine%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Alpine KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Alter Gothic';
+    src: local('UTM Alter Gothic'),
+         url('../assets/fonts/utm/UTM%20Alter%20Gothic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Alter Gothic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Alter%20Gothic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Alter Gothic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Alter%20Gothic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Alter Gothic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Ambrose';
+    src: local('UTM Ambrose'),
+         url('../assets/fonts/utm/UTM%20Ambrose.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Ambrose.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Ambrose.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Ambrose.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Ambrose.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Ambrose.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Ambrosia';
+    src: local('UTM Ambrosia'),
+         url('../assets/fonts/utm/UTM%20Ambrosia.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Ambrosia.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Ambrosia.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Ambrosia.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Ambrosia.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Ambrosia.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM American Sans';
+    src: local('UTM American Sans'),
+         url('../assets/fonts/utm/UTM%20American%20Sans.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM American Sans.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20American%20Sans.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM American Sans.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20American%20Sans.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM American Sans.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Americana';
+    src: local('UTM Americana'),
+         url('../assets/fonts/utm/UTM%20Americana.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Americana.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Americana.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Americana.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Americana.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Americana.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM AmericanaB';
+    src: local('UTM AmericanaB'),
+         url('../assets/fonts/utm/UTM%20AmericanaB.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM AmericanaB.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20AmericanaB.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM AmericanaB.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20AmericanaB.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM AmericanaB.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM AmericanaBEx';
+    src: local('UTM AmericanaBEx'),
+         url('../assets/fonts/utm/UTM%20AmericanaBEx.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM AmericanaBEx.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20AmericanaBEx.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM AmericanaBEx.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20AmericanaBEx.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM AmericanaBEx.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM AmericanaItalic';
+    src: local('UTM AmericanaItalic'),
+         url('../assets/fonts/utm/UTM%20AmericanaItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM AmericanaItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20AmericanaItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM AmericanaItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20AmericanaItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM AmericanaItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Amerika Sans';
+    src: local('UTM Amerika Sans'),
+         url('../assets/fonts/utm/UTM%20Amerika%20Sans.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Amerika Sans.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Amerika%20Sans.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Amerika Sans.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Amerika%20Sans.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Amerika Sans.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Amherst';
+    src: local('UTM Amherst'),
+         url('../assets/fonts/utm/UTM%20Amherst.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Amherst.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Amherst.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Amherst.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Amherst.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Amherst.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Androgyne';
+    src: local('UTM Androgyne'),
+         url('../assets/fonts/utm/UTM%20Androgyne.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Androgyne.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Androgyne.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Androgyne.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Androgyne.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Androgyne.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Aptima';
+    src: local('UTM Aptima'),
+         url('../assets/fonts/utm/UTM%20Aptima.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Aptima.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Aptima.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Aptima.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Aptima.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Aptima.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM AptimaBold';
+    src: local('UTM AptimaBold'),
+         url('../assets/fonts/utm/UTM%20AptimaBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM AptimaBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20AptimaBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM AptimaBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20AptimaBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM AptimaBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM AptimaBoldItalic';
+    src: local('UTM AptimaBoldItalic'),
+         url('../assets/fonts/utm/UTM%20AptimaBoldItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM AptimaBoldItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20AptimaBoldItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM AptimaBoldItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20AptimaBoldItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM AptimaBoldItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM AptimaItalic';
+    src: local('UTM AptimaItalic'),
+         url('../assets/fonts/utm/UTM%20AptimaItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM AptimaItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20AptimaItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM AptimaItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20AptimaItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM AptimaItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Aquarelle';
+    src: local('UTM Aquarelle'),
+         url('../assets/fonts/utm/UTM%20Aquarelle.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Aquarelle.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Aquarelle.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Aquarelle.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Aquarelle.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Aquarelle.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Aristote';
+    src: local('UTM Aristote'),
+         url('../assets/fonts/utm/UTM%20Aristote.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Aristote.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Aristote.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Aristote.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Aristote.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Aristote.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Arruba';
+    src: local('UTM Arruba'),
+         url('../assets/fonts/utm/UTM%20Arruba.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Arruba.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Arruba.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Arruba.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Arruba.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Arruba.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Atlas';
+    src: local('UTM Atlas'),
+         url('../assets/fonts/utm/UTM%20Atlas.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Atlas.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Atlas.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Atlas.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Atlas.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Atlas.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Atlas_Solid';
+    src: local('UTM Atlas_Solid'),
+         url('../assets/fonts/utm/UTM%20Atlas_Solid.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Atlas_Solid.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Atlas_Solid.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Atlas_Solid.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Atlas_Solid.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Atlas_Solid.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Aurora';
+    src: local('UTM Aurora'),
+         url('../assets/fonts/utm/UTM%20Aurora.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Aurora.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Aurora.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Aurora.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Aurora.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Aurora.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Avenida';
+    src: local('UTM Avenida'),
+         url('../assets/fonts/utm/UTM%20Avenida.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Avenida.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Avenida.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Avenida.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Avenida.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Avenida.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Avo';
+    src: local('UTM Avo'),
+         url('../assets/fonts/utm/UTM%20Avo.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Avo.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Avo.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Avo.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Avo.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Avo.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM AvoBold';
+    src: local('UTM AvoBold'),
+         url('../assets/fonts/utm/UTM%20AvoBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM AvoBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20AvoBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM AvoBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20AvoBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM AvoBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM AvoBold_Italic';
+    src: local('UTM AvoBold_Italic'),
+         url('../assets/fonts/utm/UTM%20AvoBold_Italic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM AvoBold_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20AvoBold_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM AvoBold_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20AvoBold_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM AvoBold_Italic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM AvoItalic';
+    src: local('UTM AvoItalic'),
+         url('../assets/fonts/utm/UTM%20AvoItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM AvoItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20AvoItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM AvoItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20AvoItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM AvoItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Azuki';
+    src: local('UTM Azuki'),
+         url('../assets/fonts/utm/UTM%20Azuki.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Azuki.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Azuki.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Azuki.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Azuki.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Azuki.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM BanqueB';
+    src: local('UTM BanqueB'),
+         url('../assets/fonts/utm/UTM%20BanqueB.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM BanqueB.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20BanqueB.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM BanqueB.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20BanqueB.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM BanqueB.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM BanqueR';
+    src: local('UTM BanqueR'),
+         url('../assets/fonts/utm/UTM%20BanqueR.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM BanqueR.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20BanqueR.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM BanqueR.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20BanqueR.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM BanqueR.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Beautiful Caps';
+    src: local('UTM Beautiful Caps'),
+         url('../assets/fonts/utm/UTM%20Beautiful%20Caps.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Beautiful Caps.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Beautiful%20Caps.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Beautiful Caps.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Beautiful%20Caps.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Beautiful Caps.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Bebas';
+    src: local('UTM Bebas'),
+         url('../assets/fonts/utm/UTM%20Bebas.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Bebas.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Bebas.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Bebas.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Bebas.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Bebas.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Bell';
+    src: local('UTM Bell'),
+         url('../assets/fonts/utm/UTM%20Bell.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Bell.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Bell.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Bell.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Bell.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Bell.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Bienvenue';
+    src: local('UTM Bienvenue'),
+         url('../assets/fonts/utm/UTM%20Bienvenue.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Bienvenue.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Bienvenue.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Bienvenue.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Bienvenue.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Bienvenue.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Billhead 1910';
+    src: local('UTM Billhead 1910'),
+         url('../assets/fonts/utm/UTM%20Billhead%201910.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Billhead 1910.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Billhead%201910.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Billhead 1910.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Billhead%201910.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Billhead 1910.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Bitsumishi Pro';
+    src: local('UTM Bitsumishi Pro'),
+         url('../assets/fonts/utm/UTM%20Bitsumishi%20Pro.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Bitsumishi Pro.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Bitsumishi%20Pro.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Bitsumishi Pro.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Bitsumishi%20Pro.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Bitsumishi Pro.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Brewers KT';
+    src: local('UTM Brewers KT'),
+         url('../assets/fonts/utm/UTM%20Brewers%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Brewers KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Brewers%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Brewers KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Brewers%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Brewers KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Brushtip-C';
+    src: local('UTM Brushtip-C'),
+         url('../assets/fonts/utm/UTM%20Brushtip-C.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Brushtip-C.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Brushtip-C.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Brushtip-C.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Brushtip-C.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Brushtip-C.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM BryantLG';
+    src: local('UTM BryantLG'),
+         url('../assets/fonts/utm/UTM%20BryantLG.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM BryantLG.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20BryantLG.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM BryantLG.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20BryantLG.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM BryantLG.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM BryantLG_B';
+    src: local('UTM BryantLG_B'),
+         url('../assets/fonts/utm/UTM%20BryantLG_B.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM BryantLG_B.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20BryantLG_B.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM BryantLG_B.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20BryantLG_B.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM BryantLG_B.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Bustamalaka';
+    src: local('UTM Bustamalaka'),
+         url('../assets/fonts/utm/UTM%20Bustamalaka.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Bustamalaka.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Bustamalaka.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Bustamalaka.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Bustamalaka.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Bustamalaka.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Cabaret';
+    src: local('UTM Cabaret'),
+         url('../assets/fonts/utm/UTM%20Cabaret.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Cabaret.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Cabaret.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Cabaret.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Cabaret.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Cabaret.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Cafeta';
+    src: local('UTM Cafeta'),
+         url('../assets/fonts/utm/UTM%20Cafeta.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Cafeta.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Cafeta.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Cafeta.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Cafeta.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Cafeta.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Camellia F';
+    src: local('UTM Camellia F'),
+         url('../assets/fonts/utm/UTM%20Camellia%20F.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Camellia F.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Camellia%20F.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Camellia F.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Camellia%20F.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Camellia F.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Camellia';
+    src: local('UTM Camellia'),
+         url('../assets/fonts/utm/UTM%20Camellia.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Camellia.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Camellia.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Camellia.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Camellia.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Camellia.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Candombe';
+    src: local('UTM Candombe'),
+         url('../assets/fonts/utm/UTM%20Candombe.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Candombe.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Candombe.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Candombe.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Candombe.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Candombe.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Caviar';
+    src: local('UTM Caviar'),
+         url('../assets/fonts/utm/UTM%20Caviar.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Caviar.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Caviar.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Caviar.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Caviar.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Caviar.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Centur';
+    src: local('UTM Centur'),
+         url('../assets/fonts/utm/UTM%20Centur.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Centur.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Centur.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Centur.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Centur.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Centur.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM CenturBold';
+    src: local('UTM CenturBold'),
+         url('../assets/fonts/utm/UTM%20CenturBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM CenturBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20CenturBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM CenturBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20CenturBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM CenturBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM CenturBoldItalic';
+    src: local('UTM CenturBoldItalic'),
+         url('../assets/fonts/utm/UTM%20CenturBoldItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM CenturBoldItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20CenturBoldItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM CenturBoldItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20CenturBoldItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM CenturBoldItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM CenturItalic';
+    src: local('UTM CenturItalic'),
+         url('../assets/fonts/utm/UTM%20CenturItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM CenturItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20CenturItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM CenturItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20CenturItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM CenturItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Charlemagne';
+    src: local('UTM Charlemagne'),
+         url('../assets/fonts/utm/UTM%20Charlemagne.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Charlemagne.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Charlemagne.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Charlemagne.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Charlemagne.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Charlemagne.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Charlotte';
+    src: local('UTM Charlotte'),
+         url('../assets/fonts/utm/UTM%20Charlotte.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Charlotte.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Charlotte.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Charlotte.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Charlotte.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Charlotte.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Chickenhawk';
+    src: local('UTM Chickenhawk'),
+         url('../assets/fonts/utm/UTM%20Chickenhawk.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Chickenhawk.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Chickenhawk.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Chickenhawk.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Chickenhawk.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Chickenhawk.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM ClassizismAntiqua';
+    src: local('UTM ClassizismAntiqua'),
+         url('../assets/fonts/utm/UTM%20ClassizismAntiqua.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM ClassizismAntiqua.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20ClassizismAntiqua.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM ClassizismAntiqua.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20ClassizismAntiqua.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM ClassizismAntiqua.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Colossalis';
+    src: local('UTM Colossalis'),
+         url('../assets/fonts/utm/UTM%20Colossalis.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Colossalis.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Colossalis.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Colossalis.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Colossalis.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Colossalis.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Conestoga';
+    src: local('UTM Conestoga'),
+         url('../assets/fonts/utm/UTM%20Conestoga.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Conestoga.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Conestoga.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Conestoga.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Conestoga.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Conestoga.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Cookies';
+    src: local('UTM Cookies'),
+         url('../assets/fonts/utm/UTM%20Cookies.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Cookies.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Cookies.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Cookies.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Cookies.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Cookies.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Cool Blue';
+    src: local('UTM Cool Blue'),
+         url('../assets/fonts/utm/UTM%20Cool%20Blue.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Cool Blue.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Cool%20Blue.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Cool Blue.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Cool%20Blue.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Cool Blue.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Cooper Black';
+    src: local('UTM Cooper Black'),
+         url('../assets/fonts/utm/UTM%20Cooper%20Black.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Cooper Black.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Cooper%20Black.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Cooper Black.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Cooper%20Black.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Cooper Black.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Cooper BlackItalic';
+    src: local('UTM Cooper BlackItalic'),
+         url('../assets/fonts/utm/UTM%20Cooper%20BlackItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Cooper BlackItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Cooper%20BlackItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Cooper BlackItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Cooper%20BlackItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Cooper BlackItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Copperplate';
+    src: local('UTM Copperplate'),
+         url('../assets/fonts/utm/UTM%20Copperplate.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Copperplate.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Copperplate.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Copperplate.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Copperplate.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Copperplate.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM CopperplateB';
+    src: local('UTM CopperplateB'),
+         url('../assets/fonts/utm/UTM%20CopperplateB.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM CopperplateB.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20CopperplateB.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM CopperplateB.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20CopperplateB.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM CopperplateB.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Dai Co Viet';
+    src: local('UTM Dai Co Viet'),
+         url('../assets/fonts/utm/UTM%20Dai%20Co%20Viet.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Dai Co Viet.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Dai%20Co%20Viet.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Dai Co Viet.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Dai%20Co%20Viet.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Dai Co Viet.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Davida';
+    src: local('UTM Davida'),
+         url('../assets/fonts/utm/UTM%20Davida.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Davida.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Davida.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Davida.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Davida.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Davida.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Dax';
+    src: local('UTM Dax'),
+         url('../assets/fonts/utm/UTM%20Dax.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Dax.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Dax.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Dax.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Dax.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Dax.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM DaxBold';
+    src: local('UTM DaxBold'),
+         url('../assets/fonts/utm/UTM%20DaxBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM DaxBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20DaxBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM DaxBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20DaxBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM DaxBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM DaxMedium';
+    src: local('UTM DaxMedium'),
+         url('../assets/fonts/utm/UTM%20DaxMedium.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM DaxMedium.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20DaxMedium.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM DaxMedium.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20DaxMedium.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM DaxMedium.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Demian KT';
+    src: local('UTM Demian KT'),
+         url('../assets/fonts/utm/UTM%20Demian%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Demian KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Demian%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Demian KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Demian%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Demian KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Deutsch Gothic';
+    src: local('UTM Deutsch Gothic'),
+         url('../assets/fonts/utm/UTM%20Deutsch%20Gothic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Deutsch Gothic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Deutsch%20Gothic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Deutsch Gothic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Deutsch%20Gothic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Deutsch Gothic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Diana';
+    src: local('UTM Diana'),
+         url('../assets/fonts/utm/UTM%20Diana.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Diana.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Diana.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Diana.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Diana.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Diana.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Dinh Tran';
+    src: local('UTM Dinh Tran'),
+         url('../assets/fonts/utm/UTM%20Dinh%20Tran.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Dinh Tran.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Dinh%20Tran.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Dinh Tran.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Dinh%20Tran.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Dinh Tran.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Duepuntozero';
+    src: local('UTM Duepuntozero'),
+         url('../assets/fonts/utm/UTM%20Duepuntozero.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Duepuntozero.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Duepuntozero.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Duepuntozero.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Duepuntozero.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Duepuntozero.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM DuepuntozeroBold';
+    src: local('UTM DuepuntozeroBold'),
+         url('../assets/fonts/utm/UTM%20DuepuntozeroBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM DuepuntozeroBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20DuepuntozeroBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM DuepuntozeroBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20DuepuntozeroBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM DuepuntozeroBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM EdwardianB';
+    src: local('UTM EdwardianB'),
+         url('../assets/fonts/utm/UTM%20EdwardianB.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM EdwardianB.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20EdwardianB.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM EdwardianB.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20EdwardianB.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM EdwardianB.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM EdwardianKT';
+    src: local('UTM EdwardianKT'),
+         url('../assets/fonts/utm/UTM%20EdwardianKT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM EdwardianKT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20EdwardianKT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM EdwardianKT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20EdwardianKT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM EdwardianKT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Eremitage';
+    src: local('UTM Eremitage'),
+         url('../assets/fonts/utm/UTM%20Eremitage.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Eremitage.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Eremitage.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Eremitage.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Eremitage.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Eremitage.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Ericsson Capital';
+    src: local('UTM Ericsson Capital'),
+         url('../assets/fonts/utm/UTM%20Ericsson%20Capital.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Ericsson Capital.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Ericsson%20Capital.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Ericsson Capital.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Ericsson%20Capital.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Ericsson Capital.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Erie Black';
+    src: local('UTM Erie Black'),
+         url('../assets/fonts/utm/UTM%20Erie%20Black.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Erie Black.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Erie%20Black.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Erie Black.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Erie%20Black.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Erie Black.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Essendine Caps';
+    src: local('UTM Essendine Caps'),
+         url('../assets/fonts/utm/UTM%20Essendine%20Caps.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Essendine Caps.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Essendine%20Caps.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Essendine Caps.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Essendine%20Caps.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Essendine Caps.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Essendine CapsBold';
+    src: local('UTM Essendine CapsBold'),
+         url('../assets/fonts/utm/UTM%20Essendine%20CapsBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Essendine CapsBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Essendine%20CapsBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Essendine CapsBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Essendine%20CapsBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Essendine CapsBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Facebook';
+    src: local('UTM Facebook'),
+         url('../assets/fonts/utm/UTM%20Facebook.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Facebook.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Facebook.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Facebook.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Facebook.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Facebook.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM FacebookB K&T';
+    src: local('UTM FacebookB K&T'),
+         url('../assets/fonts/utm/UTM%20FacebookB%20K%26T.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM FacebookB K&T.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20FacebookB%20K%26T.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM FacebookB K&T.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20FacebookB%20K%26T.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM FacebookB K&T.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM FacebookK&TBoldItalic';
+    src: local('UTM FacebookK&TBoldItalic'),
+         url('../assets/fonts/utm/UTM%20FacebookK%26TBoldItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM FacebookK&TBoldItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20FacebookK%26TBoldItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM FacebookK&TBoldItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20FacebookK%26TBoldItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM FacebookK&TBoldItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM FacebookR K&T';
+    src: local('UTM FacebookR K&T'),
+         url('../assets/fonts/utm/UTM%20FacebookR%20K%26T.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM FacebookR K&T.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20FacebookR%20K%26T.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM FacebookR K&T.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20FacebookR%20K%26T.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM FacebookR K&T.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Faltura';
+    src: local('UTM Faltura'),
+         url('../assets/fonts/utm/UTM%20Faltura.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Faltura.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Faltura.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Faltura.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Faltura.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Faltura.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Fancy Full';
+    src: local('UTM Fancy Full'),
+         url('../assets/fonts/utm/UTM%20Fancy%20Full.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Fancy Full.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Fancy%20Full.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Fancy Full.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Fancy%20Full.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Fancy Full.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Fire House';
+    src: local('UTM Fire House'),
+         url('../assets/fonts/utm/UTM%20Fire%20House.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Fire House.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Fire%20House.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Fire House.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Fire%20House.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Fire House.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Flamenco';
+    src: local('UTM Flamenco'),
+         url('../assets/fonts/utm/UTM%20Flamenco.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Flamenco.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Flamenco.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Flamenco.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Flamenco.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Flamenco.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Flavour';
+    src: local('UTM Flavour'),
+         url('../assets/fonts/utm/UTM%20Flavour.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Flavour.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Flavour.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Flavour.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Flavour.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Flavour.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Fleur';
+    src: local('UTM Fleur'),
+         url('../assets/fonts/utm/UTM%20Fleur.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Fleur.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Fleur.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Fleur.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Fleur.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Fleur.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM French Vanilla';
+    src: local('UTM French Vanilla'),
+         url('../assets/fonts/utm/UTM%20French%20Vanilla.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM French Vanilla.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20French%20Vanilla.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM French Vanilla.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20French%20Vanilla.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM French Vanilla.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Futura Extra';
+    src: local('UTM Futura Extra'),
+         url('../assets/fonts/utm/UTM%20Futura%20Extra.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Futura Extra.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Futura%20Extra.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Futura Extra.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Futura%20Extra.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Futura Extra.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Gill Sans_Con';
+    src: local('UTM Gill Sans_Con'),
+         url('../assets/fonts/utm/UTM%20Gill%20Sans_Con.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Gill Sans_Con.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Gill%20Sans_Con.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Gill Sans_Con.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Gill%20Sans_Con.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Gill Sans_Con.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Gille Classic';
+    src: local('UTM Gille Classic'),
+         url('../assets/fonts/utm/UTM%20Gille%20Classic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Gille Classic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Gille%20Classic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Gille Classic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Gille%20Classic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Gille Classic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Gloria';
+    src: local('UTM Gloria'),
+         url('../assets/fonts/utm/UTM%20Gloria.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Gloria.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Gloria.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Gloria.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Gloria.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Gloria.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM God's WordBold';
+    src: local('UTM God's WordBold'),
+         url('../assets/fonts/utm/UTM%20God's%20WordBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM God's WordBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20God's%20WordBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM God's WordBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20God's%20WordBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM God's WordBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM God's WordBoldItalic';
+    src: local('UTM God's WordBoldItalic'),
+         url('../assets/fonts/utm/UTM%20God's%20WordBoldItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM God's WordBoldItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20God's%20WordBoldItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM God's WordBoldItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20God's%20WordBoldItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM God's WordBoldItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM God's WordR';
+    src: local('UTM God's WordR'),
+         url('../assets/fonts/utm/UTM%20God's%20WordR.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM God's WordR.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20God's%20WordR.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM God's WordR.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20God's%20WordR.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM God's WordR.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM God's WordRItalic';
+    src: local('UTM God's WordRItalic'),
+         url('../assets/fonts/utm/UTM%20God's%20WordRItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM God's WordRItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20God's%20WordRItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM God's WordRItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20God's%20WordRItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM God's WordRItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Gradoo';
+    src: local('UTM Gradoo'),
+         url('../assets/fonts/utm/UTM%20Gradoo.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Gradoo.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Gradoo.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Gradoo.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Gradoo.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Gradoo.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Guanine';
+    src: local('UTM Guanine'),
+         url('../assets/fonts/utm/UTM%20Guanine.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Guanine.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Guanine.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Guanine.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Guanine.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Guanine.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Habano';
+    src: local('UTM Habano'),
+         url('../assets/fonts/utm/UTM%20Habano.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Habano.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Habano.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Habano.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Habano.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Habano.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Hanzel';
+    src: local('UTM Hanzel'),
+         url('../assets/fonts/utm/UTM%20Hanzel.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Hanzel.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Hanzel.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Hanzel.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Hanzel.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Hanzel.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Helve';
+    src: local('UTM Helve'),
+         url('../assets/fonts/utm/UTM%20Helve.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Helve.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Helve.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Helve.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Helve.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Helve.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM HelveBold';
+    src: local('UTM HelveBold'),
+         url('../assets/fonts/utm/UTM%20HelveBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM HelveBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20HelveBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM HelveBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20HelveBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM HelveBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM HelveBold_Italic';
+    src: local('UTM HelveBold_Italic'),
+         url('../assets/fonts/utm/UTM%20HelveBold_Italic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM HelveBold_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20HelveBold_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM HelveBold_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20HelveBold_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM HelveBold_Italic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM HelvetIns';
+    src: local('UTM HelvetIns'),
+         url('../assets/fonts/utm/UTM%20HelvetIns.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM HelvetIns.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20HelvetIns.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM HelvetIns.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20HelvetIns.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM HelvetIns.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Helve_Italic';
+    src: local('UTM Helve_Italic'),
+         url('../assets/fonts/utm/UTM%20Helve_Italic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Helve_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Helve_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Helve_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Helve_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Helve_Italic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Impact';
+    src: local('UTM Impact'),
+         url('../assets/fonts/utm/UTM%20Impact.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Impact.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Impact.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Impact.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Impact.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Impact.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Iron Gothic';
+    src: local('UTM Iron Gothic'),
+         url('../assets/fonts/utm/UTM%20Iron%20Gothic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Iron Gothic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Iron%20Gothic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Iron Gothic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Iron%20Gothic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Iron Gothic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM IsadoraBold';
+    src: local('UTM IsadoraBold'),
+         url('../assets/fonts/utm/UTM%20IsadoraBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM IsadoraBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20IsadoraBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM IsadoraBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20IsadoraBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM IsadoraBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM IsadoraR';
+    src: local('UTM IsadoraR'),
+         url('../assets/fonts/utm/UTM%20IsadoraR.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM IsadoraR.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20IsadoraR.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM IsadoraR.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20IsadoraR.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM IsadoraR.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Kabel KT';
+    src: local('UTM Kabel KT'),
+         url('../assets/fonts/utm/UTM%20Kabel%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Kabel KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Kabel%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Kabel KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Kabel%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Kabel KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Karate';
+    src: local('UTM Karate'),
+         url('../assets/fonts/utm/UTM%20Karate.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Karate.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Karate.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Karate.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Karate.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Karate.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Khuccamta';
+    src: local('UTM Khuccamta'),
+         url('../assets/fonts/utm/UTM%20Khuccamta.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Khuccamta.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Khuccamta.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Khuccamta.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Khuccamta.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Khuccamta.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Kona KT';
+    src: local('UTM Kona KT'),
+         url('../assets/fonts/utm/UTM%20Kona%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Kona KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Kona%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Kona KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Kona%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Kona KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Libel KT';
+    src: local('UTM Libel KT'),
+         url('../assets/fonts/utm/UTM%20Libel%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Libel KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Libel%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Libel KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Libel%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Libel KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM LinotypeZapfino KT';
+    src: local('UTM LinotypeZapfino KT'),
+         url('../assets/fonts/utm/UTM%20LinotypeZapfino%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM LinotypeZapfino KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20LinotypeZapfino%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM LinotypeZapfino KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20LinotypeZapfino%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM LinotypeZapfino KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Loko';
+    src: local('UTM Loko'),
+         url('../assets/fonts/utm/UTM%20Loko.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Loko.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Loko.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Loko.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Loko.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Loko.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Mabella';
+    src: local('UTM Mabella'),
+         url('../assets/fonts/utm/UTM%20Mabella.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Mabella.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Mabella.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Mabella.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Mabella.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Mabella.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Magnesium';
+    src: local('UTM Magnesium'),
+         url('../assets/fonts/utm/UTM%20Magnesium.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Magnesium.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Magnesium.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Magnesium.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Magnesium.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Magnesium.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Marlboro';
+    src: local('UTM Marlboro'),
+         url('../assets/fonts/utm/UTM%20Marlboro.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Marlboro.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Marlboro.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Marlboro.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Marlboro.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Marlboro.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Micra';
+    src: local('UTM Micra'),
+         url('../assets/fonts/utm/UTM%20Micra.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Micra.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Micra.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Micra.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Micra.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Micra.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Mobifone KT';
+    src: local('UTM Mobifone KT'),
+         url('../assets/fonts/utm/UTM%20Mobifone%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Mobifone KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Mobifone%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Mobifone KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Mobifone%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Mobifone KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Mother';
+    src: local('UTM Mother'),
+         url('../assets/fonts/utm/UTM%20Mother.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Mother.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Mother.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Mother.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Mother.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Mother.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Neo Sans Intel';
+    src: local('UTM Neo Sans Intel'),
+         url('../assets/fonts/utm/UTM%20Neo%20Sans%20Intel.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Neo Sans Intel.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Neo%20Sans%20Intel.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Neo Sans Intel.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Neo%20Sans%20Intel.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Neo Sans Intel.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Neo Sans IntelBold';
+    src: local('UTM Neo Sans IntelBold'),
+         url('../assets/fonts/utm/UTM%20Neo%20Sans%20IntelBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Neo Sans IntelBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Neo%20Sans%20IntelBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Neo Sans IntelBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Neo%20Sans%20IntelBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Neo Sans IntelBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Neo Sans IntelBold_Italic';
+    src: local('UTM Neo Sans IntelBold_Italic'),
+         url('../assets/fonts/utm/UTM%20Neo%20Sans%20IntelBold_Italic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Neo Sans IntelBold_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Neo%20Sans%20IntelBold_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Neo Sans IntelBold_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Neo%20Sans%20IntelBold_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Neo Sans IntelBold_Italic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Neo Sans Intel_Italic';
+    src: local('UTM Neo Sans Intel_Italic'),
+         url('../assets/fonts/utm/UTM%20Neo%20Sans%20Intel_Italic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Neo Sans Intel_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Neo%20Sans%20Intel_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Neo Sans Intel_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Neo%20Sans%20Intel_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Neo Sans Intel_Italic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Netmuc KT';
+    src: local('UTM Netmuc KT'),
+         url('../assets/fonts/utm/UTM%20Netmuc%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Netmuc KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Netmuc%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Netmuc KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Netmuc%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Netmuc KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Neutra';
+    src: local('UTM Neutra'),
+         url('../assets/fonts/utm/UTM%20Neutra.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Neutra.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Neutra.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Neutra.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Neutra.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Neutra.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM NGHA 01';
+    src: local('UTM NGHA 01'),
+         url('../assets/fonts/utm/UTM%20NGHA%2001.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM NGHA 01.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20NGHA%2001.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM NGHA 01.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20NGHA%2001.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM NGHA 01.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM NguyenHa 02';
+    src: local('UTM NguyenHa 02'),
+         url('../assets/fonts/utm/UTM%20NguyenHa%2002.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM NguyenHa 02.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20NguyenHa%2002.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM NguyenHa 02.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20NguyenHa%2002.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM NguyenHa 02.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Niagara';
+    src: local('UTM Niagara'),
+         url('../assets/fonts/utm/UTM%20Niagara.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Niagara.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Niagara.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Niagara.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Niagara.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Niagara.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Nokia Standard';
+    src: local('UTM Nokia Standard'),
+         url('../assets/fonts/utm/UTM%20Nokia%20Standard.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Nokia Standard.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Nokia%20Standard.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Nokia Standard.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Nokia%20Standard.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Nokia Standard.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Nokia StandardB';
+    src: local('UTM Nokia StandardB'),
+         url('../assets/fonts/utm/UTM%20Nokia%20StandardB.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Nokia StandardB.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Nokia%20StandardB.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Nokia StandardB.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Nokia%20StandardB.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Nokia StandardB.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Nokia';
+    src: local('UTM Nokia'),
+         url('../assets/fonts/utm/UTM%20Nokia.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Nokia.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Nokia.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Nokia.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Nokia.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Nokia.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Novido';
+    src: local('UTM Novido'),
+         url('../assets/fonts/utm/UTM%20Novido.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Novido.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Novido.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Novido.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Novido.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Novido.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Nyala';
+    src: local('UTM Nyala'),
+         url('../assets/fonts/utm/UTM%20Nyala.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Nyala.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Nyala.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Nyala.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Nyala.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Nyala.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Omni';
+    src: local('UTM Omni'),
+         url('../assets/fonts/utm/UTM%20Omni.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Omni.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Omni.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Omni.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Omni.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Omni.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Ong Do Gia';
+    src: local('UTM Ong Do Gia'),
+         url('../assets/fonts/utm/UTM%20Ong%20Do%20Gia.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Ong Do Gia.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Ong%20Do%20Gia.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Ong Do Gia.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Ong%20Do%20Gia.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Ong Do Gia.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Ong Do Tre';
+    src: local('UTM Ong Do Tre'),
+         url('../assets/fonts/utm/UTM%20Ong%20Do%20Tre.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Ong Do Tre.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Ong%20Do%20Tre.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Ong Do Tre.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Ong%20Do%20Tre.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Ong Do Tre.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Pacific Standard';
+    src: local('UTM Pacific Standard'),
+         url('../assets/fonts/utm/UTM%20Pacific%20Standard.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Pacific Standard.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Pacific%20Standard.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Pacific Standard.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Pacific%20Standard.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Pacific Standard.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Penumbra';
+    src: local('UTM Penumbra'),
+         url('../assets/fonts/utm/UTM%20Penumbra.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Penumbra.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Penumbra.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Penumbra.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Penumbra.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Penumbra.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM PenumbraBold';
+    src: local('UTM PenumbraBold'),
+         url('../assets/fonts/utm/UTM%20PenumbraBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM PenumbraBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20PenumbraBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM PenumbraBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20PenumbraBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM PenumbraBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Pierre';
+    src: local('UTM Pierre'),
+         url('../assets/fonts/utm/UTM%20Pierre.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Pierre.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Pierre.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Pierre.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Pierre.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Pierre.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Raven';
+    src: local('UTM Raven'),
+         url('../assets/fonts/utm/UTM%20Raven.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Raven.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Raven.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Raven.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Raven.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Raven.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Rockwell';
+    src: local('UTM Rockwell'),
+         url('../assets/fonts/utm/UTM%20Rockwell.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Rockwell.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Rockwell.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Rockwell.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Rockwell.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Rockwell.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Roman Classic';
+    src: local('UTM Roman Classic'),
+         url('../assets/fonts/utm/UTM%20Roman%20Classic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Roman Classic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Roman%20Classic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Roman Classic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Roman%20Classic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Roman Classic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Sarah';
+    src: local('UTM Sarah'),
+         url('../assets/fonts/utm/UTM%20Sarah.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Sarah.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Sarah.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Sarah.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Sarah.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Sarah.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Scriptina KT';
+    src: local('UTM Scriptina KT'),
+         url('../assets/fonts/utm/UTM%20Scriptina%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Scriptina KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Scriptina%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Scriptina KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Scriptina%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Scriptina KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM SeagullBold';
+    src: local('UTM SeagullBold'),
+         url('../assets/fonts/utm/UTM%20SeagullBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM SeagullBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20SeagullBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM SeagullBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20SeagullBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM SeagullBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM SeagullBoldItalic';
+    src: local('UTM SeagullBoldItalic'),
+         url('../assets/fonts/utm/UTM%20SeagullBoldItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM SeagullBoldItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20SeagullBoldItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM SeagullBoldItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20SeagullBoldItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM SeagullBoldItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Sharnay';
+    src: local('UTM Sharnay'),
+         url('../assets/fonts/utm/UTM%20Sharnay.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Sharnay.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Sharnay.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Sharnay.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Sharnay.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Sharnay.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Showcard';
+    src: local('UTM Showcard'),
+         url('../assets/fonts/utm/UTM%20Showcard.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Showcard.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Showcard.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Showcard.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Showcard.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Showcard.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Silk Script';
+    src: local('UTM Silk Script'),
+         url('../assets/fonts/utm/UTM%20Silk%20Script.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Silk Script.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Silk%20Script.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Silk Script.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Silk%20Script.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Silk Script.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Sloop 1';
+    src: local('UTM Sloop 1'),
+         url('../assets/fonts/utm/UTM%20Sloop%201.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Sloop 1.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Sloop%201.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Sloop 1.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Sloop%201.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Sloop 1.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Soraya';
+    src: local('UTM Soraya'),
+         url('../assets/fonts/utm/UTM%20Soraya.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Soraya.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Soraya.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Soraya.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Soraya.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Soraya.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Spring';
+    src: local('UTM Spring'),
+         url('../assets/fonts/utm/UTM%20Spring.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Spring.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Spring.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Spring.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Spring.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Spring.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Staccato';
+    src: local('UTM Staccato'),
+         url('../assets/fonts/utm/UTM%20Staccato.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Staccato.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Staccato.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Staccato.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Staccato.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Staccato.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Swashes';
+    src: local('UTM Swashes'),
+         url('../assets/fonts/utm/UTM%20Swashes.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Swashes.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Swashes.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Swashes.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Swashes.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Swashes.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Swiss 721 Black Condensed';
+    src: local('UTM Swiss 721 Black Condensed'),
+         url('../assets/fonts/utm/UTM%20Swiss%20721%20Black%20Condensed.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Swiss 721 Black Condensed.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Swiss%20721%20Black%20Condensed.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Swiss 721 Black Condensed.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Swiss%20721%20Black%20Condensed.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Swiss 721 Black Condensed.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Swiss Condensed';
+    src: local('UTM Swiss Condensed'),
+         url('../assets/fonts/utm/UTM%20Swiss%20Condensed.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Swiss Condensed.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Swiss%20Condensed.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Swiss Condensed.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Swiss%20Condensed.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Swiss Condensed.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Swiss CondensedBold';
+    src: local('UTM Swiss CondensedBold'),
+         url('../assets/fonts/utm/UTM%20Swiss%20CondensedBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Swiss CondensedBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Swiss%20CondensedBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Swiss CondensedBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Swiss%20CondensedBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Swiss CondensedBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Talling';
+    src: local('UTM Talling'),
+         url('../assets/fonts/utm/UTM%20Talling.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Talling.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Talling.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Talling.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Talling.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Talling.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM TallingBold';
+    src: local('UTM TallingBold'),
+         url('../assets/fonts/utm/UTM%20TallingBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM TallingBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20TallingBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM TallingBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20TallingBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM TallingBold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Tam Le';
+    src: local('UTM Tam Le'),
+         url('../assets/fonts/utm/UTM%20Tam%20Le.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Tam Le.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Tam%20Le.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Tam Le.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Tam%20Le.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Tam Le.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM ThanChienTranh';
+    src: local('UTM ThanChienTranh'),
+         url('../assets/fonts/utm/UTM%20ThanChienTranh.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM ThanChienTranh.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20ThanChienTranh.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM ThanChienTranh.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20ThanChienTranh.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM ThanChienTranh.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Thanh Nhac TL';
+    src: local('UTM Thanh Nhac TL'),
+         url('../assets/fonts/utm/UTM%20Thanh%20Nhac%20TL.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Thanh Nhac TL.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Thanh%20Nhac%20TL.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Thanh Nhac TL.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Thanh%20Nhac%20TL.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Thanh Nhac TL.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM ThuPhap Thien An';
+    src: local('UTM ThuPhap Thien An'),
+         url('../assets/fonts/utm/UTM%20ThuPhap%20Thien%20An.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM ThuPhap Thien An.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20ThuPhap%20Thien%20An.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM ThuPhap Thien An.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20ThuPhap%20Thien%20An.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM ThuPhap Thien An.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Times';
+    src: local('UTM Times'),
+         url('../assets/fonts/utm/UTM%20Times.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Times.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Times.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Times.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Times.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Times.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM TimesItalic';
+    src: local('UTM TimesItalic'),
+         url('../assets/fonts/utm/UTM%20TimesItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM TimesItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20TimesItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM TimesItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20TimesItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM TimesItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Trajan Pro Bold';
+    src: local('UTM Trajan Pro Bold'),
+         url('../assets/fonts/utm/UTM%20Trajan%20Pro%20Bold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Trajan Pro Bold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Trajan%20Pro%20Bold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Trajan Pro Bold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Trajan%20Pro%20Bold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Trajan Pro Bold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM ViceroyJF';
+    src: local('UTM ViceroyJF'),
+         url('../assets/fonts/utm/UTM%20ViceroyJF.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM ViceroyJF.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20ViceroyJF.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM ViceroyJF.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20ViceroyJF.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM ViceroyJF.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Wedding K&T';
+    src: local('UTM Wedding K&T'),
+         url('../assets/fonts/utm/UTM%20Wedding%20K%26T.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Wedding K&T.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Wedding%20K%26T.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Wedding K&T.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Wedding%20K%26T.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Wedding K&T.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Windsor BT';
+    src: local('UTM Windsor BT'),
+         url('../assets/fonts/utm/UTM%20Windsor%20BT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Windsor BT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Windsor%20BT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Windsor BT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Windsor%20BT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Windsor BT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Yen Tu';
+    src: local('UTM Yen Tu'),
+         url('../assets/fonts/utm/UTM%20Yen%20Tu.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Yen Tu.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Yen%20Tu.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Yen Tu.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Yen%20Tu.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Yen Tu.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Yves KT';
+    src: local('UTM Yves KT'),
+         url('../assets/fonts/utm/UTM%20Yves%20KT.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Yves KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Yves%20KT.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Yves KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Yves%20KT.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Yves KT.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Yves KT_Bold';
+    src: local('UTM Yves KT_Bold'),
+         url('../assets/fonts/utm/UTM%20Yves%20KT_Bold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Yves KT_Bold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Yves%20KT_Bold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Yves KT_Bold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Yves%20KT_Bold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Yves KT_Bold.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Yves KT_Bold_Italic';
+    src: local('UTM Yves KT_Bold_Italic'),
+         url('../assets/fonts/utm/UTM%20Yves%20KT_Bold_Italic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Yves KT_Bold_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Yves%20KT_Bold_Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Yves KT_Bold_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Yves%20KT_Bold_Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Yves KT_Bold_Italic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Zebrawood';
+    src: local('UTM Zebrawood'),
+         url('../assets/fonts/utm/UTM%20Zebrawood.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Zebrawood.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Zebrawood.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Zebrawood.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Zebrawood.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Zebrawood.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTM Zirkon';
+    src: local('UTM Zirkon'),
+         url('../assets/fonts/utm/UTM%20Zirkon.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTM Zirkon.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM%20Zirkon.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTM Zirkon.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM%20Zirkon.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTM Zirkon.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTMFacebookK&TItalic';
+    src: local('UTMFacebookK&TItalic'),
+         url('../assets/fonts/utm/UTMFacebookK%26TItalic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTMFacebookK&TItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTMFacebookK%26TItalic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTMFacebookK&TItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTMFacebookK%26TItalic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTMFacebookK&TItalic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTMTimesBold Italic';
+    src: local('UTMTimesBold Italic'),
+         url('../assets/fonts/utm/UTMTimesBold%20Italic.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTMTimesBold Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTMTimesBold%20Italic.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTMTimesBold Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTMTimesBold%20Italic.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTMTimesBold Italic.ttf') format('truetype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'UTMTimesBold';
+    src: local('UTMTimesBold'),
+         url('../assets/fonts/utm/UTMTimesBold.ttf') format('truetype'),
+         url('../assets/fonts/utm/UTMTimesBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTMTimesBold.ttf') format('truetype'),
+         url('../../assets/fonts/utm/UTMTimesBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTMTimesBold.ttf') format('truetype'),
+         url('/assets/fonts/utm/UTMTimesBold.ttf') format('truetype');
+    font-display: swap;
+}
+

@@ -6,7 +6,7 @@
 // ever handles a decrypted file — that only ever happens locally at
 // playback time via utils/encrypt-video.js, unchanged.
 
-const { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
 function isAssetStoreConfigured() {
     return Boolean(
@@ -39,12 +39,23 @@ function keyForEffect(effectId) {
 
 async function uploadEncryptedEffect(effectId, localFilePath) {
     const fs = require('fs');
-    const body = fs.createReadStream(localFilePath);
+    const body = fs.readFileSync(localFilePath);
     await getClient().send(new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME,
         Key: keyForEffect(effectId),
-        Body: body
+        Body: body,
+        ContentType: 'application/octet-stream'
     }));
+}
+
+async function deleteEncryptedEffect(effectId) {
+    if (!isAssetStoreConfigured()) return;
+    try {
+        await getClient().send(new DeleteObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: keyForEffect(effectId)
+        }));
+    } catch (_error) {}
 }
 
 async function effectExistsRemotely(effectId) {
@@ -78,6 +89,16 @@ function keyForThumbnail(effectId) {
     return `thumbs/${effectId}.png`;
 }
 
+async function deleteThumbnail(effectId) {
+    if (!isAssetStoreConfigured()) return;
+    try {
+        await getClient().send(new DeleteObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: keyForThumbnail(effectId)
+        }));
+    } catch (_error) {}
+}
+
 function keyForRelease(channel, filename) {
     const safeChannel = String(channel || '').trim();
     const safeFilename = String(filename || '').trim();
@@ -89,10 +110,11 @@ function keyForRelease(channel, filename) {
 
 async function uploadReleaseArtifact(channel, filename, localFilePath, contentType = 'application/octet-stream') {
     const fs = require('fs');
+    const body = fs.readFileSync(localFilePath);
     await getClient().send(new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME,
         Key: keyForRelease(channel, filename),
-        Body: fs.createReadStream(localFilePath),
+        Body: body,
         ContentType: contentType,
         CacheControl: filename.endsWith('.yml') ? 'no-cache, no-store' : 'public, max-age=31536000, immutable'
     }));
@@ -112,10 +134,11 @@ async function downloadReleaseArtifact(channel, filename, range) {
 
 async function uploadThumbnail(effectId, localFilePath) {
     const fs = require('fs');
+    const body = fs.readFileSync(localFilePath);
     await getClient().send(new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME,
         Key: keyForThumbnail(effectId),
-        Body: fs.createReadStream(localFilePath),
+        Body: body,
         ContentType: 'image/png'
     }));
 }
@@ -132,14 +155,49 @@ async function downloadThumbnail(effectId) {
     }
 }
 
+function keyForVoiceSample(filename) {
+    const safeFilename = String(filename || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+    return `voice-samples/${safeFilename}`;
+}
+
+async function uploadVoiceSample(filename, localFilePathOrBuffer) {
+    if (!isAssetStoreConfigured()) return;
+    const fs = require('fs');
+    const body = Buffer.isBuffer(localFilePathOrBuffer) ? localFilePathOrBuffer : fs.readFileSync(localFilePathOrBuffer);
+    await getClient().send(new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: keyForVoiceSample(filename),
+        Body: body,
+        ContentType: 'audio/mpeg',
+        CacheControl: 'public, max-age=31536000, immutable'
+    }));
+}
+
+async function downloadVoiceSample(filename) {
+    if (!isAssetStoreConfigured()) return null;
+    try {
+        const result = await getClient().send(new GetObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: keyForVoiceSample(filename)
+        }));
+        return result.Body;
+    } catch (_error) {
+        return null;
+    }
+}
+
 module.exports = {
     isAssetStoreConfigured,
     uploadEncryptedEffect,
+    deleteEncryptedEffect,
     effectExistsRemotely,
     downloadEncryptedEffect,
     uploadThumbnail,
+    deleteThumbnail,
     downloadThumbnail,
     uploadReleaseArtifact,
     downloadReleaseArtifact,
-    keyForRelease
+    keyForRelease,
+    uploadVoiceSample,
+    downloadVoiceSample
 };

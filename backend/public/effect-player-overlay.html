@@ -55,10 +55,21 @@
                 }
             }
 
+            let currentListeners = null;
+
             function clearPlayback() {
                 if (safetyTimer) window.clearTimeout(safetyTimer);
                 safetyTimer = null;
                 if (video) {
+                    if (currentListeners) {
+                        video.removeEventListener('ended', currentListeners.onEnded);
+                        video.removeEventListener('error', currentListeners.onError);
+                        video.removeEventListener('playing', currentListeners.onPlaying);
+                        currentListeners = null;
+                    }
+                    video.onended = null;
+                    video.onerror = null;
+                    video.onplaying = null;
                     video.pause();
                     video.style.opacity = '0';
                     video.removeAttribute('src');
@@ -109,22 +120,27 @@
                 }
 
                 activeRequest = request;
+                let hasStartedPlaying = false;
                 video.controls = false;
                 video.playsInline = true;
                 video.preload = 'auto';
                 video.muted = request.audioEnabled === false;
                 video.volume = Math.max(0, Math.min(1, Number.isFinite(Number(request.audioVolume)) ? Number(request.audioVolume) : 1));
-                video.src = request.effectUrl;
+
+                const playUrl = new URL(request.effectUrl, window.location.href);
+                playUrl.searchParams.set('_play', String(Date.now()));
+                video.src = playUrl.toString();
                 video.style.opacity = '1';
 
                 const onEnded = () => {
-                    if (activeRequest === request) finishPlayback('ended');
+                    if (activeRequest === request && hasStartedPlaying) finishPlayback('ended');
                 };
                 const onError = () => {
                     if (activeRequest === request) failPlayback('Unable to load effect media');
                 };
                 const onPlaying = () => {
                     if (activeRequest === request) {
+                        hasStartedPlaying = true;
                         notify('effect_player_play_started', {
                             requestId: request.requestId,
                             effectId: request.effectId,
@@ -140,6 +156,7 @@
                     }
                 };
 
+                currentListeners = { onEnded, onError, onPlaying };
                 video.addEventListener('ended', onEnded, { once: true });
                 video.addEventListener('error', onError, { once: true });
                 video.addEventListener('playing', onPlaying, { once: true });
@@ -176,7 +193,10 @@
 
             function connect() {
                 const wsToken = new URLSearchParams(window.location.search).get('wsToken') || '';
-                socket = new WebSocket(`${protocol}//${window.location.hostname || 'localhost'}:9001?token=${encodeURIComponent(wsToken)}`);
+                const wsHost = (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '::1')
+                    ? window.location.hostname
+                    : '127.0.0.1';
+                socket = new WebSocket(`${protocol}//${wsHost}:9001?token=${encodeURIComponent(wsToken)}`);
                 socket.addEventListener('open', () => {
                     socket.send(JSON.stringify({ event: 'effect_player_ready', data: { ready: true } }));
                 });

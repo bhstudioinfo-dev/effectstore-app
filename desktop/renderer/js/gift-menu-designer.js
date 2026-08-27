@@ -1540,6 +1540,7 @@
                     textPosition: item.textPosition,
                     textAlign: item.textAlign,
                     textSize: item.textSize,
+                    fontFamily: item.fontFamily,
                     textGap: item.textGap,
                     textColor: item.textColor,
                     subtext: item.subtext,
@@ -1859,7 +1860,7 @@
                                 <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-back"></span>
                                 <span class="gmd-icon-wrap" style="--icon-url:url('${item.iconUrl}')">
                                     ${item.iconDisplayMode === 'text'
-                                    ? `<span class="gmd-text-gift-icon" style="color:${item.iconTextColor || '#ffffff'};font-size:${Number(item.iconTextSize) || 20}px;${iconTextBgStyle}">${this.escapeHtml(item.iconText || item.name)}</span>`
+                                    ? `<span class="gmd-text-gift-icon" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'};color:${item.iconTextColor || '#ffffff'};font-size:${Number(item.iconTextSize) || 20}px;${iconTextBgStyle}">${this.escapeHtml(item.iconText || item.name)}</span>`
                                     : (item.isVideoIcon || this.isVideoAsset(item.iconUrl)
                                         ? `<video src="${this.escapeHtml(item.iconUrl)}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>`
                                         : `<img src="${this.escapeHtml(item.iconUrl)}" alt="${this.escapeHtml(item.name)}">`)}
@@ -1867,7 +1868,7 @@
                                 </span>
                                 <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-front"></span>
                             </div>
-                            ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;text-align:${item.textAlign || 'center'};${labelBgStyle}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;">${this.escapeHtml(item.name)}</div>${item.subtext ? `<div style="font-size:${Math.max(5, Math.round((Number(item.textSize) || 13) * .78))}px;opacity:.8;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:2px;">${this.escapeHtml(item.subtext)}</div>` : ''}</div>` : ''}
+                            ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'};font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;text-align:${item.textAlign || 'center'};${labelBgStyle}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;">${this.escapeHtml(item.name)}</div>${item.subtext ? `<div style="font-size:${Math.max(5, Math.round((Number(item.textSize) || 13) * .78))}px;opacity:.8;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:2px;">${this.escapeHtml(item.subtext)}</div>` : ''}</div>` : ''}
                         `;
                         }
                         visualContainer.dataset.itemState = JSON.stringify(item);
@@ -2057,12 +2058,32 @@
             this.renderInspector();
         }
 
-        renderSelect(key, value, options) {
-            return `<select class="gmd-select" data-key="${key}">${options.map((o) => {
+        renderSelect(key, value, options, attrOrHandler = 'data-key') {
+            const attrStr = attrOrHandler.startsWith('on')
+                ? attrOrHandler
+                : (attrOrHandler.startsWith('data-') ? `${attrOrHandler}="${key}"` : `data-key="${key}"`);
+            return `<select class="gmd-select" ${attrStr}>${options.map((o) => {
                 const ov = typeof o === 'string' ? o : o.value;
                 const ol = typeof o === 'string' ? o : o.label;
                 return `<option value="${ov}" ${ov === value ? 'selected' : ''}>${ol}</option>`;
             }).join('')}</select>`;
+        }
+
+        renderFontSelect(key, value, attrOrHandler = 'data-key') {
+            const utmFonts = Array.isArray(window.UTM_FONTS) && window.UTM_FONTS.length > 0
+                ? window.UTM_FONTS
+                : ['UTM Avo', 'UTM Bebas', 'UTM Impact', 'UTM Cafeta', 'UTM Helve', 'UTM Alexander', 'UTM Cooper Black', 'UTM Neo Sans Intel', 'UTM ThuPhap Thien An', 'UTM Ong Do Tre'];
+            
+            const popular = [
+                { value: '', label: 'Mặc định (Inter / Hệ thống)' },
+                { value: 'Inter', label: 'Inter' },
+                { value: 'sans-serif', label: 'Sans-Serif' },
+                { value: 'monospace', label: 'Monospace' }
+            ];
+            
+            const utmOptions = utmFonts.map(f => ({ value: f, label: f }));
+            const options = [...popular, ...utmOptions];
+            return this.renderSelect(key, value || '', options, attrOrHandler);
         }
 
         renderLayerPanel() {
@@ -2255,8 +2276,9 @@
 
                     <div id="gmd-advanced-content" style="display: ${this.advancedExpanded ? 'block' : 'none'}; margin-top: 12px;">
                         <div class="gmd-section">
-                            <h4><i class="fas fa-signature"></i> C&#192;I &#272;&#7862;T CH&#7918;</h4>
-                            <div class="gmd-field"><label>T&#234;n ch&#237;nh</label><input class="gmd-input" data-key="name" value="${this.escapeHtml(selected.name || '')}"></div>
+                            <h4><i class="fas fa-signature"></i> CÀI ĐẶT CHỮ</h4>
+                            <div class="gmd-field"><label>Phông chữ (Font UTM)</label>${this.renderFontSelect('fontFamily', selected.fontFamily)}</div>
+                            <div class="gmd-field"><label>Tên chính</label><input class="gmd-input" data-key="name" value="${this.escapeHtml(selected.name || '')}"></div>
                             <div class="gmd-field"><label>T&#234;n ph&#7909; / Ghi ch&#250;</label><input class="gmd-input" data-key="subtext" value="${this.escapeHtml(selected.subtext || '')}"></div>
                             <div class="gmd-field gmd-toggle-row">
                                 <label>Hi&#7875;n th&#7883; t&#234;n</label>
@@ -2901,6 +2923,7 @@
                 } else {
                     item[key] = value;
                 }
+                this.invalidateItemVisual(item);
             });
 
             this.renderCanvas();
@@ -6568,6 +6591,10 @@
                         <div style="display: ${this.inspectorAdvancedExpanded ? 'block' : 'none'};">
                             <!-- CẤU HÌNH CHUNG -->
                             <div class="gmd-section-subheader" style="font-weight: 800; font-size: 11px; color: #a855f7; margin-bottom: 6px; margin-top: 6px;">CẤU HÌNH CHUNG</div>
+                            <div class="gmd-field" style="margin-bottom: 6px;">
+                                <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                                ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                            </div>
                             <div class="gmd-field">
                                 <label style="font-size: 11px;">Số đội PK</label>
                                 <div style="display:flex; gap:6px;">
@@ -7060,6 +7087,10 @@
                             <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="64" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 8}"><span>px</span></div>
                         </div>
                         <input class="gmd-range" type="range" min="0" max="64" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 8}">
+                        <div class="gmd-field">
+                            <label>Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         <div class="gmd-field"><label>Mau chu</label><input class="gmd-color" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}"></div>
                         <div class="gmd-field gmd-toggle-row">
                             <label>Hien ten qua</label>
@@ -7123,6 +7154,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         ${makeCompactFontSizeField('Cỡ chữ tiêu đề', 'fontSize', 38)}
                         ${makeCompactFontSizeField('Cỡ chữ dòng phụ', 'subtitleFontSize', 24)}
                     </div>
@@ -7212,6 +7247,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         <div class="gmd-field gmd-toggle-row" style="margin-top: 6px; margin-bottom: 8px;">
                             <label style="font-size: 11px;">Hiển thị % tiến trình</label>
                             <label class="gmd-switch">
@@ -7267,6 +7306,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         ${makeCompactFontSizeField('Cỡ chữ tên Boss', 'fontSize', 38)}
                         ${makeCompactFontSizeField('Cỡ chữ dòng phụ', 'subtitleFontSize', 26)}
                     </div>
@@ -7438,6 +7481,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 34)}
                         ${makeCompactFontSizeField('Cỡ chữ Tên người dùng', 'rowFontSize', isPodiumContributorStyle ? 22 : 30)}
                         ${makeCompactFontSizeField('Cỡ chữ Điểm số (Value)', 'valueFontSize', isPodiumContributorStyle ? 22 : 30)}
@@ -7489,6 +7536,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 32)}
                         ${makeCompactFontSizeField('Cỡ chữ dòng phụ', 'subtitleFontSize', 20)}
                     </div>
@@ -7516,6 +7567,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 40)}
                         ${makeCompactFontSizeField('Cỡ chữ Con số (Combo)', 'numberFontSize', 64)}
                         ${makeCompactFontSizeField('Cỡ chữ Dòng phụ', 'subtitleFontSize', 20)}
@@ -7599,6 +7654,7 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-sliders-h"></i> PHẦN 2: TÙY CHỈNH VÒNG QUAY</h4>
+                        <div class="gmd-field"><label>Phông chữ (Font UTM)</label>${this.renderFontSelect('fontFamily', selected.fontFamily, `onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','fontFamily',this.value)"`)}</div>
                         <div class="gmd-field"><label>Tiêu đề vòng quay</label><input class="gmd-input" value="${this.escapeHtml(selected.title || '')}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','title',this.value)"></div>
                         <div class="gmd-field"><label>Dòng mô tả</label><input class="gmd-input" value="${this.escapeHtml(selected.subtitle || '')}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','subtitle',this.value)"></div>
                         <div class="gmd-row"><div class="gmd-field"><label>Cỡ chữ tiêu đề</label><input class="gmd-input" type="number" min="16" max="72" value="${selected.titleFontSize || 34}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','titleFontSize',this.value)"></div><div class="gmd-field"><label>Cỡ chữ mô tả</label><input class="gmd-input" type="number" min="10" max="36" value="${selected.subtitleFontSize || 18}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','subtitleFontSize',this.value)"></div></div>
@@ -7754,6 +7810,10 @@
                             </label>
                         </div>
                         <div class="gmd-field">
+                            <label>Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
+                        <div class="gmd-field">
                             <label>Cỡ chữ Tiêu đề</label>
                             <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="fontSize" value="${selected.fontSize !== undefined ? selected.fontSize : 32}"><span>px</span></div>
                         </div>
@@ -7799,6 +7859,10 @@
                         <div class="gmd-field">
                             <label>Nội dung văn bản</label>
                             <textarea class="gmd-input" style="height:60px; font-family:inherit; font-size:12px; resize:none; background:#1e293b; color:#fff;" data-goal-key="text">${selected.text || 'Nhập văn bản'}</textarea>
+                        </div>
+                        <div class="gmd-field">
+                            <label>Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
                         </div>
                         <div class="gmd-field">
                             <label>Màu chữ</label>
@@ -8318,7 +8382,7 @@
                 this.applyTalentTitleEffect(selected);
                 const styleSection = document.createElement('div');
                 styleSection.className = 'gmd-section';
-                styleSection.innerHTML = `<h4><i class="fas fa-font"></i> CỠ CHỮ & HIỆU ỨNG</h4><div class="gmd-field"><label>Cỡ chữ tiêu đề</label><input class="gmd-input" type="number" min="14" max="96" value="${selected.fontSize || 32}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value)"></div><div class="gmd-row"><div class="gmd-field"><label>Cỡ chữ vòng</label><input class="gmd-input" type="number" min="10" max="48" value="${selected.subtitleFontSize || 16}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','subtitleFontSize',this.value)"></div><div class="gmd-field"><label>Cỡ chữ danh sách</label><input class="gmd-input" type="number" min="10" max="42" value="${selected.rowFontSize || 18}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value)"></div></div><div class="gmd-field"><label>Hiệu ứng tiêu đề</label><select class="gmd-select" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','titleEffect',this.value)"><option value="glow">Phát sáng</option><option value="neon">Neon</option><option value="rainbow">Cầu vồng</option><option value="fire">Lửa</option><option value="pulse">Nhịp đập</option><option value="none">Không hiệu ứng</option></select></div>`;
+                styleSection.innerHTML = `<h4><i class="fas fa-font"></i> CỠ CHỮ & HIỆU ỨNG</h4><div class="gmd-field"><label>Phông chữ (Font UTM)</label>${this.renderFontSelect('fontFamily', selected.fontFamily, `onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontFamily',this.value)"`)}</div><div class="gmd-field"><label>Cỡ chữ tiêu đề</label><input class="gmd-input" type="number" min="14" max="96" value="${selected.fontSize || 32}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value)"></div><div class="gmd-row"><div class="gmd-field"><label>Cỡ chữ vòng</label><input class="gmd-input" type="number" min="10" max="48" value="${selected.subtitleFontSize || 16}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','subtitleFontSize',this.value)"></div><div class="gmd-field"><label>Cỡ chữ danh sách</label><input class="gmd-input" type="number" min="10" max="42" value="${selected.rowFontSize || 18}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value)"></div></div><div class="gmd-field"><label>Hiệu ứng tiêu đề</label><select class="gmd-select" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','titleEffect',this.value)"><option value="glow">Phát sáng</option><option value="neon">Neon</option><option value="rainbow">Cầu vồng</option><option value="fire">Lửa</option><option value="pulse">Nhịp đập</option><option value="none">Không hiệu ứng</option></select></div>`;
                 styleSection.insertAdjacentHTML('beforeend', `<div class="gmd-field"><label>Kéo chỉnh cỡ chữ tiêu đề</label><input class="gmd-range" type="range" min="14" max="96" value="${selected.fontSize || 32}" oninput="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value,true)" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value)"></div><div class="gmd-field"><label>Kéo chỉnh cỡ chữ danh sách</label><input class="gmd-range" type="range" min="10" max="42" value="${selected.rowFontSize || 18}" oninput="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value,true)" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value)"></div>`);
                 const firstSection = inspector.querySelector('.gmd-section');
                 if (firstSection) firstSection.parentNode.insertBefore(styleSection, firstSection.nextSibling);
@@ -9606,7 +9670,7 @@
             const item = this.items.find((entry) => entry.id === itemId);
             if (!item || !['talent-live', 'talent-leaderboard'].includes(item.type)) return;
             const numeric = ['fontSize', 'subtitleFontSize', 'rowFontSize', 'valueFontSize'];
-            item[key] = numeric.includes(key) ? Math.max(8, Number(value) || 8) : String(value || 'none');
+            item[key] = numeric.includes(key) ? Math.max(8, Number(value) || 8) : (key === 'fontFamily' ? String(value || '') : String(value || 'none'));
             this.invalidateItemVisual(item);
             this.renderCanvas();
             this.applyTalentTitleEffect(item);

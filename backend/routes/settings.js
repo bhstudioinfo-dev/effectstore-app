@@ -21,7 +21,7 @@ router.get('/obs', authMiddleware, async (req, res) => {
     try {
         let settings = await findOrAdoptSettings(req.userId);
         if (!settings) {
-            settings = await OBSSettings.create({ userId: req.userId, host: 'localhost', port: 4455, password: 'obs123' });
+            settings = await OBSSettings.create({ userId: req.userId, host: '127.0.0.1', port: 4455, password: 'obs123' });
         }
         res.json({ success: true, ...settings.toObject({ getters: true }) });
     } catch (error) {

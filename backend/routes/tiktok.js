@@ -833,8 +833,8 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
             if (!obsService.isConnected()) {
                 return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
             }
-            obsService.ensureEffectPlayerSource().catch(() => {});
-            if (!await waitForEffectPlayerReady(req, 150)) {
+            await obsService.ensureEffectPlayerSource().catch(() => {});
+            if (!await waitForEffectPlayerReady(req, 1000)) {
                 return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS. Vui lòng mở nguồn OBS Browser.' });
             }
         }
@@ -873,7 +873,7 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                             effectId: selEffectId,
                             userId: String(req.userId)
                         });
-                        effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(selEffectId)}?token=${encodeURIComponent(streamToken)}`;
+                        effectUrl = `http://127.0.0.1:${PORT}/api/obs/effect-player-media/${encodeURIComponent(selEffectId)}?token=${encodeURIComponent(streamToken)}`;
                     }
 
                     queued = await effectQueue.add({
@@ -927,7 +927,7 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                     effectId,
                     userId: String(req.userId)
                 });
-                effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
+                effectUrl = `http://127.0.0.1:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
             }
             finalDuration = duration;
             effectName = resolvedEffect.name || mapping.effectName || effectId;
@@ -939,7 +939,7 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                 effectUrl,
                 audioEnabled: mapping.audioEnabled !== false,
                 audioVolume: mapping.audioVolume,
-                duration: finalDuration,
+                duration: finalDuration < 100 ? finalDuration * 1000 : finalDuration,
                 playbackType: 'test_mapping',
                 priority: 0,
                 createdAt: Date.now(),
@@ -1065,7 +1065,7 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
                     effectId,
                     userId: String(req.userId)
                 });
-                effectUrl = `http://localhost:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
+                effectUrl = `http://127.0.0.1:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
             }
 
             queued = await effectQueue.add({

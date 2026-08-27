@@ -25,7 +25,7 @@ const upload = multer({
     }
 });
 
-const CLOUD_URL = process.env.CLOUD_API_URL || 'https://effectstore-backend.onrender.com';
+const CLOUD_URL = process.env.CLOUD_API_URL || '';
 
 // Get active banner
 router.get('/', async (req, res) => {
@@ -41,6 +41,7 @@ router.get('/', async (req, res) => {
 
         // Fallback: If local desktop database has no banner record, fetch from Cloud Render
         try {
+            if (!CLOUD_URL) throw new Error('Cloud disabled');
             const cloudRes = await fetch(`${CLOUD_URL}/api/banner`, { signal: AbortSignal.timeout(3000) }).catch(() => null);
             if (cloudRes && cloudRes.ok) {
                 const cloudData = await cloudRes.json().catch(() => ({}));

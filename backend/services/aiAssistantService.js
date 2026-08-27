@@ -318,7 +318,7 @@ async function synthesizeElevenLabs(text, config = getRuntimeConfig(), user = nu
 }
 
 async function callGeminiApi(apiKey, systemPrompt, username, userMessage) {
-    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const models = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-2.5-flash'];
     for (const model of models) {
         try {
             const resText = await new Promise((resolve, reject) => {
@@ -345,7 +345,9 @@ async function callGeminiApi(apiKey, systemPrompt, username, userMessage) {
                     res.on('end', () => {
                         try {
                             const parsed = JSON.parse(data);
-                            const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+                            const parts = parsed?.candidates?.[0]?.content?.parts || [];
+                            const textPart = parts.find(p => p.text && !p.thought) || parts.find(p => p.text);
+                            const text = textPart?.text;
                             if (res.statusCode === 200 && text) resolve(text.trim());
                             else reject(new Error(parsed?.error?.message || `HTTP ${res.statusCode}`));
                         } catch (e) {

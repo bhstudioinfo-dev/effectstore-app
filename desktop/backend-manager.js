@@ -126,8 +126,10 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
 
     if (config.INITIAL_SETUP_TOKEN.length < 32) config.INITIAL_SETUP_TOKEN = crypto.randomBytes(48).toString('hex');
 
-    // Prefer explicit defaultMongodbUri when bundled mongo is active
-    if (defaultMongodbUri) {
+    // Prefer process.env.MONGODB_URI or backend .env
+    if (process.env.MONGODB_URI && !isLegacyDefaultMongoUri(process.env.MONGODB_URI)) {
+        config.MONGODB_URI = process.env.MONGODB_URI;
+    } else if (defaultMongodbUri) {
         config.MONGODB_URI = defaultMongodbUri;
     } else if (!config.MONGODB_URI || isPort27117MongoUri(config.MONGODB_URI) || isLegacyDefaultMongoUri(config.MONGODB_URI)) {
         config.MONGODB_URI = 'mongodb://127.0.0.1:27017/effectstore';
@@ -191,14 +193,10 @@ async function startManagedBackend(options) {
         EFFECTSTORE_LEGACY_DATA_DIR: options.legacyDataDirectory || '',
         CLOUD_API_URL: process.env.CLOUD_API_URL || options.cloudApiUrl || '',
         CLOUD_JWT_PUBLIC_KEY: process.env.CLOUD_JWT_PUBLIC_KEY || options.cloudJwtPublicKey || '',
-        // Desktop clients never receive object-storage credentials. Catalog and
-        // purchase uploads are proxied through the authenticated cloud API;
-        // keeping provider secrets out of a distributable prevents every
-        // installed copy from becoming a privileged storage client.
-        R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || '',
-        R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || '',
-        R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY || '',
-        R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || ''
+        ...(process.env.R2_ACCOUNT_ID ? { R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID } : {}),
+        ...(process.env.R2_ACCESS_KEY_ID ? { R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID } : {}),
+        ...(process.env.R2_SECRET_ACCESS_KEY ? { R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY } : {}),
+        ...(process.env.R2_BUCKET_NAME ? { R2_BUCKET_NAME: process.env.R2_BUCKET_NAME } : {})
     };
     if (!options.launchProcess) childEnvironment.ELECTRON_RUN_AS_NODE = '1';
 

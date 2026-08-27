@@ -93,6 +93,29 @@ router.post('/speech', authMiddleware, aiLimiter, async (req, res) => {
             if (reservedCharacters) await User.updateOne({ _id: req.userId }, { $inc: { usedCharactersThisMonth: -reservedCharacters } });
             return res.status(503).json({ success: false, error: 'Dịch vụ giọng đọc chưa được cấu hình.' });
         }
+        try {
+            const persona = String(req.body?.persona || 'sassy').trim();
+            const base64Data = audio.audioDataUrl.split(',')[1];
+            if (base64Data) {
+                const audioBuffer = Buffer.from(base64Data, 'base64');
+                const targetDirs = [
+                    path.join(__dirname, '../public/assets/audio/voice-samples'),
+                    path.join(__dirname, '../../desktop/renderer/assets/audio/voice-samples')
+                ];
+                for (const dir of targetDirs) {
+                    try {
+                        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                        fs.writeFileSync(path.join(dir, `${persona}_${voiceId}.mp3`), audioBuffer);
+                        fs.writeFileSync(path.join(dir, `${voiceId}.mp3`), audioBuffer);
+                        fs.writeFileSync(path.join(dir, `sample_${voiceId}.mp3`), audioBuffer);
+                    } catch (_writeErr) {}
+                }
+                const { uploadVoiceSample } = require('../services/effectAssetStore');
+                uploadVoiceSample(`${persona}_${voiceId}.mp3`, audioBuffer).catch(() => {});
+                uploadVoiceSample(`${voiceId}.mp3`, audioBuffer).catch(() => {});
+                uploadVoiceSample(`sample_${voiceId}.mp3`, audioBuffer).catch(() => {});
+            }
+        } catch (_cacheErr) {}
         res.setHeader('Cache-Control', 'no-store');
         res.json({ success: true, voiceId: audio.voiceId, audioDataUrl: audio.audioDataUrl });
     } catch (_error) {

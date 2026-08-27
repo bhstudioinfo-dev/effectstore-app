@@ -47,7 +47,12 @@ const OBSSettingsSchema = new mongoose.Schema({
     // document (no userId) until it's adopted by whichever account first
     // reads/saves OBS settings after this field was introduced.
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true, sparse: true },
-    host: { type: String, default: 'localhost' },
+    host: {
+        type: String,
+        default: '127.0.0.1',
+        set: (value) => (!value || value === 'localhost' ? '127.0.0.1' : value),
+        get: (value) => (!value || value === 'localhost' ? '127.0.0.1' : value)
+    },
     port: { type: Number, default: 4455 },
     password: {
         type: String,
