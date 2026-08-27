@@ -68,10 +68,11 @@ router.post('/speech', authMiddleware, aiLimiter, async (req, res) => {
     try {
         const text = String(req.body?.text || '').trim().slice(0, 500);
         const voiceId = String(req.body?.voiceId || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100);
+        const isTest = Boolean(req.body?.isTest);
         if (!text || !voiceId || !moderateText(text, { output: true }).allowed) return res.status(422).json({ success: false, error: 'Yêu cầu giọng đọc không hợp lệ.' });
         await ensureCurrentAiMonth(req.user, req.userId);
         const usage = aiAssistantService.getCharacterUsage(req.user);
-        if (!usage.isAdmin) {
+        if (!usage.isAdmin && !isTest) {
             reservedCharacters = text.length;
             if (!usage.hasQuota || reservedCharacters > usage.remaining) {
                 return res.status(402).json({ success: false, error: 'Đã hết hạn mức giọng tùy chỉnh tháng này.' });

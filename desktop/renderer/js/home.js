@@ -8892,19 +8892,26 @@ class EffectStoreApp {
         const legacyCacheKey = `es_ai_voice_cache_${safeVoiceId}_${text}`;
         let targetAudioSrc = localStorage.getItem(cacheKey) || localStorage.getItem(legacyCacheKey);
 
-        // 2. Kiểm tra file âm thanh mẫu chuẩn từ Backend / Cloud R2
+        // 2. Kiểm tra file âm thanh mẫu chuẩn từ Backend / Cloud R2 (Hoàn toàn miễn phí 0 Token)
         if (!targetAudioSrc) {
             const apiUrl = this.API_URL || 'http://127.0.0.1:9000';
-            const sampleUrl = `${apiUrl}/assets/audio/voice-samples/${activePersona}_${safeVoiceId}.mp3`;
-            try {
-                const check = await fetch(sampleUrl, { method: 'HEAD' });
-                if (check.ok) {
-                    targetAudioSrc = sampleUrl;
-                }
-            } catch (_e) { }
+            const candidateUrls = [
+                `${apiUrl}/assets/audio/voice-samples/${safeVoiceId}.mp3`,
+                `${apiUrl}/assets/audio/voice-samples/${activePersona}_${safeVoiceId}.mp3`,
+                `${apiUrl}/assets/audio/voice-samples/sample_${safeVoiceId}.mp3`
+            ];
+            for (const candidate of candidateUrls) {
+                try {
+                    const check = await fetch(candidate, { method: 'HEAD' });
+                    if (check.ok) {
+                        targetAudioSrc = candidate;
+                        break;
+                    }
+                } catch (_e) { }
+            }
         }
 
-        // 3. Gọi Cloud API nếu chưa có và lưu vào cache
+        // 3. Fallback sang API với cờ isTest: true (0 Token, 0 Ký tự trừ vào tài khoản)
         if (!targetAudioSrc) {
             try {
                 const response = await fetch(`${this.API_URL}/api/ai/speech`, {
@@ -8913,7 +8920,7 @@ class EffectStoreApp {
                         'Authorization': `Bearer ${this.authToken}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ text, voiceId: safeVoiceId, persona: activePersona })
+                    body: JSON.stringify({ text, voiceId: safeVoiceId, persona: activePersona, isTest: true })
                 });
                 const data = await response.json().catch(() => ({}));
                 if (response.ok && data.success && data.audioDataUrl) {
@@ -8925,8 +8932,8 @@ class EffectStoreApp {
             } catch (_err) { }
         }
 
+        // 4. Fallback sang Web Speech / Google TTS miễn phí nếu offline
         if (!targetAudioSrc) {
-            // Fallback sang Web Speech / Google TTS để luôn phát được âm thanh cho streamer
             await this.speakText(text, true);
             return;
         }
