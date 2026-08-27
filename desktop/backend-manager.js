@@ -117,6 +117,11 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
     };
     const SHARED_JWT_SECRET = '675ad2a8642ae99b1f859f47dce6ba799fa07ecde2687a4315062c4b71caba7cebfb6d0fee091b54489d380c4497133b';
     const SHARED_ENCRYPTION_PASSWORD = 'effectstore-super-secret-encryption-key-2024';
+    const SHARED_MONGODB_URI = 'mongodb+srv://bhstudioinfo_db_user:HungHuynh090599%40@cluster0.etahc9e.mongodb.net/effectstore?retryWrites=true&w=majority';
+    const SHARED_R2_ACCOUNT_ID = '2942b67fe2cf3cb694ca18fb030cccd0';
+    const SHARED_R2_ACCESS_KEY_ID = '5f87e981b26633f992a3e491bf43a532';
+    const SHARED_R2_SECRET_ACCESS_KEY = '8fc607424f25d1685c119c31e221e459d5fe0fda140d3d95f59123b39a64a362';
+    const SHARED_R2_BUCKET_NAME = 'liveflow-effects';
 
     config.JWT_SECRET = String(process.env.JWT_SECRET || SHARED_JWT_SECRET).trim();
     if (config.JWT_SECRET.length < 32) config.JWT_SECRET = SHARED_JWT_SECRET;
@@ -126,13 +131,13 @@ function ensureBackendConfig(userDataPath, codecOptions = {}, sharedDefaults = {
 
     if (config.INITIAL_SETUP_TOKEN.length < 32) config.INITIAL_SETUP_TOKEN = crypto.randomBytes(48).toString('hex');
 
-    // Prefer process.env.MONGODB_URI or backend .env
+    // Prefer process.env.MONGODB_URI or backend .env or SHARED_MONGODB_URI
     if (process.env.MONGODB_URI && !isLegacyDefaultMongoUri(process.env.MONGODB_URI)) {
         config.MONGODB_URI = process.env.MONGODB_URI;
     } else if (defaultMongodbUri) {
         config.MONGODB_URI = defaultMongodbUri;
     } else if (!config.MONGODB_URI || isPort27117MongoUri(config.MONGODB_URI) || isLegacyDefaultMongoUri(config.MONGODB_URI)) {
-        config.MONGODB_URI = 'mongodb://127.0.0.1:27017/effectstore';
+        config.MONGODB_URI = SHARED_MONGODB_URI;
     }
 
     fs.mkdirSync(userDataPath, { recursive: true });
@@ -193,10 +198,10 @@ async function startManagedBackend(options) {
         EFFECTSTORE_LEGACY_DATA_DIR: options.legacyDataDirectory || '',
         CLOUD_API_URL: process.env.CLOUD_API_URL || options.cloudApiUrl || '',
         CLOUD_JWT_PUBLIC_KEY: process.env.CLOUD_JWT_PUBLIC_KEY || options.cloudJwtPublicKey || '',
-        ...(process.env.R2_ACCOUNT_ID ? { R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID } : {}),
-        ...(process.env.R2_ACCESS_KEY_ID ? { R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID } : {}),
-        ...(process.env.R2_SECRET_ACCESS_KEY ? { R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY } : {}),
-        ...(process.env.R2_BUCKET_NAME ? { R2_BUCKET_NAME: process.env.R2_BUCKET_NAME } : {})
+        R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || SHARED_R2_ACCOUNT_ID,
+        R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || SHARED_R2_ACCESS_KEY_ID,
+        R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY || SHARED_R2_SECRET_ACCESS_KEY,
+        R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || SHARED_R2_BUCKET_NAME
     };
     if (!options.launchProcess) childEnvironment.ELECTRON_RUN_AS_NODE = '1';
 
