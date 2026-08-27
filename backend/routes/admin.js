@@ -112,10 +112,34 @@ router.get('/effect-acquisitions', authMiddleware, adminMiddleware, async (_req,
             .lean();
 
         const records = [];
+        const customers = [];
+
         for (const user of users) {
+            const userEffects = [];
+            let totalSpent = 0;
+            let totalUses = 0;
+            let freeCount = 0;
+            let paidCount = 0;
+            let latestAcquisition = null;
+
             for (const purchase of user.purchasedEffects || []) {
                 if (!purchase.effectId) continue;
-                records.push({
+                const price = Number.isFinite(Number(purchase.acquisitionPrice)) ? Number(purchase.acquisitionPrice) : 0;
+                const acqType = purchase.acquisitionType || (price === 0 ? 'free' : 'legacy');
+                const useCount = Number(purchase.useCount || 0);
+
+                if (acqType === 'paid') {
+                    paidCount += 1;
+                    totalSpent += price;
+                } else {
+                    freeCount += 1;
+                }
+                totalUses += useCount;
+                if (!latestAcquisition || new Date(purchase.purchasedAt) > new Date(latestAcquisition)) {
+                    latestAcquisition = purchase.purchasedAt;
+                }
+
+                const rec = {
                     user: {
                         id: String(user._id),
                         name: user.name || 'Chưa đặt tên',
@@ -130,24 +154,48 @@ router.get('/effect-acquisitions', authMiddleware, adminMiddleware, async (_req,
                         category: purchase.effectId.category
                     },
                     acquiredAt: purchase.purchasedAt,
-                    acquisitionType: purchase.acquisitionType || (Number(purchase.acquisitionPrice) === 0 ? 'free' : 'legacy'),
-                    acquisitionPrice: Number.isFinite(Number(purchase.acquisitionPrice))
-                        ? Number(purchase.acquisitionPrice)
-                        : null,
-                    useCount: Number(purchase.useCount || 0),
+                    acquisitionType: acqType,
+                    acquisitionPrice: price,
+                    useCount,
                     lastUsedAt: purchase.lastUsedAt || null
+                };
+                records.push(rec);
+                userEffects.push(rec);
+            }
+
+            if (userEffects.length > 0) {
+                userEffects.sort((a, b) => new Date(b.acquiredAt || 0) - new Date(a.acquiredAt || 0));
+                customers.push({
+                    user: {
+                        id: String(user._id),
+                        name: user.name || 'Chưa đặt tên',
+                        email: user.email,
+                        phone: user.phone || '',
+                        subscription: user.subscription || 'free'
+                    },
+                    totalEffects: userEffects.length,
+                    freeCount,
+                    paidCount,
+                    totalSpent,
+                    totalUses,
+                    latestAcquisition,
+                    effects: userEffects
                 });
             }
         }
         records.sort((a, b) => new Date(b.acquiredAt || 0) - new Date(a.acquiredAt || 0));
+        customers.sort((a, b) => new Date(b.latestAcquisition || 0) - new Date(a.latestAcquisition || 0));
+
         return res.json({
             success: true,
             summary: {
+                totalCustomers: customers.length,
                 totalAcquisitions: records.length,
                 freeAcquisitions: records.filter((record) => record.acquisitionType === 'free').length,
                 paidAcquisitions: records.filter((record) => record.acquisitionType === 'paid').length,
                 totalUses: records.reduce((sum, record) => sum + record.useCount, 0)
             },
+            customers,
             records
         });
     } catch (error) {
