@@ -218,19 +218,50 @@ class OBSController {
             const filters = filterList.filters || [];
 
             if (filterType === 'bg_removal' || filterType === 'background_removal') {
-                const bgFilter = filters.find(f =>
+                let bgFilter = filters.find(f =>
                     f.filterKind === 'background_removal' ||
+                    f.filterKind === 'obs_backgroundremoval' ||
+                    f.filterKind === 'background-removal' ||
+                    f.filterKind?.toLowerCase().includes('background') ||
                     f.filterName.toLowerCase().includes('background') ||
+                    f.filterName.toLowerCase().includes('removal') ||
                     f.filterName.toLowerCase().includes('tách nền') ||
-                    f.filterName.toLowerCase().includes('xóa nền')
+                    f.filterName.toLowerCase().includes('xóa nền') ||
+                    f.filterName.toLowerCase().includes('xoa phong')
                 );
+
+                // Tự động tạo Filter Tách Nền nếu chưa có trên source
+                if (!bgFilter && enabled) {
+                    try {
+                        await this.obs.call('CreateSourceFilter', {
+                            sourceName,
+                            filterName: 'Background Removal',
+                            filterKind: 'background_removal',
+                            filterSettings: {}
+                        });
+                        bgFilter = { filterName: 'Background Removal' };
+                    } catch (_e1) {
+                        try {
+                            await this.obs.call('CreateSourceFilter', {
+                                sourceName,
+                                filterName: 'Background Removal',
+                                filterKind: 'obs_backgroundremoval',
+                                filterSettings: {}
+                            });
+                            bgFilter = { filterName: 'Background Removal' };
+                        } catch (_e2) {}
+                    }
+                }
+
                 if (bgFilter) {
                     await this.obs.call('SetSourceFilterEnabled', {
                         sourceName,
                         filterName: bgFilter.filterName,
                         filterEnabled: Boolean(enabled)
                     });
-                    console.log(`✂️ Background Removal ${enabled ? 'BẬT' : 'TẮT'} trên ${sourceName}`);
+                    console.log(`✂️ Background Removal ${enabled ? 'BẬT' : 'TẮT'} trên ${sourceName} (Filter: ${bgFilter.filterName})`);
+                } else {
+                    console.warn(`⚠️ Chưa tìm thấy hoặc chưa cài plugin Background Removal trên source: ${sourceName}`);
                 }
             } else if (filterType === 'blackout' || filterType === 'silhouette') {
                 let colorFilter = filters.find(f => f.filterKind === 'color_filter' || f.filterName === 'LiveFlow_Color_Correction');
@@ -477,18 +508,30 @@ class OBSController {
                             // 4. Xử lý Di chuyển / Thu phóng / Squash Đập Dẹp / Xoay Góc
                             if (keyframe.transform && (keyframe.action === 'move' || keyframe.action === 'scale' || keyframe.action === 'squash' || keyframe.action === 'rotate') && targetSceneItemId) {
                                 const tf = keyframe.transform;
-                                const scaleX = typeof tf.scaleX === 'number' ? tf.scaleX / 100 : (typeof tf.scale === 'number' ? tf.scale / 100 : 1);
-                                const scaleY = typeof tf.scaleY === 'number' ? tf.scaleY / 100 : (typeof tf.scale === 'number' ? tf.scale / 100 : 1);
-                                const moveDuration = (keyframe.duration || 0.4) * 1000;
+                                const orig = this.originalPositions[targetSceneItemId] || {};
+                                const baseScaleX = typeof orig.scaleX === 'number' ? orig.scaleX : 1.0;
+                                const baseScaleY = typeof orig.scaleY === 'number' ? orig.scaleY : 1.0;
+                                const baseX = typeof orig.positionX === 'number' ? orig.positionX : 0;
+                                const baseY = typeof orig.positionY === 'number' ? orig.positionY : 0;
+
+                                const multScaleX = typeof tf.scaleX === 'number' ? tf.scaleX / 100 : (typeof tf.scale === 'number' ? tf.scale / 100 : 1);
+                                const multScaleY = typeof tf.scaleY === 'number' ? tf.scaleY / 100 : (typeof tf.scale === 'number' ? tf.scale / 100 : 1);
+
+                                const targetScaleX = baseScaleX * multScaleX;
+                                const targetScaleY = baseScaleY * multScaleY;
+                                const targetX = (typeof tf.x === 'number' && tf.x !== 0) ? (baseX + tf.x) : (tf.x === 0 ? baseX : undefined);
+                                const targetY = (typeof tf.y === 'number' && tf.y !== 0) ? (baseY + tf.y) : (tf.y === 0 ? baseY : undefined);
+                                const targetRotation = typeof tf.rotation === 'number' ? tf.rotation : 0;
+                                const moveDuration = Math.max(50, (keyframe.duration || 0.4) * 1000);
 
                                 await this.moveWebcamSmooth(
                                     sceneName,
                                     targetSceneItemId,
-                                    tf.x,
-                                    tf.y,
-                                    scaleX,
-                                    scaleY,
-                                    tf.rotation,
+                                    targetX,
+                                    targetY,
+                                    targetScaleX,
+                                    targetScaleY,
+                                    targetRotation,
                                     moveDuration
                                 );
                             }
