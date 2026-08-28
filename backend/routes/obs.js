@@ -371,19 +371,31 @@ router.post('/preview-timeline', authMiddleware, async (req, res) => {
                 startedAt: Date.now()
             });
         } else if (effectId && effectId !== 'upload_preview' && effectId !== 'preview') {
-            const effect = await Effect.findById(effectId).catch(() => null);
+            let effect = await Effect.findById(effectId).catch(() => null);
+            if (!effect) {
+                const { resolveEffectForUser, mirrorEffectFromCentral } = require('../services/effectLibraryService');
+                effect = await resolveEffectForUser(req.userId, effectId).catch(() => null);
+                if (!effect) {
+                    effect = await mirrorEffectFromCentral(effectId).catch(() => null);
+                }
+            }
             if (effect) {
                 await obsService.ensureEffectPlayerSource().catch(() => {});
-                const streamToken = issueEffectAccessToken({
-                    purpose: 'effect-player-preview',
-                    effectId: String(effect._id),
-                    userId: String(req.userId)
-                });
-                const effectUrl = `http://127.0.0.1:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effect._id)}?token=${encodeURIComponent(streamToken)}`;
+                let effectUrl = '';
+                if (effect.isCustom) {
+                    effectUrl = effect.fileUrl;
+                } else {
+                    const streamToken = issueEffectAccessToken({
+                        purpose: 'effect-player-preview',
+                        effectId: String(effect._id || effect.id),
+                        userId: String(req.userId)
+                    });
+                    effectUrl = `http://127.0.0.1:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effect._id || effect.id)}?token=${encodeURIComponent(streamToken)}`;
+                }
                 
                 eventBus.emit('effect_player_play_request', {
                     requestId: `preview-${Date.now()}`,
-                    effectId: String(effect._id),
+                    effectId: String(effect._id || effect.id),
                     effectName: effect.name,
                     effectUrl,
                     duration: durationMs,
