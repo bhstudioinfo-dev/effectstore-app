@@ -5826,12 +5826,23 @@ class EffectStoreApp {
         if (!this.inlineUploadTimeline || this.inlineUploadTimeline.length === 0) {
             return this.showNotification('warning', '⚠️ Timeline đang trống, hãy chọn Preset trước!');
         }
+        let filePath = '';
+        const fileInput = document.getElementById('upload-file');
+        try {
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                if (window.electronAPI && typeof window.electronAPI.getPathForFile === 'function') {
+                    filePath = window.electronAPI.getPathForFile(fileInput.files[0]) || '';
+                }
+                if (!filePath) filePath = fileInput.files[0].path || '';
+            }
+        } catch (_e) {}
+
         try {
             this.showNotification('info', '🚀 Đang gửi lệnh chạy thử lên OBS...');
             const res = await fetch(this.API_URL + '/api/obs/preview-timeline', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` },
-                body: JSON.stringify({ effectId: 'upload_preview', timeline: this.inlineUploadTimeline })
+                body: JSON.stringify({ effectId: 'upload_preview', filePath, timeline: this.inlineUploadTimeline })
             });
             const data = await res.json();
             if (data.success) {

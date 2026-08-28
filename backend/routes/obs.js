@@ -209,6 +209,20 @@ router.post('/preview-timeline', authMiddleware, async (req, res) => {
         obsController.isConnected = true;
         obsController.runTimelineEffect(sceneName, effectId || 'preview', timeline);
 
+        if (req.body.filePath && fs.existsSync(req.body.filePath)) {
+            const maxTime = Math.max(5, ...timeline.map(k => k.time || 0));
+            const durationMs = Math.round((maxTime + 1.5) * 1000);
+            const payload = {
+                effectId: effectId || 'upload_preview',
+                effectName: 'Xem Thử Timeline',
+                effectUrl: req.body.filePath,
+                duration: durationMs,
+                playbackType: 'preview_effect',
+                startedAt: Date.now()
+            };
+            effectQueue.add({ ...payload, userId: String(req.userId) }).catch(() => {});
+        }
+
         return res.json({ success: true, message: 'Đang chạy thử Timeline trên OBS!' });
     } catch (err) {
         console.error('Preview timeline error:', err);
