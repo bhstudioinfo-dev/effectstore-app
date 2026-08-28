@@ -5823,6 +5823,10 @@ class EffectStoreApp {
     }
 
     async previewUploadTimelineOnOBS() {
+        if (this.editingInlineKeyframeIndex !== null && typeof this.saveInlineKeyframeEdit === 'function') {
+            this.saveInlineKeyframeEdit();
+        }
+
         if (!this.inlineUploadTimeline || this.inlineUploadTimeline.length === 0) {
             return this.showNotification('warning', '⚠️ Timeline đang trống, hãy chọn Preset trước!');
         }

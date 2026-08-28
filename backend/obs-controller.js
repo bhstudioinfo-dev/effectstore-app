@@ -146,9 +146,13 @@ class OBSController {
 
     async findEffectSource(sceneName, effectId) {
         try {
-            const sourceName = `effect_${effectId}`;
             const items = await this.obs.call('GetSceneItemList', { sceneName });
-            return (items.sceneItems || []).find(item => item.sourceName === sourceName) || null;
+            const sceneItems = items.sceneItems || [];
+            let found = sceneItems.find(item => item.sourceName === `effect_${effectId}`);
+            if (!found) {
+                found = sceneItems.find(item => item.sourceName === 'effect_player' || item.sourceName.toLowerCase().includes('effect_player'));
+            }
+            return found || null;
         } catch (err) {
             console.error('❌ Lỗi tìm effect source:', err);
             return null;
@@ -158,8 +162,25 @@ class OBSController {
     // ===== 🔲 LAYER MANAGEMENT =====
     async setWebcamLayer(sceneName, webcamId, effectId, position = 'above') {
         try {
+            if (!webcamId) return false;
+            if (!effectId) {
+                const eff = await this.findEffectSource(sceneName, 'preview');
+                if (eff) effectId = eff.sceneItemId;
+            }
+            if (!effectId) {
+                console.warn('⚠️ Không tìm thấy effect source để so sánh layer');
+                return false;
+            }
             const effectInfo = await this.obs.call('GetSceneItemIndex', { sceneName, sceneItemId: effectId });
-            const newIndex = position === 'above' ? effectInfo.sceneItemIndex + 1 : Math.max(0, effectInfo.sceneItemIndex - 1);
+            const webcamInfo = await this.obs.call('GetSceneItemIndex', { sceneName, sceneItemId: webcamId });
+            
+            // Trong OBS: index lớn hơn = nằm TRÊN, index nhỏ hơn = nằm DƯỚI
+            let newIndex = effectInfo.sceneItemIndex;
+            if (position === 'above') {
+                newIndex = Math.max(effectInfo.sceneItemIndex, webcamInfo.sceneItemIndex) + 1;
+            } else {
+                newIndex = Math.max(0, Math.min(effectInfo.sceneItemIndex, webcamInfo.sceneItemIndex) - 1);
+            }
             
             await this.obs.call('SetSceneItemIndex', {
                 sceneName,
@@ -167,7 +188,7 @@ class OBSController {
                 sceneItemIndex: newIndex
             });
             
-            console.log(`✅ Đã set webcam ${position === 'above' ? 'TRÊN' : 'DƯỚI'} effect`);
+            console.log(`✅ Đã set webcam ${position === 'above' ? 'TRÊN' : 'DƯỚI'} effect (Index mới: ${newIndex})`);
             return true;
         } catch (err) {
             console.error('❌ Lỗi set layer:', err);
@@ -179,9 +200,13 @@ class OBSController {
     async saveWebcamOriginalPosition(sceneName, webcamId) {
         try {
             const transform = await this.obs.call('GetSceneItemTransform', { sceneName, sceneItemId: webcamId });
-            this.originalPositions[webcamId] = transform.sceneItemTransform;
-            console.log('💾 Đã lưu vị trí gốc webcam');
-            return transform.sceneItemTransform;
+            const st = transform.sceneItemTransform;
+            // Bảo vệ không ghi đè vị trí gốc nếu webcam đang bị đè bẹp dí (scaleY < 0.25)
+            if (!this.originalPositions[webcamId] || (st.scaleY >= 0.25 && Math.abs(st.scaleX - st.scaleY) < 0.6)) {
+                this.originalPositions[webcamId] = { ...st };
+                console.log('💾 Đã lưu vị trí gốc webcam');
+            }
+            return this.originalPositions[webcamId];
         } catch (err) {
             console.error('❌ Lỗi lưu vị trí gốc:', err);
             return null;
@@ -460,7 +485,20 @@ class OBSController {
             const effectSceneItemId = effectItem ? effectItem.sceneItemId : null;
             
             if (webcamId) {
-                await this.saveWebcamOriginalPosition(sceneName, webcamId);
+                const orig = await this.saveWebcamOriginalPosition(sceneName, webcamId);
+                if (orig) {
+                    await this.obs.call('SetSceneItemTransform', {
+                        sceneName,
+                        sceneItemId: webcamId,
+                        sceneItemTransform: {
+                            scaleX: orig.scaleX || 1.0,
+                            scaleY: orig.scaleY || 1.0,
+                            positionX: orig.positionX || 0,
+                            positionY: orig.positionY || 0,
+                            rotation: orig.rotation || 0
+                        }
+                    }).catch(() => {});
+                }
             }
             
             if (effectSceneItemId) {
@@ -489,8 +527,8 @@ class OBSController {
 
                         if (targetSceneItemId || targetSourceName) {
                             // 1. Xử lý Lớp (Layer)
-                            if (keyframe.layer && keyframe.source === 'auto_webcam' && targetSceneItemId) {
-                                await this.setWebcamLayer(sceneName, webcamId, effectSceneItemId, keyframe.layer);
+                            if ((keyframe.action === 'layer' || keyframe.layer) && (keyframe.source === 'auto_webcam' || !keyframe.source) && webcamId) {
+                                await this.setWebcamLayer(sceneName, webcamId, effectSceneItemId, keyframe.layer || (keyframe.enabled === false ? 'below' : 'above'));
                             }
                             
                             // 2. Xử lý Filter Tách Nền / Đen Mặt
