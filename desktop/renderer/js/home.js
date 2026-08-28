@@ -5649,6 +5649,90 @@ class EffectStoreApp {
         this.showNotification('success', `✨ Đã áp dụng preset ${preset} vào Timeline!`);
     }
 
+    editInlineKeyframe(index) {
+        if (!this.inlineUploadTimeline || !this.inlineUploadTimeline[index]) return;
+        this.editingInlineKeyframeIndex = index;
+        const kf = this.inlineUploadTimeline[index];
+
+        const timeInput = document.getElementById('inline-kf-time');
+        const actionSelect = document.getElementById('inline-kf-action');
+        const sourceSelect = document.getElementById('inline-kf-source');
+        const layerSelect = document.getElementById('inline-kf-layer');
+        const xInput = document.getElementById('inline-kf-x');
+        const yInput = document.getElementById('inline-kf-y');
+        const scaleXInput = document.getElementById('inline-kf-scale-x');
+        const scaleYInput = document.getElementById('inline-kf-scale-y');
+        const rotInput = document.getElementById('inline-kf-rotation');
+        const durInput = document.getElementById('inline-kf-duration');
+
+        if (timeInput) timeInput.value = kf.time ?? 0;
+        if (actionSelect) actionSelect.value = kf.action || 'move';
+        if (sourceSelect) sourceSelect.value = kf.source || 'auto_webcam';
+        if (layerSelect) layerSelect.value = kf.layer || (kf.enabled === false ? 'below' : 'above');
+        if (xInput) xInput.value = kf.transform?.x ?? 0;
+        if (yInput) yInput.value = kf.transform?.y ?? 0;
+        if (scaleXInput) scaleXInput.value = kf.transform?.scaleX ?? 100;
+        if (scaleYInput) scaleYInput.value = kf.transform?.scaleY ?? 100;
+        if (rotInput) rotInput.value = kf.transform?.rotation ?? 0;
+        if (durInput) durInput.value = kf.duration ?? 0.2;
+
+        const btnContainer = document.getElementById('inline-kf-btn-container');
+        if (btnContainer) {
+            btnContainer.innerHTML = `
+                <div style="display:flex; gap:8px;">
+                    <button type="button" onclick="app.saveInlineKeyframeEdit()" style="flex:2; padding:8px; background:linear-gradient(135deg,#06b6d4,#3b82f6); border:none; border-radius:6px; color:#fff; font-size:12px; font-weight:800; cursor:pointer;">
+                        💾 Cập nhật mốc (${kf.time}s)
+                    </button>
+                    <button type="button" onclick="app.cancelInlineKeyframeEdit()" style="flex:1; padding:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#cbd5e1; font-size:12px; font-weight:700; cursor:pointer;">
+                        ❌ Hủy
+                    </button>
+                </div>
+            `;
+        }
+        this.renderInlineKeyframes();
+    }
+
+    saveInlineKeyframeEdit() {
+        if (this.editingInlineKeyframeIndex == null || !this.inlineUploadTimeline[this.editingInlineKeyframeIndex]) return;
+        const time = parseFloat(document.getElementById('inline-kf-time')?.value || 0);
+        const action = document.getElementById('inline-kf-action')?.value || 'move';
+        const source = document.getElementById('inline-kf-source')?.value || 'auto_webcam';
+        const layer = document.getElementById('inline-kf-layer')?.value || 'above';
+        const x = parseFloat(document.getElementById('inline-kf-x')?.value || 0);
+        const y = parseFloat(document.getElementById('inline-kf-y')?.value || 0);
+        const scaleX = parseFloat(document.getElementById('inline-kf-scale-x')?.value || 100);
+        const scaleY = parseFloat(document.getElementById('inline-kf-scale-y')?.value || 100);
+        const rotation = parseFloat(document.getElementById('inline-kf-rotation')?.value || 0);
+        const duration = parseFloat(document.getElementById('inline-kf-duration')?.value || 0.2);
+
+        this.inlineUploadTimeline[this.editingInlineKeyframeIndex] = {
+            time,
+            action,
+            source,
+            layer,
+            enabled: layer === 'above',
+            duration,
+            transform: { x, y, scaleX, scaleY, rotation }
+        };
+
+        this.inlineUploadTimeline.sort((a, b) => a.time - b.time);
+        this.cancelInlineKeyframeEdit();
+        this.showNotification('success', `💾 Đã cập nhật mốc ${time}s!`);
+    }
+
+    cancelInlineKeyframeEdit() {
+        this.editingInlineKeyframeIndex = null;
+        const btnContainer = document.getElementById('inline-kf-btn-container');
+        if (btnContainer) {
+            btnContainer.innerHTML = `
+                <button type="button" onclick="app.addInlineKeyframe()" style="width:100%; padding:7px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:12px; font-weight:700; cursor:pointer;">
+                    + Thêm mốc này vào Timeline
+                </button>
+            `;
+        }
+        this.renderInlineKeyframes();
+    }
+
     addInlineKeyframe() {
         if (!this.inlineUploadTimeline) this.inlineUploadTimeline = [];
         const time = parseFloat(document.getElementById('inline-kf-time')?.value || 0);
@@ -5700,6 +5784,7 @@ class EffectStoreApp {
         };
 
         this.inlineUploadTimeline.forEach((kf, index) => {
+            const isEditing = this.editingInlineKeyframeIndex === index;
             let detail = '';
             if (kf.action === 'squash' || kf.action === 'scale') detail = `ScaleX:${kf.transform?.scaleX || 100}% ScaleY:${kf.transform?.scaleY || 100}%`;
             else if (kf.action === 'rotate') detail = `${kf.transform?.rotation || 0}°`;
@@ -5708,14 +5793,19 @@ class EffectStoreApp {
             else if (kf.action === 'move') detail = `X:${kf.transform?.x || 0} Y:${kf.transform?.y || 0}`;
 
             const item = document.createElement('div');
-            item.style.cssText = 'display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:6px 10px; border-radius:8px; font-size:11px;';
+            item.style.cssText = `display:flex; align-items:center; justify-content:space-between; background:${isEditing ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.04)'}; border:1px solid ${isEditing ? '#22d3ee' : 'rgba(255,255,255,0.08)'}; padding:6px 10px; border-radius:8px; font-size:11px; cursor:pointer; transition:all 0.15s ease;`;
+            item.onclick = () => this.editInlineKeyframe(index);
             item.innerHTML = `
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="background:rgba(124,58,237,0.3); color:#c084fc; font-weight:700; padding:1px 6px; border-radius:4px;">${kf.time}s</span>
+                    <span style="background:${isEditing ? '#22d3ee' : 'rgba(124,58,237,0.3)'}; color:${isEditing ? '#0f172a' : '#c084fc'}; font-weight:800; padding:1px 6px; border-radius:4px;">${kf.time}s</span>
                     <span style="font-weight:700; color:#fff;">${actionMap[kf.action] || kf.action}</span>
                     <span style="color:#94a3b8;">${detail}</span>
+                    ${isEditing ? '<span style="color:#22d3ee; font-weight:800; font-size:10px;">[Đang sửa ✏️]</span>' : ''}
                 </div>
-                <button type="button" onclick="app.deleteInlineKeyframe(${index})" style="background:none; border:none; color:#f87171; cursor:pointer; font-size:12px;">🗑️</button>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <button type="button" onclick="event.stopPropagation();app.editInlineKeyframe(${index})" style="background:none; border:none; color:#22d3ee; cursor:pointer; font-size:12px;" title="Chỉnh sửa">✏️</button>
+                    <button type="button" onclick="event.stopPropagation();app.deleteInlineKeyframe(${index})" style="background:none; border:none; color:#f87171; cursor:pointer; font-size:12px;" title="Xóa">🗑️</button>
+                </div>
             `;
             list.appendChild(item);
         });
@@ -5724,7 +5814,11 @@ class EffectStoreApp {
     deleteInlineKeyframe(index) {
         if (this.inlineUploadTimeline && index > -1 && index < this.inlineUploadTimeline.length) {
             this.inlineUploadTimeline.splice(index, 1);
-            this.renderInlineKeyframes();
+            if (this.editingInlineKeyframeIndex === index) {
+                this.cancelInlineKeyframeEdit();
+            } else {
+                this.renderInlineKeyframes();
+            }
         }
     }
 
@@ -9976,6 +10070,94 @@ function addKeyframe() {
     app.showNotification('success', `✅ Đã thêm keyframe tại ${time}s`);
 }
 
+let editingModalKeyframeIndex = null;
+
+function editKeyframe(index) {
+    if (!currentTimeline || !currentTimeline[index]) return;
+    editingModalKeyframeIndex = index;
+    const kf = currentTimeline[index];
+
+    const timeEl = document.getElementById('kf-time');
+    const actionEl = document.getElementById('kf-action');
+    const sourceEl = document.getElementById('kf-source');
+    const durationEl = document.getElementById('kf-duration');
+    const xEl = document.getElementById('kf-x');
+    const yEl = document.getElementById('kf-y');
+    const scaleXEl = document.getElementById('kf-scale-x');
+    const scaleYEl = document.getElementById('kf-scale-y');
+    const rotEl = document.getElementById('kf-rotation');
+    const layerEl = document.getElementById('kf-layer');
+
+    if (timeEl) timeEl.value = kf.time ?? 0;
+    if (actionEl) actionEl.value = kf.action || 'move';
+    if (sourceEl) sourceEl.value = kf.source || 'auto_webcam';
+    if (durationEl) durationEl.value = kf.duration ?? 0.4;
+    if (xEl) xEl.value = kf.transform?.x ?? 0;
+    if (yEl) yEl.value = kf.transform?.y ?? 0;
+    if (scaleXEl) scaleXEl.value = kf.transform?.scaleX ?? 100;
+    if (scaleYEl) scaleYEl.value = kf.transform?.scaleY ?? 100;
+    if (rotEl) rotEl.value = kf.transform?.rotation ?? 0;
+    if (layerEl) layerEl.value = kf.layer || (kf.enabled === false ? 'below' : 'above');
+
+    const btnContainer = document.getElementById('modal-kf-btn-container');
+    if (btnContainer) {
+        btnContainer.innerHTML = `
+            <div style="display:flex; gap:8px;">
+                <button type="button" onclick="saveKeyframeEdit()" style="flex:2; padding:10px; background:linear-gradient(135deg, #06b6d4, #3b82f6); border:none; border-radius:8px; color:white; font-weight:800; font-size:13px; cursor:pointer;">
+                    💾 Cập Nhật Keyframe (${kf.time}s)
+                </button>
+                <button type="button" onclick="cancelKeyframeEdit()" style="flex:1; padding:10px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#cbd5e1; font-weight:700; font-size:13px; cursor:pointer;">
+                    ❌ Hủy
+                </button>
+            </div>
+        `;
+    }
+    renderKeyframes();
+}
+
+function saveKeyframeEdit() {
+    if (editingModalKeyframeIndex == null || !currentTimeline[editingModalKeyframeIndex]) return;
+    const time = parseFloat(document.getElementById('kf-time').value) || 0;
+    const action = document.getElementById('kf-action').value;
+    const source = document.getElementById('kf-source').value;
+    const duration = parseFloat(document.getElementById('kf-duration').value) || 0.4;
+
+    const x = parseFloat(document.getElementById('kf-x').value) || 0;
+    const y = parseFloat(document.getElementById('kf-y').value) || 0;
+    const scaleX = parseFloat(document.getElementById('kf-scale-x').value) || 100;
+    const scaleY = parseFloat(document.getElementById('kf-scale-y').value) || 100;
+    const rotation = parseFloat(document.getElementById('kf-rotation').value) || 0;
+    const layer = document.getElementById('kf-layer').value;
+
+    currentTimeline[editingModalKeyframeIndex] = {
+        time,
+        action,
+        source,
+        duration,
+        enabled: layer === 'above',
+        layer,
+        transform: { x, y, scaleX, scaleY, scale: scaleX, rotation }
+    };
+
+    currentTimeline.sort((a, b) => a.time - b.time);
+    cancelKeyframeEdit();
+    app.showNotification('success', `💾 Đã cập nhật keyframe tại ${time}s!`);
+}
+
+function cancelKeyframeEdit() {
+    editingModalKeyframeIndex = null;
+    const btnContainer = document.getElementById('modal-kf-btn-container');
+    if (btnContainer) {
+        btnContainer.innerHTML = `
+            <button type="button" onclick="addKeyframe()"
+                style="width:100%; padding:10px; background: linear-gradient(135deg, #7c3aed, #ec4899); border:none; border-radius:8px; color:white; font-weight:700; font-size:13px; cursor:pointer;">
+                + Thêm Mốc Keyframe Này
+            </button>
+        `;
+    }
+    renderKeyframes();
+}
+
 // ✅ HÀM VẼ LẠI DANH SÁCH KEYFRAME
 function renderKeyframes() {
     const list = document.getElementById('keyframes-list');
@@ -9991,6 +10173,7 @@ function renderKeyframes() {
     const maxTime = Math.max(5.0, ...currentTimeline.map(k => k.time)) + 0.5;
 
     currentTimeline.forEach((kf, index) => {
+        const isEditing = editingModalKeyframeIndex === index;
         const actionMap = {
             move: '📍 Di chuyển',
             scale: '📏 Thu/Phóng',
@@ -10025,20 +10208,26 @@ function renderKeyframes() {
         // 1. Thêm vào danh sách item
         if (list) {
             const item = document.createElement('div');
-            item.style.cssText = 'display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:8px 12px; border-radius:10px;';
+            item.style.cssText = `display:flex; align-items:center; justify-content:space-between; background:${isEditing ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.04)'}; border:1px solid ${isEditing ? '#22d3ee' : 'rgba(255,255,255,0.08)'}; padding:8px 12px; border-radius:10px; cursor:pointer; transition:all 0.15s ease;`;
+            item.onclick = () => editKeyframe(index);
             item.innerHTML = `
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <span style="background:rgba(124,58,237,0.3); border:1px solid rgba(124,58,237,0.5); padding:2px 8px; border-radius:6px; font-weight:700; font-size:12px; color:#c084fc;">
+                    <span style="background:${isEditing ? '#22d3ee' : 'rgba(124,58,237,0.3)'}; color:${isEditing ? '#0f172a' : '#c084fc'}; border:1px solid ${isEditing ? '#22d3ee' : 'rgba(124,58,237,0.5)'}; padding:2px 8px; border-radius:6px; font-weight:800; font-size:12px;">
                         ⏱️ ${kf.time}s
                     </span>
                     <div>
-                        <div style="font-weight:700; font-size:13px; color:#fff;">${actionMap[kf.action] || kf.action}</div>
+                        <div style="font-weight:700; font-size:13px; color:#fff;">${actionMap[kf.action] || kf.action} ${isEditing ? '<span style="color:#22d3ee;font-size:11px;font-weight:700;">[Đang sửa ✏️]</span>' : ''}</div>
                         <div style="font-size:11px; color:#94a3b8;">${kf.source || 'auto_webcam'} • ${detailText}</div>
                     </div>
                 </div>
-                <button type="button" onclick="deleteKeyframe(${index})" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:6px; padding:4px 8px; cursor:pointer;" title="Xóa">
-                    🗑️
-                </button>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <button type="button" onclick="event.stopPropagation();editKeyframe(${index})" style="background:rgba(34,211,238,0.15); border:1px solid rgba(34,211,238,0.3); color:#22d3ee; border-radius:6px; padding:4px 8px; cursor:pointer;" title="Chỉnh sửa">
+                        ✏️
+                    </button>
+                    <button type="button" onclick="event.stopPropagation();deleteKeyframe(${index})" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:6px; padding:4px 8px; cursor:pointer;" title="Xóa">
+                        🗑️
+                    </button>
+                </div>
             `;
             list.appendChild(item);
         }
@@ -10059,7 +10248,11 @@ function renderKeyframes() {
 function deleteKeyframe(index) {
     if (index > -1 && index < currentTimeline.length) {
         currentTimeline.splice(index, 1);
-        renderKeyframes();
+        if (editingModalKeyframeIndex === index) {
+            cancelKeyframeEdit();
+        } else {
+            renderKeyframes();
+        }
         app.showNotification('success', `🗑️ Đã xóa keyframe!`);
     }
 }
@@ -10211,5 +10404,8 @@ window.testGiftMapping = function () {
 window.openTimelineEditor = openTimelineEditor;
 window.closeTimelineEditor = closeTimelineEditor;
 window.addKeyframe = addKeyframe;
+window.editKeyframe = editKeyframe;
+window.saveKeyframeEdit = saveKeyframeEdit;
+window.cancelKeyframeEdit = cancelKeyframeEdit;
 window.deleteKeyframe = deleteKeyframe;
 window.saveTimeline = saveTimeline;

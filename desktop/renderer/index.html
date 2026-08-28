@@ -1449,9 +1449,11 @@
                                             </select>
                                         </div>
                                     </div>
-                                    <button type="button" onclick="app.addInlineKeyframe()" style="width:100%; padding:7px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:12px; font-weight:700; cursor:pointer;">
-                                        + Thêm mốc này vào Timeline
-                                    </button>
+                                    <div id="inline-kf-btn-container">
+                                        <button type="button" onclick="app.addInlineKeyframe()" style="width:100%; padding:7px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:12px; font-weight:700; cursor:pointer;">
+                                            + Thêm mốc này vào Timeline
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- Inline Keyframes List -->
@@ -3042,10 +3044,12 @@
                         </div>
                     </div>
 
-                    <button type="button" onclick="addKeyframe()"
-                        style="width:100%; padding:10px; background: linear-gradient(135deg, #7c3aed, #ec4899); border:none; border-radius:8px; color:white; font-weight:700; font-size:13px; cursor:pointer;">
-                        + Thêm Mốc Keyframe Này
-                    </button>
+                    <div id="modal-kf-btn-container">
+                        <button type="button" onclick="addKeyframe()"
+                            style="width:100%; padding:10px; background: linear-gradient(135deg, #7c3aed, #ec4899); border:none; border-radius:8px; color:white; font-weight:700; font-size:13px; cursor:pointer;">
+                            + Thêm Mốc Keyframe Này
+                        </button>
+                    </div>
                 </div>
 
                 <!-- DANH SÁCH KEYFRAME -->
