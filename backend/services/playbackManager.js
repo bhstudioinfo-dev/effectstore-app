@@ -159,6 +159,9 @@ class PlaybackManager {
             startedAt: Date.now()
         });
 
+        // 🎬 Tự động kích hoạt chuyển động Timeline trên OBS nếu hiệu ứng có Timeline
+        this.triggerTimelineIfConfigured(item);
+
         // safety timeout
         this.currentTimer = setTimeout(() => {
             if (this.pendingPlayerRequestId !== requestId) return;
@@ -213,6 +216,50 @@ class PlaybackManager {
         }
         this.clearCurrentAndFinished(onFinishedCallback, reason);
         return true;
+    }
+
+    async triggerTimelineIfConfigured(item) {
+        try {
+            if (!item || !item.effectId) return;
+            const Effect = require('../models/Effect');
+            let effect = await Effect.findById(item.effectId).lean();
+            if (!effect && item.userId) {
+                effect = await resolveEffectForUser(item.userId, item.effectId);
+            }
+            if (!effect) return;
+
+            let timeline = effect.timeline;
+            if (typeof timeline === 'string') {
+                try { timeline = JSON.parse(timeline); } catch (_e) {}
+            }
+            let keyframes = [];
+            if (Array.isArray(timeline)) {
+                keyframes = timeline;
+            } else if (timeline && Array.isArray(timeline.config)) {
+                keyframes = timeline.config;
+            } else if (timeline && Array.isArray(timeline.keyframes)) {
+                keyframes = timeline.keyframes;
+            }
+
+            if (keyframes.length > 0 && obsService.isConnected()) {
+                console.log(`[PLAYBACK] 🎬 Auto-triggering OBS Timeline for effect ${item.effectId} (${keyframes.length} keyframes)`);
+                const OBSController = require('../obs-controller');
+                const obsController = new OBSController(obsService.obs);
+                obsController.isConnected = true;
+
+                let sceneName = 'EffectStore';
+                try {
+                    const currentScene = await obsService.obs.call('GetCurrentProgramScene');
+                    if (currentScene && currentScene.currentProgramSceneName) {
+                        sceneName = currentScene.currentProgramSceneName;
+                    }
+                } catch (_e) {}
+
+                obsController.runTimelineEffect(sceneName, item.effectId, keyframes);
+            }
+        } catch (err) {
+            console.error('[PLAYBACK] Error triggering OBS timeline:', err);
+        }
     }
 
     buildEffectPlayerUrl(userId, effectId, resolvedEffect) {
