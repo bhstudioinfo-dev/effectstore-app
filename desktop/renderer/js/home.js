@@ -9968,19 +9968,31 @@ function openTimelineEditor(effectId, effectName) {
     }
 
     // Tải timeline cũ từ server (nếu có)
-    fetch(`http://127.0.0.1:9000/api/effects/${effectId}/timeline`, {
+    fetch(`${app.API_URL}/api/effects/${effectId}/timeline`, {
         headers: { 'Authorization': `Bearer ${app.authToken}` }
     })
         .then(res => res.json())
         .then(data => {
-            if (data.success && Array.isArray(data.timeline)) {
-                currentTimeline = data.timeline;
+            let tl = data.timeline;
+            if (typeof tl === 'string') {
+                try { tl = JSON.parse(tl); } catch (_e) {}
+            }
+            if (Array.isArray(tl)) {
+                currentTimeline = tl;
+            } else if (tl && Array.isArray(tl.config)) {
+                currentTimeline = tl.config;
+            } else if (tl && Array.isArray(tl.keyframes)) {
+                currentTimeline = tl.keyframes;
             } else {
                 currentTimeline = [];
             }
             renderKeyframes(); // Vẽ lại giao diện
         })
-        .catch(err => console.error('Load timeline error:', err));
+        .catch(err => {
+            console.error('Load timeline error:', err);
+            currentTimeline = [];
+            renderKeyframes();
+        });
 }
 
 // 2. Hàm đóng Modal
@@ -10342,7 +10354,7 @@ function previewCurrentTimelineOnOBS() {
 
     app.showNotification('info', '🎬 Đang kích hoạt chạy thử Timeline trên OBS...');
 
-    fetch('http://127.0.0.1:9000/api/obs/preview-timeline', {
+    fetch(`${app.API_URL}/api/obs/preview-timeline`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.authToken}` },
         body: JSON.stringify({
@@ -10390,7 +10402,7 @@ function saveTimeline() {
 
     cleanTimeline.sort((a, b) => a.time - b.time);
 
-    fetch(`http://127.0.0.1:9000/api/effects/${currentTimelineEffectId}/timeline`, {
+    fetch(`${app.API_URL}/api/effects/${currentTimelineEffectId}/timeline`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.authToken}` },
         body: JSON.stringify({ timeline: cleanTimeline, isComposite: true })
