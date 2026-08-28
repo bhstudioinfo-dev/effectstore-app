@@ -10434,8 +10434,10 @@ async function loadOBSSources() {
                         <option value="">-- Hoặc chọn Source cụ thể --</option>`;
 
     try {
-        const res = await fetch(this.API_URL + '/api/obs/sources', {
-            headers: { 'Authorization': `Bearer ${app.authToken}` }
+        const apiUrl = (typeof app !== 'undefined' && app.API_URL) ? app.API_URL : 'http://127.0.0.1:9000';
+        const token = (typeof app !== 'undefined' && app.authToken) ? app.authToken : '';
+        const res = await fetch(apiUrl + '/api/obs/sources', {
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
 
