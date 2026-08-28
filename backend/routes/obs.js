@@ -161,6 +161,7 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             effectUrl,
             duration: durationMs,
             playbackType: 'preview_effect',
+            customTimeline: Array.isArray(req.body?.timeline) ? req.body.timeline : null,
             audioEnabled: req.body?.audioEnabled !== false,
             audioVolume: Math.max(0, Math.min(1, Number.isFinite(Number(req.body?.audioVolume)) ? Number(req.body.audioVolume) : 1)),
             startedAt: Date.now()

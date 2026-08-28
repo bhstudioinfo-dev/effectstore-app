@@ -228,17 +228,21 @@ class PlaybackManager {
             }
             if (!effect) return;
 
-            let timeline = effect.timeline;
-            if (typeof timeline === 'string') {
-                try { timeline = JSON.parse(timeline); } catch (_e) {}
-            }
             let keyframes = [];
-            if (Array.isArray(timeline)) {
-                keyframes = timeline;
-            } else if (timeline && Array.isArray(timeline.config)) {
-                keyframes = timeline.config;
-            } else if (timeline && Array.isArray(timeline.keyframes)) {
-                keyframes = timeline.keyframes;
+            if (Array.isArray(item.customTimeline) && item.customTimeline.length > 0) {
+                keyframes = item.customTimeline;
+            } else {
+                let timeline = effect.timeline;
+                if (typeof timeline === 'string') {
+                    try { timeline = JSON.parse(timeline); } catch (_e) {}
+                }
+                if (Array.isArray(timeline)) {
+                    keyframes = timeline;
+                } else if (timeline && Array.isArray(timeline.config)) {
+                    keyframes = timeline.config;
+                } else if (timeline && Array.isArray(timeline.keyframes)) {
+                    keyframes = timeline.keyframes;
+                }
             }
 
             if (keyframes.length > 0 && obsService.isConnected()) {

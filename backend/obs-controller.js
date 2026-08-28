@@ -437,13 +437,16 @@ class OBSController {
     }
 
     // ===== ⚡ CAMERA SHAKE EFFECT =====
-    async shakeWebcam(sceneName, webcamId, duration = 600, intensity = 15) {
+    async shakeWebcam(sceneName, webcamId, duration = 400, intensity = 12) {
         try {
-            const steps = Math.floor(duration / 35);
+            const startPos = await this.obs.call('GetSceneItemTransform', { sceneName, sceneItemId: webcamId });
+            const st = startPos?.sceneItemTransform;
+            if (!st) return;
+            const baseX = st.positionX;
+            const baseY = st.positionY;
+            const steps = Math.floor(duration / 40);
 
             for (let i = 0; i < steps; i++) {
-                const currentPos = await this.obs.call('GetSceneItemTransform', { sceneName, sceneItemId: webcamId });
-                const st = currentPos.sceneItemTransform;
                 const offsetX = (Math.random() - 0.5) * intensity * 2;
                 const offsetY = (Math.random() - 0.5) * intensity * 2;
 
@@ -451,22 +454,19 @@ class OBSController {
                     sceneName,
                     sceneItemId: webcamId,
                     sceneItemTransform: {
-                        positionX: st.positionX + offsetX,
-                        positionY: st.positionY + offsetY
+                        positionX: baseX + offsetX,
+                        positionY: baseY + offsetY
                     }
                 }).catch(() => {});
 
-                await new Promise(r => setTimeout(r, 35));
-
-                await this.obs.call('SetSceneItemTransform', {
-                    sceneName,
-                    sceneItemId: webcamId,
-                    sceneItemTransform: {
-                        positionX: st.positionX,
-                        positionY: st.positionY
-                    }
-                }).catch(() => {});
+                await new Promise(r => setTimeout(r, 40));
             }
+
+            await this.obs.call('SetSceneItemTransform', {
+                sceneName,
+                sceneItemId: webcamId,
+                sceneItemTransform: { positionX: baseX, positionY: baseY }
+            }).catch(() => {});
         } catch (_err) {}
     }
 

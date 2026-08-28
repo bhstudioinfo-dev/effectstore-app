@@ -10354,29 +10354,24 @@ function previewCurrentTimelineOnOBS() {
         return app.showNotification('warning', '⚠️ Timeline đang trống, vui lòng thêm keyframe hoặc chọn Preset trước!');
     }
 
-    app.showNotification('info', '🎬 Đang kích hoạt chạy thử Timeline trên OBS...');
+    if (!currentTimelineEffectId) {
+        return app.showNotification('warning', '⚠️ Không tìm thấy mã hiệu ứng để xem thử!');
+    }
 
-    fetch(`${app.API_URL}/api/obs/preview-timeline`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.authToken}` },
-        body: JSON.stringify({
-            effectId: currentTimelineEffectId || 'preview',
-            effectName: currentTimelineEffectName || '',
-            timeline: currentTimeline
-        })
-    })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                app.showNotification('success', '✅ Đang chạy thử hiệu ứng trên OBS!');
-            } else {
-                app.showNotification('error', '❌ Lỗi xem thử: ' + (data.message || data.error || 'Kiểm tra kết nối OBS'));
-            }
-        })
-        .catch(err => {
-            console.error('Preview error:', err);
-            app.showNotification('error', '❌ Lỗi gửi lệnh xem thử tới OBS!');
+    app.showNotification('info', '🎬 Đang chạy thử Video & Timeline trên OBS...');
+
+    if (typeof app.previewEffectOnOBS === 'function') {
+        app.previewEffectOnOBS(currentTimelineEffectId, { timeline: currentTimeline });
+    } else {
+        fetch(`${app.API_URL}/api/obs/preview-effect-player`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.authToken}` },
+            body: JSON.stringify({
+                effectId: currentTimelineEffectId,
+                timeline: currentTimeline
+            })
         });
+    }
 }
 
 // ✅ HÀM LƯU TIMELINE
