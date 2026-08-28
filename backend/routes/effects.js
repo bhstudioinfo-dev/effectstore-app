@@ -778,10 +778,17 @@ router.get('/effects/:id/timeline', authMiddleware, async (req, res) => {
         if (!isValidResourceId(req.params.id)) {
             return res.status(400).json({ success: false, error: 'Invalid effect ID' });
         }
-        const effect = await resolveEffectForUser(req.userId, req.params.id);
-        if (!effect) return res.status(404).json({ error: 'Effect not found' });
-        res.json({ success: true, timeline: effect.timeline || {}, isComposite: effect.isComposite || false });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+        let effect = await Effect.findById(req.params.id);
+        if (!effect) {
+            effect = await resolveEffectForUser(req.userId, req.params.id);
+        }
+        if (!effect) {
+            const { mirrorEffectFromCentral } = require('../services/effectLibraryService');
+            effect = await mirrorEffectFromCentral(req.params.id);
+        }
+        if (!effect) return res.status(404).json({ success: false, error: 'Effect not found' });
+        res.json({ success: true, timeline: effect.timeline || [], isComposite: effect.isComposite || false });
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.put('/effects/:id/timeline', authMiddleware, adminMiddleware, async (req, res) => {
@@ -790,7 +797,14 @@ router.put('/effects/:id/timeline', authMiddleware, adminMiddleware, async (req,
             return res.status(400).json({ success: false, error: 'Invalid effect ID' });
         }
         const { timeline, config, isComposite } = req.body;
-        const effect = await Effect.findById(req.params.id);
+        let effect = await Effect.findById(req.params.id);
+        if (!effect) {
+            const { mirrorEffectFromCentral } = require('../services/effectLibraryService');
+            const mirrored = await mirrorEffectFromCentral(req.params.id);
+            if (mirrored) {
+                effect = new Effect({ ...mirrored, _id: req.params.id });
+            }
+        }
         if (!effect) return res.status(404).json({ success: false, error: 'Effect not found' });
         effect.timeline = config ? { config } : (timeline || []);
         effect.isComposite = isComposite || false;
