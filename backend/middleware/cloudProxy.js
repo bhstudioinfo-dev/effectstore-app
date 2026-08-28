@@ -9,7 +9,17 @@
 // this is mounted and every route keeps working exactly as it did before.
 
 const DEFAULT_CLOUD_API_URL = 'https://effectstore-app.onrender.com';
-const CLOUD_API_URL = String(process.env.CLOUD_API_URL || DEFAULT_CLOUD_API_URL).trim().replace(/\/+$/, '');
+function getEffectiveCloudApiUrl() {
+    if (process.env.CLOUD_API_URL !== undefined) {
+        const configured = String(process.env.CLOUD_API_URL || '').trim().replace(/\/+$/, '');
+        if (!configured || configured.toLowerCase() === 'disabled' || configured.toLowerCase() === 'false') {
+            return '';
+        }
+        return configured;
+    }
+    return DEFAULT_CLOUD_API_URL;
+}
+const CLOUD_API_URL = getEffectiveCloudApiUrl();
 const { mirrorUserLocally } = require('../services/localUserMirror');
 const { forgetCloudSessionToken, rememberCloudSessionToken, getCloudSessionToken, getAnyCloudSessionToken } = require('../services/cloudSessionTokenStore');
 const { verifyUserToken } = require('../services/userToken');
@@ -18,14 +28,16 @@ const Effect = require('../models/Effect');
 function isCentralCloudRuntime() {
     if (String(process.env.RENDER || '').toLowerCase() === 'true') return true;
     const externalUrl = String(process.env.RENDER_EXTERNAL_URL || '').trim().replace(/\/+$/, '');
-    return Boolean(externalUrl && externalUrl === CLOUD_API_URL);
+    const effectiveUrl = getEffectiveCloudApiUrl();
+    return Boolean(externalUrl && effectiveUrl && externalUrl === effectiveUrl);
 }
 
 function isCloudProxyEnabled() {
     // The Render service is the source of truth. Proxying it back to its own
     // public URL creates a recursive request chain and stale/empty ownership
     // responses. Only installed/local backends should forward to Cloud.
-    return Boolean(CLOUD_API_URL) && !isCentralCloudRuntime();
+    const effectiveUrl = getEffectiveCloudApiUrl();
+    return Boolean(effectiveUrl) && !isCentralCloudRuntime();
 }
 
 // Headers that must not be forwarded verbatim between hops.
