@@ -5937,56 +5937,207 @@ class EffectStoreApp {
         }
     }
 
+    toggleCustomerAcquisition(userId) {
+        if (!this.expandedCustomerIds) this.expandedCustomerIds = new Set();
+        if (this.expandedCustomerIds.has(userId)) {
+            this.expandedCustomerIds.delete(userId);
+        } else {
+            this.expandedCustomerIds.add(userId);
+        }
+        this.renderAdminEffectAcquisitions();
+    }
+
+    changeAcquisitionsPage(page) {
+        this.adminAcquisitionsPage = Math.max(1, page);
+        this.renderAdminEffectAcquisitions();
+    }
+
     renderAdminEffectAcquisitions() {
         const container = document.getElementById('admin-acquisitions-list');
         if (!container) return;
         const safe = (value) => this.adminPaymentText(value == null ? '' : value);
         const query = String(document.getElementById('admin-acquisition-search')?.value || '').trim().toLowerCase();
         const filter = document.getElementById('admin-acquisition-filter')?.value || 'all';
-        const records = (this.adminEffectAcquisitions || []).filter((record) => {
-            if (filter !== 'all' && record.acquisitionType !== filter) return false;
-            if (!query) return true;
-            return [record.user?.name, record.user?.email, record.user?.phone, record.effect?.name]
-                .some((value) => String(value || '').toLowerCase().includes(query));
+
+        if (!this.expandedCustomerIds) this.expandedCustomerIds = new Set();
+        if (!this.adminAcquisitionsPage) this.adminAcquisitionsPage = 1;
+
+        const allRecords = this.adminEffectAcquisitions || [];
+
+        // Group records by user ID
+        const customerMap = new Map();
+        allRecords.forEach(record => {
+            const userId = String(record.user?._id || record.user?.id || record.user?.email || 'guest');
+            if (!customerMap.has(userId)) {
+                customerMap.set(userId, {
+                    user: record.user || { name: 'Chưa đặt tên', email: 'guest@liveflow' },
+                    effects: [],
+                    totalEffects: 0,
+                    freeCount: 0,
+                    paidCount: 0,
+                    totalSpent: 0,
+                    totalUses: 0,
+                    latestAcquiredAt: null
+                });
+            }
+            const cust = customerMap.get(userId);
+            cust.effects.push(record);
+            cust.totalEffects += 1;
+            if (record.acquisitionType === 'free') cust.freeCount += 1;
+            else if (record.acquisitionType === 'paid') cust.paidCount += 1;
+            cust.totalSpent += Number(record.acquisitionPrice || 0);
+            cust.totalUses += Number(record.useCount || 0);
+            const acqTime = record.acquiredAt ? new Date(record.acquiredAt).getTime() : 0;
+            if (!cust.latestAcquiredAt || acqTime > cust.latestAcquiredAt) {
+                cust.latestAcquiredAt = acqTime;
+            }
         });
 
-        if (!records.length) {
-            container.innerHTML = '<div class="empty-state">Không tìm thấy lượt sở hữu phù hợp.</div>';
+        // Filter customers
+        const filteredCustomers = Array.from(customerMap.entries()).filter(([userId, cust]) => {
+            if (filter === 'free' && cust.freeCount === 0) return false;
+            if (filter === 'paid' && cust.paidCount === 0) return false;
+            if (!query) return true;
+            const matchesUser = [cust.user.name, cust.user.email, cust.user.phone].some(v => String(v || '').toLowerCase().includes(query));
+            if (matchesUser) return true;
+            const matchesEffect = cust.effects.some(e => String(e.effect?.name || '').toLowerCase().includes(query));
+            return matchesEffect;
+        });
+
+        if (!filteredCustomers.length) {
+            container.innerHTML = '<div class="empty-state">Không tìm thấy khách hàng sở hữu phù hợp.</div>';
             return;
         }
+
+        const pageSize = 10;
+        const totalPages = Math.ceil(filteredCustomers.length / pageSize) || 1;
+        if (this.adminAcquisitionsPage > totalPages) this.adminAcquisitionsPage = totalPages;
+        const page = this.adminAcquisitionsPage;
+
+        const paginatedCustomers = filteredCustomers.slice((page - 1) * pageSize, page * pageSize);
+
         const typeLabel = {
             free: ['MIỄN PHÍ', '#34d399', 'rgba(52,211,153,.1)'],
             paid: ['TRẢ PHÍ', '#fbbf24', 'rgba(251,191,36,.1)'],
             legacy: ['DỮ LIỆU CŨ', '#94a3b8', 'rgba(148,163,184,.1)']
         };
+
+        const rowsHTML = paginatedCustomers.map(([uid, customer]) => {
+            const isExpanded = this.expandedCustomerIds.has(uid);
+            const user = customer.user;
+            const latestDate = customer.latestAcquiredAt ? new Date(customer.latestAcquiredAt).toLocaleString('vi-VN') : '—';
+
+            let subTableHTML = '';
+            if (isExpanded) {
+                subTableHTML = `
+                    <tr style="background:rgba(0,0,0,0.25);">
+                        <td colspan="6" style="padding:10px 14px 16px 28px;">
+                            <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+                                📦 Danh sách ${customer.effects.length} hiệu ứng của ${safe(user.name || user.email)}:
+                            </div>
+                            <table style="width:100%;border-collapse:collapse;font-size:11px;background:rgba(255,255,255,0.02);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);">
+                                <thead>
+                                    <tr style="color:#64748b;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);">
+                                        <th style="padding:8px 10px;">Hiệu ứng</th>
+                                        <th style="padding:8px 10px;">Hình thức</th>
+                                        <th style="padding:8px 10px;">Giá trị</th>
+                                        <th style="padding:8px 10px;">Ngày sở hữu</th>
+                                        <th style="padding:8px 10px;text-align:center;">Lượt dùng</th>
+                                        <th style="padding:8px 10px;">Dùng gần nhất</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${customer.effects.map(rec => {
+                                        const type = typeLabel[rec.acquisitionType] || typeLabel.legacy;
+                                        const acquiredAt = rec.acquiredAt ? new Date(rec.acquiredAt).toLocaleString('vi-VN') : '—';
+                                        const lastUsedAt = rec.lastUsedAt ? new Date(rec.lastUsedAt).toLocaleString('vi-VN') : 'Chưa dùng';
+                                        const price = rec.acquisitionPrice == null ? '0đ' : this.formatPrice(rec.acquisitionPrice);
+                                        return `
+                                            <tr style="border-top:1px solid rgba(255,255,255,0.03);">
+                                                <td style="padding:7px 10px;font-weight:600;color:#f1f5f9;">${safe(rec.effect?.icon || '🎬')} ${safe(rec.effect?.name || 'Hiệu ứng')}</td>
+                                                <td style="padding:7px 10px;"><span style="padding:2px 6px;border-radius:4px;color:${type[1]};background:${type[2]};font-size:9px;font-weight:700;">${type[0]}</span></td>
+                                                <td style="padding:7px 10px;color:#cbd5e1;">${safe(price)}</td>
+                                                <td style="padding:7px 10px;color:#94a3b8;">${safe(acquiredAt)}</td>
+                                                <td style="padding:7px 10px;text-align:center;font-weight:700;color:#22d3ee;">${Number(rec.useCount || 0)}</td>
+                                                <td style="padding:7px 10px;color:#94a3b8;">${safe(lastUsedAt)}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            return `
+                <tr onclick="app.toggleCustomerAcquisition('${safe(uid)}')" style="border-top:1px solid rgba(255,255,255,0.06);cursor:pointer;background:${isExpanded ? 'rgba(34,211,238,0.04)' : 'transparent'};transition:background 0.15s ease;">
+                    <td style="padding:12px 10px;">
+                        <div style="display:flex;align-items:center;gap:9px;">
+                            <span style="color:#22d3ee;font-size:11px;width:14px;text-align:center;">${isExpanded ? '▼' : '▶'}</span>
+                            <div>
+                                <div style="font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">
+                                    ${safe(user.name || 'Chưa đặt tên')}
+                                    <span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.08);color:#cbd5e1;font-weight:500;">${safe(user.subscription || 'free')}</span>
+                                </div>
+                                <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${safe(user.email)} ${user.phone ? `· <span style="color:#64748b;">${safe(user.phone)}</span>` : ''}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="padding:12px 10px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-weight:800;color:#f8fafc;font-size:13px;">${customer.totalEffects}</span>
+                            <span style="font-size:10px;color:#34d399;background:rgba(52,211,153,.1);padding:1px 6px;border-radius:4px;font-weight:600;">${customer.freeCount} free</span>
+                            ${customer.paidCount > 0 ? `<span style="font-size:10px;color:#fbbf24;background:rgba(251,191,36,.1);padding:1px 6px;border-radius:4px;font-weight:600;">${customer.paidCount} paid</span>` : ''}
+                        </div>
+                    </td>
+                    <td style="padding:12px 10px;font-weight:800;color:${customer.totalSpent > 0 ? '#fbbf24' : '#94a3b8'};font-size:13px;">
+                        ${this.formatPrice(customer.totalSpent)}
+                    </td>
+                    <td style="padding:12px 10px;text-align:center;font-weight:800;color:#22d3ee;font-size:13px;">
+                        ${customer.totalUses}
+                    </td>
+                    <td style="padding:12px 10px;color:#cbd5e1;font-size:11px;">
+                        ${safe(latestDate)}
+                    </td>
+                    <td style="padding:12px 10px;text-align:right;">
+                        <button onclick="event.stopPropagation();app.toggleCustomerAcquisition('${safe(uid)}')" style="padding:5px 10px;border-radius:7px;background:${isExpanded ? 'rgba(34,211,238,.2)' : 'rgba(255,255,255,.06)'};border:1px solid ${isExpanded ? '#22d3ee' : 'rgba(255,255,255,.12)'};color:${isExpanded ? '#67e8f9' : '#cbd5e1'};cursor:pointer;font-size:11px;font-weight:700;transition:all 0.15s ease;">
+                            ${isExpanded ? 'Thu gọn ▲' : `Xem ${customer.totalEffects} hiệu ứng ▼`}
+                        </button>
+                    </td>
+                </tr>
+                ${subTableHTML}
+            `;
+        }).join('');
+
+        const startIdx = (page - 1) * pageSize + 1;
+        const endIdx = Math.min(page * pageSize, filteredCustomers.length);
+
         container.innerHTML = `
-            <table style="width:100%;border-collapse:collapse;min-width:900px;font-size:12px;">
-                <thead style="position:sticky;top:0;background:#151b26;z-index:1;">
+            <table style="width:100%;border-collapse:collapse;min-width:850px;font-size:12px;">
+                <thead style="position:sticky;top:0;background:#151b26;z-index:2;">
                     <tr style="color:#94a3b8;text-align:left;">
-                        <th style="padding:10px;">Khách hàng</th><th style="padding:10px;">Hiệu ứng</th>
-                        <th style="padding:10px;">Hình thức</th><th style="padding:10px;">Giá trị</th>
-                        <th style="padding:10px;">Ngày sở hữu</th><th style="padding:10px;text-align:center;">Lượt dùng</th>
-                        <th style="padding:10px;">Dùng gần nhất</th>
+                        <th style="padding:11px 10px;">Khách hàng</th>
+                        <th style="padding:11px 10px;">Hiệu ứng sở hữu</th>
+                        <th style="padding:11px 10px;">Tổng chi tiêu</th>
+                        <th style="padding:11px 10px;text-align:center;">Lượt dùng</th>
+                        <th style="padding:11px 10px;">Ngày gần nhất</th>
+                        <th style="padding:11px 10px;text-align:right;">Chi tiết</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${records.map((record) => {
-            const type = typeLabel[record.acquisitionType] || typeLabel.legacy;
-            const acquiredAt = record.acquiredAt ? new Date(record.acquiredAt).toLocaleString('vi-VN') : '—';
-            const lastUsedAt = record.lastUsedAt ? new Date(record.lastUsedAt).toLocaleString('vi-VN') : 'Chưa sử dụng';
-            const price = record.acquisitionPrice == null ? 'Chưa ghi nhận' : this.formatPrice(record.acquisitionPrice);
-            return `<tr style="border-top:1px solid rgba(255,255,255,.055);">
-                            <td style="padding:11px 10px;"><div style="font-weight:700;color:#fff;">${safe(record.user?.name || 'Chưa đặt tên')}</div><div style="font-size:10px;color:#94a3b8;margin-top:3px;">${safe(record.user?.email)}</div><div style="font-size:10px;color:#64748b;">${safe(record.user?.phone || 'Chưa có SĐT')}</div></td>
-                            <td style="padding:11px 10px;font-weight:650;color:#e2e8f0;">${safe(record.effect?.icon)} ${safe(record.effect?.name)}</td>
-                            <td style="padding:11px 10px;"><span style="padding:4px 8px;border-radius:999px;color:${type[1]};background:${type[2]};font-size:9px;font-weight:800;">${type[0]}</span></td>
-                            <td style="padding:11px 10px;color:#f8fafc;">${safe(price)}</td>
-                            <td style="padding:11px 10px;color:#cbd5e1;">${safe(acquiredAt)}</td>
-                            <td style="padding:11px 10px;text-align:center;font-weight:800;color:#22d3ee;">${Number(record.useCount || 0)}</td>
-                            <td style="padding:11px 10px;color:#94a3b8;">${safe(lastUsedAt)}</td>
-                        </tr>`;
-        }).join('')}
+                    ${rowsHTML}
                 </tbody>
-            </table>`;
+            </table>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 10px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#94a3b8;margin-top:6px;">
+                <span>Hiển thị <strong>${startIdx} - ${endIdx}</strong> trên tổng số <strong>${filteredCustomers.length}</strong> khách hàng</span>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <button onclick="app.changeAcquisitionsPage(${page - 1})" ${page <= 1 ? 'disabled style="opacity:0.35;cursor:not-allowed;"' : 'style="cursor:pointer;"'} class="btn-sm" style="padding:4px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:6px;font-size:11px;">◀ Trước</button>
+                    <span style="color:#fff;font-weight:800;padding:0 8px;">Trang ${page} / ${totalPages}</span>
+                    <button onclick="app.changeAcquisitionsPage(${page + 1})" ${page >= totalPages ? 'disabled style="opacity:0.35;cursor:not-allowed;"' : 'style="cursor:pointer;"'} class="btn-sm" style="padding:4px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:6px;font-size:11px;">Sau ▶</button>
+                </div>
+            </div>
+        `;
     }
 
     async loadAdminDashboard() {
