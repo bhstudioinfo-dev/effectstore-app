@@ -5481,6 +5481,10 @@ class EffectStoreApp {
             filePath,
             thumbPath
         };
+        if (isComposite && Array.isArray(this.inlineUploadTimeline) && this.inlineUploadTimeline.length > 0) {
+            metaObj.timeline = this.inlineUploadTimeline;
+            formData.append('timeline', JSON.stringify(this.inlineUploadTimeline));
+        }
         formData.append('metadata', JSON.stringify(metaObj));
         if (filePath) formData.append('filePath', filePath);
         if (thumbPath) formData.append('thumbPath', thumbPath);
@@ -5553,6 +5557,197 @@ class EffectStoreApp {
                 uploadBtn.disabled = false;
                 uploadBtn.innerHTML = originalBtnHtml;
             }
+        }
+    }
+
+    toggleUploadCompositePanel(checked) {
+        const panel = document.getElementById('upload-composite-panel');
+        if (panel) {
+            panel.style.display = checked ? 'block' : 'none';
+        }
+        if (checked && (!this.inlineUploadTimeline || this.inlineUploadTimeline.length === 0)) {
+            this.inlineUploadTimeline = [];
+            this.renderInlineKeyframes();
+        }
+    }
+
+    onInlineActionChange(action) {
+        const yInput = document.getElementById('inline-kf-y');
+        const scaleXInput = document.getElementById('inline-kf-scale-x');
+        const scaleYInput = document.getElementById('inline-kf-scale-y');
+        const rotInput = document.getElementById('inline-kf-rotation');
+        const durInput = document.getElementById('inline-kf-duration');
+        const layerSelect = document.getElementById('inline-kf-layer');
+
+        if (action === 'squash') {
+            if (scaleXInput) scaleXInput.value = 135;
+            if (scaleYInput) scaleYInput.value = 8;
+            if (yInput) yInput.value = 220;
+            if (durInput) durInput.value = 0.15;
+        } else if (action === 'blackout' || action === 'bg_removal') {
+            if (layerSelect) layerSelect.value = 'above';
+            if (durInput) durInput.value = 0.1;
+        } else if (action === 'rotate') {
+            if (rotInput) rotInput.value = 360;
+            if (durInput) durInput.value = 0.8;
+        } else if (action === 'shake') {
+            if (durInput) durInput.value = 0.6;
+        }
+    }
+
+    applyInlineTimelinePreset() {
+        const preset = document.getElementById('inline-kf-preset-select')?.value;
+        if (!preset) return this.showNotification('warning', '⚠️ Vui lòng chọn một preset troll!');
+
+        this.inlineUploadTimeline = [];
+
+        if (preset === 'squash') {
+            this.inlineUploadTimeline.push(
+                { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true },
+                { time: 0.8, action: 'shake', source: 'auto_webcam', duration: 0.4 },
+                { time: 0.8, action: 'squash', source: 'auto_webcam', layer: 'above', transform: { x: 0, y: 220, scaleX: 135, scaleY: 8, rotation: 0 }, duration: 0.15 },
+                { time: 3.5, action: 'scale', source: 'auto_webcam', layer: 'above', transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 0 }, duration: 0.3 }
+            );
+        } else if (preset === 'blackout') {
+            this.inlineUploadTimeline.push(
+                { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true },
+                { time: 1.0, action: 'blackout', source: 'auto_webcam', enabled: true },
+                { time: 1.0, action: 'shake', source: 'auto_webcam', duration: 0.6 },
+                { time: 4.0, action: 'blackout', source: 'auto_webcam', enabled: false }
+            );
+        } else if (preset === 'spring') {
+            this.inlineUploadTimeline.push(
+                { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true },
+                { time: 0.5, action: 'scale', source: 'auto_webcam', layer: 'above', transform: { x: 0, y: 80, scaleX: 120, scaleY: 60, rotation: 0 }, duration: 0.2 },
+                { time: 0.8, action: 'move', source: 'auto_webcam', layer: 'above', transform: { x: 0, y: -900, scaleX: 70, scaleY: 140, rotation: 0 }, duration: 0.3 },
+                { time: 3.5, action: 'move', source: 'auto_webcam', layer: 'above', transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 0 }, duration: 0.4 }
+            );
+        } else if (preset === 'yeet') {
+            this.inlineUploadTimeline.push(
+                { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true },
+                { time: 0.6, action: 'rotate', source: 'auto_webcam', layer: 'above', transform: { x: -30, y: 0, scaleX: 95, scaleY: 95, rotation: -15 }, duration: 0.2 },
+                { time: 0.9, action: 'move', source: 'auto_webcam', layer: 'above', transform: { x: 1200, y: -600, scaleX: 40, scaleY: 40, rotation: 180 }, duration: 0.35 }
+            );
+        } else if (preset === 'tornado') {
+            this.inlineUploadTimeline.push(
+                { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true },
+                { time: 0.5, action: 'rotate', source: 'auto_webcam', layer: 'above', transform: { x: 0, y: 0, scaleX: 90, scaleY: 90, rotation: 360 }, duration: 0.4 },
+                { time: 1.0, action: 'rotate', source: 'auto_webcam', layer: 'above', transform: { x: 0, y: -400, scaleX: 40, scaleY: 40, rotation: 720 }, duration: 0.5 }
+            );
+        } else if (preset === 'bg_removal') {
+            this.inlineUploadTimeline.push(
+                { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true },
+                { time: 5.0, action: 'bg_removal', source: 'auto_webcam', enabled: false }
+            );
+        } else if (preset === 'shake') {
+            this.inlineUploadTimeline.push(
+                { time: 0.5, action: 'shake', source: 'auto_webcam', duration: 0.8 }
+            );
+        }
+
+        this.renderInlineKeyframes();
+        this.showNotification('success', `✨ Đã áp dụng preset ${preset} vào Timeline!`);
+    }
+
+    addInlineKeyframe() {
+        if (!this.inlineUploadTimeline) this.inlineUploadTimeline = [];
+        const time = parseFloat(document.getElementById('inline-kf-time')?.value || 0);
+        const action = document.getElementById('inline-kf-action')?.value || 'move';
+        const source = document.getElementById('inline-kf-source')?.value || 'auto_webcam';
+        const layer = document.getElementById('inline-kf-layer')?.value || 'above';
+        const x = parseFloat(document.getElementById('inline-kf-x')?.value || 0);
+        const y = parseFloat(document.getElementById('inline-kf-y')?.value || 0);
+        const scaleX = parseFloat(document.getElementById('inline-kf-scale-x')?.value || 100);
+        const scaleY = parseFloat(document.getElementById('inline-kf-scale-y')?.value || 100);
+        const rotation = parseFloat(document.getElementById('inline-kf-rotation')?.value || 0);
+        const duration = parseFloat(document.getElementById('inline-kf-duration')?.value || 0.2);
+
+        this.inlineUploadTimeline.push({
+            time,
+            action,
+            source,
+            layer,
+            enabled: layer === 'above',
+            duration,
+            transform: { x, y, scaleX, scaleY, rotation }
+        });
+
+        this.inlineUploadTimeline.sort((a, b) => a.time - b.time);
+        this.renderInlineKeyframes();
+        this.showNotification('success', `✅ Đã thêm mốc ${time}s vào Timeline`);
+    }
+
+    renderInlineKeyframes() {
+        const list = document.getElementById('inline-keyframes-list');
+        if (!list) return;
+        list.innerHTML = '';
+        if (!this.inlineUploadTimeline || this.inlineUploadTimeline.length === 0) {
+            list.innerHTML = '<div style="text-align:center; padding:8px; color:#64748b; font-size:11px;">📭 Chưa có keyframe nào. Hãy chọn Preset hoặc thêm mốc bên trên.</div>';
+            return;
+        }
+
+        const actionMap = {
+            move: '📍 Di chuyển',
+            scale: '📏 Thu/Phóng',
+            squash: '🍳 Đập dẹp bẹp',
+            rotate: '🔄 Xoay góc',
+            shake: '⚡ Rung lắc',
+            bg_removal: '✂️ Tách nền AI',
+            blackout: '🖤 Đen mặt',
+            layer: '🔲 Đổi Lớp',
+            show: '👁️ Hiện',
+            hide: '🕶️ Ẩn'
+        };
+
+        this.inlineUploadTimeline.forEach((kf, index) => {
+            let detail = '';
+            if (kf.action === 'squash' || kf.action === 'scale') detail = `ScaleX:${kf.transform?.scaleX || 100}% ScaleY:${kf.transform?.scaleY || 100}%`;
+            else if (kf.action === 'rotate') detail = `${kf.transform?.rotation || 0}°`;
+            else if (kf.action === 'shake') detail = `${kf.duration || 0.6}s`;
+            else if (kf.action === 'bg_removal' || kf.action === 'blackout') detail = kf.enabled !== false ? 'BẬT' : 'TẮT';
+            else if (kf.action === 'move') detail = `X:${kf.transform?.x || 0} Y:${kf.transform?.y || 0}`;
+
+            const item = document.createElement('div');
+            item.style.cssText = 'display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:6px 10px; border-radius:8px; font-size:11px;';
+            item.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="background:rgba(124,58,237,0.3); color:#c084fc; font-weight:700; padding:1px 6px; border-radius:4px;">${kf.time}s</span>
+                    <span style="font-weight:700; color:#fff;">${actionMap[kf.action] || kf.action}</span>
+                    <span style="color:#94a3b8;">${detail}</span>
+                </div>
+                <button type="button" onclick="app.deleteInlineKeyframe(${index})" style="background:none; border:none; color:#f87171; cursor:pointer; font-size:12px;">🗑️</button>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    deleteInlineKeyframe(index) {
+        if (this.inlineUploadTimeline && index > -1 && index < this.inlineUploadTimeline.length) {
+            this.inlineUploadTimeline.splice(index, 1);
+            this.renderInlineKeyframes();
+        }
+    }
+
+    async previewUploadTimelineOnOBS() {
+        if (!this.inlineUploadTimeline || this.inlineUploadTimeline.length === 0) {
+            return this.showNotification('warning', '⚠️ Timeline đang trống, hãy chọn Preset trước!');
+        }
+        try {
+            this.showNotification('info', '🚀 Đang gửi lệnh chạy thử lên OBS...');
+            const res = await fetch(this.API_URL + '/api/obs/preview-timeline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` },
+                body: JSON.stringify({ effectId: 'upload_preview', timeline: this.inlineUploadTimeline })
+            });
+            const data = await res.json();
+            if (data.success) {
+                this.showNotification('success', '🎬 Đang chạy thử chuyển động trên OBS Studio!');
+            } else {
+                this.showNotification('error', '❌ Lỗi: ' + (data.message || 'Không thể chạy trên OBS'));
+            }
+        } catch (err) {
+            console.error('Preview upload timeline error:', err);
+            this.showNotification('error', '❌ Lỗi kết nối OBS để xem thử.');
         }
     }
 

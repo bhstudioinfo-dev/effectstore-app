@@ -1325,8 +1325,8 @@
                                 <div class="form-group">
                                     <label
                                         style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:5px;">Video
-                                        File (.webm, .mp4) *</label>
-                                    <input type="file" id="upload-file" accept=".webm,.mp4" style="font-size: 11px;">
+                                        File (.webm, .mp4, .mov) *</label>
+                                    <input type="file" id="upload-file" accept=".webm,.mp4,.mov" style="font-size: 11px;">
                                 </div>
                                 <div class="form-group">
                                     <label
@@ -1341,7 +1341,7 @@
                                 style="display: flex; gap: 20px; margin-bottom: 20px; background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
                                 <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
                                     <label class="switch">
-                                        <input type="checkbox" id="upload-composite">
+                                        <input type="checkbox" id="upload-composite" onchange="app.toggleUploadCompositePanel(this.checked)">
                                         <span class="slider round"></span>
                                     </label>
                                     <div>
@@ -1361,6 +1361,106 @@
                                         <div style="font-size: 10px; color: var(--text-muted);">Kích hoạt giá sốc</div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- INLINE COMPOSITE TIMELINE PANEL (HIỆN KHI BẬT COMPOSITE) -->
+                            <div id="upload-composite-panel" style="display: none; background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(236, 72, 153, 0.35); border-radius: 14px; padding: 18px; margin-bottom: 20px; animation: fadeIn 0.3s ease;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; flex-wrap:wrap; gap:8px;">
+                                    <div style="font-size: 14px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                                        <span>👾 Cấu Hình Timeline & Xem Thử Trực Tiếp:</span>
+                                    </div>
+                                    <div style="display:flex; gap:8px; align-items:center;">
+                                        <select id="inline-kf-preset-select" class="upload-form-input" style="background:#0f172a; border-color:rgba(236,72,153,0.4); font-size:12px; padding:6px 10px; min-width: 200px;">
+                                            <option value="">-- Chọn Preset Troll Nhanh --</option>
+                                            <option value="squash">🍳 Đập Dẹp Bẹp (Squash)</option>
+                                            <option value="blackout">💣 Bom Nổ Đen Mặt</option>
+                                            <option value="spring">🚀 Lò Xo Bật Tung</option>
+                                            <option value="yeet">👌 Búng Bay Mất Tích</option>
+                                            <option value="tornado">🌀 Lốc Xoáy Xoay Tròn</option>
+                                            <option value="bg_removal">✂️ Tách Nền AI</option>
+                                            <option value="shake">⚡ Rung Lắc Màn Hình</option>
+                                        </select>
+                                        <button type="button" onclick="app.applyInlineTimelinePreset()" class="pro-btn" style="padding:6px 12px; font-size:11px; background:linear-gradient(135deg,#ec4899,#f59e0b);">
+                                            ✨ Áp dụng
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Inline Add Keyframe Inputs -->
+                                <div style="background:rgba(0,0,0,0.25); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); margin-bottom:12px;">
+                                    <div style="display:grid; grid-template-columns: 1fr 1.3fr 1fr 0.8fr; gap:8px; margin-bottom:8px;">
+                                        <div>
+                                            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:3px;">⏱️ Giây (s)</label>
+                                            <input type="number" id="inline-kf-time" value="0" step="0.1" class="upload-form-input" style="padding:6px 8px; font-size:12px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:3px;">🎯 Hành động</label>
+                                            <select id="inline-kf-action" class="upload-form-input" style="padding:6px 8px; font-size:12px;" onchange="app.onInlineActionChange(this.value)">
+                                                <option value="squash">🍳 Đập Dẹp Bẹp (Squash)</option>
+                                                <option value="scale">📏 Thu / Phóng</option>
+                                                <option value="move">📍 Di chuyển</option>
+                                                <option value="rotate">🔄 Xoay góc</option>
+                                                <option value="shake">⚡ Rung lắc</option>
+                                                <option value="bg_removal">✂️ Tách Nền AI</option>
+                                                <option value="blackout">🖤 Đen Mặt Silhouette</option>
+                                                <option value="layer">🔲 Đổi Lớp</option>
+                                                <option value="show">👁️ Hiện</option>
+                                                <option value="hide">🕶️ Ẩn</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:3px;">📦 Nguồn</label>
+                                            <select id="inline-kf-source" class="upload-form-input" style="padding:6px 8px; font-size:12px;">
+                                                <option value="auto_webcam">📷 Webcam (Tự động)</option>
+                                                <option value="auto_effect">🎬 Effect (Tự động)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:3px;">⚡ Mượt (s)</label>
+                                            <input type="number" id="inline-kf-duration" value="0.2" step="0.05" class="upload-form-input" style="padding:6px 8px; font-size:12px;">
+                                        </div>
+                                    </div>
+                                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr; gap:6px; margin-bottom:10px;">
+                                        <div>
+                                            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">📍 X (px)</label>
+                                            <input type="number" id="inline-kf-x" value="0" class="upload-form-input" style="padding:4px 6px; font-size:11px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">📍 Y (px)</label>
+                                            <input type="number" id="inline-kf-y" value="0" class="upload-form-input" style="padding:4px 6px; font-size:11px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">↔️ Scale X</label>
+                                            <input type="number" id="inline-kf-scale-x" value="100" class="upload-form-input" style="padding:4px 6px; font-size:11px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">↕️ Scale Y</label>
+                                            <input type="number" id="inline-kf-scale-y" value="100" class="upload-form-input" style="padding:4px 6px; font-size:11px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">🔄 Xoay</label>
+                                            <input type="number" id="inline-kf-rotation" value="0" class="upload-form-input" style="padding:4px 6px; font-size:11px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">🔲 Lớp/Bật</label>
+                                            <select id="inline-kf-layer" class="upload-form-input" style="padding:4px 6px; font-size:11px;">
+                                                <option value="above">🔝 Trên / Bật</option>
+                                                <option value="below">🔽 Dưới / Tắt</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="app.addInlineKeyframe()" style="width:100%; padding:7px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:12px; font-weight:700; cursor:pointer;">
+                                        + Thêm mốc này vào Timeline
+                                    </button>
+                                </div>
+
+                                <!-- Inline Keyframes List -->
+                                <div id="inline-keyframes-list" style="max-height:140px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-bottom:12px;"></div>
+
+                                <!-- Live Preview Button Before Upload -->
+                                <button type="button" onclick="app.previewUploadTimelineOnOBS()" class="pro-btn" style="width:100%; padding:10px; background:linear-gradient(135deg, #06b6d4, #3b82f6); font-size:13px; font-weight:700;">
+                                    ▶ Xem Thử Ngay Trên OBS Trước Khi Đăng (Live Test)
+                                </button>
                             </div>
 
                             <button onclick="app.uploadEffect()" class="pro-btn"
