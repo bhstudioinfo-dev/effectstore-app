@@ -182,11 +182,26 @@ router.post('/preview-timeline', authMiddleware, async (req, res) => {
         if (!timeline || !Array.isArray(timeline)) {
             return res.status(400).json({ success: false, message: 'Timeline không hợp lệ.' });
         }
-        if (!obsService.isConnected()) {
-            return res.status(503).json({ success: false, message: 'OBS chưa kết nối. Vui lòng kết nối OBS trước.' });
+        
+        await obsService.ensureConnected().catch(() => {});
+        if (!obsService._isConnected) {
+            return res.status(503).json({ success: false, message: 'OBS chưa kết nối. Vui lòng mở OBS Studio và kết nối trước.' });
         }
-        const currentScene = await obsService.getCurrentProgramScene().catch(() => null);
-        const sceneName = currentScene?.currentProgramSceneName || 'EffectStore';
+
+        let sceneName = 'EffectStore';
+        try {
+            const currentScene = await obsService.obs.call('GetCurrentProgramScene');
+            if (currentScene && currentScene.currentProgramSceneName) {
+                sceneName = currentScene.currentProgramSceneName;
+            }
+        } catch (_e) {
+            try {
+                const sceneList = await obsService.obs.call('GetSceneList');
+                if (sceneList && sceneList.currentProgramSceneName) {
+                    sceneName = sceneList.currentProgramSceneName;
+                }
+            } catch (_e2) {}
+        }
 
         // Gọi controller thực thi timeline
         const OBSController = require('../obs-controller');
