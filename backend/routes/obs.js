@@ -359,8 +359,7 @@ router.post('/preview-timeline', authMiddleware, async (req, res) => {
             await obsService.ensureEffectPlayerSource().catch(() => {});
             const previewUrl = `http://127.0.0.1:${PORT}/api/obs/preview-temp-media?t=${Date.now()}`;
             
-            eventBus.emit('effect_player_play_request', {
-                requestId: `upload-preview-${Date.now()}`,
+            const payload = {
                 effectId: effectId || 'upload_preview',
                 effectName: 'Xem Thử Hiệu Ứng',
                 effectUrl: previewUrl,
@@ -369,7 +368,8 @@ router.post('/preview-timeline', authMiddleware, async (req, res) => {
                 audioEnabled: true,
                 audioVolume: 1.0,
                 startedAt: Date.now()
-            });
+            };
+            await effectQueue.add({ ...payload, userId: String(req.userId) }).catch(() => {});
         } else if (effectId || req.body.effectName || req.body.name) {
             let effect = null;
             if (effectId && effectId !== 'upload_preview' && effectId !== 'preview') {
@@ -403,8 +403,7 @@ router.post('/preview-timeline', authMiddleware, async (req, res) => {
                     effectUrl = `http://127.0.0.1:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effect._id || effect.id)}?token=${encodeURIComponent(streamToken)}`;
                 }
                 
-                eventBus.emit('effect_player_play_request', {
-                    requestId: `preview-${Date.now()}`,
+                const payload = {
                     effectId: String(effect._id || effect.id),
                     effectName: effect.name,
                     effectUrl,
@@ -413,7 +412,8 @@ router.post('/preview-timeline', authMiddleware, async (req, res) => {
                     audioEnabled: true,
                     audioVolume: 1.0,
                     startedAt: Date.now()
-                });
+                };
+                await effectQueue.add({ ...payload, userId: String(req.userId) }).catch(() => {});
             }
         }
 
