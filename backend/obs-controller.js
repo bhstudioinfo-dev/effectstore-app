@@ -402,17 +402,23 @@ class OBSController {
                     const currentScaleY = start.scaleY + (toScaleY - start.scaleY) * easeProgress;
                     const currentRotation = start.rotation + (toRotation - start.rotation) * easeProgress;
 
+                    const transformObj = {
+                        positionX: currentX,
+                        positionY: currentY,
+                        scaleX: currentScaleX,
+                        scaleY: currentScaleY,
+                        rotation: currentRotation,
+                        alignment: st.alignment
+                    };
+                    if (st.boundsType && st.boundsType !== 'OBS_BOUNDS_NONE' && typeof st.boundsWidth === 'number' && st.boundsWidth > 0) {
+                        transformObj.boundsWidth = (st.sourceWidth || 1080) * currentScaleX;
+                        transformObj.boundsHeight = (st.sourceHeight || 1920) * currentScaleY;
+                    }
+
                     await this.obs.call('SetSceneItemTransform', {
                         sceneName,
                         sceneItemId: webcamId,
-                        sceneItemTransform: {
-                            positionX: currentX,
-                            positionY: currentY,
-                            scaleX: currentScaleX,
-                            scaleY: currentScaleY,
-                            rotation: currentRotation,
-                            alignment: st.alignment
-                        }
+                        sceneItemTransform: transformObj
                     }).catch(() => {});
 
                     if (progress < 1) {

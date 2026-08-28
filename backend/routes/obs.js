@@ -274,21 +274,27 @@ router.get('/current-webcam-transform', authMiddleware, async (req, res) => {
         const posX = Math.round(tf.positionX || 0);
         const posY = Math.round(tf.positionY || 0);
         
-        let scaleX = Math.round((tf.scaleX || 1.0) * 100);
-        let scaleY = Math.round((tf.scaleY || 1.0) * 100);
-        
-        // Nếu OBS dùng Bounding Box (Bounds Width/Height) hoặc rendered width/height
-        if (tf.sourceWidth > 0 && typeof tf.width === 'number' && tf.width > 0) {
-            scaleX = Math.round((tf.width / tf.sourceWidth) * 100);
-        } else if (tf.sourceWidth > 0 && typeof tf.boundsWidth === 'number' && tf.boundsWidth > 0) {
-            scaleX = Math.round((tf.boundsWidth / tf.sourceWidth) * 100);
+        let actualWidth = tf.width;
+        let actualHeight = tf.height;
+
+        // Nếu OBS dùng Bounding Box (Bounds Fit / Stretch...)
+        if (tf.boundsType && tf.boundsType !== 'OBS_BOUNDS_NONE' && typeof tf.boundsWidth === 'number' && tf.boundsWidth > 0) {
+            actualWidth = tf.boundsWidth;
+            actualHeight = tf.boundsHeight;
+        } else if (typeof tf.scaleX === 'number' && tf.sourceWidth > 0) {
+            actualWidth = tf.sourceWidth * tf.scaleX;
+            actualHeight = tf.sourceHeight * (tf.scaleY || tf.scaleX);
         }
 
-        if (tf.sourceHeight > 0 && typeof tf.height === 'number' && tf.height > 0) {
-            scaleY = Math.round((tf.height / tf.sourceHeight) * 100);
-        } else if (tf.sourceHeight > 0 && typeof tf.boundsHeight === 'number' && tf.boundsHeight > 0) {
-            scaleY = Math.round((tf.boundsHeight / tf.sourceHeight) * 100);
-        }
+        const videoSettings = await obsService.obs.call('GetVideoSettings').catch(() => ({}));
+        const baseWidth = (videoSettings && videoSettings.baseWidth) || tf.sourceWidth || 1080;
+        const baseHeight = (videoSettings && videoSettings.baseHeight) || tf.sourceHeight || 1920;
+
+        let scaleX = Math.round((actualWidth / (tf.sourceWidth || baseWidth)) * 100);
+        let scaleY = Math.round((actualHeight / (tf.sourceHeight || baseHeight)) * 100);
+
+        if (isNaN(scaleX) || scaleX <= 0) scaleX = Math.round((tf.scaleX || 1.0) * 100);
+        if (isNaN(scaleY) || scaleY <= 0) scaleY = Math.round((tf.scaleY || 1.0) * 100);
 
         const rotation = Math.round(tf.rotation || 0);
 
