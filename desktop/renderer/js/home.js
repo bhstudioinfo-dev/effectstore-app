@@ -5725,9 +5725,14 @@ class EffectStoreApp {
         const btnContainer = document.getElementById('inline-kf-btn-container');
         if (btnContainer) {
             btnContainer.innerHTML = `
-                <button type="button" onclick="app.addInlineKeyframe()" style="width:100%; padding:7px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:12px; font-weight:700; cursor:pointer;">
-                    + Thêm mốc này vào Timeline
-                </button>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" onclick="app.captureTransformFromOBS()" style="flex:1; padding:7px 10px; background:rgba(34,211,238,0.15); border:1px solid rgba(34,211,238,0.4); border-radius:6px; color:#22d3ee; font-size:11px; font-weight:700; cursor:pointer;" title="Đọc vị trí và kích thước bạn vừa kéo trên OBS">
+                        🎯 Lấy từ OBS
+                    </button>
+                    <button type="button" onclick="app.addInlineKeyframe()" style="flex:2; padding:7px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:12px; font-weight:700; cursor:pointer;">
+                        + Thêm mốc này vào Timeline
+                    </button>
+                </div>
             `;
         }
         this.renderInlineKeyframes();
@@ -10215,10 +10220,16 @@ function cancelKeyframeEdit() {
     const btnContainer = document.getElementById('modal-kf-btn-container');
     if (btnContainer) {
         btnContainer.innerHTML = `
-            <button type="button" onclick="addKeyframe()"
-                style="width:100%; padding:10px; background: linear-gradient(135deg, #7c3aed, #ec4899); border:none; border-radius:8px; color:white; font-weight:700; font-size:13px; cursor:pointer;">
-                + Thêm Mốc Keyframe Này
-            </button>
+            <div style="display:flex; gap:8px;">
+                <button type="button" onclick="captureModalTransformFromOBS()"
+                    style="flex:1; padding:10px; background:rgba(34,211,238,0.15); border:1px solid rgba(34,211,238,0.4); border-radius:8px; color:#22d3ee; font-weight:700; font-size:12px; cursor:pointer;" title="Đọc vị trí và kích thước bạn vừa kéo trên OBS">
+                    🎯 Lấy từ OBS
+                </button>
+                <button type="button" onclick="addKeyframe()"
+                    style="flex:2; padding:10px; background: linear-gradient(135deg, #7c3aed, #ec4899); border:none; border-radius:8px; color:white; font-weight:700; font-size:13px; cursor:pointer;">
+                    + Thêm Mốc Keyframe Này
+                </button>
+            </div>
         `;
     }
     renderKeyframes();
