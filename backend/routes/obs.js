@@ -273,8 +273,23 @@ router.get('/current-webcam-transform', authMiddleware, async (req, res) => {
 
         const posX = Math.round(tf.positionX || 0);
         const posY = Math.round(tf.positionY || 0);
-        const scaleX = Math.round((tf.scaleX || 1.0) * 100);
-        const scaleY = Math.round((tf.scaleY || 1.0) * 100);
+        
+        let scaleX = Math.round((tf.scaleX || 1.0) * 100);
+        let scaleY = Math.round((tf.scaleY || 1.0) * 100);
+        
+        // Nếu OBS dùng Bounding Box (Bounds Width/Height) hoặc rendered width/height
+        if (tf.sourceWidth > 0 && typeof tf.width === 'number' && tf.width > 0) {
+            scaleX = Math.round((tf.width / tf.sourceWidth) * 100);
+        } else if (tf.sourceWidth > 0 && typeof tf.boundsWidth === 'number' && tf.boundsWidth > 0) {
+            scaleX = Math.round((tf.boundsWidth / tf.sourceWidth) * 100);
+        }
+
+        if (tf.sourceHeight > 0 && typeof tf.height === 'number' && tf.height > 0) {
+            scaleY = Math.round((tf.height / tf.sourceHeight) * 100);
+        } else if (tf.sourceHeight > 0 && typeof tf.boundsHeight === 'number' && tf.boundsHeight > 0) {
+            scaleY = Math.round((tf.boundsHeight / tf.sourceHeight) * 100);
+        }
+
         const rotation = Math.round(tf.rotation || 0);
 
         return res.json({
