@@ -628,11 +628,13 @@ class OBSController {
             const effectDuration = lastKeyframe ? lastKeyframe.time * 1000 : 5000;
             
             setTimeout(async () => {
-                await this.obs.call('SetSceneItemEnabled', {
-                    sceneName,
-                    sceneItemId: effectSceneItemId,
-                    sceneItemEnabled: false
-                }).catch(() => {});
+                if (effectItem && effectItem.sourceName && !effectItem.sourceName.toLowerCase().includes('effect_player')) {
+                    await this.obs.call('SetSceneItemEnabled', {
+                        sceneName,
+                        sceneItemId: effectSceneItemId,
+                        sceneItemEnabled: false
+                    }).catch(() => {});
+                }
                 
                 await this.resetWebcamToOriginalPosition(sceneName, webcamId);
                 await this.resetWebcamFilters(webcamSourceName);
