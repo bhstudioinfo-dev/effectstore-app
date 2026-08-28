@@ -437,32 +437,36 @@ class OBSController {
     }
 
     // ===== ⚡ CAMERA SHAKE EFFECT =====
-    async shakeWebcam(sceneName, webcamId, duration = 600, intensity = 25) {
+    async shakeWebcam(sceneName, webcamId, duration = 600, intensity = 15) {
         try {
-            const startPos = await this.obs.call('GetSceneItemTransform', { sceneName, sceneItemId: webcamId });
-            const baseX = startPos.sceneItemTransform.positionX;
-            const baseY = startPos.sceneItemTransform.positionY;
             const steps = Math.floor(duration / 35);
 
             for (let i = 0; i < steps; i++) {
+                const currentPos = await this.obs.call('GetSceneItemTransform', { sceneName, sceneItemId: webcamId });
+                const st = currentPos.sceneItemTransform;
                 const offsetX = (Math.random() - 0.5) * intensity * 2;
                 const offsetY = (Math.random() - 0.5) * intensity * 2;
+
                 await this.obs.call('SetSceneItemTransform', {
                     sceneName,
                     sceneItemId: webcamId,
                     sceneItemTransform: {
-                        positionX: baseX + offsetX,
-                        positionY: baseY + offsetY
+                        positionX: st.positionX + offsetX,
+                        positionY: st.positionY + offsetY
                     }
                 }).catch(() => {});
+
                 await new Promise(r => setTimeout(r, 35));
+
+                await this.obs.call('SetSceneItemTransform', {
+                    sceneName,
+                    sceneItemId: webcamId,
+                    sceneItemTransform: {
+                        positionX: st.positionX,
+                        positionY: st.positionY
+                    }
+                }).catch(() => {});
             }
-            // Trả về vị trí gốc trước khi rung
-            await this.obs.call('SetSceneItemTransform', {
-                sceneName,
-                sceneItemId: webcamId,
-                sceneItemTransform: { positionX: baseX, positionY: baseY }
-            }).catch(() => {});
         } catch (_err) {}
     }
 
