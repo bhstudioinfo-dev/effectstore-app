@@ -966,12 +966,12 @@
                 </div>
 
                 <!-- OBS -->
-                <div class="status-card-horizontal status-disconnected" id="status-card-obs">
+                <div class="status-card-horizontal status-disconnected" id="status-card-obs" onclick="app.openObsGuide()" style="cursor:pointer;" title="Nhấn để xem hướng dẫn kết nối OBS">
                     <div class="status-icon"><i class="fas fa-times"
                             style="font-style: normal; font-family: sans-serif;">×</i></div>
                     <div class="status-info">
                         <div class="status-title">PHẦN MỀM OBS</div>
-                        <div class="status-subtext" id="status-sub-obs">Chưa tìm thấy OBS</div>
+                        <div class="status-subtext" id="status-sub-obs">Chưa tìm thấy OBS (Nhấn xem hướng dẫn)</div>
                         <div id="obs-source-diagnostic"
                             style="display:none;font-size:10px;line-height:1.35;margin-top:3px;color:var(--text-muted);">
                             <span>gift_menu → <b id="obs-source-gift-menu">--</b></span>
@@ -1009,7 +1009,7 @@
                             <div class="feature"><i class="fas fa-chart-line"></i> Cập nhật mỗi ngày</div>
                         </div>
 
-                        <button class="cta-btn"><i class="fas fa-play-circle"></i> Xem hướng dẫn</button>
+                        <button class="cta-btn" onclick="app.openObsGuide()"><i class="fas fa-play-circle"></i> Xem hướng dẫn kết nối OBS</button>
                     </div>
 
                     <div class="visual">
@@ -1030,7 +1030,7 @@
                                 <span class="card-desc">Sở hữu vĩnh viễn</span>
                             </div>
                         </div>
-                        <div class="banner-card-item">
+                        <div class="banner-card-item" onclick="app.openObsGuide()" style="cursor:pointer;" title="Nhấn để xem hướng dẫn kết nối OBS">
                             <div class="banner-card-icon"><i class="fas fa-video"></i></div>
                             <div class="banner-card-text">
                                 <span class="card-title">Tích hợp OBS</span>
@@ -1592,10 +1592,17 @@
                             <div style="font-size:11px; color:#94a3b8; line-height:1.4; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
                                 💡 <strong>Mẹo:</strong> Trong OBS ➔ <i>Công cụ (Tools) ➔ Cài đặt máy chủ WebSocket</i>. Nếu OBS có bật xác thực, bấm <i>"Hiển thị thông tin kết nối"</i> để lấy mật khẩu dán vào đây (hoặc bỏ tích xác thực trong OBS nếu muốn kết nối tự do).
                             </div>
-                            <button onclick="app.saveOBSSettings()" class="pro-btn"
-                                style="width:100%; padding:12px; background:linear-gradient(135deg, #3b82f6, #2563eb); font-size: 14px;">
-                                <i class="fas fa-link"></i> Lưu & Kết nối lại OBS
-                            </button>
+                            <div style="display:flex;gap:10px;">
+                                <button onclick="app.saveOBSSettings()" class="pro-btn"
+                                    style="flex:1; padding:12px; background:linear-gradient(135deg, #3b82f6, #2563eb); font-size: 14px;">
+                                    <i class="fas fa-link"></i> Lưu & Kết nối lại OBS
+                                </button>
+                                <button onclick="app.openObsGuide()" type="button"
+                                    style="padding:12px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:#fff; font-size:13px; font-weight:700; cursor:pointer;"
+                                    title="Xem hướng dẫn kết nối OBS">
+                                    ❓ Hướng dẫn
+                                </button>
+                            </div>
                         </div>
                     </div>
 
