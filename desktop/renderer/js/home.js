@@ -5820,6 +5820,37 @@ class EffectStoreApp {
                 this.renderInlineKeyframes();
             }
         }
+    async captureTransformFromOBS() {
+        try {
+            this.showNotification('info', '🔍 Đang đọc vị trí camera từ OBS...');
+            const res = await fetch(this.API_URL + '/api/obs/current-webcam-transform', {
+                headers: { 'Authorization': `Bearer ${this.authToken}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                const xEl = document.getElementById('inline-kf-x');
+                const yEl = document.getElementById('inline-kf-y');
+                const scaleXEl = document.getElementById('inline-kf-scale-x');
+                const scaleYEl = document.getElementById('inline-kf-scale-y');
+                const rotEl = document.getElementById('inline-kf-rotation');
+                const actionEl = document.getElementById('inline-kf-action');
+
+                if (xEl) xEl.value = data.x;
+                if (yEl) yEl.value = data.y;
+                if (scaleXEl) scaleXEl.value = data.scaleX;
+                if (scaleYEl) scaleYEl.value = data.scaleY;
+                if (rotEl) rotEl.value = data.rotation;
+                if (actionEl && (actionEl.value === 'squash' || actionEl.value === 'bg_removal')) {
+                    actionEl.value = 'scale';
+                }
+                this.showNotification('success', `🎯 Đã lấy từ OBS: X=${data.x}, Y=${data.y}, Scale=${data.scaleX}%`);
+            } else {
+                this.showNotification('warning', '⚠️ ' + (data.message || 'Chưa đọc được từ OBS'));
+            }
+        } catch (err) {
+            console.error('Error capturing from OBS:', err);
+            this.showNotification('error', '❌ Lỗi kết nối OBS để lấy vị trí.');
+        }
     }
 
     async previewUploadTimelineOnOBS() {
@@ -10434,6 +10465,39 @@ window.testGiftMapping = function () {
     app.loadMappings().then(() => console.log('✅ Mappings loaded'));
 };
 
+async function captureModalTransformFromOBS() {
+    try {
+        app.showNotification('info', '🔍 Đang đọc vị trí camera từ OBS...');
+        const res = await fetch(app.API_URL + '/api/obs/current-webcam-transform', {
+            headers: { 'Authorization': `Bearer ${app.authToken}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+            const xEl = document.getElementById('kf-x');
+            const yEl = document.getElementById('kf-y');
+            const scaleXEl = document.getElementById('kf-scale-x');
+            const scaleYEl = document.getElementById('kf-scale-y');
+            const rotEl = document.getElementById('kf-rotation');
+            const actionEl = document.getElementById('kf-action');
+
+            if (xEl) xEl.value = data.x;
+            if (yEl) yEl.value = data.y;
+            if (scaleXEl) scaleXEl.value = data.scaleX;
+            if (scaleYEl) scaleYEl.value = data.scaleY;
+            if (rotEl) rotEl.value = data.rotation;
+            if (actionEl && (actionEl.value === 'squash' || actionEl.value === 'bg_removal')) {
+                actionEl.value = 'scale';
+            }
+            app.showNotification('success', `🎯 Đã lấy từ OBS: X=${data.x}, Y=${data.y}, Scale=${data.scaleX}%`);
+        } else {
+            app.showNotification('warning', '⚠️ ' + (data.message || 'Chưa đọc được từ OBS'));
+        }
+    } catch (err) {
+        console.error('Error capturing from OBS:', err);
+        app.showNotification('error', '❌ Lỗi kết nối OBS để lấy vị trí.');
+    }
+}
+
 window.openTimelineEditor = openTimelineEditor;
 window.closeTimelineEditor = closeTimelineEditor;
 window.addKeyframe = addKeyframe;
@@ -10442,3 +10506,4 @@ window.saveKeyframeEdit = saveKeyframeEdit;
 window.cancelKeyframeEdit = cancelKeyframeEdit;
 window.deleteKeyframe = deleteKeyframe;
 window.saveTimeline = saveTimeline;
+window.captureModalTransformFromOBS = captureModalTransformFromOBS;

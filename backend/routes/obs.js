@@ -234,6 +234,66 @@ router.get('/preview-temp-media', (req, res) => {
     }
 });
 
+router.get('/current-webcam-transform', authMiddleware, async (req, res) => {
+    try {
+        await obsService.ensureConnected().catch(() => {});
+        if (!obsService._isConnected) {
+            return res.status(503).json({ success: false, message: 'OBS chưa kết nối. Vui lòng mở OBS Studio trước.' });
+        }
+
+        let sceneName = 'EffectStore';
+        try {
+            const currentScene = await obsService.obs.call('GetCurrentProgramScene');
+            if (currentScene && currentScene.currentProgramSceneName) {
+                sceneName = currentScene.currentProgramSceneName;
+            }
+        } catch (_e) {
+            try {
+                const sceneList = await obsService.obs.call('GetSceneList');
+                if (sceneList && sceneList.currentProgramSceneName) {
+                    sceneName = sceneList.currentProgramSceneName;
+                }
+            } catch (_e2) {}
+        }
+
+        const OBSController = require('../obs-controller');
+        const obsController = new OBSController(obsService.obs);
+        obsController.isConnected = true;
+        
+        const webcam = await obsController.findWebcamSource(sceneName);
+        if (!webcam) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy nguồn Webcam trong Scene hiện tại.' });
+        }
+
+        const transformRes = await obsService.obs.call('GetSceneItemTransform', {
+            sceneName,
+            sceneItemId: webcam.sceneItemId
+        });
+        const tf = transformRes.sceneItemTransform;
+
+        const posX = Math.round(tf.positionX || 0);
+        const posY = Math.round(tf.positionY || 0);
+        const scaleX = Math.round((tf.scaleX || 1.0) * 100);
+        const scaleY = Math.round((tf.scaleY || 1.0) * 100);
+        const rotation = Math.round(tf.rotation || 0);
+
+        return res.json({
+            success: true,
+            sourceName: webcam.sourceName,
+            sceneItemId: webcam.sceneItemId,
+            x: posX,
+            y: posY,
+            scaleX,
+            scaleY,
+            rotation,
+            raw: tf
+        });
+    } catch (err) {
+        console.error('Error getting webcam transform:', err);
+        return res.status(500).json({ success: false, message: err.message || 'Lỗi đọc vị trí từ OBS' });
+    }
+});
+
 router.post('/preview-timeline', authMiddleware, async (req, res) => {
     try {
         const { effectId, timeline } = req.body;

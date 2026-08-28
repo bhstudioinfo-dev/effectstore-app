@@ -552,13 +552,23 @@ class OBSController {
                                 const baseX = typeof orig.positionX === 'number' ? orig.positionX : 0;
                                 const baseY = typeof orig.positionY === 'number' ? orig.positionY : 0;
 
-                                const multScaleX = typeof tf.scaleX === 'number' ? tf.scaleX / 100 : (typeof tf.scale === 'number' ? tf.scale / 100 : 1);
-                                const multScaleY = typeof tf.scaleY === 'number' ? tf.scaleY / 100 : (typeof tf.scale === 'number' ? tf.scale / 100 : 1);
+                                let targetX, targetY, targetScaleX, targetScaleY;
+                                
+                                // Nếu toạ độ là toạ độ tuyệt đối (nhập thẳng từ OBS hoặc Lấy từ OBS)
+                                if (tf.isAbsolute || (typeof tf.x === 'number' && tf.x > 100) || (typeof tf.y === 'number' && tf.y > 100)) {
+                                    targetX = typeof tf.x === 'number' ? tf.x : baseX;
+                                    targetY = typeof tf.y === 'number' ? tf.y : baseY;
+                                    targetScaleX = typeof tf.scaleX === 'number' ? (tf.scaleX / 100) : baseScaleX;
+                                    targetScaleY = typeof tf.scaleY === 'number' ? (tf.scaleY / 100) : (typeof tf.scaleX === 'number' ? tf.scaleX / 100 : baseScaleY);
+                                } else {
+                                    const multScaleX = typeof tf.scaleX === 'number' ? tf.scaleX / 100 : (typeof tf.scale === 'number' ? tf.scale / 100 : 1);
+                                    const multScaleY = typeof tf.scaleY === 'number' ? tf.scaleY / 100 : (typeof tf.scale === 'number' ? tf.scale / 100 : 1);
+                                    targetScaleX = baseScaleX * multScaleX;
+                                    targetScaleY = baseScaleY * multScaleY;
+                                    targetX = (typeof tf.x === 'number' && tf.x !== 0) ? (baseX + tf.x) : (tf.x === 0 ? baseX : undefined);
+                                    targetY = (typeof tf.y === 'number' && tf.y !== 0) ? (baseY + tf.y) : (tf.y === 0 ? baseY : undefined);
+                                }
 
-                                const targetScaleX = baseScaleX * multScaleX;
-                                const targetScaleY = baseScaleY * multScaleY;
-                                const targetX = (typeof tf.x === 'number' && tf.x !== 0) ? (baseX + tf.x) : (tf.x === 0 ? baseX : undefined);
-                                const targetY = (typeof tf.y === 'number' && tf.y !== 0) ? (baseY + tf.y) : (tf.y === 0 ? baseY : undefined);
                                 const targetRotation = typeof tf.rotation === 'number' ? tf.rotation : 0;
                                 const moveDuration = Math.max(50, (keyframe.duration || 0.4) * 1000);
 
