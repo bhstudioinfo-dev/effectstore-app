@@ -5829,16 +5829,34 @@ class EffectStoreApp {
         let filePath = '';
         const fileInput = document.getElementById('upload-file');
         try {
-            if (fileInput && fileInput.files && fileInput.files[0]) {
-                if (window.electronAPI && typeof window.electronAPI.getPathForFile === 'function') {
-                    filePath = window.electronAPI.getPathForFile(fileInput.files[0]) || '';
-                }
-                if (!filePath) filePath = fileInput.files[0].path || '';
+            if (window.electronAPI && typeof window.electronAPI.getPathForFile === 'function') {
+                if (fileInput.files && fileInput.files[0]) filePath = window.electronAPI.getPathForFile(fileInput.files[0]) || '';
             }
         } catch (_e) {}
+        if (!filePath && fileInput && fileInput.files && fileInput.files[0]) {
+            filePath = fileInput.files[0].path || '';
+        }
+
+        // If filePath is empty (e.g. browser context), upload the file temporarily
+        if (!filePath && fileInput && fileInput.files && fileInput.files[0]) {
+            try {
+                this.showNotification('info', '⏳ Đang chuẩn bị video để phát cùng lúc trên OBS...');
+                const fd = new FormData();
+                fd.append('file', fileInput.files[0]);
+                const upRes = await fetch(this.API_URL + '/api/obs/preview-upload-temp', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${this.authToken}` },
+                    body: fd
+                });
+                const upData = await upRes.json();
+                if (upData.success && upData.filePath) {
+                    filePath = upData.filePath;
+                }
+            } catch (_err) {}
+        }
 
         try {
-            this.showNotification('info', '🚀 Đang gửi lệnh chạy thử lên OBS...');
+            this.showNotification('info', '🚀 Đang gửi lệnh phát video & chạy Timeline lên OBS...');
             const res = await fetch(this.API_URL + '/api/obs/preview-timeline', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.authToken}` },
@@ -5846,7 +5864,7 @@ class EffectStoreApp {
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', '🎬 Đang chạy thử chuyển động trên OBS Studio!');
+                this.showNotification('success', '🎬 Đang phát video hiệu ứng & chuyển động webcam trên OBS Studio!');
             } else {
                 this.showNotification('error', '❌ Lỗi: ' + (data.message || 'Không thể chạy trên OBS'));
             }

@@ -176,6 +176,64 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
     }
 });
 
+let currentPreviewFilePath = '';
+
+const multer = require('multer');
+const previewTempStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dest = dataPaths.tempDir || path.join(__dirname, '..', 'temp');
+        try { fs.mkdirSync(dest, { recursive: true }); } catch (_e) {}
+        cb(null, dest);
+    },
+    filename: (req, file, cb) => {
+        cb(null, `preview_${Date.now()}_${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`);
+    }
+});
+const previewTempUpload = multer({ storage: previewTempStorage });
+
+router.post('/preview-upload-temp', authMiddleware, previewTempUpload.single('file'), (req, res) => {
+    if (req.file) {
+        currentPreviewFilePath = req.file.path;
+        return res.json({ success: true, filePath: req.file.path });
+    }
+    return res.status(400).json({ success: false, message: 'Chưa có file video nào.' });
+});
+
+router.get('/preview-temp-media', (req, res) => {
+    if (!currentPreviewFilePath || !fs.existsSync(currentPreviewFilePath)) {
+        return res.status(404).send('Preview file not found');
+    }
+    const stat = fs.statSync(currentPreviewFilePath);
+    const fileSize = stat.size;
+    const ext = path.extname(currentPreviewFilePath).toLowerCase();
+    const contentType = ext === '.mov' ? 'video/quicktime' : (ext === '.webm' ? 'video/webm' : 'video/mp4');
+
+    const range = req.headers.range;
+    if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        const file = fs.createReadStream(currentPreviewFilePath, { start, end });
+        const head = {
+            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunksize,
+            'Content-Type': contentType,
+        };
+        res.writeHead(206, head);
+        file.pipe(res);
+    } else {
+        const head = {
+            'Content-Length': fileSize,
+            'Content-Type': contentType,
+            'Accept-Ranges': 'bytes'
+        };
+        res.writeHead(200, head);
+        fs.createReadStream(currentPreviewFilePath).pipe(res);
+    }
+});
+
 router.post('/preview-timeline', authMiddleware, async (req, res) => {
     try {
         const { effectId, timeline } = req.body;
@@ -203,24 +261,57 @@ router.post('/preview-timeline', authMiddleware, async (req, res) => {
             } catch (_e2) {}
         }
 
-        // Gọi controller thực thi timeline
+        // 1. Gọi controller thực thi chuyển động timeline trên Webcam
         const OBSController = require('../obs-controller');
         const obsController = new OBSController(obsService.obs);
         obsController.isConnected = true;
         obsController.runTimelineEffect(sceneName, effectId || 'preview', timeline);
 
+        // 2. Đồng thời phát video hiệu ứng trên OBS effect_player
+        const eventBus = require('../services/eventBus');
+        const maxTime = Math.max(5, ...timeline.map(k => k.time || 0));
+        const durationMs = Math.round((maxTime + 1.5) * 1000);
+        const PORT = process.env.PORT || 9000;
+
         if (req.body.filePath && fs.existsSync(req.body.filePath)) {
-            const maxTime = Math.max(5, ...timeline.map(k => k.time || 0));
-            const durationMs = Math.round((maxTime + 1.5) * 1000);
-            const payload = {
+            currentPreviewFilePath = req.body.filePath;
+            await obsService.ensureEffectPlayerSource().catch(() => {});
+            const previewUrl = `http://127.0.0.1:${PORT}/api/obs/preview-temp-media?t=${Date.now()}`;
+            
+            eventBus.emit('effect_player_play_request', {
+                requestId: `upload-preview-${Date.now()}`,
                 effectId: effectId || 'upload_preview',
-                effectName: 'Xem Thử Timeline',
-                effectUrl: req.body.filePath,
+                effectName: 'Xem Thử Hiệu Ứng',
+                effectUrl: previewUrl,
                 duration: durationMs,
                 playbackType: 'preview_effect',
+                audioEnabled: true,
+                audioVolume: 1.0,
                 startedAt: Date.now()
-            };
-            effectQueue.add({ ...payload, userId: String(req.userId) }).catch(() => {});
+            });
+        } else if (effectId && effectId !== 'upload_preview' && effectId !== 'preview') {
+            const effect = await Effect.findById(effectId).catch(() => null);
+            if (effect) {
+                await obsService.ensureEffectPlayerSource().catch(() => {});
+                const streamToken = issueEffectAccessToken({
+                    purpose: 'effect-player-preview',
+                    effectId: String(effect._id),
+                    userId: String(req.userId)
+                });
+                const effectUrl = `http://127.0.0.1:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effect._id)}?token=${encodeURIComponent(streamToken)}`;
+                
+                eventBus.emit('effect_player_play_request', {
+                    requestId: `preview-${Date.now()}`,
+                    effectId: String(effect._id),
+                    effectName: effect.name,
+                    effectUrl,
+                    duration: durationMs,
+                    playbackType: 'preview_effect',
+                    audioEnabled: true,
+                    audioVolume: 1.0,
+                    startedAt: Date.now()
+                });
+            }
         }
 
         return res.json({ success: true, message: 'Đang chạy thử Timeline trên OBS!' });
