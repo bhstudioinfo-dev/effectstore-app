@@ -5820,6 +5820,8 @@ class EffectStoreApp {
                 this.renderInlineKeyframes();
             }
         }
+    }
+
     async captureTransformFromOBS() {
         try {
             this.showNotification('info', '🔍 Đang đọc vị trí camera từ OBS...');
