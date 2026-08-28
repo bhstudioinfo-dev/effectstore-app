@@ -313,11 +313,7 @@ async function streamEffectById(req, res) {
             path.join(encryptedEffectsDir, `${effectId}.enc`),
             path.join(previewsDir, `${effectId}.webm`),
             path.join(dataPaths.backendRoot, 'effects', 'encrypted', `${effectId}.enc`),
-            path.join(dataPaths.backendRoot, 'uploads', 'previews', `${effectId}.webm`),
-            path.join(encryptedEffectsDir, '1777367568883.enc'),
-            path.join(dataPaths.backendRoot, 'effects', 'encrypted', '1777367568883.enc'),
-            path.join(previewsDir, '1777367568883.webm'),
-            path.join(dataPaths.backendRoot, 'uploads', 'previews', '1777367568883.webm')
+            path.join(dataPaths.backendRoot, 'uploads', 'previews', `${effectId}.webm`)
         ].filter(Boolean);
 
         let streamPath = candidatePaths.find(p => fs.existsSync(p));
