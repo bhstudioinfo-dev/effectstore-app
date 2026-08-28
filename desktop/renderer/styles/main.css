@@ -1026,11 +1026,36 @@ body[data-current-view="gift-mapping"] .contact-card { display:none; }
 .upload-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .upload-form-label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 13px; }
 .upload-form-input {
-    width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.05);
+    width: 100%; padding: 12px 16px; background: #0f172a;
     border: 1px solid var(--border-subtle); border-radius: 8px;
     color: white; font-size: 14px; outline: none;
+    color-scheme: dark;
 }
 .upload-form-input:focus { border-color: var(--primary); }
+
+select,
+select.upload-form-input,
+.upload-form-input select {
+    color-scheme: dark;
+    background-color: #0f172a;
+    color: #f8fafc;
+}
+
+select option,
+select optgroup,
+.upload-form-input option,
+.upload-form-input optgroup,
+option {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    padding: 8px 12px;
+}
+
+select optgroup {
+    font-weight: 700;
+    color: #94a3b8 !important;
+    background-color: #0b1120 !important;
+}
 .gift-item {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.05);
