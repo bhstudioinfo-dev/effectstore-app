@@ -1,25 +1,26 @@
-const OBSWebSocket = require('obs-websocket-js').default;
+const { OBSWebSocket } = require('obs-websocket-js');
 
 class OBSController {
-    constructor() {
-        this.obs = new OBSWebSocket();
-        this.isConnected = false;
+    constructor(obsInstance) {
+        this.obs = obsInstance || new OBSWebSocket();
+        this.isConnected = !!obsInstance;
         this.host = 'localhost';
         this.port = 4455;
         this.password = 'obs123';
         this.originalPositions = {}; // Cache lưu vị trí gốc
         this.activeTimeouts = []; // Theo dõi timeouts timeline
 
-        // Lắng nghe sự kiện ngắt kết nối
-        this.obs.on('ConnectionClosed', () => {
-            this.isConnected = false;
-            console.log('⚠️ OBS Connection Closed');
-        });
+        if (this.obs && typeof this.obs.on === 'function') {
+            this.obs.on('ConnectionClosed', () => {
+                this.isConnected = false;
+                console.log('⚠️ OBS Connection Closed');
+            });
 
-        this.obs.on('ConnectionError', (err) => {
-            this.isConnected = false;
-            console.error('❌ OBS Connection Error:', err);
-        });
+            this.obs.on('ConnectionError', (err) => {
+                this.isConnected = false;
+                console.error('❌ OBS Connection Error:', err);
+            });
+        }
     }
 
     // Connect to OBS
@@ -102,18 +103,40 @@ class OBSController {
     async findWebcamSource(sceneName) {
         try {
             const items = await this.obs.call('GetSceneItemList', { sceneName });
-            const webcamItem = items.sceneItems.find(item => 
+            const sceneItems = items.sceneItems || [];
+            
+            // 1. Check inputKind: DirectShow video capture, window capture, etc.
+            let webcamItem = sceneItems.find(item => 
                 item.inputKind === 'dshow_input' || 
                 item.inputKind === 'vlc_source' ||
-                item.inputKind === 'ffmpeg_source'
+                item.inputKind === 'window_capture'
             );
             
+            // 2. Check by source name keywords
+            if (!webcamItem) {
+                const keywords = ['cam', 'webcam', 'camera', 'video', 'quay', 'người', 'streamer', 'face', 'c922', 'c920', 'c930', 'sony'];
+                webcamItem = sceneItems.find(item => {
+                    const name = String(item.sourceName || '').toLowerCase();
+                    return keywords.some(kw => name.includes(kw));
+                });
+            }
+
+            // 3. Fallback to any active visual source (excluding overlays & browser sources)
+            if (!webcamItem && sceneItems.length > 0) {
+                webcamItem = sceneItems.find(item => 
+                    item.inputKind !== 'browser_source' && 
+                    !String(item.sourceName || '').toLowerCase().includes('effect') &&
+                    !String(item.sourceName || '').toLowerCase().includes('overlay') &&
+                    !String(item.sourceName || '').toLowerCase().includes('gift')
+                ) || sceneItems[0];
+            }
+            
             if (webcamItem) {
-                console.log('✅ Tìm thấy webcam:', webcamItem.sourceName);
+                console.log('✅ Tìm thấy webcam / source mục tiêu:', webcamItem.sourceName, `(ID: ${webcamItem.sceneItemId})`);
                 return webcamItem;
             }
             
-            console.warn('⚠️ Không tìm thấy webcam');
+            console.warn('⚠️ Không tìm thấy source phù hợp trong scene:', sceneName);
             return null;
         } catch (err) {
             console.error('❌ Lỗi tìm webcam:', err);
@@ -125,7 +148,7 @@ class OBSController {
         try {
             const sourceName = `effect_${effectId}`;
             const items = await this.obs.call('GetSceneItemList', { sceneName });
-            return items.sceneItems.find(item => item.sourceName === sourceName) || null;
+            return (items.sceneItems || []).find(item => item.sourceName === sourceName) || null;
         } catch (err) {
             console.error('❌ Lỗi tìm effect source:', err);
             return null;
@@ -399,27 +422,23 @@ class OBSController {
             }
             
             const webcamItem = await this.findWebcamSource(sceneName);
-            if (!webcamItem) {
-                console.error('❌ Không tìm thấy webcam');
-                return false;
-            }
-            const webcamId = webcamItem.sceneItemId;
-            const webcamSourceName = webcamItem.sourceName;
+            const webcamId = webcamItem ? webcamItem.sceneItemId : null;
+            const webcamSourceName = webcamItem ? webcamItem.sourceName : null;
             
             const effectItem = await this.findEffectSource(sceneName, effectId);
-            if (!effectItem) {
-                console.error('❌ Không tìm thấy effect source');
-                return false;
+            const effectSceneItemId = effectItem ? effectItem.sceneItemId : null;
+            
+            if (webcamId) {
+                await this.saveWebcamOriginalPosition(sceneName, webcamId);
             }
-            const effectSceneItemId = effectItem.sceneItemId;
             
-            await this.saveWebcamOriginalPosition(sceneName, webcamId);
-            
-            await this.obs.call('SetSceneItemEnabled', {
-                sceneName,
-                sceneItemId: effectSceneItemId,
-                sceneItemEnabled: true
-            });
+            if (effectSceneItemId) {
+                await this.obs.call('SetSceneItemEnabled', {
+                    sceneName,
+                    sceneItemId: effectSceneItemId,
+                    sceneItemEnabled: true
+                }).catch(() => {});
+            }
             
             const animations = timeline.map(async (keyframe) => {
                 return new Promise(async (resolve) => {
@@ -432,7 +451,7 @@ class OBSController {
                             targetSourceName = webcamSourceName;
                         } else if (keyframe.source === 'auto_effect') {
                             targetSceneItemId = effectSceneItemId;
-                            targetSourceName = effectItem.sourceName;
+                            targetSourceName = effectItem ? effectItem.sourceName : null;
                         } else if (keyframe.source) {
                             targetSourceName = keyframe.source;
                         }
