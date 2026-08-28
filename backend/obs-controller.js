@@ -187,34 +187,142 @@ class OBSController {
         }
     }
 
-    // ===== 🎬 SMOOTH ANIMATION =====
-    async moveWebcamSmooth(sceneName, webcamId, targetX, targetY, targetScale, duration = 1000) {
+    // ===== 🎨 FILTER & SPECIAL EFFECT MANAGEMENT =====
+    async setWebcamFilter(sourceName, filterType, enabled) {
+        if (!this.isConnected || !sourceName) return false;
+        try {
+            const filterList = await this.obs.call('GetSourceFilterList', { sourceName });
+            const filters = filterList.filters || [];
+
+            if (filterType === 'bg_removal' || filterType === 'background_removal') {
+                const bgFilter = filters.find(f =>
+                    f.filterKind === 'background_removal' ||
+                    f.filterName.toLowerCase().includes('background') ||
+                    f.filterName.toLowerCase().includes('tách nền') ||
+                    f.filterName.toLowerCase().includes('xóa nền')
+                );
+                if (bgFilter) {
+                    await this.obs.call('SetSourceFilterEnabled', {
+                        sourceName,
+                        filterName: bgFilter.filterName,
+                        filterEnabled: Boolean(enabled)
+                    });
+                    console.log(`✂️ Background Removal ${enabled ? 'BẬT' : 'TẮT'} trên ${sourceName}`);
+                }
+            } else if (filterType === 'blackout' || filterType === 'silhouette') {
+                let colorFilter = filters.find(f => f.filterKind === 'color_filter' || f.filterName === 'LiveFlow_Color_Correction');
+                if (!colorFilter && enabled) {
+                    try {
+                        await this.obs.call('CreateSourceFilter', {
+                            sourceName,
+                            filterName: 'LiveFlow_Color_Correction',
+                            filterKind: 'color_filter',
+                            filterSettings: { brightness: -1.0, contrast: 2.0 }
+                        });
+                        colorFilter = { filterName: 'LiveFlow_Color_Correction' };
+                    } catch (_e) { }
+                }
+                if (colorFilter) {
+                    if (enabled) {
+                        await this.obs.call('SetSourceFilterSettings', {
+                            sourceName,
+                            filterName: colorFilter.filterName,
+                            filterSettings: { brightness: -1.0, contrast: 2.0 }
+                        });
+                        await this.obs.call('SetSourceFilterEnabled', {
+                            sourceName,
+                            filterName: colorFilter.filterName,
+                            filterEnabled: true
+                        });
+                    } else {
+                        await this.obs.call('SetSourceFilterSettings', {
+                            sourceName,
+                            filterName: colorFilter.filterName,
+                            filterSettings: { brightness: 0.0, contrast: 0.0 }
+                        });
+                        await this.obs.call('SetSourceFilterEnabled', {
+                            sourceName,
+                            filterName: colorFilter.filterName,
+                            filterEnabled: false
+                        });
+                    }
+                    console.log(`🖤 Blackout Silhouette ${enabled ? 'BẬT' : 'TẮT'} trên ${sourceName}`);
+                }
+            }
+            return true;
+        } catch (err) {
+            console.error('❌ Lỗi setWebcamFilter:', err.message);
+            return false;
+        }
+    }
+
+    async resetWebcamFilters(sourceName) {
+        if (!this.isConnected || !sourceName) return;
+        try {
+            const filterList = await this.obs.call('GetSourceFilterList', { sourceName });
+            const filters = filterList.filters || [];
+            for (const f of filters) {
+                if (f.filterName === 'LiveFlow_Color_Correction' || f.filterKind === 'color_filter') {
+                    await this.obs.call('SetSourceFilterSettings', {
+                        sourceName,
+                        filterName: f.filterName,
+                        filterSettings: { brightness: 0.0, contrast: 0.0 }
+                    }).catch(() => {});
+                    await this.obs.call('SetSourceFilterEnabled', {
+                        sourceName,
+                        filterName: f.filterName,
+                        filterEnabled: false
+                    }).catch(() => {});
+                }
+                if (f.filterKind === 'background_removal' || f.filterName.toLowerCase().includes('background')) {
+                    await this.obs.call('SetSourceFilterEnabled', {
+                        sourceName,
+                        filterName: f.filterName,
+                        filterEnabled: false
+                    }).catch(() => {});
+                }
+            }
+        } catch (_err) {}
+    }
+
+    // ===== 🎬 SMOOTH ANIMATION WITH INDEPENDENT SCALE X/Y & ROTATION =====
+    async moveWebcamSmooth(sceneName, webcamId, targetX, targetY, targetScaleX, targetScaleY, targetRotation, duration = 500) {
         return new Promise(async (resolve) => {
             try {
                 const startPos = await this.obs.call('GetSceneItemTransform', { sceneName, sceneItemId: webcamId });
-                
+                const st = startPos.sceneItemTransform;
+
                 const start = {
-                    x: startPos.sceneItemTransform.positionX,
-                    y: startPos.sceneItemTransform.positionY,
-                    scaleX: startPos.sceneItemTransform.scaleX,
-                    scaleY: startPos.sceneItemTransform.scaleY
+                    x: st.positionX,
+                    y: st.positionY,
+                    scaleX: st.scaleX,
+                    scaleY: st.scaleY,
+                    rotation: typeof st.rotation === 'number' ? st.rotation : 0
                 };
-                
+
+                const toX = typeof targetX === 'number' ? targetX : start.x;
+                const toY = typeof targetY === 'number' ? targetY : start.y;
+                const toScaleX = typeof targetScaleX === 'number' ? targetScaleX : start.scaleX;
+                const toScaleY = typeof targetScaleY === 'number' ? targetScaleY : (typeof targetScaleX === 'number' ? targetScaleX : start.scaleY);
+                const toRotation = typeof targetRotation === 'number' ? targetRotation : start.rotation;
+
+                const animDuration = Math.max(50, duration || 500);
                 const startTime = Date.now();
-                
+
                 const animate = async () => {
                     const elapsed = Date.now() - startTime;
-                    const progress = Math.min(elapsed / duration, 1);
-                    
+                    const progress = Math.min(elapsed / animDuration, 1);
+
                     const easeProgress = progress < 0.5 
                         ? 2 * progress * progress 
                         : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-                    
-                    const currentX = start.x + (targetX - start.x) * easeProgress;
-                    const currentY = start.y + (targetY - start.y) * easeProgress;
-                    const currentScaleX = start.scaleX + (targetScale - start.scaleX) * easeProgress;
-                    const currentScaleY = start.scaleY + (targetScale - start.scaleY) * easeProgress;
-                    
+
+                    const currentX = start.x + (toX - start.x) * easeProgress;
+                    const currentY = start.y + (toY - start.y) * easeProgress;
+                    const currentScaleX = start.scaleX + (toScaleX - start.scaleX) * easeProgress;
+                    const currentScaleY = start.scaleY + (toScaleY - start.scaleY) * easeProgress;
+                    const currentRotation = start.rotation + (toRotation - start.rotation) * easeProgress;
+
                     await this.obs.call('SetSceneItemTransform', {
                         sceneName,
                         sceneItemId: webcamId,
@@ -223,24 +331,54 @@ class OBSController {
                             positionY: currentY,
                             scaleX: currentScaleX,
                             scaleY: currentScaleY,
-                            rotation: startPos.sceneItemTransform.rotation,
-                            alignment: startPos.sceneItemTransform.alignment
+                            rotation: currentRotation,
+                            alignment: st.alignment
                         }
-                    });
-                    
+                    }).catch(() => {});
+
                     if (progress < 1) {
                         setTimeout(animate, 16);
                     } else {
                         resolve(true);
                     }
                 };
-                
+
                 animate();
             } catch (err) {
                 console.error('❌ Lỗi di chuyển mượt:', err);
                 resolve(false);
             }
         });
+    }
+
+    // ===== ⚡ CAMERA SHAKE EFFECT =====
+    async shakeWebcam(sceneName, webcamId, duration = 600, intensity = 25) {
+        try {
+            const startPos = await this.obs.call('GetSceneItemTransform', { sceneName, sceneItemId: webcamId });
+            const baseX = startPos.sceneItemTransform.positionX;
+            const baseY = startPos.sceneItemTransform.positionY;
+            const steps = Math.floor(duration / 35);
+
+            for (let i = 0; i < steps; i++) {
+                const offsetX = (Math.random() - 0.5) * intensity * 2;
+                const offsetY = (Math.random() - 0.5) * intensity * 2;
+                await this.obs.call('SetSceneItemTransform', {
+                    sceneName,
+                    sceneItemId: webcamId,
+                    sceneItemTransform: {
+                        positionX: baseX + offsetX,
+                        positionY: baseY + offsetY
+                    }
+                }).catch(() => {});
+                await new Promise(r => setTimeout(r, 35));
+            }
+            // Trả về vị trí gốc trước khi rung
+            await this.obs.call('SetSceneItemTransform', {
+                sceneName,
+                sceneItemId: webcamId,
+                sceneItemTransform: { positionX: baseX, positionY: baseY }
+            }).catch(() => {});
+        } catch (_err) {}
     }
 
     // ===== 🎯 RUN TIMELINE EFFECT =====
@@ -266,6 +404,7 @@ class OBSController {
                 return false;
             }
             const webcamId = webcamItem.sceneItemId;
+            const webcamSourceName = webcamItem.sourceName;
             
             const effectItem = await this.findEffectSource(sceneName, effectId);
             if (!effectItem) {
@@ -290,38 +429,59 @@ class OBSController {
 
                         if (keyframe.source === 'auto_webcam') {
                             targetSceneItemId = webcamId;
-                            targetSourceName = webcamItem.sourceName;
+                            targetSourceName = webcamSourceName;
                         } else if (keyframe.source === 'auto_effect') {
                             targetSceneItemId = effectSceneItemId;
                             targetSourceName = effectItem.sourceName;
+                        } else if (keyframe.source) {
+                            targetSourceName = keyframe.source;
                         }
 
-                        if (targetSceneItemId) {
-                            // 1. Xử lý Lớp (Chỉ cho Webcam)
-                            if (keyframe.layer && keyframe.source === 'auto_webcam') {
+                        if (targetSceneItemId || targetSourceName) {
+                            // 1. Xử lý Lớp (Layer)
+                            if (keyframe.layer && keyframe.source === 'auto_webcam' && targetSceneItemId) {
                                 await this.setWebcamLayer(sceneName, webcamId, effectSceneItemId, keyframe.layer);
                             }
                             
-                            // 2. Xử lý Di chuyển / Thu phóng
-                            if (keyframe.transform && (keyframe.action === 'move' || keyframe.action === 'scale')) {
+                            // 2. Xử lý Filter Tách Nền / Đen Mặt
+                            if (keyframe.action === 'bg_removal') {
+                                await this.setWebcamFilter(targetSourceName || webcamSourceName, 'bg_removal', keyframe.enabled !== false);
+                            } else if (keyframe.action === 'blackout') {
+                                await this.setWebcamFilter(targetSourceName || webcamSourceName, 'blackout', keyframe.enabled !== false);
+                            }
+
+                            // 3. Xử lý Rung lắc Camera Shake
+                            if (keyframe.action === 'shake' && targetSceneItemId) {
+                                this.shakeWebcam(sceneName, targetSceneItemId, (keyframe.duration || 0.6) * 1000, keyframe.intensity || 25);
+                            }
+
+                            // 4. Xử lý Di chuyển / Thu phóng / Squash Đập Dẹp / Xoay Góc
+                            if (keyframe.transform && (keyframe.action === 'move' || keyframe.action === 'scale' || keyframe.action === 'squash' || keyframe.action === 'rotate') && targetSceneItemId) {
+                                const tf = keyframe.transform;
+                                const scaleX = typeof tf.scaleX === 'number' ? tf.scaleX / 100 : (typeof tf.scale === 'number' ? tf.scale / 100 : 1);
+                                const scaleY = typeof tf.scaleY === 'number' ? tf.scaleY / 100 : (typeof tf.scale === 'number' ? tf.scale / 100 : 1);
+                                const moveDuration = (keyframe.duration || 0.4) * 1000;
+
                                 await this.moveWebcamSmooth(
                                     sceneName,
                                     targetSceneItemId,
-                                    keyframe.transform.x || 0,
-                                    keyframe.transform.y || 0,
-                                    keyframe.transform.scale ? keyframe.transform.scale / 100 : 1,
-                                    1000
+                                    tf.x,
+                                    tf.y,
+                                    scaleX,
+                                    scaleY,
+                                    tf.rotation,
+                                    moveDuration
                                 );
                             }
 
-                            // 3. Xử lý Ẩn/Hiện
-                            if (keyframe.action === 'show') {
+                            // 5. Xử lý Ẩn/Hiện
+                            if (keyframe.action === 'show' && targetSceneItemId) {
                                 await this.obs.call('SetSceneItemEnabled', {
                                     sceneName,
                                     sceneItemId: targetSceneItemId,
                                     sceneItemEnabled: true
                                 });
-                            } else if (keyframe.action === 'hide') {
+                            } else if (keyframe.action === 'hide' && targetSceneItemId) {
                                 await this.obs.call('SetSceneItemEnabled', {
                                     sceneName,
                                     sceneItemId: targetSceneItemId,
@@ -329,8 +489,8 @@ class OBSController {
                                 });
                             }
 
-                            // 4. Xử lý Chạy lại video
-                            if (keyframe.action === 'play') {
+                            // 6. Xử lý Chạy lại video
+                            if (keyframe.action === 'play' && targetSceneItemId) {
                                 await this.obs.call('SetSceneItemEnabled', { sceneName, sceneItemId: targetSceneItemId, sceneItemEnabled: false });
                                 await new Promise(r => setTimeout(r, 100));
                                 await this.obs.call('SetSceneItemEnabled', { sceneName, sceneItemId: targetSceneItemId, sceneItemEnabled: true });
@@ -352,10 +512,11 @@ class OBSController {
                     sceneName,
                     sceneItemId: effectSceneItemId,
                     sceneItemEnabled: false
-                });
+                }).catch(() => {});
                 
                 await this.resetWebcamToOriginalPosition(sceneName, webcamId);
-                console.log('✅ Timeline effect completed & reset');
+                await this.resetWebcamFilters(webcamSourceName);
+                console.log('✅ Timeline effect completed, restored & filters reset');
             }, effectDuration + 500);
             
             return true;

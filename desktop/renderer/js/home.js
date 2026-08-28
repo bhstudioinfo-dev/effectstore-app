@@ -9484,81 +9484,228 @@ function closeTimelineEditor() {
     }
 }
 
-// ✅ HÀM THÊM KEYFRAME MỚI (Đã có X, Y, Scale, Layer)
+// 🎯 HÀM ĐỔI ACTION TỰ ĐỘNG ĐIỀN THÔNG SỐ GỢI Ý
+function onActionChange(action) {
+    const scaleX = document.getElementById('kf-scale-x');
+    const scaleY = document.getElementById('kf-scale-y');
+    const rot = document.getElementById('kf-rotation');
+    const dur = document.getElementById('kf-duration');
+    const layer = document.getElementById('kf-layer');
+
+    if (action === 'squash') {
+        if (scaleX) scaleX.value = '135';
+        if (scaleY) scaleY.value = '8';
+        if (dur) dur.value = '0.15';
+    } else if (action === 'scale') {
+        if (scaleX) scaleX.value = '100';
+        if (scaleY) scaleY.value = '100';
+        if (dur) dur.value = '0.4';
+    } else if (action === 'rotate') {
+        if (rot) rot.value = '180';
+        if (dur) dur.value = '0.4';
+    } else if (action === 'shake') {
+        if (dur) dur.value = '0.6';
+    } else if (action === 'bg_removal' || action === 'blackout') {
+        if (layer) layer.value = 'above';
+    }
+}
+
+// ⚡ HÀM ÁP DỤNG PRESET TROLL NHANH (1-CLICK)
+function applyTimelinePreset() {
+    const preset = document.getElementById('kf-preset-select')?.value;
+    if (!preset) {
+        return app.showNotification('warning', '⚠️ Vui lòng chọn một mẫu Preset trước!');
+    }
+
+    if (currentTimeline.length > 0) {
+        if (!confirm(`Áp dụng Preset "${preset}" sẽ thay thế các keyframe hiện tại. Bạn có chắc chắn không?`)) {
+            return;
+        }
+    }
+
+    currentTimeline = [];
+
+    if (preset === 'squash') {
+        // 🍳 Kịch bản Đập Dẹp Bẹp
+        currentTimeline = [
+            { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true, layer: 'above' },
+            { time: 1.2, action: 'squash', source: 'auto_webcam', duration: 0.15, transform: { x: 0, y: 150, scaleX: 135, scaleY: 8, rotation: 0 } },
+            { time: 1.3, action: 'shake', source: 'auto_webcam', duration: 0.4, intensity: 30 },
+            { time: 3.2, action: 'scale', source: 'auto_webcam', duration: 0.5, transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 0 } },
+            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+        ];
+    } else if (preset === 'blackout') {
+        // 💣 Kịch bản Bom Nổ Đen Mặt
+        currentTimeline = [
+            { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true, layer: 'above' },
+            { time: 1.0, action: 'blackout', source: 'auto_webcam', enabled: true, layer: 'above' },
+            { time: 1.0, action: 'shake', source: 'auto_webcam', duration: 0.6, intensity: 35 },
+            { time: 3.5, action: 'blackout', source: 'auto_webcam', enabled: false, layer: 'above' },
+            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+        ];
+    } else if (preset === 'spring') {
+        // 🚀 Kịch bản Lò Xo Bật Tung
+        currentTimeline = [
+            { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true, layer: 'above' },
+            { time: 0.3, action: 'squash', source: 'auto_webcam', duration: 0.25, transform: { x: 0, y: 80, scaleX: 120, scaleY: 65, rotation: 0 } },
+            { time: 0.6, action: 'move', source: 'auto_webcam', duration: 0.35, transform: { x: 0, y: -900, scaleX: 60, scaleY: 140, rotation: 0 } },
+            { time: 1.0, action: 'hide', source: 'auto_webcam' },
+            { time: 2.6, action: 'show', source: 'auto_webcam' },
+            { time: 2.7, action: 'move', source: 'auto_webcam', duration: 0.35, transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 0 } },
+            { time: 3.0, action: 'shake', source: 'auto_webcam', duration: 0.4, intensity: 20 },
+            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+        ];
+    } else if (preset === 'yeet') {
+        // 👌 Kịch bản Búng Bay Mất Tích
+        currentTimeline = [
+            { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true, layer: 'above' },
+            { time: 0.4, action: 'rotate', source: 'auto_webcam', duration: 0.3, transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 18 } },
+            { time: 0.8, action: 'move', source: 'auto_webcam', duration: 0.3, transform: { x: 1300, y: -400, scaleX: 20, scaleY: 20, rotation: 220 } },
+            { time: 1.1, action: 'hide', source: 'auto_webcam' },
+            { time: 2.8, action: 'show', source: 'auto_webcam' },
+            { time: 2.9, action: 'move', source: 'auto_webcam', duration: 0.6, transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 0 } },
+            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+        ];
+    } else if (preset === 'tornado') {
+        // 🌀 Kịch bản Lốc Xoáy Xoay Tròn
+        currentTimeline = [
+            { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true, layer: 'above' },
+            { time: 0.5, action: 'rotate', source: 'auto_webcam', duration: 0.4, transform: { x: 0, y: 0, scaleX: 85, scaleY: 85, rotation: 180 } },
+            { time: 1.0, action: 'rotate', source: 'auto_webcam', duration: 0.4, transform: { x: 0, y: -150, scaleX: 55, scaleY: 55, rotation: 360 } },
+            { time: 1.5, action: 'rotate', source: 'auto_webcam', duration: 0.4, transform: { x: 0, y: -700, scaleX: 15, scaleY: 15, rotation: 720 } },
+            { time: 2.0, action: 'hide', source: 'auto_webcam' },
+            { time: 3.2, action: 'show', source: 'auto_webcam' },
+            { time: 3.3, action: 'move', source: 'auto_webcam', duration: 0.5, transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 0 } },
+            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+        ];
+    } else if (preset === 'bg_removal') {
+        // ✂️ Tách nền đơn giản
+        currentTimeline = [
+            { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true, layer: 'above' },
+            { time: 5.0, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+        ];
+    } else if (preset === 'shake') {
+        // ⚡ Rung lắc đơn giản
+        currentTimeline = [
+            { time: 0.0, action: 'shake', source: 'auto_webcam', duration: 1.0, intensity: 30 }
+        ];
+    }
+
+    renderKeyframes();
+    app.showNotification('success', `✨ Đã áp dụng Preset "${preset}" thành công!`);
+}
+
+// ✅ HÀM THÊM KEYFRAME MỚI
 function addKeyframe() {
-    const time = parseFloat(document.getElementById('kf-time').value);
+    const time = parseFloat(document.getElementById('kf-time').value) || 0;
     const action = document.getElementById('kf-action').value;
     const source = document.getElementById('kf-source').value;
+    const duration = parseFloat(document.getElementById('kf-duration').value) || 0.4;
 
-    // ✅ Lấy thêm X, Y, Scale, Layer
     const x = parseFloat(document.getElementById('kf-x').value) || 0;
     const y = parseFloat(document.getElementById('kf-y').value) || 0;
-    const scale = parseFloat(document.getElementById('kf-scale').value) || 100;
+    const scaleX = parseFloat(document.getElementById('kf-scale-x').value) || 100;
+    const scaleY = parseFloat(document.getElementById('kf-scale-y').value) || 100;
+    const rotation = parseFloat(document.getElementById('kf-rotation').value) || 0;
     const layer = document.getElementById('kf-layer').value;
 
-    // Validate
     if (!source || source === '-- Chọn Source --') {
         return app.showNotification('warning', '⚠️ Vui lòng chọn Source!');
     }
 
-    // Thêm vào mảng timeline
+    const isEnabled = (layer === 'above');
+
     currentTimeline.push({
         time,
         action,
         source,
+        duration,
+        enabled: isEnabled,
         layer,
-        transform: { x, y, scale }
+        transform: { x, y, scaleX, scaleY, scale: scaleX, rotation }
     });
 
-    // Sắp xếp theo thời gian
     currentTimeline.sort((a, b) => a.time - b.time);
-
-    // Vẽ lại danh sách
     renderKeyframes();
-
-    // Reset ô thời gian
-    document.getElementById('kf-time').value = '0';
-
     app.showNotification('success', `✅ Đã thêm keyframe tại ${time}s`);
 }
 
-// ✅ HÀM VẼ LẠI DANH SÁCH KEYFRAME (Hiển thị rõ thông số)
+// ✅ HÀM VẼ LẠI DANH SÁCH KEYFRAME
 function renderKeyframes() {
     const list = document.getElementById('keyframes-list');
-    if (!list) return;
-    list.innerHTML = '';
+    const trackContainer = document.getElementById('keyframes-container');
+    if (list) list.innerHTML = '';
+    if (trackContainer) trackContainer.innerHTML = '';
 
-    if (currentTimeline.length === 0) {
-        list.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">📭 Chưa có keyframe nào.</div>';
+    if (!currentTimeline || currentTimeline.length === 0) {
+        if (list) list.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">📭 Chưa có keyframe nào. Hãy chọn Preset hoặc tự thêm keyframe.</div>';
         return;
     }
 
-    currentTimeline.forEach((kf, index) => {
-        const item = document.createElement('div');
-        item.className = 'keyframe-item';
+    const maxTime = Math.max(5.0, ...currentTimeline.map(k => k.time)) + 0.5;
 
-        // Dịch action & layer sang tiếng Việt
-        const actionMap = { move: '📍 Di chuyển', scale: '📏 Scale', layer: '🔲 Đổi Lớp', show: '👁️ Hiện', hide: '🕶️ Ẩn', play: '▶️ Chạy lại' };
-        const layerMap = { above: 'Trên', below: 'Dưới' };
+    currentTimeline.forEach((kf, index) => {
+        const actionMap = {
+            move: '📍 Di chuyển',
+            scale: '📏 Thu/Phóng',
+            squash: '🍳 Đập dẹp bẹp',
+            rotate: '🔄 Xoay góc',
+            shake: '⚡ Rung lắc',
+            bg_removal: '✂️ Tách nền AI',
+            blackout: '🖤 Đen mặt',
+            layer: '🔲 Đổi Lớp',
+            show: '👁️ Hiện',
+            hide: '🕶️ Ẩn',
+            play: '▶️ Chạy lại'
+        };
 
         let detailText = '';
-        if (kf.action === 'move') detailText = `X:${kf.transform.x} Y:${kf.transform.y}`;
-        else if (kf.action === 'scale') detailText = `Scale: ${kf.transform.scale}%`;
-        else if (kf.action === 'layer') detailText = `Lớp: ${layerMap[kf.layer] || kf.layer}`;
-        else if (kf.action === 'show' || kf.action === 'hide') detailText = `Thay đổi hiển thị`;
-        else if (kf.action === 'play') detailText = `Kích hoạt phát video`;
+        if (kf.action === 'move') {
+            detailText = `X:${kf.transform?.x || 0} Y:${kf.transform?.y || 0}`;
+        } else if (kf.action === 'scale' || kf.action === 'squash') {
+            detailText = `ScaleX:${kf.transform?.scaleX || 100}% ScaleY:${kf.transform?.scaleY || 100}%`;
+        } else if (kf.action === 'rotate') {
+            detailText = `Xoay: ${kf.transform?.rotation || 0}°`;
+        } else if (kf.action === 'shake') {
+            detailText = `Rung: ${kf.duration || 0.6}s`;
+        } else if (kf.action === 'bg_removal' || kf.action === 'blackout') {
+            detailText = kf.enabled !== false ? '🟢 BẬT' : '🔴 TẮT';
+        } else if (kf.action === 'layer') {
+            detailText = kf.layer === 'above' ? 'Lớp: Trên' : 'Lớp: Dưới';
+        } else if (kf.action === 'show' || kf.action === 'hide') {
+            detailText = kf.action === 'show' ? 'Hiện nguồn' : 'Ẩn nguồn';
+        }
 
-        item.innerHTML = `
-                    <div class="keyframe-info" style="display:flex; align-items:center; gap:12px; flex:1;">
-                        <span class="keyframe-time">${kf.time}s</span>
-                        <div style="display:flex; flex-direction:column;">
-                            <span style="font-weight:600; font-size:13px;">${actionMap[kf.action] || kf.action}</span>
-                            <span style="font-size:11px; color:#888;">${kf.source} • ${detailText}</span>
-                        </div>
+        // 1. Thêm vào danh sách item
+        if (list) {
+            const item = document.createElement('div');
+            item.style.cssText = 'display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:8px 12px; border-radius:10px;';
+            item.innerHTML = `
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="background:rgba(124,58,237,0.3); border:1px solid rgba(124,58,237,0.5); padding:2px 8px; border-radius:6px; font-weight:700; font-size:12px; color:#c084fc;">
+                        ⏱️ ${kf.time}s
+                    </span>
+                    <div>
+                        <div style="font-weight:700; font-size:13px; color:#fff;">${actionMap[kf.action] || kf.action}</div>
+                        <div style="font-size:11px; color:#94a3b8;">${kf.source || 'auto_webcam'} • ${detailText}</div>
                     </div>
-                    <button class="btn-delete-kf" onclick="deleteKeyframe(${index})">🗑️</button>
-                `;
-        list.appendChild(item);
+                </div>
+                <button type="button" onclick="deleteKeyframe(${index})" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:6px; padding:4px 8px; cursor:pointer;" title="Xóa">
+                    🗑️
+                </button>
+            `;
+            list.appendChild(item);
+        }
+
+        // 2. Thêm mốc tròn trên thanh Visual Track
+        if (trackContainer) {
+            const leftPercent = Math.min(96, Math.max(2, (kf.time / maxTime) * 100));
+            const marker = document.createElement('div');
+            marker.style.cssText = `position:absolute; left:${leftPercent}%; top:4px; transform:translateX(-50%); width:26px; height:26px; background:linear-gradient(135deg, #7c3aed, #ec4899); border:2px solid #fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; color:#fff; cursor:pointer; box-shadow:0 0 8px rgba(236,72,153,0.6);`;
+            marker.textContent = `${kf.time}s`;
+            marker.title = `${kf.time}s: ${actionMap[kf.action] || kf.action}`;
+            trackContainer.appendChild(marker);
+        }
     });
 }
 
@@ -9571,33 +9718,60 @@ function deleteKeyframe(index) {
     }
 }
 
-// ✅ HÀM LƯU TIMELINE (TỰ ĐỘNG THÊM KEYFRAME QUAY VỀ GỐC Ở CUỐI)
-// ✅ HÀM LƯU TIMELINE (SỬA LỖI TỰ ĐỘNG THÊM RESET TRÁNH LỖI undefined VÀ DỒN KEYFRAME)
-function saveTimeline() {
-    if (!currentTimelineEffectId) return;
+// ✅ HÀM XEM THỬ TIMELINE TRỰC TIẾP TRÊN OBS (PREVIEW)
+function previewCurrentTimelineOnOBS() {
+    if (!currentTimeline || currentTimeline.length === 0) {
+        return app.showNotification('warning', '⚠️ Timeline đang trống, vui lòng thêm keyframe hoặc chọn Preset trước!');
+    }
 
-    // Tạo bản sao sạch không chứa các auto-reset cũ nếu có
+    app.showNotification('info', '🎬 Đang kích hoạt chạy thử Timeline trên OBS...');
+
+    fetch('http://127.0.0.1:9000/api/obs/preview-timeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.authToken}` },
+        body: JSON.stringify({
+            effectId: currentTimelineEffectId || 'preview',
+            timeline: currentTimeline
+        })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                app.showNotification('success', '✅ Đang chạy thử hiệu ứng trên OBS!');
+            } else {
+                app.showNotification('error', '❌ Lỗi xem thử: ' + (data.message || data.error || 'Kiểm tra kết nối OBS'));
+            }
+        })
+        .catch(err => {
+            console.error('Preview error:', err);
+            app.showNotification('error', '❌ Lỗi gửi lệnh xem thử tới OBS!');
+        });
+}
+
+// ✅ HÀM LƯU TIMELINE
+function saveTimeline() {
+    if (!currentTimelineEffectId) {
+        return app.showNotification('error', '❌ Không tìm thấy mã hiệu ứng cần lưu!');
+    }
+
     const cleanTimeline = currentTimeline.filter(kf => !kf.isAutoReset);
 
     if (cleanTimeline.length === 0) {
         if (!confirm('Timeline đang trống. Bạn có chắc chắn muốn lưu không?')) return;
     } else {
-        // Tự động thêm 1 keyframe Reset an toàn ở cuối
-        const firstKf = cleanTimeline[0];
         const lastKfTime = cleanTimeline[cleanTimeline.length - 1].time;
-        const effectDuration = Math.max(10.0, lastKfTime + 2.0); // Tối thiểu 10s hoặc sau frame cuối 2s
+        const effectDuration = Math.max(5.0, lastKfTime + 1.0);
 
         cleanTimeline.push({
             time: effectDuration,
-            action: 'move',
-            source: firstKf.source || 'auto_webcam',
-            layer: firstKf.layer || 'above',
-            transform: { x: 0, y: 0, scale: 100 },
+            action: 'scale',
+            source: 'auto_webcam',
+            duration: 0.5,
+            transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, scale: 100, rotation: 0 },
             isAutoReset: true
         });
     }
 
-    // Sắp xếp lại
     cleanTimeline.sort((a, b) => a.time - b.time);
 
     fetch(`http://127.0.0.1:9000/api/effects/${currentTimelineEffectId}/timeline`, {
@@ -9608,14 +9782,13 @@ function saveTimeline() {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                app.showNotification('success', '💾 Lưu timeline thành công!');
-                // Cập nhật lại dữ liệu giao diện từ backend trả về hoặc bản clean
-                currentTimeline = data.timeline || cleanTimeline;
+                app.showNotification('success', '💾 Đã lưu Timeline thành công!');
+                currentTimeline = cleanTimeline.filter(kf => !kf.isAutoReset);
                 renderKeyframes();
                 closeTimelineEditor();
                 if (app.loadAdminDashboard) app.loadAdminDashboard();
             } else {
-                app.showNotification('error', '❌ Lưu thất bại: ' + (data.error || 'Lỗi máy chủ'));
+                app.showNotification('error', '❌ Lưu thất bại: ' + (data.error || data.message || 'Lỗi máy chủ'));
             }
         })
         .catch(err => {

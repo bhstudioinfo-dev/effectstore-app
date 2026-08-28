@@ -176,6 +176,31 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
     }
 });
 
+router.post('/preview-timeline', authMiddleware, async (req, res) => {
+    try {
+        const { effectId, timeline } = req.body;
+        if (!timeline || !Array.isArray(timeline)) {
+            return res.status(400).json({ success: false, message: 'Timeline không hợp lệ.' });
+        }
+        if (!obsService.isConnected()) {
+            return res.status(503).json({ success: false, message: 'OBS chưa kết nối. Vui lòng kết nối OBS trước.' });
+        }
+        const currentScene = await obsService.getCurrentProgramScene().catch(() => null);
+        const sceneName = currentScene?.currentProgramSceneName || 'EffectStore';
+
+        // Gọi controller thực thi timeline
+        const OBSController = require('../obs-controller');
+        const obsController = new OBSController(obsService.obs);
+        obsController.isConnected = true;
+        obsController.runTimelineEffect(sceneName, effectId || 'preview', timeline);
+
+        return res.json({ success: true, message: 'Đang chạy thử Timeline trên OBS!' });
+    } catch (err) {
+        console.error('Preview timeline error:', err);
+        return res.status(500).json({ success: false, message: err.message || 'Lỗi chạy thử Timeline' });
+    }
+});
+
 // Render effect HTML for OBS Browser Source
 router.get('/effect/:id', async (req, res) => {
     try {

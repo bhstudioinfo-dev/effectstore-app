@@ -2836,89 +2836,132 @@
                 <button class="modal-close" onclick="closeTimelineEditor()">×</button>
             </div>
             <div class="modal-body">
-                <!-- Timeline Track -->
-                <div id="timeline-track"
-                    style="height: 60px; background: rgba(255,255,255,0.05); border-radius: 12px; position: relative; margin-bottom: 20px;">
-                    <div id="keyframes-container"
-                        style="position: absolute; top: 10px; left: 0; right: 0; height: 40px;"></div>
+                <!-- ⚡ PRESET TROLL NHANH (1-CLICK) -->
+                <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(236, 72, 153, 0.12)); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 18px;">⚡</span>
+                        <div>
+                            <div style="font-size: 13px; font-weight: 700; color: #fff;">Mẫu Preset Troll Nhanh:</div>
+                            <div style="font-size: 11px; color: #94a3b8;">Tự động điền Timeline khớp chuẩn các kịch bản Troll hot</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <select id="kf-preset-select" class="upload-form-input" style="min-width: 230px; background: #0f172a; border-color: rgba(236, 72, 153, 0.4); font-weight: 600; font-size: 12px;">
+                            <option value="">-- Chọn Preset Troll (1-Click) --</option>
+                            <option value="squash">🍳 Đập Dẹp Bẹp (Squash & Flatten)</option>
+                            <option value="blackout">💣 Bom Nổ Đen Mặt (Blackout Silhouette)</option>
+                            <option value="spring">🚀 Lò Xo Bật Tung (Spring Jump)</option>
+                            <option value="yeet">👌 Búng Bay Mất Tích (Yeet Launch)</option>
+                            <option value="tornado">🌀 Lốc Xoáy Xoay Tròn (Tornado Spin)</option>
+                            <option value="bg_removal">✂️ Tách Nền AI (Background Removal)</option>
+                            <option value="shake">⚡ Rung Lắc Màn Hình (Camera Shake)</option>
+                        </select>
+                        <button type="button" onclick="applyTimelinePreset()" class="pro-btn" style="padding: 8px 14px; font-size: 12px; background: linear-gradient(135deg, #ec4899, #f59e0b); white-space: nowrap;">
+                            ✨ Áp dụng
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Add Keyframe Form -->
+                <!-- Timeline Track Visual -->
+                <div id="timeline-track"
+                    style="height: 48px; background: rgba(255,255,255,0.05); border-radius: 12px; position: relative; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.08); overflow: hidden;">
+                    <div id="keyframes-container"
+                        style="position: absolute; top: 6px; left: 0; right: 0; height: 36px;"></div>
+                </div>
+
                 <!-- ===== FORM THÊM KEYFRAME MỚI ===== -->
                 <div
-                    style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: 16px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.06);">
-                    <h4 style="margin-bottom: 16px; font-size: 15px; font-weight: 700; color: #e2e8f0;">🎬 Thêm Keyframe
+                    style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 14px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.06);">
+                    <h4 style="margin-bottom: 12px; font-size: 14px; font-weight: 700; color: #e2e8f0;">➕ Thêm Keyframe Tinh Chỉnh
                     </h4>
 
-                    <!-- Hàng 1: Thời gian, Hành động, Source -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <!-- Hàng 1: Thời gian, Hành động, Source, Thời lượng mượt -->
+                    <div style="display: grid; grid-template-columns: 1fr 1.3fr 1.2fr 0.9fr; gap: 10px; margin-bottom: 10px;">
                         <div>
-                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">⏱️ Thời gian
-                                (s)</label>
-                            <input type="number" id="kf-time" value="0" step="0.1" class="upload-form-input">
+                            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">⏱️ Thời gian (s)</label>
+                            <input type="number" id="kf-time" value="0" step="0.1" class="upload-form-input" placeholder="0.0">
                         </div>
                         <div>
-                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">🎯 Hành
-                                động</label>
-                            <select id="kf-action" class="upload-form-input">
-                                <option value="move">📍 Di chuyển</option>
-                                <option value="scale">📏 Thu/Phóng</option>
-                                <option value="layer">🔲 Đổi lớp</option>
+                            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">🎯 Hành động</label>
+                            <select id="kf-action" class="upload-form-input" onchange="onActionChange(this.value)">
+                                <option value="move">📍 Di chuyển (X, Y)</option>
+                                <option value="scale">📏 Thu / Phóng</option>
+                                <option value="squash">🍳 Đập Dẹp Bẹp (Squash)</option>
+                                <option value="rotate">🔄 Xoay góc (Rotation)</option>
+                                <option value="shake">⚡ Rung lắc (Camera Shake)</option>
+                                <option value="bg_removal">✂️ Tách Nền AI (Bật/Tắt)</option>
+                                <option value="blackout">🖤 Đen Mặt Silhouette (Bật/Tắt)</option>
+                                <option value="layer">🔲 Đổi Lớp (Trên/Dưới)</option>
                                 <option value="show">👁️ Hiện</option>
                                 <option value="hide">🕶️ Ẩn</option>
                                 <option value="play">▶️ Chạy lại Effect</option>
                             </select>
                         </div>
                         <div>
-                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">📦 Source
-                                OBS</label>
+                            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">📦 Nguồn OBS</label>
                             <select id="kf-source" class="upload-form-input">
-                                <option value="auto_webcam" style="color: #10b981; font-weight: bold;">📷 Webcam (Tự
-                                    động)</option>
-                                <option value="auto_effect" style="color: #3b82f6; font-weight: bold;">🎬 Effect (Tự
-                                    động)</option>
+                                <option value="auto_webcam" style="color: #10b981; font-weight: bold;">📷 Webcam (Tự động)</option>
+                                <option value="auto_effect" style="color: #3b82f6; font-weight: bold;">🎬 Effect (Tự động)</option>
                                 <option value="">-- Chọn Source --</option>
                             </select>
                         </div>
+                        <div>
+                            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">⚡ Mượt (s)</label>
+                            <input type="number" id="kf-duration" value="0.4" step="0.1" min="0.05" class="upload-form-input" title="Thời gian chuyển động mượt">
+                        </div>
                     </div>
 
-                    <!-- Hàng 2: X, Y, Scale, Layer -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <!-- Hàng 2: X, Y, Scale X, Scale Y, Rotation, Layer/Status -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
                         <div>
-                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">📍 X
-                                (px)</label>
+                            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">📍 X (px)</label>
                             <input type="number" id="kf-x" value="0" class="upload-form-input">
                         </div>
                         <div>
-                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">📍 Y
-                                (px)</label>
+                            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">📍 Y (px)</label>
                             <input type="number" id="kf-y" value="0" class="upload-form-input">
                         </div>
                         <div>
-                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">📏 Scale
-                                (%)</label>
-                            <input type="number" id="kf-scale" value="100" class="upload-form-input">
+                            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">↔️ Scale X (%)</label>
+                            <input type="number" id="kf-scale-x" value="100" class="upload-form-input">
                         </div>
                         <div>
-                            <label style="font-size:11px; color:#888; display:block; margin-bottom:4px;">🔲 Lớp</label>
+                            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">↕️ Scale Y (%)</label>
+                            <input type="number" id="kf-scale-y" value="100" class="upload-form-input">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">🔄 Xoay (°)</label>
+                            <input type="number" id="kf-rotation" value="0" class="upload-form-input">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">🔲 Lớp / Trạng thái</label>
                             <select id="kf-layer" class="upload-form-input">
-                                <option value="above">🔝 Trên</option>
-                                <option value="below">🔽 Dưới</option>
+                                <option value="above">🔝 Trên / Bật</option>
+                                <option value="below">🔽 Dưới / Tắt</option>
                             </select>
                         </div>
                     </div>
 
                     <button type="button" onclick="addKeyframe()"
-                        style="width:100%; padding:12px; background: linear-gradient(135deg, #7c3aed, #ec4899); border:none; border-radius:10px; color:white; font-weight:700; cursor:pointer;">
-                        + Thêm Keyframe
+                        style="width:100%; padding:10px; background: linear-gradient(135deg, #7c3aed, #ec4899); border:none; border-radius:8px; color:white; font-weight:700; font-size:13px; cursor:pointer;">
+                        + Thêm Mốc Keyframe Này
                     </button>
                 </div>
 
-                <div id="keyframes-list" style="max-height: 200px; overflow-y: auto;"></div>
+                <!-- DANH SÁCH KEYFRAME -->
+                <div style="font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 8px;">📋 Danh sách Keyframe trên dòng thời gian:</div>
+                <div id="keyframes-list" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
-            <div class="modal-actions">
-                <button class="btn-cancel" onclick="closeTimelineEditor()">✕ Đóng</button>
-                <button class="pro-btn" onclick="saveTimeline()">💾 Lưu Timeline</button>
+            <div class="modal-actions" style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                <button type="button" onclick="previewCurrentTimelineOnOBS()" class="pro-btn" style="background: linear-gradient(135deg, #06b6d4, #3b82f6); font-size: 13px; padding: 10px 16px;">
+                    ▶ Xem Thử Trực Tiếp (Preview)
+                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-cancel" onclick="closeTimelineEditor()">✕ Đóng</button>
+                    <button class="pro-btn" onclick="saveTimeline()" style="background: linear-gradient(135deg, #10b981, #059669); font-size: 13px; padding: 10px 18px;">
+                        💾 Lưu Timeline
+                    </button>
+                </div>
             </div>
         </div>
     </div>
