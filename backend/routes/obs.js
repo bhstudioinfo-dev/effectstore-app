@@ -370,13 +370,23 @@ router.post('/preview-timeline', authMiddleware, async (req, res) => {
                 audioVolume: 1.0,
                 startedAt: Date.now()
             });
-        } else if (effectId && effectId !== 'upload_preview' && effectId !== 'preview') {
-            let effect = await Effect.findById(effectId).catch(() => null);
-            if (!effect) {
-                const { resolveEffectForUser, mirrorEffectFromCentral } = require('../services/effectLibraryService');
-                effect = await resolveEffectForUser(req.userId, effectId).catch(() => null);
+        } else if (effectId || req.body.effectName || req.body.name) {
+            let effect = null;
+            if (effectId && effectId !== 'upload_preview' && effectId !== 'preview') {
+                effect = await Effect.findById(effectId).catch(() => null);
                 if (!effect) {
-                    effect = await mirrorEffectFromCentral(effectId).catch(() => null);
+                    const { resolveEffectForUser, mirrorEffectFromCentral } = require('../services/effectLibraryService');
+                    effect = await resolveEffectForUser(req.userId, effectId).catch(() => null);
+                    if (!effect) {
+                        effect = await mirrorEffectFromCentral(effectId).catch(() => null);
+                    }
+                }
+            }
+            if (!effect && (req.body.effectName || req.body.name)) {
+                const searchName = String(req.body.effectName || req.body.name).trim();
+                if (searchName) {
+                    effect = await Effect.findOne({ name: new RegExp('^' + searchName + '$', 'i') }).catch(() => null)
+                        || await Effect.findOne({ name: new RegExp(searchName, 'i') }).catch(() => null);
                 }
             }
             if (effect) {

@@ -9939,12 +9939,14 @@ function openGiftMapping() { switchView('gift-mapping'); }
 // ===== TIMELINE EDITOR FUNCTIONS (BƯỚC 1: FIX LOGIC THÊM KEYFRAME) =====
 
 let currentTimelineEffectId = null;
+let currentTimelineEffectName = '';
 let currentTimeline = []; // Mảng chứa danh sách keyframe đang chỉnh sửa
 
 // 1. Hàm mở Modal Timeline
 function openTimelineEditor(effectId, effectName) {
     console.log('🎬 Opening Timeline Editor for:', effectId, effectName);
     currentTimelineEffectId = effectId;
+    currentTimelineEffectName = effectName || '';
 
     // Đặt tên hiệu ứng lên tiêu đề modal
     const nameEl = document.getElementById('tl-effect-name');
@@ -10359,6 +10361,7 @@ function previewCurrentTimelineOnOBS() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.authToken}` },
         body: JSON.stringify({
             effectId: currentTimelineEffectId || 'preview',
+            effectName: currentTimelineEffectName || '',
             timeline: currentTimeline
         })
     })
