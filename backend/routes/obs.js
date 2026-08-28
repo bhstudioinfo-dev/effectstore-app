@@ -763,10 +763,17 @@ router.get('/sources', authMiddleware, async (req, res) => {
     try {
         if (!obsService.isConnected()) return res.status(503).json({ error: 'OBS chưa kết nối' });
         const { inputs } = await obsService.obs.call('GetInputList');
-        const sources = inputs.map(input => ({
+        const visualInputs = (inputs || []).filter(input => {
+            const kind = (input.inputKind || '').toLowerCase();
+            const name = (input.inputName || '').toLowerCase();
+            if (kind.includes('audio') || kind.includes('wasapi') || kind.includes('pulse') || kind.includes('alsa')) return false;
+            if (name === 'desktop audio' || name === 'mic/aux' || name.startsWith('mic') || name.startsWith('audio')) return false;
+            return true;
+        });
+        const sources = visualInputs.map(input => ({
             name: input.inputName,
             kind: input.inputKind,
-            isWebcam: input.inputKind === 'dshow_input' || input.inputKind === 'v4l2_input'
+            isWebcam: input.inputKind === 'dshow_input' || input.inputKind === 'v4l2_input' || input.inputKind === 'avfoundation_input'
         }));
         res.json({ success: true, sources });
     } catch (error) {

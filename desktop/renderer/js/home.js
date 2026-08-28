@@ -10427,9 +10427,9 @@ async function loadOBSSources() {
     const select = document.getElementById('kf-source');
     if (!select) return;
 
-    // ✅ Thêm option tự động nhận diện lên đầu
-    select.innerHTML = `<option value="auto_webcam" style="color:#10b981; font-weight:bold;">📷 Webcam (Tự động nhận diện)</option>
-                        <option value="">-- Hoặc chọn Source cụ thể --</option>`;
+    // ✅ Tự động nhận diện luôn là lựa chọn chuẩn nhất
+    select.innerHTML = `<option value="auto_webcam" selected style="color:#10b981; font-weight:bold;">📷 Webcam (Tự động nhận diện - Khuyên dùng)</option>
+                        <option value="auto_effect" style="color:#6366f1; font-weight:bold;">✨ Hiệu ứng (Tự động nhận diện)</option>`;
 
     try {
         const apiUrl = (typeof app !== 'undefined' && app.API_URL) ? app.API_URL : 'http://127.0.0.1:9000';
@@ -10440,14 +10440,19 @@ async function loadOBSSources() {
         const data = await res.json();
 
         if (data.success && data.sources) {
-            // Phân loại webcam và source khác
             const webcams = data.sources.filter(s => s.isWebcam);
             const others = data.sources.filter(s => !s.isWebcam);
 
-            // Thêm nhóm webcam
+            if (webcams.length > 0 || others.length > 0) {
+                const divider = document.createElement('option');
+                divider.disabled = true;
+                divider.textContent = '── Hoặc chọn nguồn cụ thể từ OBS ──';
+                select.appendChild(divider);
+            }
+
             if (webcams.length > 0) {
                 const grp = document.createElement('optgroup');
-                grp.label = '📹 Webcam / Thiết bị ghi hình';
+                grp.label = '📹 Webcam / Camera thực tế';
                 webcams.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.name;
@@ -10457,10 +10462,9 @@ async function loadOBSSources() {
                 select.appendChild(grp);
             }
 
-            // Thêm nhóm source khác
             if (others.length > 0) {
                 const grp = document.createElement('optgroup');
-                grp.label = '📦 Nguồn khác (âm thanh, chữ, trình duyệt...)';
+                grp.label = '🖼️ Nguồn hình ảnh / Video khác';
                 others.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.name;
@@ -10472,7 +10476,6 @@ async function loadOBSSources() {
         }
     } catch (err) {
         console.error('Lỗi load OBS sources:', err);
-        select.innerHTML += '<option value="">❌ Lỗi kết nối</option>';
     }
 }
 
