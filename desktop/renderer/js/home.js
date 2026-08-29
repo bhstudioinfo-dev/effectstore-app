@@ -976,69 +976,87 @@ class EffectStoreApp {
     openObsGuide() {
         const isConnected = document.getElementById('status-badge-obs')?.textContent === 'ĐÃ KẾT NỐI';
         const obsStatus = isConnected ? 
-            '<span style="color:#10b981;font-weight:700;"><i class="fas fa-circle-check"></i> ĐÃ KẾT NỐI</span>' : 
+            '<span style="color:#10b981;font-weight:700;"><i class="fas fa-circle-check"></i> ĐÃ KẾT NỐI VỚI OBS</span>' : 
             '<span style="color:#ef4444;font-weight:700;"><i class="fas fa-circle-xmark"></i> CHƯA KẾT NỐI (OFFLINE)</span>';
 
         const html = `
         <div style="display:flex;flex-direction:column;gap:18px;color:#e2e8f0;font-size:13px;line-height:1.6;">
-            <!-- Box hướng dẫn chính -->
-            <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(34,211,238,0.25);border-radius:14px;padding:18px;position:relative;overflow:hidden;">
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-                    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,rgba(34,211,238,0.2),rgba(168,85,247,0.2));border:1px solid rgba(34,211,238,0.4);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#22d3ee;flex-shrink:0;">1</div>
+            <!-- Status Pill Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 16px;">
+                <span style="color:#94a3b8;font-size:12px;font-weight:600;">Trạng thái hiện tại:</span>
+                <span style="font-size:13px;">${obsStatus}</span>
+            </div>
+
+            <!-- BƯỚC 1 -->
+            <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(34,211,238,0.25);border-radius:14px;padding:16px;position:relative;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,rgba(34,211,238,0.2),rgba(168,85,247,0.2));border:1px solid rgba(34,211,238,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#22d3ee;flex-shrink:0;">1</div>
                     <div>
-                        <h4 style="color:#fff;font-size:15px;font-weight:800;margin:0;">Bật Máy Chủ WebSocket Trên OBS Studio</h4>
-                        <p style="color:#94a3b8;font-size:12px;margin:2px 0 0 0;">Chỉ cần bật 1 lần để LiveFlow tự động kích hoạt hiệu ứng mượt mà.</p>
+                        <h4 style="color:#fff;font-size:14px;font-weight:800;margin:0;">Bước 1: Mở Cài Đặt WebSocket trên OBS Studio</h4>
+                        <p style="color:#94a3b8;font-size:11px;margin:2px 0 0 0;">Trên thanh Menu trên cùng của OBS ➔ Chọn <strong>Tools (Công cụ)</strong> ➔ Chọn <strong>WebSocket Server Settings</strong>.</p>
                     </div>
                 </div>
 
-                <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:#cbd5e1;">
-                    <div style="display:flex;align-items:flex-start;gap:8px;">
-                        <span style="color:#10b981;font-weight:bold;">✓</span>
-                        <span>Mở phần mềm <strong>OBS Studio</strong> trên máy tính.</span>
-                    </div>
-                    <div style="display:flex;align-items:flex-start;gap:8px;">
-                        <span style="color:#10b981;font-weight:bold;">✓</span>
-                        <span>Trên thanh Menu trên cùng, chọn: <strong>Công cụ (Tools)</strong> ➔ <strong>Cài đặt máy chủ WebSocket (WebSocket Server Settings)</strong>.</span>
-                    </div>
-                    <div style="display:flex;align-items:flex-start;gap:8px;">
-                        <span style="color:#10b981;font-weight:bold;">✓</span>
-                        <span>Tích chọn: <strong>✅ Bật máy chủ WebSocket (Enable WebSocket server)</strong> (Cổng mặc định: <strong>4455</strong>).</span>
-                    </div>
-                    <div style="display:flex;align-items:flex-start;gap:8px;">
-                        <span style="color:#f59e0b;font-weight:bold;">🔑</span>
-                        <span><strong>Lưu ý Mật khẩu:</strong> Nếu OBS có bật xác thực mật khẩu, hãy vào tab <strong>Cài đặt</strong> trên LiveFlow để nhập đúng mật khẩu (hoặc bỏ tích xác thực trong OBS để kết nối tự do).</span>
-                    </div>
-                </div>
-
-                <!-- Mockup Box -->
-                <div style="margin-top:14px;background:#090d18;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 16px;font-size:12px;">
-                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-                        <span style="color:#94a3b8;">Enable WebSocket:</span>
-                        <span style="color:#34d399;font-weight:700;">✅ Enabled</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-                        <span style="color:#94a3b8;">Server Port:</span>
-                        <span style="color:#fff;font-weight:700;">4455</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;padding:5px 0;">
-                        <span style="color:#94a3b8;">Trạng thái LiveFlow:</span>
-                        <span>${obsStatus}</span>
-                    </div>
+                <div style="background:#090d18;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;margin-top:8px;">
+                    <img src="assets/images/obs-step1-tools.png" alt="OBS Menu Tools WebSocket" style="width:100%;height:auto;display:block;border-radius:8px;">
                 </div>
             </div>
 
+            <!-- BƯỚC 2 -->
+            <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(168,85,247,0.3);border-radius:14px;padding:16px;position:relative;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,rgba(168,85,247,0.2),rgba(236,72,153,0.2));border:1px solid rgba(168,85,247,0.4);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#c084fc;flex-shrink:0;">2</div>
+                    <div>
+                        <h4 style="color:#fff;font-size:14px;font-weight:800;margin:0;">Bước 2: Bật WebSocket & Kiểm tra thông số theo 4 mũi tên</h4>
+                        <p style="color:#94a3b8;font-size:11px;margin:2px 0 0 0;">Làm theo đúng 4 mũi tên đỏ trong ảnh bên dưới:</p>
+                    </div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:#cbd5e1;margin-bottom:12px;">
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <span style="color:#ef4444;font-weight:bold;font-size:14px;">➔ 1.</span>
+                        <span>Tích chọn: <strong>✅ Enable WebSocket server</strong> (Bắt buộc tích chọn để bật).</span>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <span style="color:#ef4444;font-weight:bold;font-size:14px;">➔ 2.</span>
+                        <span>Cổng <strong>Server Port</strong>: Mặc định là <strong>4455</strong> (Giữ nguyên).</span>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <span style="color:#ef4444;font-weight:bold;font-size:14px;">➔ 3.</span>
+                        <span>Mật khẩu <strong>Server Password</strong>: Nếu có mật khẩu, bạn sao chép hoặc tự gõ mật khẩu dễ nhớ (Hoặc <i>bỏ tích Enable Authentication</i> nếu không muốn cài mật khẩu).</span>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <span style="color:#ef4444;font-weight:bold;font-size:14px;">➔ 4.</span>
+                        <span>Nhấn nút <strong>Apply</strong> ở góc dưới bên phải ➔ Nhấn <strong>OK</strong> để lưu lại.</span>
+                    </div>
+                </div>
+
+                <div style="background:#090d18;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;">
+                    <img src="assets/images/obs-step2-websocket.png" alt="OBS WebSocket Server Settings" style="width:100%;height:auto;display:block;border-radius:8px;">
+                </div>
+            </div>
+
+            <!-- BƯỚC 3 -->
+            <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:12px 16px;font-size:12px;color:#a7f3d0;display:flex;align-items:center;gap:10px;">
+                <i class="fas fa-magic" style="font-size:16px;color:#34d399;flex-shrink:0;"></i>
+                <span><strong>Xong rồi!</strong> LiveFlow sẽ tự động nhận diện và kết nối ngay lập tức. Nếu bạn có đặt mật khẩu trên OBS, hãy bấm nút xanh bên dưới để nhập mật khẩu vào LiveFlow nhé!</span>
+            </div>
+
             <!-- Nút hành động -->
-            <div style="display:flex;gap:10px;">
-                <button onclick="app.closeModal();switchView('settings');" style="flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-                    <i class="fas fa-cog"></i> Mở Cài Đặt OBS & Mật Khẩu
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button onclick="app.closeModal();switchView('settings');" style="flex:1.2;min-width:200px;padding:12px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 15px rgba(16,185,129,0.3);">
+                    <i class="fas fa-key"></i> Nhập Mật Khẩu Vào LiveFlow
                 </button>
-                <button onclick="app.closeModal();" style="padding:12px 24px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.05);color:#cbd5e1;font-weight:700;cursor:pointer;">
+                <button onclick="window.open('obs-guide.html', '_blank');" style="flex:1;min-width:180px;padding:12px 16px;border:1px solid rgba(34,211,238,0.3);border-radius:10px;background:rgba(34,211,238,0.1);color:#38bdf8;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                    <i class="fas fa-book-open"></i> Xem Hướng Dẫn Chi Tiết
+                </button>
+                <button onclick="app.closeModal();" style="padding:12px 20px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.05);color:#cbd5e1;font-weight:700;cursor:pointer;">
                     Đã hiểu
                 </button>
             </div>
         </div>
         `;
-        this.showModal('🎬 Hướng Dẫn Kết Nối OBS Studio', html);
+        this.showModal('🎬 Hướng Dẫn Kết Nối OBS Studio (Có Ảnh Minh Họa)', html, '640px');
     }
 
     async downloadAppUpdate() {
@@ -3937,13 +3955,17 @@ class EffectStoreApp {
         }
     }
     showNotification(type, message) { const n = document.getElementById('notification'); document.getElementById('notification-icon').textContent = type === 'warning' ? '⚠️' : type === 'error' ? '❌' : '✅'; document.getElementById('notification-message').textContent = message; n.className = 'notification show ' + type; setTimeout(() => n.classList.remove('show'), 4000); }
-    showModal(title, content) {
+    showModal(title, content, maxWidth = null) {
         // Đóng cart sidebar nếu đang mở
         const cartSidebar = document.getElementById('cart-sidebar');
         const cartOverlay = document.getElementById('cart-overlay');
         if (cartSidebar) cartSidebar.style.right = '-420px';
         if (cartOverlay) cartOverlay.style.display = 'none';
         // Hiện modal
+        const genericModal = document.querySelector('.modal-content-generic');
+        if (genericModal) {
+            genericModal.style.maxWidth = maxWidth || '520px';
+        }
         document.getElementById('modal-title').textContent = title;
         document.getElementById('modal-body').innerHTML = content;
         document.getElementById('modal-actions').innerHTML = '';
@@ -3951,6 +3973,8 @@ class EffectStoreApp {
     }
     closeModal() {
         document.getElementById('modal-overlay').classList.remove('show');
+        const genericModal = document.querySelector('.modal-content-generic');
+        if (genericModal) genericModal.style.maxWidth = '520px';
         if (this.paymentInterval) { clearInterval(this.paymentInterval); this.paymentInterval = null; }
         this._manualUpdateCheck = false;
     }
