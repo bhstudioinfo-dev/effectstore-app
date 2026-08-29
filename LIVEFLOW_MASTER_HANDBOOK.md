@@ -185,16 +185,32 @@ Hệ thống hỗ trợ thanh toán qua chuyển khoản QR Code với quy trìn
    - Quản lý Banner trang chủ.
    - Quản lý Coins & Giá trị quy đổi quà tặng TikTok.
    - Quản lý tài khoản người dùng, gói thời hạn, duyệt và từ chối thanh toán.
-3. **Trình Thiết Kế Bảng Quà & Vòng Quay (Menu Designer & Wheel):**
+3. **Trình Thiết Kế Bảng Quà & Hệ Thống Chữ 3D (Menu Designer & 3D Typography):**
    - Thiết kế menu quà tặng tương tác trực quan (kéo thả, căn chỉnh thông minh, snapping, guides).
    - **Tích hợp trọn bộ 195 Font chữ UTM Unicode:** Streamer tự do chọn font UTM cho từng thành phần (Tên quà, Giá xu, Tiêu đề chữ, Bảng mục tiêu donate, Vòng quay, Thanh PK, Bảng xếp hạng Top Donate, Bục vinh danh).
+   - **6 Phong Cách Chữ 3D Độc Bản (1-Click Presets):**
+     1. 🎮 *Gaming Stroke* (Font UTM Akashi): Chữ chiến binh Esports góc cạnh, viền lửa cam rực rỡ.
+     2. 👑 *Gold 3D VIP* (Font UTM CopperplateB): Chữ khắc hoàng gia sang trọng, đổ khối 3D vàng óng 5 tầng với viền trắng kim cương lấp lánh.
+     3. ⚡ *Cyber Neon* (Font UTM Aircona): Nét chữ viễn tưởng tương lai, mặt băng tuyết trắng và hào quang laser cyan kép.
+     4. 💖 *Idol Pink* (Font UTM Cookies): Nét chữ tròn béo múp míp, gradient hồng pastel dâu tây ngọt ngào cho Idol Live.
+     5. 🔥 *Fire Red* (Font UTM Impact): Nét chữ dày uy lực, gradient dung nham đỏ rực khí thế PK.
+     6. 🏷️ *Huy Hiệu VIP & Bảng Vàng Vinh Danh* (Font UTM Alexander / CopperplateB): Khung Capsule viền vàng dạ quang & Bảng chỉ kép hoàng kim sang trọng.
+   - **Chữ Chạy Cuộn Ngang Vô Tận Liền Mạch (Seamless Infinite Marquee):**
+     - Áp dụng thuật toán băng chuyền LED truyền hình: nhân bản nối đuôi liên tục và trượt đều `translateX(0)` sang `translateX(-50%)`.
+     - Vòng lặp reset mượt mà 100%, không còn hiện tượng giật cục, biến mất đột ngột hay đứt đoạn chu kỳ. Hoạt động trên mọi font chữ và kiểu chữ.
+   - **Đồng bộ hiển thị 1:1 chuẩn xác với OBS:**
+     - Chuẩn hóa tỷ lệ font chữ và khung bao khi xuất từ Designer (màn 360p) sang OBS Browser Source (độ phân giải 1080p), loại bỏ tình trạng chữ bị phóng to gấp bội.
    - Vòng quay may mắn (Challenge Wheel) với tỷ lệ trúng thưởng tùy chỉnh.
    - Bảng mục tiêu (Goal Board), Bảng đấu PK (PK Battle Bar), Hũ quà vật lý (Gift Jar 2D).
-4. **Tích Hợp OBS Studio:**
+4. **Tích Hợp OBS Studio & Quản Lý Nguồn Đa Năng:**
    - Kết nối qua OBS WebSocket v5 (cổng 4455).
-   - Tự động tạo và đồng bộ 2 Browser Source trên OBS:
-     - `gift_menu_overlay` -> Hiển thị bảng quà / vòng quay.
+   - Tự động tạo và đồng bộ 2 Browser Source cốt lõi trên OBS:
+     - `gift_menu_overlay` -> Hiển thị bảng quà / vòng quay / văn bản tương tác.
      - `effect_player` -> Phát hiệu ứng video WebM trong suốt khi có donate.
+   - **Bộ điều khiển nguồn OBS đa dạng trên Timeline:**
+     - Hỗ trợ 2 chế độ nhận diện tự động thông minh: `📷 Webcam (Tự động nhận diện)` và `✨ Hiệu ứng (Tự động nhận diện)`.
+     - Tự động quét và phân loại toàn bộ nguồn thực tế từ OBS của streamer (`Camera thực tế`, `Video media mp4`, `Hình ảnh png/jpg`, `Browser sources`).
+     - Cơ chế an toàn: Tự động ghi nhớ vị trí, kích thước và bộ lọc của từng nguồn trước khi phát hiệu ứng, và phục hồi nguyên vẹn 100% ngay khi hiệu ứng kết thúc.
 5. **Tích Hợp TikTok Live:**
    - Kết nối trực tiếp qua User ID TikTok.
    - Lắng nghe tự động sự kiện: Tặng quà (Gift), Lượt thích (Like), Bình luận (Comment), Chia sẻ (Share).
