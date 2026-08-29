@@ -181,60 +181,334 @@
 
         .btn-download-nav:hover {
             transform: scale(1.05);
-            box-shadow: 0 6px 28px rgba(236, 72, 153, 0.6);
+            /* SPLIT HERO SECTION (2 CỘT CHUẨN MẪU) */
         }
-
-        /* Hero Section */
-        .hero-section {
-            padding: 65px 0 50px;
-            text-align: center;
+        .hero-split-section {
+            padding: 70px 0 50px;
             position: relative;
+            z-index: 2;
         }
 
-        .hero-badge-pill {
+        .hero-split-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.15fr;
+            gap: 40px;
+            align-items: center;
+            max-width: 1240px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1024px) {
+            .hero-split-grid {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 45px;
+            }
+        }
+
+        .hero-left-content {
+            text-align: left;
+        }
+
+        @media (max-width: 1024px) {
+            .hero-left-content {
+                text-align: center;
+            }
+        }
+
+        .hero-main-title {
+            font-size: clamp(34px, 4.4vw, 54px);
+            font-weight: 900;
+            line-height: 1.18;
+            letter-spacing: -1px;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .gradient-text-pink {
+            background: linear-gradient(135deg, #f43f5e 0%, #ec4899 45%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline;
+        }
+
+        .hero-main-desc {
+            font-size: 16.5px;
+            color: #94a3b8;
+            line-height: 1.65;
+            margin-bottom: 30px;
+            max-width: 520px;
+        }
+
+        @media (max-width: 1024px) {
+            .hero-main-desc {
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+
+        .hero-cta-flex {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 26px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 1024px) {
+            .hero-cta-flex {
+                justify-content: center;
+            }
+        }
+
+        .btn-live-primary {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 800;
+            border-radius: 12px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 0 25px rgba(236, 72, 153, 0.45);
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-live-primary:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 0 35px rgba(236, 72, 153, 0.7);
+        }
+
+        .btn-live-secondary {
+            padding: 14px 28px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #e2e8f0;
+            font-size: 15px;
+            font-weight: 700;
+            border-radius: 12px;
+            text-decoration: none;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 20px;
-            background: rgba(168, 85, 247, 0.12);
-            border: 1px solid rgba(168, 85, 247, 0.35);
-            border-radius: 999px;
-            color: #d8b4fe;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+
+        .btn-live-secondary:hover {
+            background: rgba(30, 41, 59, 0.85);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .hero-compat-row {
             font-size: 13px;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            margin-bottom: 24px;
-            box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
-        .hero-title {
-            font-size: clamp(38px, 6vw, 68px);
+        @media (max-width: 1024px) {
+            .hero-compat-row {
+                justify-content: center;
+            }
+        }
+
+        .compat-item {
+            color: #94a3b8;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .compat-sep {
+            color: #475569;
+        }
+
+        /* RIGHT VISUAL: 3D LAPTOP & PHONE */
+        .hero-right-visual {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-visual-glow {
+            position: absolute;
+            width: 90%;
+            height: 90%;
+            background: radial-gradient(circle at center, rgba(168, 85, 247, 0.28) 0%, rgba(236, 72, 153, 0.18) 45%, transparent 70%);
+            filter: blur(50px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .devices-3d-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .devices-3d-wrapper:hover {
+            transform: translateY(-6px) scale(1.02);
+        }
+
+        .devices-img-fluid {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 20px;
+            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 35px rgba(168, 85, 247, 0.3));
+        }
+
+        /* SECTION: CÁCH LIVEFLOW HOẠT ĐỘNG */
+        .how-it-works-bar-section {
+            padding: 30px 0 65px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .how-it-works-heading {
+            text-align: center;
+            font-size: 28px;
             font-weight: 900;
-            line-height: 1.15;
-            letter-spacing: -1px;
-            margin-bottom: 18px;
-            background: linear-gradient(135deg, #ffffff 30%, #f472b6 70%, #93c5fd 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-transform: uppercase;
+            color: #ffffff;
+            margin-bottom: 30px;
+            letter-spacing: -0.5px;
         }
 
-        .hero-subtitle {
-            font-size: clamp(16px, 2vw, 20px);
-            color: var(--text-muted);
-            max-width: 840px;
-            margin: 0 auto 40px;
-            font-weight: 500;
-            line-height: 1.6;
+        .pipeline-steps-grid {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            max-width: 1100px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+        }
+
+        .pipeline-step-item {
+            flex: 1;
+            min-width: 260px;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(14px);
+            border: 1.5px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 20px 22px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s;
+        }
+
+        .pipeline-step-item:hover {
+            transform: translateY(-4px);
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: 0 16px 36px rgba(168, 85, 247, 0.2);
+        }
+
+        .pipeline-step-item.active-core {
+            border-color: rgba(168, 85, 247, 0.45);
+            background: rgba(26, 16, 48, 0.7);
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.25);
+        }
+
+        .p-step-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .p-step-icon.tiktok-bg {
+            background: linear-gradient(135deg, #010101, #25f4ee);
+            color: #fff;
+            border: 1px solid rgba(37, 244, 238, 0.4);
+            box-shadow: 0 0 16px rgba(37, 244, 238, 0.25);
+        }
+
+        .p-step-icon.liveflow-bg {
+            background: linear-gradient(135deg, #a855f7, #ec4899);
+            color: #fff;
+            border: 1px solid rgba(236, 72, 153, 0.4);
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.35);
+        }
+
+        .p-step-icon.obs-bg {
+            background: linear-gradient(135deg, #090d16, #3b82f6);
+            color: #fff;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            box-shadow: 0 0 16px rgba(59, 130, 246, 0.25);
+        }
+
+        .p-step-info h4 {
+            font-size: 17px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .p-step-info p {
+            font-size: 12.5px;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+
+        .pipeline-arrow {
+            color: #c084fc;
+            font-size: 20px;
+            animation: pulseArrow 2s infinite ease-in-out;
+            padding: 0 4px;
+        }
+
+        @keyframes pulseArrow {
+            0%, 100% { transform: translateX(0); opacity: 0.7; }
+            50% { transform: translateX(4px); opacity: 1; filter: drop-shadow(0 0 6px #c084fc); }
+        }
+
+        @media (max-width: 900px) {
+            .pipeline-arrow {
+                display: none;
+            }
         }
 
         /* 4 Value Blocks (Phương Án 2 - Chuẩn Style App) */
+        .value-blocks-section {
+            padding: 10px 0 50px;
+            position: relative;
+        }
+
         .hero-value-blocks-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 16px;
             max-width: 1140px;
-            margin: 0 auto 45px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 900px) {
+            .hero-value-blocks-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .hero-value-blocks-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .value-block-card {
@@ -280,203 +554,41 @@
             box-shadow: 0 0 16px rgba(0, 0, 0, 0.3);
         }
 
-        .icon-purple { background: linear-gradient(135deg, #a855f7, #6b21a8); color: #fff; box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
-        .icon-pink { background: linear-gradient(135deg, #ec4899, #be185d); color: #fff; box-shadow: 0 0 20px rgba(236, 72, 153, 0.4); }
-        .icon-emerald { background: linear-gradient(135deg, #10b981, #047857); color: #fff; box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
-        .icon-amber { background: linear-gradient(135deg, #f59e0b, #b45309); color: #fff; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+        .icon-purple {
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+        }
+
+        .icon-pink {
+            background: linear-gradient(135deg, #ec4899, #f43f5e);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.4);
+        }
+
+        .icon-emerald {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .icon-amber {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+        }
 
         .val-text-wrap h4 {
-            font-size: 15px;
+            font-size: 15.5px;
             font-weight: 800;
             color: #fff;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
         }
 
         .val-text-wrap p {
-            font-size: 12px;
+            font-size: 12.5px;
             color: var(--text-muted);
             line-height: 1.4;
-        }
-
-        /* Hero Action Buttons */
-        .hero-actions-wrap {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 18px;
-            margin-bottom: 36px;
-            flex-wrap: wrap;
-        }
-
-        /* 3D App Window Mockup */
-        .hero-mockup-3d-stage {
-            perspective: 1800px;
-            max-width: 1180px;
-            margin: 45px auto 40px;
-            position: relative;
-        }
-
-        .stage-glow-spotlight {
-            position: absolute;
-            top: 25%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 85%;
-            height: 380px;
-            background: radial-gradient(ellipse at center, rgba(236, 72, 153, 0.3) 0%, rgba(168, 85, 247, 0.18) 45%, transparent 70%);
-            filter: blur(60px);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .hero-mockup-window {
-            position: relative;
-            z-index: 1;
-            background: #090d22;
-            border-radius: 22px;
-            border: 1.5px solid rgba(255, 255, 255, 0.14);
-            box-shadow: 
-                0 30px 80px rgba(0, 0, 0, 0.85),
-                0 0 45px rgba(168, 85, 247, 0.3),
-                0 0 90px rgba(236, 72, 153, 0.2);
-            transform: rotateX(10deg) translateY(-8px);
-            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s ease;
-            overflow: hidden;
-        }
-
-        .hero-mockup-window:hover {
-            transform: rotateX(0deg) translateY(0) scale(1.01);
-            box-shadow: 
-                0 40px 100px rgba(0, 0, 0, 0.9),
-                0 0 70px rgba(236, 72, 153, 0.45),
-                0 0 110px rgba(168, 85, 247, 0.35);
-            border-color: rgba(236, 72, 153, 0.5);
-        }
-
-        .window-titlebar {
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(12px);
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .window-dots {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .dot-red { background: #ef4444; }
-        .dot-yellow { background: #f59e0b; }
-        .dot-green { background: #10b981; }
-
-        .window-app-title {
-            font-size: 13px;
-            font-weight: 800;
-            color: #cbd5e1;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-        }
-
-        .window-badges {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .win-badge {
-            font-size: 11px;
-            font-weight: 800;
-            padding: 3px 10px;
-            border-radius: 6px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .win-badge.green {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.4);
-        }
-        .win-badge.purple {
-            background: rgba(168, 85, 247, 0.2);
-            color: #c084fc;
-            border: 1px solid rgba(168, 85, 247, 0.4);
-        }
-
-        .window-screen-frame {
-            position: relative;
-            width: 100%;
-            line-height: 0;
-            overflow: hidden;
-            background: #050713;
-        }
-
-        .app-screen-img {
-            width: 100%;
-            height: auto;
-            display: block;
-            object-fit: cover;
-        }
-
-        .window-glass-reflection {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 40%, transparent 60%);
-            pointer-events: none;
-        }
-
-        .btn-primary-hero {
-            padding: 16px 36px;
-            background: var(--primary-gradient);
-            color: #fff;
-            border-radius: 999px;
-            text-decoration: none;
-            font-size: 16px;
-            font-weight: 800;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 10px 32px var(--primary-glow);
-            transition: all 0.3s;
-            border: 1px solid rgba(255, 255, 255, 0.25);
-        }
-
-        .btn-primary-hero:hover {
-            transform: translateY(-2px) scale(1.03);
-            box-shadow: 0 14px 40px rgba(236, 72, 153, 0.6);
-        }
-
-        .btn-secondary-hero {
-            padding: 16px 32px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #fff;
-            border-radius: 999px;
-            text-decoration: none;
-            font-size: 16px;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            border: 1px solid var(--border-glass);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s;
-        }
-
-        .btn-secondary-hero:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
         }
 
         /* Trust Badges Bar */
@@ -1288,41 +1400,123 @@
     <header class="site-header">
         <div class="container nav-content">
             <a href="#" class="brand-logo">
-                <div class="logo-icon-badge">⚡</div>
+                <div class="logo-icon-badge" style="background:linear-gradient(135deg, #a855f7, #ec4899); border-radius:10px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:16px; color:#fff;">
+                    <i class="fas fa-play" style="margin-left:2px;"></i>
+                </div>
                 <div>
-                    <span class="brand-title">LIVEFLOW</span>
-                    <span class="version-badge">v1.0.1 PRO</span>
+                    <span class="brand-title" style="letter-spacing:-0.5px; font-weight:900;">LiveFlow</span>
                 </div>
             </a>
 
             <nav class="nav-menu">
-                <a href="#store-deck"><i class="fas fa-layer-group"></i> Kho Thẻ Bài</a>
-                <a href="#typography-showcase"><i class="fas fa-font"></i> Chữ 3D & Marquee</a>
-                <a href="#widgets-section"><i class="fas fa-dice"></i> Widgets Bảng Quà</a>
-                <a href="#comparison"><i class="fas fa-balance-scale"></i> So Sánh</a>
-                <a href="#pricing"><i class="fas fa-tags"></i> Bảng Giá</a>
-                <a href="#faq"><i class="fas fa-question-circle"></i> Hỏi Đáp</a>
+                <a href="#hero-top">Trang chủ</a>
+                <a href="#how-it-works">Tính năng</a>
+                <a href="#store-deck">Kho Thẻ Bài</a>
+                <a href="#pricing">Bảng giá</a>
+                <a href="#faq">Hỏi đáp</a>
             </nav>
 
-            <a href="https://github.com/bhstudioinfo-dev/effectstore-app/releases/latest" class="btn-download-nav">
-                <i class="fab fa-windows"></i> Tải LiveFlow (.exe)
+            <a href="#pricing" class="btn-live-primary" style="padding: 10px 22px; font-size: 14px;">
+                Trải nghiệm LiveFlow
             </a>
         </div>
     </header>
 
-    <!-- HERO SECTION -->
-    <section class="hero-section">
+    <!-- HERO SECTION (SPLIT 2 CỘT CHUẨN MẪU THIẾT KẾ MỚI) -->
+    <section class="hero-split-section" id="hero-top">
         <div class="container">
-            <div class="hero-badge-pill">
-                <span>✨ NỀN TẢNG TỰ ĐỘNG HÓA & TỐI ƯU LIVESTREAM SỐ 1 VIỆT NAM</span>
+            <div class="hero-split-grid">
+                <!-- CỘT TRÁI: NỘI DUNG & KÊU GỌI HÀNH ĐỘNG -->
+                <div class="hero-left-content">
+                    <h1 class="hero-main-title">
+                        Biến quà TikTok LIVE thành <span class="gradient-text-pink">trải nghiệm tương tác trực tiếp.</span>
+                    </h1>
+                    <p class="hero-main-desc">
+                        LiveFlow kết nối TikTok LIVE với OBS, tự động kích hoạt hiệu ứng, âm thanh và nội dung theo từng món quà của người xem.
+                    </p>
+
+                    <!-- Nút bấm hành động -->
+                    <div class="hero-cta-flex">
+                        <a href="#pricing" class="btn-live-primary">
+                            <i class="fas fa-play"></i> Trải nghiệm LiveFlow
+                        </a>
+                        <a href="#store-deck" class="btn-live-secondary">
+                            Xem Demo
+                        </a>
+                    </div>
+
+                    <!-- Dòng tương thích -->
+                    <div class="hero-compat-row">
+                        <span>Tương thích:</span>
+                        <span class="compat-item"><i class="fab fa-windows"></i> Windows</span>
+                        <span class="compat-sep">•</span>
+                        <span class="compat-item"><i class="fab fa-tiktok"></i> TikTok LIVE</span>
+                        <span class="compat-sep">•</span>
+                        <span class="compat-item"><i class="fas fa-video"></i> OBS</span>
+                    </div>
+                </div>
+
+                <!-- CỘT PHẢI: MÔ HÌNH 3D LAPTOP & SMARTPHONE BẢN QUYỀN -->
+                <div class="hero-right-visual">
+                    <div class="hero-visual-glow"></div>
+                    <div class="devices-3d-wrapper" id="heroDevices3D">
+                        <img src="assets/images/hero-devices-clean.png" alt="LiveFlow 3D Laptop and TikTok Live Phone Mockup" class="devices-img-fluid">
+                    </div>
+                </div>
             </div>
+        </div>
+    </section>
 
-            <h1 class="hero-title">NÂNG TẦM MỌI BUỔI LIVESTREAM</h1>
-            <p class="hero-subtitle">
-                Tự động hóa hiệu ứng 3D tương tác theo quà TikTok • Trình thiết kế Bảng quà 195 font UTM chuẩn 1080p • Trợ lý AI Cà khịa thông minh • Kết nối OBS Studio 1-Click dưới 60 giây.
-            </p>
+    <!-- SECTION: CÁCH LIVEFLOW HOẠT ĐỘNG (3 BƯỚC PIPELINE) -->
+    <section class="how-it-works-bar-section" id="how-it-works">
+        <div class="container">
+            <h3 class="how-it-works-heading">Cách LiveFlow hoạt động</h3>
+            <div class="pipeline-steps-grid">
+                <!-- Bước 1: TikTok Gift -->
+                <div class="pipeline-step-item">
+                    <div class="p-step-icon tiktok-bg">
+                        <i class="fab fa-tiktok"></i>
+                    </div>
+                    <div class="p-step-info">
+                        <h4>TikTok Gift</h4>
+                        <p>Người xem gửi quà trong livestream</p>
+                    </div>
+                </div>
 
-            <!-- 4 VALUE BLOCKS (PHƯƠNG ÁN 2 - CHUẨN STYLE APP) -->
+                <!-- Mũi tên 1 -->
+                <div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>
+
+                <!-- Bước 2: LiveFlow Core -->
+                <div class="pipeline-step-item active-core">
+                    <div class="p-step-icon liveflow-bg">
+                        <i class="fas fa-play"></i>
+                    </div>
+                    <div class="p-step-info">
+                        <h4>LiveFlow</h4>
+                        <p>Nhận quà theo thời gian thực, xử lý và kích hoạt hiệu ứng</p>
+                    </div>
+                </div>
+
+                <!-- Mũi tên 2 -->
+                <div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>
+
+                <!-- Bước 3: OBS Effect -->
+                <div class="pipeline-step-item">
+                    <div class="p-step-icon obs-bg">
+                        <i class="fas fa-circle-notch"></i>
+                    </div>
+                    <div class="p-step-info">
+                        <h4>OBS Effect</h4>
+                        <p>Hiệu ứng, âm thanh, video xuất hiện ngay trên livestream</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4 VALUE BLOCKS (PHƯƠNG ÁN 2 - CHUẨN STYLE APP) -->
+    <section class="value-blocks-section">
+        <div class="container">
             <div class="hero-value-blocks-grid">
                 <!-- Block 1 -->
                 <div class="value-block-card">
@@ -1367,49 +1561,6 @@
                         <p>Giữ chân người xem & đọc tên cảm xúc chuẩn Việt</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- Hero Action Buttons -->
-            <div class="hero-actions-wrap">
-                <a href="#pricing" class="btn-primary-hero">
-                    <i class="fas fa-rocket"></i> Bắt Đầu Dùng Thử Miễn Phí
-                </a>
-                <a href="#store-deck" class="btn-secondary-hero">
-                    <i class="fas fa-layer-group"></i> Khám Phá Kho Thẻ Bài Hiệu Ứng
-                </a>
-            </div>
-
-            <!-- 3D APP WINDOW MOCKUP -->
-            <div class="hero-mockup-3d-stage">
-                <div class="stage-glow-spotlight"></div>
-                <div class="hero-mockup-window" id="heroAppMockup">
-                    <div class="window-titlebar">
-                        <div class="window-dots">
-                            <span class="dot dot-red"></span>
-                            <span class="dot dot-yellow"></span>
-                            <span class="dot dot-green"></span>
-                        </div>
-                        <div class="window-app-title">
-                            <i class="fas fa-bolt" style="color:#ec4899; margin-right:8px;"></i> LIVEFLOW - NÂNG TẦM MỌI BUỔI LIVESTREAM (v1.0.1 PRO)
-                        </div>
-                        <div class="window-badges">
-                            <span class="win-badge green"><i class="fas fa-video"></i> OBS: ĐÃ KẾT NỐI</span>
-                            <span class="win-badge purple"><i class="fab fa-tiktok"></i> TIKTOK: SẴN SÀNG</span>
-                        </div>
-                    </div>
-                    <div class="window-screen-frame">
-                        <img src="assets/images/app-3d-mockup.png" alt="LiveFlow Desktop App 3D Mockup" class="app-screen-img">
-                        <div class="window-glass-reflection"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Trust Badges -->
-            <div class="trust-badges-bar">
-                <div class="trust-badge-item"><i class="fas fa-check-circle"></i> Tích hợp OBS 1-Click</div>
-                <div class="trust-badge-item"><i class="fas fa-shield-alt"></i> 100% An toàn không bị TikTok quét</div>
-                <div class="trust-badge-item"><i class="fas fa-microchip"></i> Tối ưu CPU &lt; 3%</div>
-                <div class="trust-badge-item"><i class="fas fa-headset"></i> Hỗ trợ UltraViewer 24/7</div>
             </div>
         </div>
     </section>
@@ -1995,20 +2146,20 @@
             });
         });
 
-        // 3D Parallax Tilt for Hero Mockup Window
-        const mockupWindow = document.getElementById('heroAppMockup');
-        if (mockupWindow) {
-            const stage = mockupWindow.parentElement;
-            stage.addEventListener('mousemove', e => {
-                const rect = stage.getBoundingClientRect();
+        // 3D Parallax Tilt for Hero Devices 3D (Laptop + Phone)
+        const heroDevices = document.getElementById('heroDevices3D');
+        if (heroDevices) {
+            const visualCol = heroDevices.parentElement;
+            visualCol.addEventListener('mousemove', e => {
+                const rect = visualCol.getBoundingClientRect();
                 const x = e.clientX - rect.left - rect.width / 2;
                 const y = e.clientY - rect.top - rect.height / 2;
-                const rotX = (-y / rect.height) * 12;
-                const rotY = (x / rect.width) * 12;
-                mockupWindow.style.transform = `rotateX(${rotX + 6}deg) rotateY(${rotY}deg) translateY(-6px)`;
+                const rotX = (-y / rect.height) * 14;
+                const rotY = (x / rect.width) * 14;
+                heroDevices.style.transform = `perspective(1200px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateY(-4px) scale(1.02)`;
             });
-            stage.addEventListener('mouseleave', () => {
-                mockupWindow.style.transform = 'rotateX(10deg) rotateY(0deg) translateY(-8px)';
+            visualCol.addEventListener('mouseleave', () => {
+                heroDevices.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg) translateY(0) scale(1)';
             });
         }
     </script>
