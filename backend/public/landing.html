@@ -308,6 +308,134 @@
             flex-wrap: wrap;
         }
 
+        /* 3D App Window Mockup */
+        .hero-mockup-3d-stage {
+            perspective: 1800px;
+            max-width: 1180px;
+            margin: 45px auto 40px;
+            position: relative;
+        }
+
+        .stage-glow-spotlight {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            height: 380px;
+            background: radial-gradient(ellipse at center, rgba(236, 72, 153, 0.3) 0%, rgba(168, 85, 247, 0.18) 45%, transparent 70%);
+            filter: blur(60px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hero-mockup-window {
+            position: relative;
+            z-index: 1;
+            background: #090d22;
+            border-radius: 22px;
+            border: 1.5px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 
+                0 30px 80px rgba(0, 0, 0, 0.85),
+                0 0 45px rgba(168, 85, 247, 0.3),
+                0 0 90px rgba(236, 72, 153, 0.2);
+            transform: rotateX(10deg) translateY(-8px);
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s ease;
+            overflow: hidden;
+        }
+
+        .hero-mockup-window:hover {
+            transform: rotateX(0deg) translateY(0) scale(1.01);
+            box-shadow: 
+                0 40px 100px rgba(0, 0, 0, 0.9),
+                0 0 70px rgba(236, 72, 153, 0.45),
+                0 0 110px rgba(168, 85, 247, 0.35);
+            border-color: rgba(236, 72, 153, 0.5);
+        }
+
+        .window-titlebar {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .window-dots {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot-red { background: #ef4444; }
+        .dot-yellow { background: #f59e0b; }
+        .dot-green { background: #10b981; }
+
+        .window-app-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: #cbd5e1;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .window-badges {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .win-badge {
+            font-size: 11px;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .win-badge.green {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+        .win-badge.purple {
+            background: rgba(168, 85, 247, 0.2);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+
+        .window-screen-frame {
+            position: relative;
+            width: 100%;
+            line-height: 0;
+            overflow: hidden;
+            background: #050713;
+        }
+
+        .app-screen-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }
+
+        .window-glass-reflection {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 40%, transparent 60%);
+            pointer-events: none;
+        }
+
         .btn-primary-hero {
             padding: 16px 36px;
             background: var(--primary-gradient);
@@ -1251,6 +1379,31 @@
                 </a>
             </div>
 
+            <!-- 3D APP WINDOW MOCKUP -->
+            <div class="hero-mockup-3d-stage">
+                <div class="stage-glow-spotlight"></div>
+                <div class="hero-mockup-window" id="heroAppMockup">
+                    <div class="window-titlebar">
+                        <div class="window-dots">
+                            <span class="dot dot-red"></span>
+                            <span class="dot dot-yellow"></span>
+                            <span class="dot dot-green"></span>
+                        </div>
+                        <div class="window-app-title">
+                            <i class="fas fa-bolt" style="color:#ec4899; margin-right:8px;"></i> LIVEFLOW - NÂNG TẦM MỌI BUỔI LIVESTREAM (v1.0.1 PRO)
+                        </div>
+                        <div class="window-badges">
+                            <span class="win-badge green"><i class="fas fa-video"></i> OBS: ĐÃ KẾT NỐI</span>
+                            <span class="win-badge purple"><i class="fab fa-tiktok"></i> TIKTOK: SẴN SÀNG</span>
+                        </div>
+                    </div>
+                    <div class="window-screen-frame">
+                        <img src="assets/images/app-3d-mockup.png" alt="LiveFlow Desktop App 3D Mockup" class="app-screen-img">
+                        <div class="window-glass-reflection"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Trust Badges -->
             <div class="trust-badges-bar">
                 <div class="trust-badge-item"><i class="fas fa-check-circle"></i> Tích hợp OBS 1-Click</div>
@@ -1841,6 +1994,23 @@
                 card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0) scale(1)';
             });
         });
+
+        // 3D Parallax Tilt for Hero Mockup Window
+        const mockupWindow = document.getElementById('heroAppMockup');
+        if (mockupWindow) {
+            const stage = mockupWindow.parentElement;
+            stage.addEventListener('mousemove', e => {
+                const rect = stage.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                const rotX = (-y / rect.height) * 12;
+                const rotY = (x / rect.width) * 12;
+                mockupWindow.style.transform = `rotateX(${rotX + 6}deg) rotateY(${rotY}deg) translateY(-6px)`;
+            });
+            stage.addEventListener('mouseleave', () => {
+                mockupWindow.style.transform = 'rotateX(10deg) rotateY(0deg) translateY(-8px)';
+            });
+        }
     </script>
 </body>
 </html>
