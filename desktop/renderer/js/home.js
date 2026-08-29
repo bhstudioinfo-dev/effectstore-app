@@ -7794,7 +7794,7 @@ class EffectStoreApp {
                     <div class="gift-item" data-gift-id="${g.id}" onclick="app.selectGiftById('${g.id}', this)">
                         ${iconHtml}
                         <div class="gift-name">${g.name}</div>
-                        <div class="gift-coins">${g.coins} xu</div>
+                        <div class="gift-coins">${Number(g.coins || 1).toLocaleString('vi-VN')} xu</div>
                     </div>
                 `;
             }).join('');

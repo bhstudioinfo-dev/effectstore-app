@@ -487,12 +487,33 @@ class OBSController {
                 this.activeTimeouts = [];
             }
             
+            const sceneItemsRes = await this.obs.call('GetSceneItemList', { sceneName }).catch(() => ({ sceneItems: [] }));
+            const allSceneItems = sceneItemsRes.sceneItems || [];
+
             const webcamItem = await this.findWebcamSource(sceneName);
             const webcamId = webcamItem ? webcamItem.sceneItemId : null;
             const webcamSourceName = webcamItem ? webcamItem.sourceName : null;
             
             const effectItem = await this.findEffectSource(sceneName, effectId);
             const effectSceneItemId = effectItem ? effectItem.sceneItemId : null;
+
+            // Xử lý trước các nguồn tùy chọn (custom sources) được chỉ định trong keyframe (như file video .mp4, window capture...)
+            const customSourceMap = new Map();
+            const customSourceNames = [...new Set(timeline.map(kf => kf.source).filter(s => s && s !== 'auto_webcam' && s !== 'auto_effect'))];
+            for (const sName of customSourceNames) {
+                const matched = allSceneItems.find(item => item.sourceName === sName);
+                if (matched) {
+                    customSourceMap.set(sName, matched);
+                    await this.saveWebcamOriginalPosition(sceneName, matched.sceneItemId);
+                    // Nếu là nguồn Media Source (file video mp4/webm/mov), kích hoạt phát lại từ đầu
+                    if (matched.inputKind === 'ffmpeg_source' || matched.inputKind === 'vlc_source' || /\.(mp4|webm|mov|mkv|avi|flv)$/i.test(sName)) {
+                        await this.obs.call('TriggerMediaInputAction', {
+                            inputName: sName,
+                            mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART'
+                        }).catch(() => {});
+                    }
+                }
+            }
             
             if (webcamId) {
                 const orig = await this.saveWebcamOriginalPosition(sceneName, webcamId);
@@ -533,12 +554,14 @@ class OBSController {
                             targetSourceName = effectItem ? effectItem.sourceName : null;
                         } else if (keyframe.source) {
                             targetSourceName = keyframe.source;
+                            const customItem = customSourceMap.get(keyframe.source) || allSceneItems.find(item => item.sourceName === keyframe.source);
+                            targetSceneItemId = customItem ? customItem.sceneItemId : null;
                         }
 
                         if (targetSceneItemId || targetSourceName) {
                             // 1. Xử lý Lớp (Layer)
-                            if ((keyframe.action === 'layer' || keyframe.layer) && (keyframe.source === 'auto_webcam' || !keyframe.source) && webcamId) {
-                                await this.setWebcamLayer(sceneName, webcamId, effectSceneItemId, keyframe.layer || (keyframe.enabled === false ? 'below' : 'above'));
+                            if ((keyframe.action === 'layer' || keyframe.layer) && (targetSceneItemId || webcamId)) {
+                                await this.setWebcamLayer(sceneName, targetSceneItemId || webcamId, effectSceneItemId, keyframe.layer || (keyframe.enabled === false ? 'below' : 'above'));
                             }
                             
                             // 2. Xử lý Filter Tách Nền / Đen Mặt
@@ -638,6 +661,10 @@ class OBSController {
                 
                 await this.resetWebcamToOriginalPosition(sceneName, webcamId);
                 await this.resetWebcamFilters(webcamSourceName);
+                for (const [sName, itemInfo] of customSourceMap.entries()) {
+                    await this.resetWebcamToOriginalPosition(sceneName, itemInfo.sceneItemId);
+                    await this.resetWebcamFilters(sName);
+                }
                 console.log('✅ Timeline effect completed, restored & filters reset');
             }, effectDuration + 500);
             

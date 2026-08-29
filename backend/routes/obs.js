@@ -137,7 +137,7 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             if (!sourceStatus.effect_player) {
                 return res.status(503).json({ success: false, message: 'Không thể chuẩn bị nguồn effect_player trên OBS.' });
             }
-            if (!await waitForEffectPlayerReady(req, 1000)) {
+            if (!await waitForEffectPlayerReady(req, 3000)) {
                 return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa kết nối, vui lòng thử lại.' });
             }
         }
@@ -583,7 +583,7 @@ router.post('/setup-gift-menu', authMiddleware, async (req, res) => {
         const defaultSourceName = 'gift_menu_overlay';
         const giftMenuSourceNames = ['gift_menu_overlay', 'gift_menu'];
         const wsToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
-        const url = `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}&t=${Date.now()}`;
+        const url = `http://127.0.0.1:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}&t=${Date.now()}`;
         let sourceWidth = 1080;
         let sourceHeight = 1920;
         try {
@@ -815,12 +815,10 @@ router.post('/repair-sources', authMiddleware, async (req, res) => {
         };
 
         // 2. Check and repair effect_player
-        const effectPlayerExists = existingSources.has('effect_player');
-        if (!effectPlayerExists) {
-            await obsService.ensureEffectPlayerSource();
-            report.effect_player.status = 'repaired';
-            report.effect_player.repaired = true;
-        }
+        await obsService.ensureEffectPlayerSource();
+        const effectPlayerReady = await waitForEffectPlayerReady(req, 3000);
+        report.effect_player.status = effectPlayerReady ? 'ok' : 'pending';
+        report.effect_player.repaired = true;
 
         // 3. Check and repair gift_menu_overlay / gift_menu
         const giftMenuSourceNames = ['gift_menu_overlay', 'gift_menu'];
@@ -828,7 +826,7 @@ router.post('/repair-sources', authMiddleware, async (req, res) => {
 
         const PORT = process.env.PORT || 9000;
         const wsToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
-        const url = `http://localhost:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}&t=${Date.now()}`;
+        const url = `http://127.0.0.1:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}&t=${Date.now()}`;
         let sourceWidth = 1080;
         let sourceHeight = 1920;
         try {

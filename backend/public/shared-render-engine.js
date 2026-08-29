@@ -277,35 +277,41 @@
         const rawContent = text(ctx, item.text || 'Nhập văn bản');
         const animId = String(item.id || 'text').replace(/[^a-zA-Z0-9_-]/g, '_');
         const needsDualLayer = Boolean(item.enable3D) || (item.textFillType === 'gradient' && shadowList.length > 0);
+        const hasNewlines = rawContent.includes('\n');
+        const whiteSpaceMode = hasNewlines ? 'pre-line' : 'nowrap';
 
         let innerContentHtml = '';
         if (needsDualLayer) {
             const backColor = item.enable3D ? (item.depth3DColor || '#78350f') : 'transparent';
             innerContentHtml = `
-                <span class="gmd-3d-wrap" style="position:relative; display:inline-block; vertical-align:middle; line-height:inherit;">
-                    <span class="gmd-3d-back" aria-hidden="true" style="position:absolute; left:0; top:0; z-index:1; color:${backColor}; -webkit-text-stroke:0 !important; ${textShadowStyle} user-select:none; pointer-events:none; white-space:inherit;">${rawContent}</span>
-                    <span class="gmd-3d-front" style="position:relative; z-index:2; display:inline-block; ${textFillStyle} ${strokeStyle} line-height:inherit; white-space:inherit;">${rawContent}</span>
+                <span class="gmd-3d-wrap" style="position:relative; display:inline-block; vertical-align:middle; line-height:inherit; white-space:${whiteSpaceMode};">
+                    <span class="gmd-3d-back" aria-hidden="true" style="position:absolute; left:0; top:0; z-index:1; color:${backColor}; -webkit-text-stroke:0 !important; ${textShadowStyle} user-select:none; pointer-events:none; white-space:${whiteSpaceMode};">${rawContent}</span>
+                    <span class="gmd-3d-front" style="position:relative; z-index:2; display:inline-block; ${textFillStyle} ${strokeStyle} line-height:inherit; white-space:${whiteSpaceMode};">${rawContent}</span>
                 </span>
             `;
         } else {
             innerContentHtml = `
-                <span class="gmd-text-inner" style="${textFillStyle} ${strokeStyle} ${textShadowStyle} display:inline-block; line-height:inherit; white-space:inherit;">
+                <span class="gmd-text-inner" style="${textFillStyle} ${strokeStyle} ${textShadowStyle} display:inline-block; line-height:inherit; white-space:${whiteSpaceMode};">
                     ${rawContent}
                 </span>
             `;
         }
 
         if (isMarquee) {
+            const gapPx = Math.max(36, Math.round(fontSize * 1.4));
             return `
                 <div class="gmd-text-widget gmd-text-marquee-box" style="${boxStyle} overflow:hidden; display:flex; align-items:center; pointer-events:none;">
                     <style>
                         @keyframes gmd-marquee-${animId} {
-                            0% { transform: translateX(100%); }
-                            100% { transform: translateX(-100%); }
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(-50%); }
                         }
                     </style>
-                    <div style="display:inline-block; white-space:nowrap; width:100%; will-change:transform; animation: gmd-marquee-${animId} ${marqueeSpeed}s linear infinite; font-size:${fontSize}px; font-weight:${fontWeight}; font-family:${fontFamily}; line-height:1.2; text-align:${textAlign};">
-                        ${innerContentHtml}
+                    <div style="display:inline-flex; align-items:center; white-space:nowrap; width:max-content; will-change:transform; animation: gmd-marquee-${animId} ${marqueeSpeed}s linear infinite; font-size:${fontSize}px; font-weight:${fontWeight}; font-family:${fontFamily}; line-height:1.2; text-align:${textAlign};">
+                        <span style="display:inline-flex; align-items:center; padding-right:${gapPx}px; flex-shrink:0;">${innerContentHtml}</span>
+                        <span style="display:inline-flex; align-items:center; padding-right:${gapPx}px; flex-shrink:0;" aria-hidden="true">${innerContentHtml}</span>
+                        <span style="display:inline-flex; align-items:center; padding-right:${gapPx}px; flex-shrink:0;" aria-hidden="true">${innerContentHtml}</span>
+                        <span style="display:inline-flex; align-items:center; padding-right:${gapPx}px; flex-shrink:0;" aria-hidden="true">${innerContentHtml}</span>
                     </div>
                 </div>
             `;
@@ -316,7 +322,7 @@
         const justifyVal = justifyMap[textAlign] || 'center';
 
         return `
-            <div class="gmd-text-widget" style="${boxStyle} display:flex; align-items:center; justify-content:${justifyVal}; font-size:${fontSize}px; font-weight:${fontWeight}; font-family:${fontFamily}; line-height:1.2; text-align:${textAlign}; word-break:break-word; pointer-events:none;">
+            <div class="gmd-text-widget" style="${boxStyle} display:flex; align-items:center; justify-content:${justifyVal}; font-size:${fontSize}px; font-weight:${fontWeight}; font-family:${fontFamily}; line-height:1.2; text-align:${textAlign}; white-space:${whiteSpaceMode}; pointer-events:none;">
                 ${innerContentHtml}
             </div>
         `;

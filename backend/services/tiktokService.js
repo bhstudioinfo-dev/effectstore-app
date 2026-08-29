@@ -1,4 +1,4 @@
-const { TikTokLiveClient } = require('tiktok-live-connector');
+const { TikTokLiveConnection } = require('tiktok-live-connector');
 const GiftMapping = require('../models/GiftMapping');
 const ChallengeWheel = require('../models/ChallengeWheel');
 const Effect = require('../models/Effect');
@@ -222,7 +222,10 @@ class TikTokService {
             }
             if (this.tiktokClient) {
                 this.lastRoomId = null;
-                try { await this.tiktokClient.stop(); } catch (_error) {}
+                try {
+                    if (typeof this.tiktokClient.disconnect === 'function') await this.tiktokClient.disconnect();
+                    else if (typeof this.tiktokClient.stop === 'function') await this.tiktokClient.stop();
+                } catch (_error) {}
             }
             this.lastRoomId = roomId;
             this.currentLiveUserId = userId;
@@ -232,7 +235,7 @@ class TikTokService {
                 this.sessionUsage = { comments: 0, tts: 0, commentLimitNotified: false, ttsLimitNotified: false };
                 this.sessionDonatorCoins = new Map();
             }
-            this.tiktokClient = new TikTokLiveClient({ uniqueId: roomId });
+            this.tiktokClient = new TikTokLiveConnection(roomId, { enableExtendedGiftInfo: true });
 
             this.tiktokClient.on('connected', () => {
                 console.log(`Connected to TikTok Live: ${roomId}`);
@@ -289,9 +292,14 @@ class TikTokService {
                 this.liveStats.gifts += data.repeatCount;
                 let mappings = [];
                 if (liveUserId) {
+                    const cleanSlug = String(data.giftName || '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
                     mappings = await GiftMapping.find({
                         userId: liveUserId,
-                        giftId: String(data.giftId),
+                        $or: [
+                            { giftId: String(data.giftId) },
+                            { giftId: cleanSlug },
+                            { giftName: new RegExp(`^${String(data.giftName || '').replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}$`, 'i') }
+                        ],
                         isActive: true
                     }).lean();
                 }
@@ -442,7 +450,11 @@ class TikTokService {
             this.tiktokClient.on('viewer', (data) => { this.liveStats.viewers = data.count || 0; this.broadcast('stats', this.liveStats); });
             this.tiktokClient.on('error', (err) => console.error('TikTok Error:', err));
 
-            await this.tiktokClient.start();
+            if (typeof this.tiktokClient.connect === 'function') {
+                await this.tiktokClient.connect();
+            } else if (typeof this.tiktokClient.start === 'function') {
+                await this.tiktokClient.start();
+            }
             return true;
         } catch (err) {
             console.error('Failed to start TikTok client:', err);
@@ -459,7 +471,10 @@ class TikTokService {
             this.reconnectTimer = null;
         }
         if (this.tiktokClient) {
-            try { await this.tiktokClient.stop(); } catch (_error) {}
+            try {
+                if (typeof this.tiktokClient.disconnect === 'function') await this.tiktokClient.disconnect();
+                else if (typeof this.tiktokClient.stop === 'function') await this.tiktokClient.stop();
+            } catch (_error) {}
             this.tiktokClient = null;
             this.liveStats.isLive = false;
             this.broadcast('stats', this.liveStats);

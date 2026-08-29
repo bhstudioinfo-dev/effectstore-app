@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>EffectStore 3D Typography Showcase (Chuẩn Từng Font)</title>
+<link rel="stylesheet" href="/utm-fonts.css">
+<style>
+:root {
+    --bg-main: #060b18;
+    --card-bg: rgba(15, 23, 42, 0.75);
+    --border-color: rgba(255, 255, 255, 0.08);
+}
+* { box-sizing: border-box; }
+body {
+    background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #060b18 70%);
+    color: #f8fafc;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    margin: 0;
+    padding: 30px 20px;
+    min-height: 100vh;
+}
+.header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+.header h1 {
+    font-size: 28px;
+    font-weight: 900;
+    margin: 0 0 8px 0;
+    background: linear-gradient(135deg, #fef08a, #f59e0b, #ec4899, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 0.5px;
+}
+.header p {
+    color: #94a3b8;
+    font-size: 14px;
+    margin: 0;
+}
+
+.customizer-bar {
+    max-width: 760px;
+    margin: 20px auto 30px auto;
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 14px;
+    padding: 12px 20px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.customizer-bar label {
+    font-size: 13px;
+    font-weight: 800;
+    color: #fef08a;
+    white-space: nowrap;
+}
+.customizer-bar input[type="text"] {
+    flex: 1;
+    background: #070d1e;
+    border: 1px solid #475569;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 10px 14px;
+    border-radius: 8px;
+    outline: none;
+    transition: all 0.2s;
+}
+.customizer-bar input[type="text"]:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+    gap: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 22px 24px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    transition: border-color 0.2s, transform 0.2s;
+}
+.card:hover {
+    border-color: rgba(245, 158, 11, 0.4);
+    transform: translateY(-2px);
+}
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 10px;
+}
+.card-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #e2e8f0;
+}
+.card-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.preview-area {
+    min-height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0;
+    overflow: hidden;
+}
+
+/* Dual-Layer 3D Engine */
+.gmd-3d-wrap {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+.gmd-3d-back {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1;
+    user-select: none;
+    pointer-events: none;
+    -webkit-text-stroke: 0 !important;
+}
+.gmd-3d-front {
+    position: relative;
+    z-index: 2;
+    display: inline-block;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🎨 6 PHONG CÁCH CHỮ 3D ĐỘC BẢN - CHUẨN TỪNG TÍNH CÁCH</h1>
+    <p>Mỗi phong cách được thiết kế riêng với Font chữ đặc trưng, độ sâu 3D & hiệu ứng ánh sáng riêng biệt</p>
+</div>
+
+<div class="customizer-bar">
+    <label>✏️ Nhập chữ thử nghiệm:</label>
+    <input type="text" id="customTextInput" value="DEMO TYPOGRAPHY 123" placeholder="Nhập chữ thử nghiệm...">
+</div>
+
+<div class="grid">
+    <!-- Card 1: Gaming Stroke (Chiến Thần Esports) -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">1. 🎮 Gaming Stroke (Esports Chiến Thần)</span>
+            <span class="card-badge">Font UTM Akashi</span>
+        </div>
+        <div class="preview-area">
+            <div style="font-size: 38px; font-weight: 900; font-family: 'UTM Akashi', sans-serif; white-space: nowrap; letter-spacing: 1px;">
+                <span class="gmd-3d-wrap">
+                    <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #000; text-shadow: 1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #000, 4px 4px 0 #000, 5px 5px 6px rgba(0,0,0,0.95), 0 0 16px rgba(255,107,0,0.85);">DEMO TYPOGRAPHY 123</span>
+                    <span class="gmd-3d-front sample-text" style="background: linear-gradient(180deg, #fff500 0%, #ff8800 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 0.6px #000; paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Gold 3D VIP (Hoàng Gia) -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">2. 👑 Gold 3D VIP (Top 1 Hoàng Gia)</span>
+            <span class="card-badge">Font UTM CopperplateB</span>
+        </div>
+        <div class="preview-area">
+            <div style="font-size: 36px; font-weight: 900; font-family: 'UTM CopperplateB', 'UTM Alexander', serif; white-space: nowrap; letter-spacing: 1.5px;">
+                <span class="gmd-3d-wrap">
+                    <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #78350f; text-shadow: 1px 1px 0 #78350f, 2px 2px 0 #78350f, 3px 3px 0 #78350f, 4px 4px 0 #78350f, 5px 5px 0 #451a03, 6px 6px 6px rgba(0,0,0,0.8), 0 0 16px rgba(245,158,11,0.65);">DEMO TYPOGRAPHY 123</span>
+                    <span class="gmd-3d-front sample-text" style="background: linear-gradient(180deg, #fffbeb 0%, #fef08a 25%, #f59e0b 70%, #d97706 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,0.7); paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Cyber Neon (Vũ Trụ Sci-Fi) -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">3. ⚡ Cyber Neon (Tương Lai Sci-Fi)</span>
+            <span class="card-badge">Font UTM Aircona</span>
+        </div>
+        <div class="preview-area">
+            <div style="font-size: 38px; font-weight: 900; font-family: 'UTM Aircona', sans-serif; white-space: nowrap; letter-spacing: 2px;">
+                <span class="gmd-3d-wrap">
+                    <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #083344; text-shadow: 1px 1px 0 #083344, 2px 2px 0 #083344, 3px 3px 0 #083344, 0 0 15px #00f0ff, 0 0 30px #0891b2;">DEMO TYPOGRAPHY 123</span>
+                    <span class="gmd-3d-front sample-text" style="color: #ecfeff; -webkit-text-stroke: 1.2px #00f0ff; paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 4: Idol Pink (Kẹo Ngọt Dễ Thương) -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">4. 💖 Idol Pink (Kẹo Ngọt Dễ Thương)</span>
+            <span class="card-badge">Font UTM Cookies</span>
+        </div>
+        <div class="preview-area">
+            <div style="font-size: 38px; font-weight: 900; font-family: 'UTM Cookies', cursive; white-space: nowrap; letter-spacing: 1px;">
+                <span class="gmd-3d-wrap">
+                    <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #500724; text-shadow: 1px 1px 0 #500724, 2px 2px 0 #500724, 3px 3px 0 #500724, 4px 4px 0 #500724, 5px 5px 6px rgba(0,0,0,0.8), 0 0 20px rgba(255,42,133,0.85);">DEMO TYPOGRAPHY 123</span>
+                    <span class="gmd-3d-front sample-text" style="background: linear-gradient(180deg, #ffffff 0%, #fbcfe8 35%, #ff2a85 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.2px #831843; paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 5: Fire Red (Rực Lửa PK) -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">5. 🔥 Fire Red (Chiến Đấu PK Rực Lửa)</span>
+            <span class="card-badge">Font UTM Impact</span>
+        </div>
+        <div class="preview-area">
+            <div style="font-size: 38px; font-weight: 900; font-family: 'UTM Impact', 'UTM Alberta Heavy', sans-serif; white-space: nowrap; letter-spacing: 1px;">
+                <span class="gmd-3d-wrap">
+                    <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #450a0a; text-shadow: 1px 1px 0 #450a0a, 2px 2px 0 #450a0a, 3px 3px 0 #450a0a, 4px 4px 0 #250303, 5px 5px 6px rgba(0,0,0,0.8), 0 0 20px rgba(239,68,68,0.9);">DEMO TYPOGRAPHY 123</span>
+                    <span class="gmd-3d-front sample-text" style="background: linear-gradient(180deg, #fff500 0%, #f97316 40%, #ef4444 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.2px #450a0a; paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 6A: Huy Hiệu Hoàng Gia (Capsule Đèn Dạ Quang) -->
+    <div class="card" style="grid-column: 1 / -1;">
+        <div class="card-header">
+            <span class="card-title">6A. 👑 Huy Hiệu Hoàng Gia (Capsule Đèn Dạ Quang)</span>
+            <span class="card-badge">Font UTM CopperplateB</span>
+        </div>
+        <div class="preview-area">
+            <div style="display: inline-flex; align-items: center; gap: 10px; background: linear-gradient(180deg, #1e1338 0%, #0a0614 100%); border: 2px solid #facc15; box-shadow: 0 0 20px rgba(234, 179, 8, 0.45), inset 0 0 12px rgba(234, 179, 8, 0.2); border-radius: 999px; padding: 8px 24px 8px 18px; white-space: nowrap;">
+                <span style="font-size: 24px; filter: drop-shadow(0 0 6px #facc15);">👑</span>
+                <div style="font-size: 26px; font-weight: 900; font-family: 'UTM CopperplateB', 'UTM Alexander', serif; letter-spacing: 1.2px;">
+                    <span class="gmd-3d-wrap">
+                        <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #000; text-shadow: 0 2px 4px #000, 0 4px 8px rgba(0,0,0,0.9), 0 0 18px rgba(250, 204, 21, 0.9);">DEMO TYPOGRAPHY 123</span>
+                        <span class="gmd-3d-front sample-text" style="background: linear-gradient(180deg, #ffffff 0%, #fffbeb 25%, #fde047 60%, #eab308 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 0.8px #fff; paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 6B: Bảng Vàng Vinh Danh (Khung Chỉ Đôi Sang Trọng) -->
+    <div class="card" style="grid-column: 1 / -1;">
+        <div class="card-header">
+            <span class="card-title">6B. 🏆 Bảng Vàng Vinh Danh (Khung Chỉ Kép Hoàng Kim)</span>
+            <span class="card-badge">Font UTM Alexander</span>
+        </div>
+        <div class="preview-area">
+            <div style="display: inline-flex; align-items: center; gap: 10px; background: radial-gradient(circle at 50% 0%, #2e1045 0%, #0b0614 100%); border: 2px solid #f59e0b; outline: 1px solid rgba(254, 240, 138, 0.6); outline-offset: -4px; box-shadow: 0 8px 24px rgba(0,0,0,0.85), 0 0 24px rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 10px 24px; white-space: nowrap;">
+                <span style="font-size: 22px; filter: drop-shadow(0 0 8px #f59e0b);">⭐</span>
+                <div style="font-size: 26px; font-weight: 900; font-family: 'UTM Alexander', serif; letter-spacing: 1px;">
+                    <span class="gmd-3d-wrap">
+                        <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #000; text-shadow: 0 2px 4px #000, 0 4px 8px rgba(0,0,0,0.95), 0 0 18px rgba(245, 158, 11, 0.9);">DEMO TYPOGRAPHY 123</span>
+                        <span class="gmd-3d-front sample-text" style="background: linear-gradient(180deg, #ffffff 0%, #fef08a 35%, #f59e0b 75%, #b45309 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 0.8px #fff; paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                    </span>
+                </div>
+                <span style="font-size: 22px; filter: drop-shadow(0 0 8px #f59e0b);">⭐</span>
+            </div>
+        </div>
+    </div>
+    <!-- Card 7: Marquee Vô Tận Liền Mạch -->
+    <div class="card" style="grid-column: 1 / -1;">
+        <div class="card-header">
+            <span class="card-title">7. 🔄 Chữ Chạy Cuộn Ngang Vô Tận (Seamless Infinite Marquee - Mượt 100%, Không Giật)</span>
+            <span class="card-badge">Vòng Lặp Nối Đuôi Liền Mạch</span>
+        </div>
+        <div class="preview-area" style="padding: 14px 0;">
+            <div style="width: 100%; max-width: 960px; overflow: hidden; background: rgba(0, 0, 0, 0.4); border: 1.5px solid rgba(245, 158, 11, 0.4); border-radius: 999px; padding: 10px 0; box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(245, 158, 11, 0.15); display: flex; align-items: center;">
+                <style>
+                    @keyframes gmd-marquee-demo-seamless {
+                        0% { transform: translateX(0); }
+                        100% { transform: translateX(-50%); }
+                    }
+                </style>
+                <div style="display: inline-flex; align-items: center; white-space: nowrap; width: max-content; will-change: transform; animation: gmd-marquee-demo-seamless 14s linear infinite;">
+                    <div style="display: inline-flex; align-items: center; padding-right: 60px; font-size: 26px; font-weight: 900; font-family: 'UTM CopperplateB', 'UTM Alexander', serif; letter-spacing: 1px;">
+                        <span style="font-size: 20px; margin-right: 8px; filter: drop-shadow(0 0 6px #facc15);">👑</span>
+                        <span class="gmd-3d-wrap">
+                            <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #000; text-shadow: 0 2px 4px #000, 0 0 15px rgba(250, 204, 21, 0.8);">DEMO TYPOGRAPHY 123</span>
+                            <span class="gmd-3d-front sample-text" style="background: linear-gradient(180deg, #ffffff 0%, #fef08a 35%, #f59e0b 80%, #b45309 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 0.8px #fff; paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                        </span>
+                        <span style="margin-left: 20px; color: #f59e0b; opacity: 0.7;">★</span>
+                    </div>
+                    <div style="display: inline-flex; align-items: center; padding-right: 60px; font-size: 26px; font-weight: 900; font-family: 'UTM CopperplateB', 'UTM Alexander', serif; letter-spacing: 1px;" aria-hidden="true">
+                        <span style="font-size: 20px; margin-right: 8px; filter: drop-shadow(0 0 6px #facc15);">👑</span>
+                        <span class="gmd-3d-wrap">
+                            <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #000; text-shadow: 0 2px 4px #000, 0 0 15px rgba(250, 204, 21, 0.8);">DEMO TYPOGRAPHY 123</span>
+                            <span class="gmd-3d-front sample-text" style="background: linear-gradient(180deg, #ffffff 0%, #fef08a 35%, #f59e0b 80%, #b45309 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 0.8px #fff; paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                        </span>
+                        <span style="margin-left: 20px; color: #f59e0b; opacity: 0.7;">★</span>
+                    </div>
+                    <div style="display: inline-flex; align-items: center; padding-right: 60px; font-size: 26px; font-weight: 900; font-family: 'UTM CopperplateB', 'UTM Alexander', serif; letter-spacing: 1px;" aria-hidden="true">
+                        <span style="font-size: 20px; margin-right: 8px; filter: drop-shadow(0 0 6px #facc15);">👑</span>
+                        <span class="gmd-3d-wrap">
+                            <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #000; text-shadow: 0 2px 4px #000, 0 0 15px rgba(250, 204, 21, 0.8);">DEMO TYPOGRAPHY 123</span>
+                            <span class="gmd-3d-front sample-text" style="background: linear-gradient(180deg, #ffffff 0%, #fef08a 35%, #f59e0b 80%, #b45309 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 0.8px #fff; paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                        </span>
+                        <span style="margin-left: 20px; color: #f59e0b; opacity: 0.7;">★</span>
+                    </div>
+                    <div style="display: inline-flex; align-items: center; padding-right: 60px; font-size: 26px; font-weight: 900; font-family: 'UTM CopperplateB', 'UTM Alexander', serif; letter-spacing: 1px;" aria-hidden="true">
+                        <span style="font-size: 20px; margin-right: 8px; filter: drop-shadow(0 0 6px #facc15);">👑</span>
+                        <span class="gmd-3d-wrap">
+                            <span class="gmd-3d-back sample-text" aria-hidden="true" style="color: #000; text-shadow: 0 2px 4px #000, 0 0 15px rgba(250, 204, 21, 0.8);">DEMO TYPOGRAPHY 123</span>
+                            <span class="gmd-3d-front sample-text" style="background: linear-gradient(180deg, #ffffff 0%, #fef08a 35%, #f59e0b 80%, #b45309 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 0.8px #fff; paint-order: stroke fill;">DEMO TYPOGRAPHY 123</span>
+                        </span>
+                        <span style="margin-left: 20px; color: #f59e0b; opacity: 0.7;">★</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const input = document.getElementById('customTextInput');
+const samples = document.querySelectorAll('.sample-text');
+input.addEventListener('input', () => {
+    const val = input.value || 'DEMO TYPOGRAPHY 123';
+    samples.forEach(el => el.textContent = val);
+});
+</script>
+
+</body>
+</html>

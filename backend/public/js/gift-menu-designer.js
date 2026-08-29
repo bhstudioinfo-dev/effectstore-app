@@ -1728,14 +1728,18 @@
                                 ? this.sharedRenderEngine.renderGiftStackGroup(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true })
                                 : '';
                             visualContainer.innerHTML = groupHTML;
+                        } else if (item.type === 'text') {
+                            // Text items are wrapped in .gmd-visual so the designer's purple
+                            // dashed selection outline, glow, and corner handles display
+                            // clearly around the text boundary (identical to goal boards).
+                            visualContainer.innerHTML = `
+                                <div class="gmd-visual gmd-text-visual" style="width:100%; height:100%; position:relative; overflow:visible; display:flex; align-items:center; justify-content:center;">
+                                    ${this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                                        ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
+                                        : ''}
+                                </div>
+                            `;
                         } else if (item.type === 'template-bundle') {
-                            // renderTemplateBundle already positions every child as a
-                            // percentage of THIS item's own width/height — it must fill
-                            // the visual container directly. Wrapping it in the generic
-                            // widget branch's fixed-reference-box + transform:scale below
-                            // (meant for widgets with a hand-authored fixed design size)
-                            // would size its container using item.w instead of
-                            // item.width, throwing off every child's percentage math.
                             visualContainer.innerHTML = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
                                 ? this.sharedRenderEngine.renderByType(item, { mode: 'preview', scale: 1, apiBase: this.apiBase, escapeText: true, gifts: this.gifts, includeDesignerFallback: true })
                                 : '';
@@ -3566,6 +3570,28 @@
                     itemExport.w = itemExport.width;
                     itemExport.h = itemExport.height;
                 }
+                if (i.type === 'text') {
+                    const avgScale = (sx + sy) / 2;
+                    itemExport.fontSize = Math.round(Number(i.fontSize || 36) * avgScale);
+                    if (i.strokeWidth !== undefined) {
+                        itemExport.strokeWidth = Math.round(Number(i.strokeWidth || 2) * avgScale * 10) / 10;
+                    }
+                    if (i.depth3DSize !== undefined) {
+                        itemExport.depth3DSize = Math.round(Number(i.depth3DSize || 4) * avgScale);
+                    }
+                    if (i.paddingX !== undefined) {
+                        itemExport.paddingX = Math.round(Number(i.paddingX) * avgScale);
+                    }
+                    if (i.paddingY !== undefined) {
+                        itemExport.paddingY = Math.round(Number(i.paddingY) * avgScale);
+                    }
+                    if (i.borderRadius !== undefined) {
+                        itemExport.borderRadius = Math.round(Number(i.borderRadius) * avgScale);
+                    }
+                    if (i.borderWidth !== undefined) {
+                        itemExport.borderWidth = Math.round(Number(i.borderWidth) * avgScale);
+                    }
+                }
                 if (i.type === 'goal-list' && Array.isArray(cleanItem.goals)) {
                     const avgScale = (sx + sy) / 2;
                     itemExport.goalListContentScale = (Number(cleanItem.goalListContentScale)
@@ -4606,7 +4632,15 @@
                         return;
                     }
                     const moving = isChildItem ? [item] : this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
-                    const startSizes = Object.fromEntries(moving.map((m) => [m.id, { width: m.width, height: m.height, fontSize: m.fontSize || 36 }]));
+                    const startSizes = Object.fromEntries(moving.map((m) => [m.id, { 
+                        width: m.width, 
+                        height: m.height, 
+                        fontSize: m.fontSize || 36,
+                        strokeWidth: m.strokeWidth,
+                        depth3DSize: m.depth3DSize,
+                        paddingX: m.paddingX,
+                        paddingY: m.paddingY
+                    }]));
                     this.dragState = { mode: 'resize', id: item.id, sx: e.clientX, sy: e.clientY, width: item.width, height: item.height, movingIds: moving.map((m) => m.id), startSizes };
                 } else if (handle && handle.dataset.handle === 'rotate') {
                     const moving = isChildItem ? [item] : this.getSelectedItems().filter((x) => !x.locked && x.visible !== false);
@@ -4769,8 +4803,20 @@
                             target.w = Math.round(target.width * sx);
                             target.h = Math.round(target.height * sy);
                             if (target.type === 'text') {
-                                const scaleW = target.width / start.width;
-                                target.fontSize = Math.max(10, Math.round((start.fontSize || 36) * scaleW));
+                                const scaleW = target.width / Math.max(1, start.width);
+                                target.fontSize = Math.max(10, Math.min(240, Math.round((start.fontSize || 36) * scaleW)));
+                                if (start.strokeWidth !== undefined && target.enableStroke) {
+                                    target.strokeWidth = Math.max(1, Math.min(10, Math.round((start.strokeWidth || 2) * scaleW * 10) / 10));
+                                }
+                                if (start.depth3DSize !== undefined && target.enable3D) {
+                                    target.depth3DSize = Math.max(1, Math.min(20, Math.round((start.depth3DSize || 4) * scaleW)));
+                                }
+                                if (start.paddingX !== undefined && target.showBackground) {
+                                    target.paddingX = Math.max(0, Math.round((start.paddingX || 16) * scaleW));
+                                }
+                                if (start.paddingY !== undefined && target.showBackground) {
+                                    target.paddingY = Math.max(0, Math.round((start.paddingY || 8) * scaleW));
+                                }
                             }
                         } else if (target.lockRatio !== false) {
                             const nextWidth = Math.max(10, Math.round(start.width + delta));
@@ -7912,7 +7958,12 @@
             } else if (selected.type === 'text') {
                 specificConfigHTML = `
                     <div class="gmd-section">
-                        <h4><i class="fas fa-font"></i> THUỘC TÍNH VĂN BẢN</h4>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <h4 style="margin:0;"><i class="fas fa-font"></i> THUỘC TÍNH VĂN BẢN</h4>
+                            <button type="button" class="gmd-btn" style="font-size:10px; padding:3px 8px; background:rgba(168,85,247,0.2); border:1px solid #a855f7; color:#d8b4fe; border-radius:6px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:4px;" onclick="window.giftMenuDesigner.fitTextBoxToContent('${selected.id}')" title="Tự động co khung viền ôm vừa khít dòng chữ">
+                                <i class="fas fa-compress-arrows-alt"></i> Ôm sát chữ
+                            </button>
+                        </div>
                         <div class="gmd-field">
                             <label>Nội dung văn bản</label>
                             <textarea class="gmd-input" style="height:55px; font-family:inherit; font-size:12px; resize:none; background:#1e293b; color:#fff;" data-goal-key="text">${selected.text || 'Nhập văn bản'}</textarea>
@@ -8684,22 +8735,26 @@
             const item = this.findInteractiveItem(itemId);
             if (!item) return;
             if (presetName === 'gaming-stroke') {
+                item.fontFamily = 'UTM Akashi';
+                item.fontSize = Math.max(item.fontSize || 36, 42);
                 item.showBackground = false;
                 item.textFillType = 'gradient';
-                item.textGradientFrom = '#fff000';
+                item.textGradientFrom = '#fff500';
                 item.textGradientTo = '#ff8800';
                 item.textGradientAngle = 180;
                 item.enableStroke = true;
                 item.strokeColor = '#000000';
-                item.strokeWidth = 2.5;
+                item.strokeWidth = 0.6;
                 item.enable3D = true;
                 item.depth3DColor = '#000000';
                 item.depth3DSize = 4;
                 item.enableGlow = true;
                 item.glowColor = '#ff6b00';
-                item.glowIntensity = 1;
+                item.glowIntensity = 1.5;
                 item.fontWeight = '900';
             } else if (presetName === 'gold-3d') {
+                item.fontFamily = 'UTM CopperplateB';
+                item.fontSize = Math.max(item.fontSize || 36, 42);
                 item.showBackground = false;
                 item.textFillType = 'gradient';
                 item.textGradientFrom = '#fffbeb';
@@ -8710,28 +8765,30 @@
                 item.strokeWidth = 1;
                 item.enable3D = true;
                 item.depth3DColor = '#78350f';
-                item.depth3DSize = 4;
+                item.depth3DSize = 5;
                 item.enableGlow = true;
                 item.glowColor = '#f59e0b';
-                item.glowIntensity = 1;
+                item.glowIntensity = 1.2;
                 item.fontWeight = '900';
             } else if (presetName === 'cyber-neon') {
+                item.fontFamily = 'UTM Aircona';
+                item.fontSize = Math.max(item.fontSize || 36, 42);
                 item.showBackground = false;
-                item.textFillType = 'gradient';
-                item.textGradientFrom = '#ffffff';
-                item.textGradientTo = '#06b6d4';
-                item.textGradientAngle = 180;
+                item.textFillType = 'solid';
+                item.color = '#ecfeff';
                 item.enableStroke = true;
-                item.strokeColor = '#0891b2';
-                item.strokeWidth = 1.5;
+                item.strokeColor = '#00f0ff';
+                item.strokeWidth = 1.2;
                 item.enable3D = true;
                 item.depth3DColor = '#083344';
-                item.depth3DSize = 4;
+                item.depth3DSize = 3;
                 item.enableGlow = true;
                 item.glowColor = '#00f0ff';
-                item.glowIntensity = 1.8;
+                item.glowIntensity = 2.2;
                 item.fontWeight = '900';
             } else if (presetName === 'idol-pink') {
+                item.fontFamily = 'UTM Cookies';
+                item.fontSize = Math.max(item.fontSize || 36, 42);
                 item.showBackground = false;
                 item.textFillType = 'gradient';
                 item.textGradientFrom = '#ffffff';
@@ -8739,15 +8796,17 @@
                 item.textGradientAngle = 180;
                 item.enableStroke = true;
                 item.strokeColor = '#831843';
-                item.strokeWidth = 1.5;
+                item.strokeWidth = 1.2;
                 item.enable3D = true;
                 item.depth3DColor = '#500724';
                 item.depth3DSize = 4;
                 item.enableGlow = true;
                 item.glowColor = '#ff2a85';
-                item.glowIntensity = 1.4;
+                item.glowIntensity = 1.8;
                 item.fontWeight = '900';
             } else if (presetName === 'fire-red') {
+                item.fontFamily = 'UTM Impact';
+                item.fontSize = Math.max(item.fontSize || 36, 42);
                 item.showBackground = false;
                 item.textFillType = 'gradient';
                 item.textGradientFrom = '#fff500';
@@ -8755,15 +8814,17 @@
                 item.textGradientAngle = 180;
                 item.enableStroke = true;
                 item.strokeColor = '#450a0a';
-                item.strokeWidth = 1.5;
+                item.strokeWidth = 1.2;
                 item.enable3D = true;
                 item.depth3DColor = '#450a0a';
                 item.depth3DSize = 4;
                 item.enableGlow = true;
                 item.glowColor = '#ef4444';
-                item.glowIntensity = 1.5;
+                item.glowIntensity = 1.8;
                 item.fontWeight = '900';
             } else if (presetName === 'vip-badge') {
+                item.fontFamily = 'UTM Alexander';
+                item.fontSize = Math.max(item.fontSize || 36, 38);
                 item.showBackground = true;
                 item.bgFillType = 'gradient';
                 item.bgGradientFrom = '#0f172a';
@@ -8774,9 +8835,9 @@
                 item.borderWidth = 1.5;
                 item.borderGlow = true;
                 item.borderGlowColor = 'rgba(245, 158, 11, 0.5)';
-                item.borderRadius = 16;
-                item.paddingX = 28;
-                item.paddingY = 12;
+                item.borderRadius = 14;
+                item.paddingX = 24;
+                item.paddingY = 10;
                 item.bgOpacity = 95;
                 item.textFillType = 'gradient';
                 item.textGradientFrom = '#fffbeb';
@@ -8787,16 +8848,74 @@
                 item.strokeWidth = 1;
                 item.enable3D = true;
                 item.depth3DColor = '#78350f';
-                item.depth3DSize = 3;
+                item.depth3DSize = 4;
                 item.enableGlow = true;
                 item.glowColor = '#f59e0b';
-                item.glowIntensity = 1;
+                item.glowIntensity = 1.2;
                 item.fontWeight = '900';
             }
+
+            // Auto fit box dimensions around the text content cleanly and lock aspect ratio
+            const textStr = String(item.text || 'Nhập văn bản');
+            const fSize = Number(item.fontSize) || 42;
+            const approxCharWidth = (item.fontFamily && item.fontFamily.includes('Bebas')) ? 0.6 : 0.72;
+            const fitLogicalW = Math.max(280, Math.min(1000, Math.round(textStr.length * fSize * approxCharWidth + 60)));
+            const fitLogicalH = Math.max(65, Math.round(fSize * 1.8));
+            const map = {
+                '9:16': { width: 360, height: 640 },
+                '16:9': { width: 640, height: 360 },
+                '1:1': { width: 480, height: 480 }
+            };
+            const cfg = map[this.aspectRatio] || map['9:16'];
+            const exportW = this.aspectRatio === '16:9' ? 1920 : 1080;
+            const exportH = this.aspectRatio === '16:9' ? 1080 : 1920;
+            const stageSx = cfg.width / exportW;
+            const stageSy = cfg.height / exportH;
+            item.w = fitLogicalW;
+            item.width = Math.round(fitLogicalW * stageSx);
+            item.h = fitLogicalH;
+            item.height = Math.round(fitLogicalH * stageSy);
+            item.lockRatio = true;
+            if (Number(item.x) < 0 || Number(item.x) > cfg.width - 50) {
+                item.x = Math.max(10, Math.round((cfg.width - item.width) / 2));
+            }
+
             this.invalidateItemVisual(item);
             this.renderCanvas();
             this.renderInspector();
             this.pushHistory('apply-text-preset');
+        }
+
+        fitTextBoxToContent(itemId) {
+            const item = this.findInteractiveItem(itemId || this.selectedId);
+            if (!item || item.type !== 'text') return;
+            const textStr = String(item.text || 'Nhập văn bản');
+            const fSize = Number(item.fontSize) || 42;
+            const approxCharWidth = (item.fontFamily && item.fontFamily.includes('Bebas')) ? 0.6 : 0.72;
+            const fitLogicalW = Math.max(260, Math.min(1000, Math.round(textStr.length * fSize * approxCharWidth + 60)));
+            const fitLogicalH = Math.max(65, Math.round(fSize * 1.8));
+            const map = {
+                '9:16': { width: 360, height: 640 },
+                '16:9': { width: 640, height: 360 },
+                '1:1': { width: 480, height: 480 }
+            };
+            const cfg = map[this.aspectRatio] || map['9:16'];
+            const exportW = this.aspectRatio === '16:9' ? 1920 : 1080;
+            const exportH = this.aspectRatio === '16:9' ? 1080 : 1920;
+            const stageSx = cfg.width / exportW;
+            const stageSy = cfg.height / exportH;
+            item.w = fitLogicalW;
+            item.width = Math.round(fitLogicalW * stageSx);
+            item.h = fitLogicalH;
+            item.height = Math.round(fitLogicalH * stageSy);
+            item.lockRatio = true;
+            if (Number(item.x) < 0 || Number(item.x) > cfg.width - 50) {
+                item.x = Math.max(10, Math.round((cfg.width - item.width) / 2));
+            }
+            this.invalidateItemVisual(item);
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('fit-text-box');
         }
 
         updateGoalBoardSelectedItem(key, value, pushHist = true) {
@@ -8854,6 +8973,16 @@
                             const ratio = previousH / previousW;
                             item.height = Math.round(item.width * ratio);
                             item.h = Math.round(item.w * ratio);
+                            if (item.type === 'text') {
+                                const scale = numVal / previousW;
+                                item.fontSize = Math.max(10, Math.min(240, Math.round((item.fontSize || 36) * scale)));
+                                if (item.strokeWidth && item.enableStroke) {
+                                    item.strokeWidth = Math.max(1, Math.min(10, Math.round(item.strokeWidth * scale * 10) / 10));
+                                }
+                                if (item.depth3DSize && item.enable3D) {
+                                    item.depth3DSize = Math.max(1, Math.min(20, Math.round(item.depth3DSize * scale)));
+                                }
+                            }
                         }
                     } else if (key === 'h') {
                         scaleStackContents(numVal / previousH);
@@ -8863,6 +8992,16 @@
                             const ratio = previousW / previousH;
                             item.width = Math.round(item.height * ratio);
                             item.w = Math.round(item.h * ratio);
+                            if (item.type === 'text') {
+                                const scale = item.w / previousW;
+                                item.fontSize = Math.max(10, Math.min(240, Math.round((item.fontSize || 36) * scale)));
+                                if (item.strokeWidth && item.enableStroke) {
+                                    item.strokeWidth = Math.max(1, Math.min(10, Math.round(item.strokeWidth * scale * 10) / 10));
+                                }
+                                if (item.depth3DSize && item.enable3D) {
+                                    item.depth3DSize = Math.max(1, Math.min(20, Math.round(item.depth3DSize * scale)));
+                                }
+                            }
                         }
                     }
                 } else {
@@ -10525,6 +10664,28 @@
                     if (i.type && i.type !== 'gift') {
                         itemExport.w = itemExport.width;
                         itemExport.h = itemExport.height;
+                    }
+                    if (i.type === 'text') {
+                        const avgScale = (sx + sy) / 2;
+                        itemExport.fontSize = Math.round(Number(i.fontSize || 36) * avgScale);
+                        if (i.strokeWidth !== undefined) {
+                            itemExport.strokeWidth = Math.round(Number(i.strokeWidth || 2) * avgScale * 10) / 10;
+                        }
+                        if (i.depth3DSize !== undefined) {
+                            itemExport.depth3DSize = Math.round(Number(i.depth3DSize || 4) * avgScale);
+                        }
+                        if (i.paddingX !== undefined) {
+                            itemExport.paddingX = Math.round(Number(i.paddingX) * avgScale);
+                        }
+                        if (i.paddingY !== undefined) {
+                            itemExport.paddingY = Math.round(Number(i.paddingY) * avgScale);
+                        }
+                        if (i.borderRadius !== undefined) {
+                            itemExport.borderRadius = Math.round(Number(i.borderRadius) * avgScale);
+                        }
+                        if (i.borderWidth !== undefined) {
+                            itemExport.borderWidth = Math.round(Number(i.borderWidth) * avgScale);
+                        }
                     }
                     if (i.type === 'gift-stack-group') {
                         const avgScale = (sx + sy) / 2;

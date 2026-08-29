@@ -1569,7 +1569,27 @@
         return el;
       }
 
-      if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'text', 'gift-stack-group', 'template-bundle'].includes(item.type)) {
+      if (item.type === 'text') {
+        const left = Math.round(offsetX + (Number(item.x) || 0) * s);
+        const top = Math.round(offsetY + (Number(item.y) || 0) * s);
+        const width = Math.round((Number(item.width || item.w) || 280) * s);
+        const height = Math.round((Number(item.height || item.h) || 60) * s);
+
+        el.style.left = `${left}px`;
+        el.style.top = `${top}px`;
+        el.style.width = `${width}px`;
+        el.style.height = `${height}px`;
+        el.style.transform = `rotate(${Number(item.rotation) || 0}deg)`;
+        el.style.zIndex = String(Number(item.zIndex) || 1);
+        el.style.overflow = 'visible';
+
+        el.innerHTML = window.MenuDesignerSharedRenderEngine && typeof window.MenuDesignerSharedRenderEngine.renderByType === 'function'
+          ? window.MenuDesignerSharedRenderEngine.renderByType(item, { mode: 'overlay', scale: s, apiBase: '', escapeText: true, gifts: giftsLibrary })
+          : '';
+        return el;
+      }
+
+      if (['goal-bar', 'goal-circle', 'boss-bar', 'top-contributors', 'podium-contributors', 'talent-live', 'talent-leaderboard', 'challenge-wheel', 'mystery-chests', 'combo', 'media-asset', 'goal-list', 'gift-stack-group', 'template-bundle'].includes(item.type)) {
             // Keep the OBS reference sizes identical to the Designer. These
             // values describe the widget's native design space and must not
             // change when the saved board width/height changes.

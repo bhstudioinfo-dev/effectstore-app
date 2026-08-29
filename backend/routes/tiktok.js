@@ -38,6 +38,47 @@ const {
 let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 try { ffmpegPath = require('ffmpeg-static') || ffmpegPath; } catch (_e) { }
 const giftMenuLayoutPath = dataPaths.giftMenuLayoutPath;
+
+// TikTok Gifts Catalog with exact coins and IDs
+let giftsCatalog = {};
+const catalogPath = path.join(__dirname, '../config/tiktok_gifts_catalog.json');
+function loadGiftsCatalog() {
+    try {
+        if (fs.existsSync(catalogPath)) {
+            giftsCatalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+        }
+    } catch (e) {
+        console.warn('⚠️ Could not load tiktok_gifts_catalog.json:', e.message);
+    }
+}
+loadGiftsCatalog();
+
+function getCatalogGiftInfo(giftId, giftName) {
+    if (!giftsCatalog || Object.keys(giftsCatalog).length === 0) loadGiftsCatalog();
+    if (giftId && giftsCatalog[String(giftId)]) {
+        return giftsCatalog[String(giftId)];
+    }
+    if (giftName) {
+        const norm = String(giftName).toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (norm && giftsCatalog[`name_${norm}`]) {
+            return giftsCatalog[`name_${norm}`];
+        }
+        if (norm && giftsCatalog[norm]) {
+            return giftsCatalog[norm];
+        }
+    }
+    return null;
+}
+
+// Background auto-refresh of TikTok gifts catalog if online
+setTimeout(async () => {
+    try {
+        const { buildCatalog } = require('../scripts/generate_tiktok_gifts_catalog');
+        await buildCatalog();
+        loadGiftsCatalog();
+    } catch (_err) {}
+}, 5000);
+
 const goalAssetDir = dataPaths.goalAssetsDir;
 const savedPresentationNumber = (presentation, key, fallback, allowZero = false) => {
     const saved = Number(presentation?.[key]);
@@ -834,7 +875,7 @@ router.post('/test-trigger', authMiddleware, async (req, res) => {
                 return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
             }
             await obsService.ensureEffectPlayerSource().catch(() => {});
-            if (!await waitForEffectPlayerReady(req, 1000)) {
+            if (!await waitForEffectPlayerReady(req, 3000)) {
                 return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS. Vui lòng mở nguồn OBS Browser.' });
             }
         }
@@ -1028,7 +1069,7 @@ router.post('/simulate-gift', authMiddleware, async (req, res) => {
             }
             await obsService.ensureEffectPlayerSource();
             const sourceStatus = await obsService.getFoundationSourceStatus();
-            if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req, 1000)) {
+            if (!sourceStatus.effect_player || !await waitForEffectPlayerReady(req, 3000)) {
                 return res.status(503).json({ success: false, triggered: false, message: 'Nguồn effect_player chưa sẵn sàng trên OBS.' });
             }
         }
@@ -1233,33 +1274,37 @@ router.get('/gifts-library', async (req, res) => {
             return res.json({
                 success: true,
                 source: liveCatalog.source,
-                gifts: liveCatalog.gifts.map((gift) => ({
-                    id: String(gift.giftId),
-                    name: gift.giftName,
-                    icon: gift.iconUrl,
-                    coins: gift.diamondCount || 0,
-                    giftId: String(gift.giftId),
-                    giftName: gift.giftName,
-                    diamondCount: gift.diamondCount || 0,
-                    iconUrl: gift.iconUrl || ''
-                }))
+                gifts: liveCatalog.gifts.map((gift) => {
+                    const catalogInfo = getCatalogGiftInfo(gift.giftId, gift.giftName);
+                    const diamondCount = Number(gift.diamondCount || catalogInfo?.coins || catalogInfo?.diamondCount || 0);
+                    return {
+                        id: String(gift.giftId),
+                        name: gift.giftName,
+                        icon: gift.iconUrl || catalogInfo?.iconUrl || '',
+                        coins: diamondCount,
+                        giftId: String(gift.giftId),
+                        giftName: gift.giftName,
+                        diamondCount,
+                        iconUrl: gift.iconUrl || catalogInfo?.iconUrl || ''
+                    };
+                })
             });
         }
         const defaultGifts = [
-            { id: 'rose', name: 'Rose', icon: '/assets/gift-icons/Rose.png', coins: 1 },
-            { id: 'tiktok', name: 'TikTok', icon: '/assets/gift-icons/TikTok.png', coins: 1 },
-            { id: 'ice_cream', name: 'Ice Cream', icon: '/assets/gift-icons/Ice_Cream_Cone.png', coins: 5 },
-            { id: 'heart', name: 'Heart', icon: '/assets/gift-icons/Finger_Heart.png', coins: 10 },
-            { id: 'corgi', name: 'Corgi', icon: '/assets/gift-icons/Corgi.png', coins: 50 },
-            { id: 'doughnut', name: 'Doughnut', icon: '/assets/gift-icons/Doughnut.png', coins: 20 },
-            { id: 'perfume', name: 'Perfume', icon: '/assets/gift-icons/Perfume.png', coins: 100 },
-            { id: 'sunglasses', name: 'Sunglasses', icon: '/assets/gift-icons/Sunglasses.png', coins: 50 },
-            { id: 'money_gun', name: 'Money Gun', icon: '/assets/gift-icons/Money_Gun.png', coins: 500 },
-            { id: 'pk_crown', name: 'PK Crown', icon: '/assets/gift-icons/PK_crown_ring.png', coins: 1000 },
+            { id: '5655', name: 'Rose', icon: '/assets/gift-icons/Rose.png', coins: 1 },
+            { id: '5269', name: 'TikTok', icon: '/assets/gift-icons/TikTok.png', coins: 1 },
+            { id: '5827', name: 'Ice Cream Cone', icon: '/assets/gift-icons/Ice_Cream_Cone.png', coins: 5 },
+            { id: '5487', name: 'Finger Heart', icon: '/assets/gift-icons/Finger_Heart.png', coins: 5 },
+            { id: '6064', name: 'Corgi', icon: '/assets/gift-icons/Corgi.png', coins: 50 },
+            { id: '5650', name: 'Doughnut', icon: '/assets/gift-icons/Doughnut.png', coins: 30 },
+            { id: '5660', name: 'Perfume', icon: '/assets/gift-icons/Perfume.png', coins: 20 },
+            { id: '5828', name: 'Sunglasses', icon: '/assets/gift-icons/Sunglasses.png', coins: 50 },
+            { id: '5659', name: 'Money Gun', icon: '/assets/gift-icons/Money_Gun.png', coins: 500 },
+            { id: 'pk_crown_ring', name: 'PK Crown Ring', icon: '/assets/gift-icons/PK_crown_ring.png', coins: 1000 },
             { id: 'friendship_necklace', name: 'Friendship Necklace', icon: '/assets/gift-icons/Friendship_Necklace.png', coins: 299 },
             { id: 'wooly_hat', name: 'Wooly Hat', icon: '/assets/gift-icons/Wooly_Hat.png', coins: 99 },
-            { id: 'boxing_gloves', name: 'Boxing Gloves', icon: '/assets/gift-icons/Boxing_Gloves.png', coins: 199 },
-            { id: 'love_you', name: 'Love You', icon: '/assets/gift-icons/Love_you_so_much.png', coins: 520 },
+            { id: 'boxing_gloves', name: 'Boxing Gloves', icon: '/assets/gift-icons/Boxing_Gloves.png', coins: 299 },
+            { id: 'love_you_so_much', name: 'Love You So Much', icon: '/assets/gift-icons/Love_you_so_much.png', coins: 520 },
             { id: 'youre_awesome', name: "You're Awesome", icon: '/assets/gift-icons/You\'re_awesome.png', coins: 88 }
         ];
 
@@ -1270,20 +1315,30 @@ router.get('/gifts-library', async (req, res) => {
             for (const file of files) {
                 if (!/\.(png|jpg|jpeg|webp|gif)$/i.test(file)) continue;
                 const baseWithoutExt = path.basename(file, path.extname(file));
+                const idMatch = baseWithoutExt.match(/_(\d+)$/);
+                const numericId = idMatch ? idMatch[1] : null;
                 const cleanName = baseWithoutExt
                     .replace(/[\s_]+\d+$/g, '')
                     .replace(/[\s_]+\(\d+\)$/g, '')
                     .replace(/[\s_]+/g, ' ')
                     .trim();
                 const key = cleanName.toLowerCase();
-                const id = key.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                const slugId = key.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+                const catalogInfo = getCatalogGiftInfo(numericId, cleanName);
+                const realCoins = Number(catalogInfo?.coins || catalogInfo?.diamondCount || 1);
+                const finalId = numericId || catalogInfo?.id || slugId;
+                const finalName = catalogInfo?.name || cleanName;
 
                 if (!fileGiftsMap.has(key) || file.endsWith('.png')) {
                     fileGiftsMap.set(key, {
-                        id,
-                        name: cleanName,
+                        id: String(finalId),
+                        name: finalName,
                         icon: `/assets/gift-icons/${file}`,
-                        coins: 1
+                        coins: realCoins,
+                        diamondCount: realCoins,
+                        giftId: String(finalId),
+                        giftName: finalName
                     });
                 }
             }
@@ -1292,13 +1347,28 @@ router.get('/gifts-library', async (req, res) => {
 
         const mergedByName = new Map();
         defaultGifts.forEach((gift) => {
-            mergedByName.set(gift.name.toLowerCase().trim(), gift);
+            const catalogInfo = getCatalogGiftInfo(gift.id, gift.name);
+            const coins = Number(catalogInfo?.coins || catalogInfo?.diamondCount || gift.coins || 1);
+            mergedByName.set(gift.name.toLowerCase().trim(), {
+                ...gift,
+                coins,
+                diamondCount: coins,
+                giftId: String(catalogInfo?.id || gift.id),
+                giftName: catalogInfo?.name || gift.name
+            });
         });
 
         fileGifts.forEach((gift) => {
             const key = gift.name.toLowerCase().trim();
             if (!mergedByName.has(key)) {
                 mergedByName.set(key, gift);
+            } else {
+                const existing = mergedByName.get(key);
+                if (gift.coins && gift.coins > 1 && existing.coins === 1) {
+                    existing.coins = gift.coins;
+                    existing.diamondCount = gift.coins;
+                }
+                if (gift.id && !existing.id) existing.id = gift.id;
             }
         });
 
@@ -1308,14 +1378,20 @@ router.get('/gifts-library', async (req, res) => {
                 const key = c.giftName.toLowerCase().trim();
                 const existing = mergedByName.get(key) || (c.giftId ? mergedByName.get(c.giftId) : null);
                 if (existing) {
-                    if (c.coins) existing.coins = c.coins;
+                    if (c.coins) {
+                        existing.coins = c.coins;
+                        existing.diamondCount = c.coins;
+                    }
                     if (c.iconUrl) existing.icon = c.iconUrl;
                 } else {
                     mergedByName.set(key, {
                         id: c.giftId || key.replace(/[^a-z0-9]+/g, '_'),
                         name: c.giftName,
                         icon: c.iconUrl || '/assets/gift-icons/Rose.png',
-                        coins: c.coins || 1
+                        coins: c.coins || 1,
+                        diamondCount: c.coins || 1,
+                        giftId: c.giftId || key.replace(/[^a-z0-9]+/g, '_'),
+                        giftName: c.giftName
                     });
                 }
             }
