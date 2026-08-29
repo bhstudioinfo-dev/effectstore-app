@@ -972,11 +972,14 @@
 
                 <!-- OBS -->
                 <div class="status-card-horizontal status-disconnected" id="status-card-obs" onclick="app.openObsGuide()" style="cursor:pointer;" title="Nhấn để xem hướng dẫn kết nối OBS">
-                    <div class="status-icon"><i class="fas fa-times"
-                            style="font-style: normal; font-family: sans-serif;">×</i></div>
+                    <div class="status-icon" id="status-icon-obs"><i class="fas fa-video"
+                            style="font-style: normal; font-family: sans-serif;">📹</i></div>
                     <div class="status-info">
-                        <div class="status-title">PHẦN MỀM OBS</div>
-                        <div class="status-subtext" id="status-sub-obs">Chưa tìm thấy OBS (Nhấn xem hướng dẫn)</div>
+                        <div class="status-title" style="display:flex;align-items:center;gap:6px;">
+                            <span>PHẦN MỀM OBS</span>
+                            <span id="status-obs-click-hint" style="font-size:10px;font-weight:700;color:#38bdf8;background:rgba(56,189,248,0.15);padding:1px 6px;border-radius:4px;letter-spacing:0;">👉 Bấm xem</span>
+                        </div>
+                        <div class="status-subtext" id="status-sub-obs">👉 Nhấn để kết nối trong 60s</div>
                         <div id="obs-source-diagnostic"
                             style="display:none;font-size:10px;line-height:1.35;margin-top:3px;color:var(--text-muted);">
                             <span>gift_menu → <b id="obs-source-gift-menu">--</b></span>
@@ -984,7 +987,7 @@
                                     id="obs-source-effect-player">--</b></span>
                         </div>
                     </div>
-                    <div class="status-badge" id="status-badge-obs">OFFLINE</div>
+                    <div class="status-badge status-badge-guide" id="status-badge-obs">📖 HƯỚNG DẪN ➔</div>
                 </div>
 
                 <!-- LAUNCHER -->
@@ -996,6 +999,24 @@
                         <div class="status-subtext" id="status-sub-launcher">Hệ thống đang hoạt động</div>
                     </div>
                     <div class="status-badge" id="status-badge-launcher">ĐANG CHẠY</div>
+                </div>
+            </div>
+
+            <!-- OBS Alert Banner (chỉ hiện khi chưa kết nối OBS) -->
+            <div id="obs-guide-alert-banner" class="obs-alert-banner" onclick="app.openObsGuide()" style="display:none;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:32px;height:32px;border-radius:8px;background:rgba(34,211,238,0.2);display:flex;align-items:center;justify-content:center;color:#22d3ee;font-size:15px;flex-shrink:0;">
+                        <i class="fas fa-satellite-dish"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:13px;font-weight:800;color:#fff;">Bạn chưa kết nối với OBS Studio?</div>
+                        <div style="font-size:11px;color:#94a3b8;">Nhấn vào đây để xem hướng dẫn chi tiết có sẵn ảnh minh họa — kết nối siêu nhanh trong 1 phút!</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button style="padding:7px 15px;border:none;border-radius:8px;background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 10px rgba(6,182,212,0.35);">
+                        <i class="fas fa-book-open"></i> Xem Hướng Dẫn ➔
+                    </button>
                 </div>
             </div>
 

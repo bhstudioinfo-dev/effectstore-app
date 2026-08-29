@@ -2045,6 +2045,65 @@ input:checked + .slider:before { transform: translateX(18px); }
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+/* OBS Disconnected Action Badge & Glow */
+.status-badge-guide {
+    background: linear-gradient(135deg, #06b6d4, #3b82f6) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(34, 211, 238, 0.5) !important;
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+    cursor: pointer;
+    animation: pulseGuideBadge 2.5s infinite;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+@keyframes pulseGuideBadge {
+    0%, 100% {
+        box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 18px rgba(6, 182, 212, 0.7);
+        transform: scale(1.04);
+    }
+}
+
+#status-card-obs.status-disconnected {
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border-color: rgba(34, 211, 238, 0.3);
+}
+
+#status-card-obs.status-disconnected:hover {
+    border-color: rgba(34, 211, 238, 0.6);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 20, 25, 0.95));
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(6, 182, 212, 0.2);
+}
+
+/* OBS Alert Banner */
+.obs-alert-banner {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(59, 130, 246, 0.12));
+    border: 1px solid rgba(34, 211, 238, 0.3);
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.obs-alert-banner:hover {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(59, 130, 246, 0.2));
+    border-color: rgba(34, 211, 238, 0.55);
+    box-shadow: 0 6px 20px rgba(6, 182, 212, 0.2);
+    transform: translateY(-1px);
+}
+
 /* State: Connected (Green) */
 .status-connected {
     background: linear-gradient(135deg, rgba(10, 30, 20, 0.9), rgba(5, 20, 10, 0.9));

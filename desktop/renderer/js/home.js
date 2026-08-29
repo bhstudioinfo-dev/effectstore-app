@@ -1708,14 +1708,34 @@ class EffectStoreApp {
 
         // OBS
         const obsCard = document.getElementById('status-card-obs');
+        const obsBadge = document.getElementById('status-badge-obs');
+        const obsSub = document.getElementById('status-sub-obs');
+        const obsHint = document.getElementById('status-obs-click-hint');
+        const obsAlertBanner = document.getElementById('obs-guide-alert-banner');
+
         if (data.obs?.connected) {
-            obsCard.className = 'status-card-horizontal status-connected';
-            document.getElementById('status-badge-obs').textContent = 'ĐÃ KẾT NỐI';
-            document.getElementById('status-sub-obs').textContent = 'Sẵn sàng kích hoạt hiệu ứng';
+            if (obsCard) obsCard.className = 'status-card-horizontal status-connected';
+            if (obsBadge) {
+                obsBadge.className = 'status-badge';
+                obsBadge.textContent = 'ĐÃ KẾT NỐI';
+            }
+            if (obsSub) {
+                obsSub.textContent = 'Sẵn sàng kích hoạt hiệu ứng';
+                obsSub.style.color = 'rgba(255, 255, 255, 0.6)';
+            }
+            if (obsHint) obsHint.style.display = 'none';
+            if (obsAlertBanner) obsAlertBanner.style.display = 'none';
         } else {
-            obsCard.className = 'status-card-horizontal status-disconnected';
-            document.getElementById('status-badge-obs').textContent = 'OFFLINE';
-            document.getElementById('status-sub-obs').textContent = 'Đang dò tìm... Vui lòng mở OBS';
+            if (obsCard) obsCard.className = 'status-card-horizontal status-disconnected';
+            if (obsBadge) {
+                obsBadge.className = 'status-badge status-badge-guide';
+                obsBadge.innerHTML = '📖 HƯỚNG DẪN ➔';
+            }
+            if (obsSub) {
+                obsSub.innerHTML = '👉 <span style="color:#38bdf8;font-weight:700;">Nhấn để kết nối trong 60s</span>';
+            }
+            if (obsHint) obsHint.style.display = 'inline-block';
+            if (obsAlertBanner) obsAlertBanner.style.display = 'flex';
         }
 
         const obsDiagnostic = document.getElementById('obs-source-diagnostic');
