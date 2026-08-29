@@ -1044,13 +1044,10 @@ class EffectStoreApp {
 
             <!-- Nút hành động -->
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                <button onclick="app.closeModal();switchView('settings');" style="flex:1.2;min-width:200px;padding:12px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 15px rgba(16,185,129,0.3);">
+                <button onclick="app.closeModal();switchView('settings');" style="flex:1;min-width:200px;padding:12px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 15px rgba(16,185,129,0.3);">
                     <i class="fas fa-key"></i> Nhập Mật Khẩu Vào LiveFlow
                 </button>
-                <button onclick="window.open('obs-guide.html', '_blank');" style="flex:1;min-width:180px;padding:12px 16px;border:1px solid rgba(34,211,238,0.3);border-radius:10px;background:rgba(34,211,238,0.1);color:#38bdf8;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-                    <i class="fas fa-book-open"></i> Xem Hướng Dẫn Chi Tiết
-                </button>
-                <button onclick="app.closeModal();" style="padding:12px 20px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.05);color:#cbd5e1;font-weight:700;cursor:pointer;">
+                <button onclick="app.closeModal();" style="padding:12px 24px;border:1px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.05);color:#cbd5e1;font-weight:700;cursor:pointer;">
                     Đã hiểu
                 </button>
             </div>
