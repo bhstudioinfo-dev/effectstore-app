@@ -188,15 +188,136 @@
                 </span>
                 <span class="gmd-aura gmd-aura-front ${auraClass}"></span>
             </div>
-            ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-size:${textSize}px;color:${nameColor};--label-gap:${textGap}px;text-align:${item.textAlign || 'center'};${labelBackground}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;color:${nameColor};">${name}</div>${subtext ? `<div style="font-size:${Math.max(5, Math.round(textSize * .78))}px;color:${subtextColor};opacity:.9;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:${roundPx(2, ctx.scale)}px;">${subtext}</div>` : ''}</div>` : ''}
+            ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-size:${textSize}px;font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'};color:${nameColor};--label-gap:${textGap}px;text-align:${item.textAlign || 'center'};${labelBackground}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;color:${nameColor};">${name}</div>${subtext ? `<div style="font-size:${Math.max(5, Math.round(textSize * .78))}px;color:${subtextColor};opacity:.9;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:${roundPx(2, ctx.scale)}px;">${subtext}</div>` : ''}</div>` : ''}
         `;
     }
 
     function renderText(item, options) {
         const ctx = createContext(options);
+        const fontSize = font(ctx, item.fontSize, 36);
+        const fontFamily = item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit';
+        const fontWeight = item.fontWeight || 'bold';
+        const textAlign = item.textAlign || 'center';
+
+        // 1. Text fill & color
+        let textFillStyle = '';
+        if (item.textFillType === 'gradient') {
+            const angle = item.textGradientAngle !== undefined ? item.textGradientAngle : 90;
+            const from = item.textGradientFrom || '#f59e0b';
+            const to = item.textGradientTo || '#ec4899';
+            textFillStyle = `background: linear-gradient(${angle}deg, ${from}, ${to}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent;`;
+        } else {
+            textFillStyle = `color: ${item.color || '#ffffff'};`;
+        }
+
+        // 2. Text stroke (Viền chữ)
+        let strokeStyle = '';
+        if (item.enableStroke) {
+            const sWidth = Math.max(1, Math.round((Number(item.strokeWidth) || 2) * (ctx.scale || 1)));
+            const sColor = item.strokeColor || '#000000';
+            strokeStyle = `-webkit-text-stroke: ${sWidth}px ${sColor}; paint-order: stroke fill;`;
+        }
+
+        // 3. Multi-layer Shadows (3D Extrusion + Glow + Custom textShadow)
+        const shadowList = [];
+        if (item.enable3D) {
+            const dSize = Math.max(1, Math.round((Number(item.depth3DSize) || 4) * (ctx.scale || 1)));
+            const dColor = item.depth3DColor || '#78350f';
+            for (let i = 1; i <= dSize; i++) {
+                shadowList.push(`${i}px ${i}px 0 ${dColor}`);
+            }
+            shadowList.push(`${dSize + 1}px ${dSize + 1}px ${Math.max(2, Math.round(5 * (ctx.scale || 1)))}px rgba(0,0,0,0.8)`);
+        }
+        if (item.enableGlow) {
+            const gColor = item.glowColor || '#a855f7';
+            const gInt = Math.max(0.5, Math.min(3, Number(item.glowIntensity) || 1));
+            const r1 = Math.round(6 * gInt * (ctx.scale || 1));
+            const r2 = Math.round(14 * gInt * (ctx.scale || 1));
+            const r3 = Math.round(24 * gInt * (ctx.scale || 1));
+            shadowList.push(`0 0 ${r1}px ${gColor}`, `0 0 ${r2}px ${gColor}`, `0 0 ${r3}px ${gColor}`);
+        }
+        if (item.textShadow && item.textShadow !== 'none') {
+            shadowList.push(item.textShadow);
+        }
+        const textShadowStyle = shadowList.length > 0 ? `text-shadow: ${shadowList.join(', ')};` : '';
+
+        // 4. Background Box (Lớp nền giống Gộp Quà)
+        let boxStyle = 'width:100%; height:100%; box-sizing:border-box;';
+        if (item.showBackground) {
+            const padX = roundPx(item.paddingX !== undefined ? item.paddingX : 16, ctx.scale);
+            const padY = roundPx(item.paddingY !== undefined ? item.paddingY : 8, ctx.scale);
+            const bRadius = roundPx(item.borderRadius !== undefined ? item.borderRadius : 12, ctx.scale);
+            const bWidth = Math.max(1, roundPx(item.borderWidth !== undefined ? item.borderWidth : 1, ctx.scale));
+            const bColor = item.borderColor || '#38bdf8';
+
+            let bgVal = '';
+            if (item.bgFillType === 'gradient') {
+                const bgAngle = item.bgGradientAngle !== undefined ? item.bgGradientAngle : 135;
+                const bgFrom = item.bgGradientFrom || '#1e1b4b';
+                const bgTo = item.bgGradientTo || '#3b0764';
+                bgVal = `linear-gradient(${bgAngle}deg, ${bgFrom}, ${bgTo})`;
+            } else {
+                bgVal = item.bgColor || 'rgba(15, 23, 42, 0.85)';
+            }
+
+            const bgOp = item.bgOpacity !== undefined ? Math.max(0, Math.min(100, Number(item.bgOpacity))) / 100 : 1;
+            const borderVal = item.showBorder ? `border: ${bWidth}px solid ${bColor};` : 'border: none;';
+            const glowVal = (item.showBorder && item.borderGlow)
+                ? `box-shadow: 0 0 ${roundPx(14, ctx.scale)}px ${item.borderGlowColor || bColor};`
+                : '';
+
+            boxStyle += ` padding: ${padY}px ${padX}px; border-radius: ${bRadius}px; ${borderVal} ${glowVal} background: ${bgVal}; opacity: ${bgOp};`;
+        }
+
+        // 5. Build Content HTML
+        // Use dual-layer when 3D is enabled so the extruded block is placed on the back layer
+        // and NEVER bleeds through or obscures the face text.
+        const isMarquee = Boolean(item.isMarquee);
+        const marqueeSpeed = Math.max(2, Number(item.marqueeSpeed) || 12);
+        const rawContent = text(ctx, item.text || 'Nhập văn bản');
+        const animId = String(item.id || 'text').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const needsDualLayer = Boolean(item.enable3D) || (item.textFillType === 'gradient' && shadowList.length > 0);
+
+        let innerContentHtml = '';
+        if (needsDualLayer) {
+            const backColor = item.enable3D ? (item.depth3DColor || '#78350f') : 'transparent';
+            innerContentHtml = `
+                <span class="gmd-3d-wrap" style="position:relative; display:inline-block; vertical-align:middle; line-height:inherit;">
+                    <span class="gmd-3d-back" aria-hidden="true" style="position:absolute; left:0; top:0; z-index:1; color:${backColor}; -webkit-text-stroke:0 !important; ${textShadowStyle} user-select:none; pointer-events:none; white-space:inherit;">${rawContent}</span>
+                    <span class="gmd-3d-front" style="position:relative; z-index:2; display:inline-block; ${textFillStyle} ${strokeStyle} line-height:inherit; white-space:inherit;">${rawContent}</span>
+                </span>
+            `;
+        } else {
+            innerContentHtml = `
+                <span class="gmd-text-inner" style="${textFillStyle} ${strokeStyle} ${textShadowStyle} display:inline-block; line-height:inherit; white-space:inherit;">
+                    ${rawContent}
+                </span>
+            `;
+        }
+
+        if (isMarquee) {
+            return `
+                <div class="gmd-text-widget gmd-text-marquee-box" style="${boxStyle} overflow:hidden; display:flex; align-items:center; pointer-events:none;">
+                    <style>
+                        @keyframes gmd-marquee-${animId} {
+                            0% { transform: translateX(100%); }
+                            100% { transform: translateX(-100%); }
+                        }
+                    </style>
+                    <div style="display:inline-block; white-space:nowrap; width:100%; will-change:transform; animation: gmd-marquee-${animId} ${marqueeSpeed}s linear infinite; font-size:${fontSize}px; font-weight:${fontWeight}; font-family:${fontFamily}; line-height:1.2; text-align:${textAlign};">
+                        ${innerContentHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Justify-content based on textAlign
+        const justifyMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+        const justifyVal = justifyMap[textAlign] || 'center';
+
         return `
-            <div class="gmd-text-widget" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:${item.color || '#ffffff'}; font-size:${font(ctx, item.fontSize, 36)}px; font-weight:${item.fontWeight || 'bold'}; text-shadow:${item.textShadow || 'none'}; text-align:${item.textAlign || 'center'}; font-family:inherit; line-height:1.2; word-break:break-word; pointer-events:none;">
-                ${text(ctx, item.text || 'Nhap van ban')}
+            <div class="gmd-text-widget" style="${boxStyle} display:flex; align-items:center; justify-content:${justifyVal}; font-size:${fontSize}px; font-weight:${fontWeight}; font-family:${fontFamily}; line-height:1.2; text-align:${textAlign}; word-break:break-word; pointer-events:none;">
+                ${innerContentHtml}
             </div>
         `;
     }
@@ -831,7 +952,7 @@
             }
 
             return `
-                <div class="gmd-goal-bar-widget theme-pk-multi ${presetClass}" style="position: relative; border-radius: ${radius}px; background: ${containerBg} !important; border: ${containerBorder} !important; box-shadow: ${containerShadow} !important; backdrop-filter: ${containerBackdrop} !important; -webkit-backdrop-filter: ${containerBackdrop} !important; padding: ${roundPx(16, ctx.scale)}px; display: flex; flex-direction: column; justify-content: flex-start; height: 100%; box-sizing: border-box; width: 100%;">
+                <div class="gmd-goal-bar-widget theme-pk-multi ${presetClass}" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'}; position: relative; border-radius: ${radius}px; background: ${containerBg} !important; border: ${containerBorder} !important; box-shadow: ${containerShadow} !important; backdrop-filter: ${containerBackdrop} !important; -webkit-backdrop-filter: ${containerBackdrop} !important; padding: ${roundPx(16, ctx.scale)}px; display: flex; flex-direction: column; justify-content: flex-start; height: 100%; box-sizing: border-box; width: 100%;">
                     
                     <style>
                     @keyframes gmdClockSpin {
@@ -984,7 +1105,7 @@
         const subSize = font(ctx, item.subtitleFontSize, 24);
         const radius = length(ctx, item.borderRadius, 12);
         return `
-            <div class="gmd-goal-bar-widget ${item.themeStyle === 'neon' ? 'theme-neon' : ''}" style="border-radius: ${radius}px; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `${color}80`)}; box-shadow: ${item.hideBg ? 'none' : `0 ${roundPx(10, ctx.scale)}px ${roundPx(30, ctx.scale)}px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 ${roundPx(15, ctx.scale)}px ${color}26`}; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at top left, ${color}12, #0f172a)`)}; padding: ${roundPx(16, ctx.scale)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
+            <div class="gmd-goal-bar-widget ${item.themeStyle === 'neon' ? 'theme-neon' : ''}" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'}; border-radius: ${radius}px; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `${color}80`)}; box-shadow: ${item.hideBg ? 'none' : `0 ${roundPx(10, ctx.scale)}px ${roundPx(30, ctx.scale)}px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 ${roundPx(15, ctx.scale)}px ${color}26`}; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at top left, ${color}12, #0f172a)`)}; padding: ${roundPx(16, ctx.scale)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; gap: ${roundPx(8, ctx.scale)}px; width: 100%;">
                     <div class="gmd-goal-bar-title-row" style="font-size: ${titleSize}px;">
                         <span style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')}; text-shadow: 0 0 ${roundPx(10, ctx.scale)}px ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')}80; font-size: ${titleSize}px;">${text(ctx, item.name) || (text(ctx, item.giftName) + ' Goal') || 'Rose Goal'}</span>
@@ -1121,7 +1242,7 @@
                 : `<div style="width:${goalIconSize}px;height:${goalIconSize}px;border-radius:50%;background-image:url('${giftIcon}');background-size:contain;background-repeat:no-repeat;background-position:center;filter:drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color});display:inline-block;"></div>`)
             : `<span style="font-size:${Math.round(goalIconSize * .73)}px;line-height:1;filter:drop-shadow(0 0 ${roundPx(6, ctx.scale)}px ${color});">${text(ctx, icon)}</span>`);
         return `
-            <div class="gmd-goal-circle-widget" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; background:${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(10,15,30,0.5) 0%, #0a0a14 100%)')}; border:${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : 'rgba(255,255,255,0.08)'}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(16, ctx.scale)}px; box-shadow:${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.37)`};">
+            <div class="gmd-goal-circle-widget" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'}; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box; background:${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : 'radial-gradient(circle at center, rgba(10,15,30,0.5) 0%, #0a0a14 100%)')}; border:${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : 'rgba(255,255,255,0.08)'}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(16, ctx.scale)}px; box-shadow:${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.37)`};">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display:flex; flex-direction:column; align-items:center; width:100%; position:relative;">
                     ${showPct ? `<div class="gmd-pct-text" style="font-size: ${font(ctx, pctSize, 24)}px; font-weight: 900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 ${roundPx(10, ctx.scale)}px ${color}80; margin-bottom: ${roundPx(8, ctx.scale)}px;">${pct}%</div>` : ''}
                     <div style="position:relative;width:${progressSize}px;height:${progressSize}px;display:flex;align-items:center;justify-content:center;">
@@ -1146,7 +1267,7 @@
         const color = item.barColor || '#ef4444';
         const formatNum = (num) => num >= 1000 ? (num / 1000).toFixed(1).replace('.0', '') + 'k' : num;
         return `
-            <div class="gmd-boss-bar-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${color}4d, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`}; display: flex; flex-direction: column; justify-content: center; padding: ${roundPx(16, ctx.scale)}px; box-sizing: border-box; width: 100%; height: 100%;">
+            <div class="gmd-boss-bar-widget" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'}; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border-color: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : color)}; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${color}4d, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`}; display: flex; flex-direction: column; justify-content: center; padding: ${roundPx(16, ctx.scale)}px; box-sizing: border-box; width: 100%; height: 100%;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; gap: ${roundPx(14, ctx.scale)}px; width: 100%;">
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: ${font(ctx, item.fontSize, 38)}px; font-weight: 900; color: #fff; line-height: 1;">
                         <span style="display: flex; align-items: center; gap: ${roundPx(6, ctx.scale)}px; text-shadow: 0 0 ${roundPx(10, ctx.scale)}px ${color}; font-size: ${font(ctx, item.fontSize, 38)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'};">${text(ctx, item.bossName || 'BOSS HP')}</span>
@@ -1168,7 +1289,7 @@
         const ctx = createContext(options);
         const count = item.comboCount || 88;
         return `
-            <div class="gmd-combo-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at center, rgba(239, 68, 68, 0.15) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? 'none' : `1.5px solid ${item.useCustomBg ? bg(item.bgColor) : (item.barColor || '#ef4444')}`}; font-size: ${font(ctx, item.fontSize, 40)}px; border-radius: ${roundPx(24, ctx.scale)}px; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; padding: ${roundPx(12, ctx.scale)}px; gap: ${roundPx(8, ctx.scale)}px; display: flex; align-items: center; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(12, ctx.scale)}px rgba(239, 68, 68, 0.2)`};">
+            <div class="gmd-combo-widget" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'}; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at center, rgba(239, 68, 68, 0.15) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? 'none' : `1.5px solid ${item.useCustomBg ? bg(item.bgColor) : (item.barColor || '#ef4444')}`}; font-size: ${font(ctx, item.fontSize, 40)}px; border-radius: ${roundPx(24, ctx.scale)}px; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%; padding: ${roundPx(12, ctx.scale)}px; gap: ${roundPx(8, ctx.scale)}px; display: flex; align-items: center; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : '#ffffff'}; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(12, ctx.scale)}px rgba(239, 68, 68, 0.2)`};">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; align-items: center; gap: ${roundPx(8, ctx.scale)}px; width: 100%;">
                     <div class="gmd-combo-num" style="font-size: ${font(ctx, item.numberFontSize, 64)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">x${count}</div>
                     <div style="color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">${text(ctx, item.name || 'COMBO DANG CHAY!')}</div>
@@ -1191,7 +1312,7 @@
             </div>
         `;
         return `
-            <div class="gmd-mystery-widget" style="background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at center, rgba(168, 85, 247, 0.1) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : color}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(18, ctx.scale)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
+            <div class="gmd-mystery-widget" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'}; background: ${item.hideBg ? 'transparent' : (item.useCustomBg ? bg(item.bgColor) : `radial-gradient(circle at center, rgba(168, 85, 247, 0.1) 0%, #0a0a14 100%)`)}; border: ${item.hideBg ? '1px solid transparent' : `1px solid ${item.useCustomBg ? bg(item.bgColor) : color}`}; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(18, ctx.scale)}px; display: flex; flex-direction: column; justify-content: center; height: 100%; box-sizing: border-box; width: 100%;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; width: 100%;">
                     <div class="gmd-mystery-header" style="font-size: ${font(ctx, item.fontSize, 32)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : (item.titleColor || '#ffffff')};">${text(ctx, item.name || 'Mystery Chest')}</div>
                     <div class="gmd-mystery-title-row" style="font-size: ${roundPx(26, ctx.scale)}px; margin-top: ${roundPx(6, ctx.scale)}px; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : ''};">
@@ -1309,7 +1430,7 @@
         const headerInfo = renderWidgetHeader(item, ctx, 'BANG VINH DANH', color, 'gmd-contrib-header');
         return `
             ${headerInfo.styleInject}
-            <div class="gmd-contributors-widget" style="background:${item.hideBg ? 'transparent' : widgetBackground(item, `radial-gradient(circle at center, ${color}1a, #0a0a14)`)};border:1px solid ${item.hideBg ? 'transparent' : widgetBorderColor(item, color)};border-radius:${roundPx(24, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(20, ctx.scale)}px ${color}33, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`};backdrop-filter:${item.hideBg ? 'none' : `blur(${roundPx(8, ctx.scale)}px)`};-webkit-backdrop-filter:${item.hideBg ? 'none' : `blur(${roundPx(8, ctx.scale)}px)`};padding:${roundPx(12, ctx.scale)}px;display:flex;flex-direction:column;justify-content:center;height:100%;box-sizing:border-box;width:100%;overflow:hidden;">
+            <div class="gmd-contributors-widget" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'}; background:${item.hideBg ? 'transparent' : widgetBackground(item, `radial-gradient(circle at center, ${color}1a, #0a0a14)`)};border:1px solid ${item.hideBg ? 'transparent' : widgetBorderColor(item, color)};border-radius:${roundPx(24, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(20, ctx.scale)}px ${color}33, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`};backdrop-filter:${item.hideBg ? 'none' : `blur(${roundPx(8, ctx.scale)}px)`};-webkit-backdrop-filter:${item.hideBg ? 'none' : `blur(${roundPx(8, ctx.scale)}px)`};padding:${roundPx(12, ctx.scale)}px;display:flex;flex-direction:column;justify-content:center;height:100%;box-sizing:border-box;width:100%;overflow:hidden;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; gap: ${roundPx(6, ctx.scale)}px; width: 100%;">
                     ${headerInfo.titleHTML}
                     <div class="gmd-contrib-list" style="display: flex; flex-direction: column; gap: ${roundPx(6, ctx.scale)}px;">
@@ -1423,7 +1544,7 @@
 
         return `
             ${headerInfo.styleInject}
-            <div class="gmd-podium-widget" style="background: ${item.hideBg ? 'transparent' : widgetBackground(item, 'radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)')} !important; border: 1px solid ${item.hideBg ? 'transparent' : widgetBorderColor(item, '#eab308')} !important; box-shadow: ${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(217, 70, 239, 0.25), 0 ${roundPx(12, ctx.scale)}px ${roundPx(48, ctx.scale)}px rgba(0,0,0,0.7)`} !important; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(paddingVal, ctx.scale)}px; display: flex; flex-direction: column; justify-content: ${justifyVal}; height: 100%; box-sizing: border-box; width: 100%; overflow: hidden;">
+            <div class="gmd-podium-widget" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'}; background: ${item.hideBg ? 'transparent' : widgetBackground(item, 'radial-gradient(circle at center, rgba(234, 179, 8, 0.1) 0%, #0a0a14 100%)')} !important; border: 1px solid ${item.hideBg ? 'transparent' : widgetBorderColor(item, '#eab308')} !important; box-shadow: ${item.hideBg ? 'none' : `0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(217, 70, 239, 0.25), 0 ${roundPx(12, ctx.scale)}px ${roundPx(48, ctx.scale)}px rgba(0,0,0,0.7)`} !important; border-radius: ${roundPx(24, ctx.scale)}px; padding: ${roundPx(paddingVal, ctx.scale)}px; display: flex; flex-direction: column; justify-content: ${justifyVal}; height: 100%; box-sizing: border-box; width: 100%; overflow: hidden;">
                 <div style="transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px); display: flex; flex-direction: column; width: 100%; ${isTable ? 'height: 100%;' : ''} box-sizing: border-box;">
                     ${headerInfo.titleHTML}
                     ${contributors.length > 0 ? `
@@ -1446,7 +1567,7 @@
         const isAutoScroll = item.autoScroll === true;
         const goalsList = isAutoScroll && goals.length > 0 ? [...goals, ...goals] : goals;
         return `
-            <div class="gmd-goal-list-widget" style="width:100%; height:100%; padding: ${roundPx(24, ctx.scale)}px; box-sizing: border-box; background: ${widgetBackground(item, `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: 1px solid ${widgetBorderColor(item, color)}; border-radius: ${roundPx(24, ctx.scale)}px; display:flex; flex-direction:column; justify-content:flex-start; overflow:hidden; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${color}26, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`};">
+            <div class="gmd-goal-list-widget" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'}; width:100%; height:100%; padding: ${roundPx(24, ctx.scale)}px; box-sizing: border-box; background: ${widgetBackground(item, `radial-gradient(circle at center, ${color}1a, #0a0a14)`)}; border: 1px solid ${widgetBorderColor(item, color)}; border-radius: ${roundPx(24, ctx.scale)}px; display:flex; flex-direction:column; justify-content:flex-start; overflow:hidden; box-shadow: ${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${color}26, 0 ${roundPx(8, ctx.scale)}px ${roundPx(32, ctx.scale)}px rgba(0,0,0,0.6)`};">
                 <div class="gmd-goal-list-header" style="font-weight:900; color: ${item.useCustomTextColor ? (item.textColor || '#ffffff') : color}; text-shadow: 0 0 ${roundPx(10, ctx.scale)}px ${color}80; text-align:center; font-size: ${font(ctx, item.fontSize, 32)}px; margin-bottom: ${roundPx(12, ctx.scale)}px; flex-shrink: 0; transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px);">${text(ctx, item.name || 'MUC TIEU HOM NAY')}</div>
                 <div class="gmd-goal-list-scroll-container" style="flex: 1; overflow: hidden; position: relative; width: 100%; transform: translateY(${roundPx(item.contentOffsetY || 0, ctx.scale)}px);">
                     <div class="${isAutoScroll ? 'gmd-goal-list-marquee-track' : 'gmd-goal-list-static-track'}" style="${isAutoScroll ? `animation: gmdMarqueeVertical ${item.autoScrollSpeed !== undefined ? item.autoScrollSpeed : 15}s linear infinite;` : `display:flex; flex-direction:column; gap: ${roundPx(12, ctx.scale)}px;`}">
@@ -1652,7 +1773,7 @@
                 @keyframes gmdStackMarqueeBottomToTop_${item.id || 'group'} { 0% { transform: translateY(0); } 100% { transform: translateY(-16.6667%); } }
                 @keyframes gmdStackMarqueeTopToBottom_${item.id || 'group'} { 0% { transform: translateY(-16.6667%); } 100% { transform: translateY(0); } }
             </style>
-            <div class="gmd-stack-group-viewport gmd-stack-panel-${panelEffect}" style="--stack-panel-speed:${panelSpeed}s;--stack-panel-glow:${panelGlow};width:100%;height:100%;overflow:hidden;position:relative;display:flex;align-items:${isLoop && direction === 'vertical' ? 'flex-start' : 'center'};justify-content:${isLoop && direction === 'horizontal' ? 'flex-start' : 'center'};background:${panelBg};border:1px solid transparent;border-radius:${radiusPx}px;box-shadow:${shadow};box-sizing:border-box;padding:${paddingPx}px;">
+            <div class="gmd-stack-group-viewport gmd-stack-panel-${panelEffect}" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'};--stack-panel-speed:${panelSpeed}s;--stack-panel-glow:${panelGlow};width:100%;height:100%;overflow:hidden;position:relative;display:flex;align-items:${isLoop && direction === 'vertical' ? 'flex-start' : 'center'};justify-content:${isLoop && direction === 'horizontal' ? 'flex-start' : 'center'};background:${panelBg};border:1px solid transparent;border-radius:${radiusPx}px;box-shadow:${shadow};box-sizing:border-box;padding:${paddingPx}px;">
                 ${item.showPanel !== false && panelEffect !== 'none' ? `<span class="gmd-stack-panel-effect" style="position:absolute;pointer-events:none;z-index:1;border-radius:inherit;${panelEffect === 'light-sweep' ? `top:0;bottom:0;left:-55%;width:55%;background:linear-gradient(105deg, transparent 22%, rgba(255,255,255,${0.15 + panelGlow * 0.55}) 50%, transparent 78%);animation:gmdStackLightSweep var(--stack-panel-speed) ease-in-out infinite;` : ''}${panelEffect === 'breathing' ? `inset:0;background:radial-gradient(circle at 50% 45%, rgba(255,255,255,${0.08 + panelGlow * 0.28}), transparent 68%);animation:gmdStackBreathing var(--stack-panel-speed) ease-in-out infinite;` : ''}${panelEffect === 'energy-flow' ? `inset:0;background:linear-gradient(90deg, transparent, rgba(255,255,255,${0.06 + panelGlow * 0.18}), transparent, rgba(168,85,247,${0.08 + panelGlow * 0.22}), transparent);background-size:200% 100%;animation:gmdStackEnergyFlow var(--stack-panel-speed) linear infinite;` : ''}${panelEffect === 'glass-shine' ? `inset:0;background:linear-gradient(145deg, rgba(255,255,255,${0.12 + panelGlow * 0.22}), transparent 34%, transparent 68%, rgba(255,255,255,${0.05 + panelGlow * 0.12}));` : ''}"></span>` : ''}
                 ${item.showBorder !== false ? `
                     <svg class="gmd-stack-border-effect gmd-stack-border-${borderEffect}" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;overflow:visible;filter:drop-shadow(0 0 ${effectPx(8)}px rgba(34,211,238,${borderGlow}));">
@@ -1860,7 +1981,7 @@
                 .gmd-talent-effect-electric { background:linear-gradient(90deg,#1d4ed8,#38bdf8,#e0f2fe,#6366f1) !important; animation:gmdTalentElectric .9s steps(2,end) infinite !important; }
                 .gmd-talent-live-widget,.gmd-talent-ranking-widget { border-width:3px !important; }
             </style>
-            <div class="gmd-talent-live-widget" style="width:100%;height:100%;box-sizing:border-box;position:relative;overflow:hidden;padding:${roundPx(20, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(135deg, rgba(23,13,44,.98), rgba(12,18,45,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}99`)};border-radius:${roundPx(24, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}33, inset 0 1px 0 rgba(255,255,255,.12)`};display:flex;flex-direction:column;gap:${roundPx(12, ctx.scale)}px;color:white;">
+            <div class="gmd-talent-live-widget" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'};width:100%;height:100%;box-sizing:border-box;position:relative;overflow:hidden;padding:${roundPx(20, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(135deg, rgba(23,13,44,.98), rgba(12,18,45,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}99`)};border-radius:${roundPx(24, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}33, inset 0 1px 0 rgba(255,255,255,.12)`};display:flex;flex-direction:column;gap:${roundPx(12, ctx.scale)}px;color:white;">
                 <div style="display:flex;justify-content:space-between;align-items:center;font-size:${font(ctx, item.headerFontSize, 21)}px;font-weight:900;letter-spacing:.04em;">
                     <span style="color:${primary};text-shadow:0 0 ${roundPx(12, ctx.scale)}px ${primary};">🔴 ${text(ctx, statusText)} <span style="color:#cbd5e1;font-size:.8em;">• ${text(ctx, talent.roundLabel)}</span></span>
                     <span class="gmd-talent-time" data-running="${talent.status === 'running'}" data-started-at="${talent.status === 'running' ? new Date(Date.now() - ((talent.durationSeconds - talent.remainingSeconds) * 1000)).toISOString() : ''}" data-duration-secs="${talent.durationSeconds}" style="font-variant-numeric:tabular-nums;padding:${roundPx(5, ctx.scale)}px ${roundPx(10, ctx.scale)}px;border-radius:999px;background:rgba(255,255,255,.08);color:#fef3c7;">${talentTime(talent.remainingSeconds)}</span>
@@ -1894,7 +2015,7 @@
         const listMode = !talent.showTop3;
         const podiumOrder = [podium[1], podium[0], podium[2]];
         return `
-            <div class="gmd-talent-ranking-widget" style="width:100%;height:100%;box-sizing:border-box;overflow:hidden;padding:${roundPx(18, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(155deg, rgba(34,20,52,.98), rgba(9,13,31,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}aa`)};border-radius:${roundPx(26, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}2e`};display:flex;flex-direction:column;color:white;">
+            <div class="gmd-talent-ranking-widget" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'};width:100%;height:100%;box-sizing:border-box;overflow:hidden;padding:${roundPx(18, ctx.scale)}px;background:${widgetBackground(item, 'linear-gradient(155deg, rgba(34,20,52,.98), rgba(9,13,31,.98))')};border:1px solid ${widgetBorderColor(item, `${primary}aa`)};border-radius:${roundPx(26, ctx.scale)}px;box-shadow:${item.hideBg ? 'none' : `0 0 ${roundPx(30, ctx.scale)}px ${primary}2e`};display:flex;flex-direction:column;color:white;">
                 <div style="text-align:center;font-size:${font(ctx, item.fontSize, 32)}px;font-weight:1000;color:${primary};text-shadow:0 0 ${roundPx(14, ctx.scale)}px ${primary};letter-spacing:.03em;">🏆 ${text(ctx, item.name || talent.title || 'BẢNG XẾP HẠNG TALENT')}</div>
                 <div style="text-align:center;color:#c4b5fd;font-size:${font(ctx, item.subtitleFontSize, 16)}px;font-weight:800;margin:${roundPx(3, ctx.scale)}px 0 ${roundPx(10, ctx.scale)}px;">${text(ctx, talent.roundLabel)} • CẬP NHẬT TRỰC TIẾP</div>
                 ${talent.showTop3 ? `<div class="gmd-talent-podium" style="display:flex;align-items:end;justify-content:center;gap:${roundPx(8, ctx.scale)}px;min-height:${roundPx(190, ctx.scale)}px;flex-shrink:0;max-width:680px;width:100%;margin:0 auto;">
@@ -1970,7 +2091,7 @@
         const isHidden = item.hideBorder === true || item.hideBorder === 'true' || item.hideBorder === 1 || item.hideBg === true || item.hideBg === 'true';
         const showBorder = !isHidden && item.showBorder === true;
         return `
-        <div class="gmd-challenge-wheel-widget" style="width:100%;height:100%;box-sizing:border-box;position:relative;display:flex;align-items:center;justify-content:center;overflow:visible;background:transparent !important;border:none !important;box-shadow:none !important;padding:0 !important;">
+        <div class="gmd-challenge-wheel-widget" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'};width:100%;height:100%;box-sizing:border-box;position:relative;display:flex;align-items:center;justify-content:center;overflow:visible;background:transparent !important;border:none !important;box-shadow:none !important;padding:0 !important;">
             <div style="position:relative;width:86%;aspect-ratio:1;border-radius:50%;background:conic-gradient(${gradient});border:${ringBorder};box-shadow:${ringShadow};${dropShadow}display:grid;place-items:center;will-change:transform;overflow:hidden;">
                 ${spokeLines}
                 <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle, transparent 35%, rgba(0,0,0,0.15) 70%, rgba(0,0,0,0.55) 100%);pointer-events:none;z-index:1;"></div>

@@ -736,15 +736,60 @@
             }
         }
 
-        async openLibraryLayout(layoutId) {
-            await this.loadLayoutsList();
-            const layout = (this.layouts || []).find((item) => String(item._id) === String(layoutId));
-            if (!layout) return { success: false };
-            await this.loadLayout(layout);
-            if (window.app && typeof window.app.showNotification === 'function') {
-                window.app.showNotification('success', 'Đã mở thiết kế để tùy chỉnh.');
+        showCanvasLoading(title = 'Đang tải thiết kế...', subtitle = 'Hệ thống đang chuẩn bị bảng vẽ, vui lòng đợi trong giây lát...') {
+            const canvas = this.mount ? this.mount.querySelector('#gmd-canvas') : document.getElementById('gmd-canvas');
+            if (!canvas) return;
+            let overlay = canvas.querySelector('#gmd-canvas-loading-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'gmd-canvas-loading-overlay';
+                overlay.style.cssText = 'position:absolute;inset:0;background:rgba(10,10,18,0.88);backdrop-filter:blur(8px);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;transition:opacity 0.2s ease;';
+                overlay.innerHTML = `
+                    <div style="width:50px;height:50px;border:3px solid rgba(168,85,247,0.2);border-top:3px solid #a855f7;border-right:3px solid #ec4899;border-radius:50%;animation:gmdSpin 0.75s linear infinite;box-shadow:0 0 20px rgba(168,85,247,0.4);"></div>
+                    <div class="gmd-loading-title" style="margin-top:16px;font-size:15px;font-weight:700;color:#fff;letter-spacing:0.3px;"></div>
+                    <div class="gmd-loading-sub" style="margin-top:6px;font-size:12px;color:#94a3b8;max-width:320px;text-align:center;line-height:1.4;"></div>
+                    <style>
+                        @keyframes gmdSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    </style>
+                `;
+                canvas.appendChild(overlay);
             }
-            return { success: true, layout };
+            overlay.querySelector('.gmd-loading-title').textContent = title;
+            overlay.querySelector('.gmd-loading-sub').textContent = subtitle;
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+        }
+
+        hideCanvasLoading() {
+            const canvas = this.mount ? this.mount.querySelector('#gmd-canvas') : document.getElementById('gmd-canvas');
+            const overlay = canvas ? canvas.querySelector('#gmd-canvas-loading-overlay') : null;
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => { overlay.style.display = 'none'; }, 200);
+            }
+        }
+
+        async openLibraryLayout(layoutId) {
+            this.showCanvasLoading('Đang mở thiết kế...', 'Đang nạp dữ liệu từ thư viện của bạn...');
+            try {
+                if (!this.layouts || !this.layouts.length) {
+                    await this.loadLayoutsList();
+                }
+                const layout = (this.layouts || []).find((item) => String(item._id) === String(layoutId));
+                if (!layout) {
+                    this.hideCanvasLoading();
+                    return { success: false };
+                }
+                await this.loadLayout(layout);
+                this.hideCanvasLoading();
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('success', 'Đã mở thiết kế để tùy chỉnh.');
+                }
+                return { success: true, layout };
+            } catch (err) {
+                this.hideCanvasLoading();
+                throw err;
+            }
         }
 
         async tryOpenPurchasedGoalTemplate(templateId) {
@@ -781,15 +826,35 @@
         }
 
         async buyOrUseTemplateFromSidebar(templateId) {
-            const goalTemplateResult = await this.tryOpenPurchasedGoalTemplate(templateId);
-            if (goalTemplateResult) return goalTemplateResult;
+            const templateKey = String(templateId || '').trim();
+            if (!/^[a-f\d]{24}$/i.test(templateKey)) {
+                window.app?.showNotification?.('error', 'Mẫu thiết kế chưa hợp lệ hoặc chưa đồng bộ xong.');
+                return { success: false };
+            }
+
+            this.showCanvasLoading('Đang mở thiết kế...', 'Đang nạp mẫu và chuẩn bị các phần tử lên bảng vẽ...');
+
+            // A Store menu template and a Goal Board template use different
+            // APIs.  Always resolve the Store template first; attempting the
+            // Goal Board route here caused cold-start delays and, on missing
+            // data, requests to /undefined/use.
+            const template = (this.serverTemplates || []).find((item) => String(item._id) === templateKey);
+            if (!template) {
+                const goalTemplateResult = await this.tryOpenPurchasedGoalTemplate(templateKey);
+                if (goalTemplateResult) {
+                    this.hideCanvasLoading();
+                    return goalTemplateResult;
+                }
+            }
 
             if (!this._usingTemplateIds) this._usingTemplateIds = new Set();
-            const templateKey = String(templateId);
-            if (this._usingTemplateIds.has(templateKey)) return;
+            if (this._usingTemplateIds.has(templateKey)) {
+                this.hideCanvasLoading();
+                return;
+            }
 
-            const template = (this.serverTemplates || []).find((item) => String(item._id) === String(templateId));
             if (template && Number(template.price || 0) > 0 && !template.isPurchased) {
+                this.hideCanvasLoading();
                 if (window.app && typeof window.app.buyMenuTemplate === 'function') {
                     window.app.buyMenuTemplate(templateId);
                 } else {
@@ -817,25 +882,56 @@
                     if (this.handlePlanLimit(data, 'templates')) return;
                     throw new Error(data.error || `HTTP ${res.status}`);
                 }
-                if (data.challengeWheel?._id) {
-                    const wheelItem = this.items.find((entry) => entry.type === 'challenge-wheel');
-                    if (wheelItem) {
-                        wheelItem.challengeWheelId = String(data.challengeWheel._id);
-                        await this.saveLayout(false, false);
-                    }
-                }
-                await this.loadLayoutsList();
                 await this.loadLayout(data.layout);
-                await this.loadTemplatesList();
+                this.hideCanvasLoading();
+
+                if (data.challengeWheel?._id) {
+                    // The API returns the canonical wheel ID.  Bind it after
+                    // loading the layout, otherwise loadLayout overwrites the
+                    // link with a stale ID from a previous template version.
+                    const wheelId = String(data.challengeWheel._id);
+                    let changed = false;
+                    this.items.forEach((entry) => {
+                        if (entry?.type === 'challenge-wheel' && entry.challengeWheelId !== wheelId) {
+                            entry.challengeWheelId = wheelId;
+                            changed = true;
+                        }
+                    });
+                    if (changed) await this.saveLayout(false, false);
+                }
+
+                // Run auxiliary lists in background without blocking the canvas
+                Promise.allSettled([
+                    this.loadLayoutsList(),
+                    this.loadTemplatesList()
+                ]).catch(() => {});
+
+                // A challenge wheel becomes mappable only after its
+                // user-specific wheel record is created by /use.  Refresh
+                // the mapping catalogue now, rather than requiring a full
+                // app restart or leaving the purchased product invisible.
+                if (data.challengeWheel?._id && window.app) {
+                    const app = window.app;
+                    const wheel = data.challengeWheel;
+                    const knownWheels = Array.isArray(app.challengeWheels) ? app.challengeWheels : [];
+                    app.challengeWheels = typeof app.labelChallengeWheelCopies === 'function'
+                        ? app.labelChallengeWheelCopies([...knownWheels.filter((entry) => String(entry?._id) !== String(wheel._id)), wheel])
+                        : [...knownWheels.filter((entry) => String(entry?._id) !== String(wheel._id)), wheel];
+                    app.challengeWheelTemplateIds = new Set([...(app.challengeWheelTemplateIds || []), templateKey]);
+                    await app.loadEffectsForMapping?.();
+                    void app.loadChallengeWheels?.();
+                }
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('success', data.reused ? 'Đã mở thiết kế bạn từng sử dụng.' : 'Đã thêm mẫu vào thư viện của bạn.');
                 }
                 return data;
             } catch (error) {
+                this.hideCanvasLoading();
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('error', `Không thể sử dụng mẫu: ${error.message}`);
                 }
             } finally {
+                this.hideCanvasLoading();
                 this._usingTemplateIds.delete(templateKey);
                 useButtons.forEach((button) => {
                     button.disabled = false;
@@ -1427,6 +1523,40 @@
                     width: item.width,
                     height: item.height,
                     name: item.name,
+                    text: item.text,
+                    color: item.color,
+                    fontWeight: item.fontWeight,
+                    textShadow: item.textShadow,
+                    textFillType: item.textFillType,
+                    textGradientFrom: item.textGradientFrom,
+                    textGradientTo: item.textGradientTo,
+                    textGradientAngle: item.textGradientAngle,
+                    enableStroke: item.enableStroke,
+                    strokeColor: item.strokeColor,
+                    strokeWidth: item.strokeWidth,
+                    enable3D: item.enable3D,
+                    depth3DColor: item.depth3DColor,
+                    depth3DSize: item.depth3DSize,
+                    enableGlow: item.enableGlow,
+                    glowColor: item.glowColor,
+                    glowIntensity: item.glowIntensity,
+                    isMarquee: item.isMarquee,
+                    marqueeSpeed: item.marqueeSpeed,
+                    showBackground: item.showBackground,
+                    bgFillType: item.bgFillType,
+                    bgColor: item.bgColor,
+                    bgGradientFrom: item.bgGradientFrom,
+                    bgGradientTo: item.bgGradientTo,
+                    bgGradientAngle: item.bgGradientAngle,
+                    bgOpacity: item.bgOpacity,
+                    borderRadius: item.borderRadius,
+                    paddingX: item.paddingX,
+                    paddingY: item.paddingY,
+                    showBorder: item.showBorder,
+                    borderColor: item.borderColor,
+                    borderWidth: item.borderWidth,
+                    borderGlow: item.borderGlow,
+                    borderGlowColor: item.borderGlowColor,
                     giftId: item.giftId,
                     giftName: item.giftName,
                     iconUrl: item.iconUrl,
@@ -1444,6 +1574,7 @@
                     textPosition: item.textPosition,
                     textAlign: item.textAlign,
                     textSize: item.textSize,
+                    fontFamily: item.fontFamily,
                     textGap: item.textGap,
                     textColor: item.textColor,
                     subtext: item.subtext,
@@ -1763,7 +1894,7 @@
                                 <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-back"></span>
                                 <span class="gmd-icon-wrap" style="--icon-url:url('${item.iconUrl}')">
                                     ${item.iconDisplayMode === 'text'
-                                    ? `<span class="gmd-text-gift-icon" style="color:${item.iconTextColor || '#ffffff'};font-size:${Number(item.iconTextSize) || 20}px;${iconTextBgStyle}">${this.escapeHtml(item.iconText || item.name)}</span>`
+                                    ? `<span class="gmd-text-gift-icon" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'};color:${item.iconTextColor || '#ffffff'};font-size:${Number(item.iconTextSize) || 20}px;${iconTextBgStyle}">${this.escapeHtml(item.iconText || item.name)}</span>`
                                     : (item.isVideoIcon || this.isVideoAsset(item.iconUrl)
                                         ? `<video src="${this.escapeHtml(item.iconUrl)}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>`
                                         : `<img src="${this.escapeHtml(item.iconUrl)}" alt="${this.escapeHtml(item.name)}">`)}
@@ -1771,7 +1902,7 @@
                                 </span>
                                 <span class="gmd-aura ${this.getAuraClass(item.auraType)} gmd-aura-front"></span>
                             </div>
-                            ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;text-align:${item.textAlign || 'center'};${labelBgStyle}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;">${this.escapeHtml(item.name)}</div>${item.subtext ? `<div style="font-size:${Math.max(5, Math.round((Number(item.textSize) || 13) * .78))}px;opacity:.8;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:2px;">${this.escapeHtml(item.subtext)}</div>` : ''}</div>` : ''}
+                            ${item.showName ? `<div class="gmd-item-label gmd-gift-label-text-wrap pos-${item.textPosition || 'bottom'}" style="font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'};font-size:${item.textSize}px;color:${item.textColor};--label-gap:${item.textGap}px;text-align:${item.textAlign || 'center'};${labelBgStyle}"><div style="font-weight:800;line-height:1.15;white-space:nowrap;">${this.escapeHtml(item.name)}</div>${item.subtext ? `<div style="font-size:${Math.max(5, Math.round((Number(item.textSize) || 13) * .78))}px;opacity:.8;font-weight:600;line-height:1.15;white-space:nowrap;margin-top:2px;">${this.escapeHtml(item.subtext)}</div>` : ''}</div>` : ''}
                         `;
                         }
                         visualContainer.dataset.itemState = JSON.stringify(item);
@@ -1961,12 +2092,32 @@
             this.renderInspector();
         }
 
-        renderSelect(key, value, options) {
-            return `<select class="gmd-select" data-key="${key}">${options.map((o) => {
+        renderSelect(key, value, options, attrOrHandler = 'data-key') {
+            const attrStr = attrOrHandler.startsWith('on')
+                ? attrOrHandler
+                : (attrOrHandler.startsWith('data-') ? `${attrOrHandler}="${key}"` : `data-key="${key}"`);
+            return `<select class="gmd-select" ${attrStr}>${options.map((o) => {
                 const ov = typeof o === 'string' ? o : o.value;
                 const ol = typeof o === 'string' ? o : o.label;
                 return `<option value="${ov}" ${ov === value ? 'selected' : ''}>${ol}</option>`;
             }).join('')}</select>`;
+        }
+
+        renderFontSelect(key, value, attrOrHandler = 'data-key') {
+            const utmFonts = Array.isArray(window.UTM_FONTS) && window.UTM_FONTS.length > 0
+                ? window.UTM_FONTS
+                : ['UTM Avo', 'UTM Bebas', 'UTM Impact', 'UTM Cafeta', 'UTM Helve', 'UTM Alexander', 'UTM Cooper Black', 'UTM Neo Sans Intel', 'UTM ThuPhap Thien An', 'UTM Ong Do Tre'];
+            
+            const popular = [
+                { value: '', label: 'Mặc định (Inter / Hệ thống)' },
+                { value: 'Inter', label: 'Inter' },
+                { value: 'sans-serif', label: 'Sans-Serif' },
+                { value: 'monospace', label: 'Monospace' }
+            ];
+            
+            const utmOptions = utmFonts.map(f => ({ value: f, label: f }));
+            const options = [...popular, ...utmOptions];
+            return this.renderSelect(key, value || '', options, attrOrHandler);
         }
 
         renderLayerPanel() {
@@ -2129,7 +2280,8 @@
             ])}</div>
                         <div class="gmd-field"><label>Khoảng cách (Gap)</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textGap" value="${selected.textGap}"><span>px</span></div></div>
                         <input class="gmd-range" type="range" min="0" max="30" data-key="textGap" value="${selected.textGap}">
-                        <div class="gmd-field"><label>Màu chữ</label><input class="gmd-color" type="color" data-key="textColor" value="${selected.textColor}"></div>
+                        <div class="gmd-field"><label>Màu tên chính</label><input class="gmd-color" type="color" data-key="textColor" value="${selected.textColor || '#f7cb64'}"></div>
+                        <div class="gmd-field"><label>Màu tên phụ / Ghi chú</label><input class="gmd-color" type="color" data-key="subtextColor" value="${selected.subtextColor || selected.textColor || '#f7cb64'}"></div>
                         <div class="gmd-field gmd-toggle-row">
                             <label>Bật nền chữ</label>
                             <label class="gmd-switch"><input type="checkbox" data-key="showTextBg" ${selected.showTextBg ? 'checked' : ''}><span></span></label>
@@ -2158,8 +2310,9 @@
 
                     <div id="gmd-advanced-content" style="display: ${this.advancedExpanded ? 'block' : 'none'}; margin-top: 12px;">
                         <div class="gmd-section">
-                            <h4><i class="fas fa-signature"></i> C&#192;I &#272;&#7862;T CH&#7918;</h4>
-                            <div class="gmd-field"><label>T&#234;n ch&#237;nh</label><input class="gmd-input" data-key="name" value="${this.escapeHtml(selected.name || '')}"></div>
+                            <h4><i class="fas fa-signature"></i> CÀI ĐẶT CHỮ</h4>
+                            <div class="gmd-field"><label>Phông chữ (Font UTM)</label>${this.renderFontSelect('fontFamily', selected.fontFamily)}</div>
+                            <div class="gmd-field"><label>Tên chính</label><input class="gmd-input" data-key="name" value="${this.escapeHtml(selected.name || '')}"></div>
                             <div class="gmd-field"><label>T&#234;n ph&#7909; / Ghi ch&#250;</label><input class="gmd-input" data-key="subtext" value="${this.escapeHtml(selected.subtext || '')}"></div>
                             <div class="gmd-field gmd-toggle-row">
                                 <label>Hi&#7875;n th&#7883; t&#234;n</label>
@@ -2183,7 +2336,8 @@
             ])}</div>
                             <div class="gmd-field"><label>Kho&#7843;ng c&#225;ch (Gap)</label><div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-key="textGap" value="${selected.textGap}"><span>px</span></div></div>
                             <input class="gmd-range" type="range" min="0" max="30" data-key="textGap" value="${selected.textGap}">
-                            <div class="gmd-field"><label>M&#224;u ch&#7919;</label><input class="gmd-color" type="color" data-key="textColor" value="${selected.textColor}"></div>
+                            <div class="gmd-field"><label>Màu tên chính</label><input class="gmd-color" type="color" data-key="textColor" value="${selected.textColor || '#f7cb64'}"></div>
+                            <div class="gmd-field"><label>Màu tên phụ / Ghi chú</label><input class="gmd-color" type="color" data-key="subtextColor" value="${selected.subtextColor || selected.textColor || '#f7cb64'}"></div>
                             <div class="gmd-field gmd-toggle-row">
                                 <label>B&#7853;t n&#7873;n ch&#7919;</label>
                                 <label class="gmd-switch"><input type="checkbox" data-key="showTextBg" ${selected.showTextBg ? 'checked' : ''}><span></span></label>
@@ -2803,6 +2957,7 @@
                 } else {
                     item[key] = value;
                 }
+                this.invalidateItemVisual(item);
             });
 
             this.renderCanvas();
@@ -4907,6 +5062,8 @@
                                     </div>
                                 </div>
                             `;
+                } else if (t.id === 'tmpl_interactive_gift_jar') {
+                    previewHTML = this.buildGiftJarTemplatePreview(t.layers?.[0] || {}, { compact: true });
                 } else if (t.id === 'tmpl_pk_versus_bar') {
                     previewHTML = `
                                 <div class="gmd-mini-widget" style="background: radial-gradient(circle at center, #0f172a 0%, #05070f 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 4px; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; box-sizing: border-box; position: relative;">
@@ -5081,6 +5238,17 @@
             return w / h;
         }
 
+        // Physics Jar is a live canvas widget, so the shared renderer intentionally
+        // does not instantiate it in catalogue/modal previews. Render a lightweight
+        // static composition instead, using the same supplied jar artwork in both
+        // places. This keeps previewing separate from the live physics simulation.
+        buildGiftJarTemplatePreview(_item = {}, { compact = false } = {}) {
+            return `
+                <div class="gmd-gift-jar-preview" style="position:relative;width:100%;height:100%;overflow:hidden;background:transparent;">
+                    <img src="assets/jars/thum-hu-qua.png" alt="Hũ quà tặng" draggable="false" style="position:absolute;left:50%;top:50%;width:${compact ? '70%' : '76%'};height:${compact ? '82%' : '88%'};object-fit:contain;transform:translate(-50%,-50%);filter:drop-shadow(0 4px 8px rgba(0,0,0,.38));">
+                </div>`;
+        }
+
         buildTemplatePreviewLayers(template) {
             const layers = Array.isArray(template?.layers) ? template.layers : [];
             if (!layers.length) return '<div style="color:#94a3b8;font-weight:700;">Kh\u00f4ng c\u00f3 d\u1eef li\u1ec7u xem tr\u01b0\u1edbc</div>';
@@ -5102,7 +5270,9 @@
 
             return boxes.map(({ layer, x, y, w, h }, index) => {
                 const previewItem = { ...layer, width: w, height: h, w, h };
-                const rendered = this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
+                const rendered = previewItem.type === 'gift-jar'
+                    ? this.buildGiftJarTemplatePreview(previewItem)
+                    : this.sharedRenderEngine && typeof this.sharedRenderEngine.renderByType === 'function'
                     ? this.sharedRenderEngine.renderByType(previewItem, {
                         mode: 'preview',
                         scale: previewScale,
@@ -5311,6 +5481,22 @@
             const alreadyBundle = rawLayers.length === 1 && rawLayers[0].type === 'template-bundle';
             const effectiveLayers = alreadyBundle ? (rawLayers[0].children || []) : rawLayers;
             const shouldBundle = effectiveLayers.length > 1 && !effectiveLayers.some((layer) => unbundleableTypes.has(layer.type));
+
+            // The Physics Jar owns one shared Matter.js world and one canvas per
+            // menu. A second jar layer cannot have an independent simulation: it
+            // would appear as an empty selection box while the original jar keeps
+            // rendering. Keep the existing, working jar intact and select it rather
+            // than silently creating a misleading duplicate.
+            if (effectiveLayers.some((layer) => layer.type === 'gift-jar')) {
+                const existingGiftJar = this.items.find((item) => item.type === 'gift-jar' && item.visible !== false);
+                if (existingGiftJar) {
+                    this.setSelection([existingGiftJar.id], existingGiftJar.id);
+                    this.renderCanvas();
+                    this.renderInspector();
+                    window.app?.showNotification?.('info', 'Mỗi menu chỉ dùng một Hũ quà vật lý. Đã chọn Hũ hiện có để tránh tạo layer trống.');
+                    return;
+                }
+            }
 
             effectiveLayers.forEach((layer) => {
                 if (layer.type === 'talent-leaderboard' && layer.talentCompetition) {
@@ -5533,6 +5719,29 @@
                 fontWeight: 'bold',
                 textShadow: 'none',
                 textAlign: 'center',
+                textFillType: 'solid',
+                enableStroke: false,
+                strokeColor: '#000000',
+                strokeWidth: 2,
+                enable3D: false,
+                depth3DColor: '#1e1b4b',
+                depth3DSize: 4,
+                enableGlow: false,
+                glowColor: '#a855f7',
+                glowIntensity: 1.2,
+                isMarquee: false,
+                marqueeSpeed: 12,
+                showBackground: false,
+                bgFillType: 'solid',
+                bgColor: '#0f172a',
+                bgOpacity: 90,
+                borderRadius: 12,
+                paddingX: 16,
+                paddingY: 8,
+                showBorder: false,
+                borderColor: '#38bdf8',
+                borderWidth: 1,
+                borderGlow: false,
                 zIndex: this.items.length + 1,
                 visible: true,
                 locked: false
@@ -6439,6 +6648,10 @@
                         <div style="display: ${this.inspectorAdvancedExpanded ? 'block' : 'none'};">
                             <!-- CẤU HÌNH CHUNG -->
                             <div class="gmd-section-subheader" style="font-weight: 800; font-size: 11px; color: #a855f7; margin-bottom: 6px; margin-top: 6px;">CẤU HÌNH CHUNG</div>
+                            <div class="gmd-field" style="margin-bottom: 6px;">
+                                <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                                ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                            </div>
                             <div class="gmd-field">
                                 <label style="font-size: 11px;">Số đội PK</label>
                                 <div style="display:flex; gap:6px;">
@@ -6931,6 +7144,10 @@
                             <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" min="0" max="64" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 8}"><span>px</span></div>
                         </div>
                         <input class="gmd-range" type="range" min="0" max="64" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 8}">
+                        <div class="gmd-field">
+                            <label>Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         <div class="gmd-field"><label>Mau chu</label><input class="gmd-color" type="color" data-goal-key="textColor" value="${selected.textColor || '#ffffff'}"></div>
                         <div class="gmd-field gmd-toggle-row">
                             <label>Hien ten qua</label>
@@ -6994,6 +7211,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         ${makeCompactFontSizeField('Cỡ chữ tiêu đề', 'fontSize', 38)}
                         ${makeCompactFontSizeField('Cỡ chữ dòng phụ', 'subtitleFontSize', 24)}
                     </div>
@@ -7083,6 +7304,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         <div class="gmd-field gmd-toggle-row" style="margin-top: 6px; margin-bottom: 8px;">
                             <label style="font-size: 11px;">Hiển thị % tiến trình</label>
                             <label class="gmd-switch">
@@ -7138,6 +7363,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         ${makeCompactFontSizeField('Cỡ chữ tên Boss', 'fontSize', 38)}
                         ${makeCompactFontSizeField('Cỡ chữ dòng phụ', 'subtitleFontSize', 26)}
                     </div>
@@ -7309,6 +7538,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 34)}
                         ${makeCompactFontSizeField('Cỡ chữ Tên người dùng', 'rowFontSize', isPodiumContributorStyle ? 22 : 30)}
                         ${makeCompactFontSizeField('Cỡ chữ Điểm số (Value)', 'valueFontSize', isPodiumContributorStyle ? 22 : 30)}
@@ -7360,6 +7593,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 32)}
                         ${makeCompactFontSizeField('Cỡ chữ dòng phụ', 'subtitleFontSize', 20)}
                     </div>
@@ -7387,6 +7624,10 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-font"></i> TÙY CHỈNH CHỮ</h4>
+                        <div class="gmd-field" style="margin-bottom: 6px;">
+                            <label style="font-size: 11px;">Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
                         ${makeCompactFontSizeField('Cỡ chữ Tiêu đề', 'fontSize', 40)}
                         ${makeCompactFontSizeField('Cỡ chữ Con số (Combo)', 'numberFontSize', 64)}
                         ${makeCompactFontSizeField('Cỡ chữ Dòng phụ', 'subtitleFontSize', 20)}
@@ -7470,6 +7711,7 @@
                     </div>
                     <div class="gmd-section">
                         <h4><i class="fas fa-sliders-h"></i> PHẦN 2: TÙY CHỈNH VÒNG QUAY</h4>
+                        <div class="gmd-field"><label>Phông chữ (Font UTM)</label>${this.renderFontSelect('fontFamily', selected.fontFamily, `onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','fontFamily',this.value)"`)}</div>
                         <div class="gmd-field"><label>Tiêu đề vòng quay</label><input class="gmd-input" value="${this.escapeHtml(selected.title || '')}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','title',this.value)"></div>
                         <div class="gmd-field"><label>Dòng mô tả</label><input class="gmd-input" value="${this.escapeHtml(selected.subtitle || '')}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','subtitle',this.value)"></div>
                         <div class="gmd-row"><div class="gmd-field"><label>Cỡ chữ tiêu đề</label><input class="gmd-input" type="number" min="16" max="72" value="${selected.titleFontSize || 34}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','titleFontSize',this.value)"></div><div class="gmd-field"><label>Cỡ chữ mô tả</label><input class="gmd-input" type="number" min="10" max="36" value="${selected.subtitleFontSize || 18}" onchange="window.giftMenuDesigner.updateChallengeWheelField('${selected.id}','subtitleFontSize',this.value)"></div></div>
@@ -7625,6 +7867,10 @@
                             </label>
                         </div>
                         <div class="gmd-field">
+                            <label>Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
+                        </div>
+                        <div class="gmd-field">
                             <label>Cỡ chữ Tiêu đề</label>
                             <div class="gmd-inline-input gmd-inline-input-single"><input class="gmd-input gmd-input-compact" type="number" data-goal-key="fontSize" value="${selected.fontSize !== undefined ? selected.fontSize : 32}"><span>px</span></div>
                         </div>
@@ -7669,31 +7915,260 @@
                         <h4><i class="fas fa-font"></i> THUỘC TÍNH VĂN BẢN</h4>
                         <div class="gmd-field">
                             <label>Nội dung văn bản</label>
-                            <textarea class="gmd-input" style="height:60px; font-family:inherit; font-size:12px; resize:none; background:#1e293b; color:#fff;" data-goal-key="text">${selected.text || 'Nhập văn bản'}</textarea>
+                            <textarea class="gmd-input" style="height:55px; font-family:inherit; font-size:12px; resize:none; background:#1e293b; color:#fff;" data-goal-key="text">${selected.text || 'Nhập văn bản'}</textarea>
                         </div>
                         <div class="gmd-field">
-                            <label>Màu chữ</label>
-                            <input class="gmd-color" type="color" data-goal-key="color" value="${selected.color || '#ffffff'}">
+                            <label>Phông chữ (Font UTM)</label>
+                            ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
                         </div>
+                        <div class="gmd-row">
+                            <div class="gmd-field" style="flex:1;">
+                                <label>Kiểu tô màu</label>
+                                <select class="gmd-select" data-goal-key="textFillType">
+                                    <option value="solid" ${(selected.textFillType || 'solid') === 'solid' ? 'selected' : ''}>Màu đơn</option>
+                                    <option value="gradient" ${selected.textFillType === 'gradient' ? 'selected' : ''}>Chuyển sắc (Gradient)</option>
+                                </select>
+                            </div>
+                            ${(selected.textFillType || 'solid') === 'solid' ? `
+                            <div class="gmd-field" style="flex:1;">
+                                <label>Màu chữ</label>
+                                <input class="gmd-color" type="color" data-goal-key="color" value="${selected.color || '#ffffff'}">
+                            </div>
+                            ` : ''}
+                        </div>
+
+                        ${selected.textFillType === 'gradient' ? `
+                        <div class="gmd-field" style="margin-top:4px;">
+                            <label style="font-size:11px;">Màu Gradient chữ (Từ ➔ Đến)</label>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+                                <input class="gmd-color" type="color" data-goal-key="textGradientFrom" value="${selected.textGradientFrom || '#f59e0b'}">
+                                <input class="gmd-color" type="color" data-goal-key="textGradientTo" value="${selected.textGradientTo || '#ec4899'}">
+                            </div>
+                            <div class="gmd-inline-input gmd-inline-input-single">
+                                <input class="gmd-input gmd-input-compact" type="number" min="0" max="360" data-goal-key="textGradientAngle" value="${selected.textGradientAngle !== undefined ? selected.textGradientAngle : 90}"><span>deg</span>
+                            </div>
+                        </div>
+                        ` : ''}
+
                         ${makeCompactFontSizeField('Cỡ chữ (Font Size)', 'fontSize', 36, 12, 120)}
-                        <div class="gmd-field">
-                            <label>Độ đậm (Font Weight)</label>
-                            <select class="gmd-select" data-goal-key="fontWeight">
-                                <option value="normal" ${selected.fontWeight === 'normal' ? 'selected' : ''}>Bình thường</option>
-                                <option value="bold" ${selected.fontWeight === 'bold' ? 'selected' : ''}>In đậm (Bold)</option>
-                                <option value="900" ${selected.fontWeight === '900' ? 'selected' : ''}>Siêu đậm (Black)</option>
+
+                        <div class="gmd-row" style="margin-top:6px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label>Độ đậm</label>
+                                <select class="gmd-select" data-goal-key="fontWeight">
+                                    <option value="normal" ${selected.fontWeight === 'normal' ? 'selected' : ''}>Bình thường</option>
+                                    <option value="bold" ${selected.fontWeight === 'bold' ? 'selected' : ''}>In đậm (Bold)</option>
+                                    <option value="900" ${selected.fontWeight === '900' ? 'selected' : ''}>Siêu đậm (Black)</option>
+                                </select>
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label>Căn lề</label>
+                                <select class="gmd-select" data-goal-key="textAlign">
+                                    <option value="left" ${selected.textAlign === 'left' ? 'selected' : ''}>Căn trái</option>
+                                    <option value="center" ${(selected.textAlign || 'center') === 'center' ? 'selected' : ''}>Căn giữa</option>
+                                    <option value="right" ${selected.textAlign === 'right' ? 'selected' : ''}>Căn phải</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- MẪU PHONG CÁCH 1-CLICK -->
+                        <div class="gmd-field" style="margin-top:10px;">
+                            <label style="font-size:11px;color:#cbd5e1;font-weight:700;"><i class="fas fa-magic" style="color:#c084fc;"></i> Mẫu phong cách nhanh (1-Click):</label>
+                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px;">
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:rgba(250,204,21,0.15);border:1px solid #facc15;color:#facc15;font-weight:700;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','gaming-stroke')">🎮 Gaming Stroke</button>
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(217,119,6,0.2));border:1px solid #f59e0b;color:#fbbf24;font-weight:800;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','gold-3d')">👑 Gold 3D VIP</button>
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:rgba(34,211,238,0.15);border:1px solid #22d3ee;color:#38bdf8;font-weight:700;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','cyber-neon')">⚡ Cyber Neon</button>
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:rgba(236,72,153,0.15);border:1px solid #ec4899;color:#f472b6;font-weight:700;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','idol-pink')">💖 Idol Pink</button>
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:rgba(239,68,68,0.15);border:1px solid #ef4444;color:#f87171;font-weight:700;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','fire-red')">🔥 Fire Red</button>
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:rgba(168,85,247,0.15);border:1px solid #a855f7;color:#c084fc;font-weight:700;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','vip-badge')">🏷️ Khung VIP</button>
+                            </div>
+                        </div>
+
+                        <!-- TÍNH NĂNG CHỮ CHẠY (MARQUEE) -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:12px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
+                            <label style="font-size:11px;font-weight:700;color:#38bdf8;"><i class="fas fa-arrows-left-right"></i> Bật chữ chạy cuộn ngang (Marquee)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="isMarquee" ${selected.isMarquee ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.isMarquee ? `
+                        <div class="gmd-field" style="margin-top:4px;">
+                            <label style="font-size:11px;">Tốc độ chạy chữ</label>
+                            <select class="gmd-select" data-goal-key="marqueeSpeed">
+                                <option value="20" ${selected.marqueeSpeed == 20 ? 'selected' : ''}>Chậm (20s / vòng)</option>
+                                <option value="12" ${(selected.marqueeSpeed == 12 || !selected.marqueeSpeed) ? 'selected' : ''}>Vừa phải (12s / vòng - Mặc định)</option>
+                                <option value="7" ${selected.marqueeSpeed == 7 ? 'selected' : ''}>Nhanh (7s / vòng)</option>
+                                <option value="4" ${selected.marqueeSpeed == 4 ? 'selected' : ''}>Rất nhanh (4s / vòng)</option>
                             </select>
                         </div>
-                        <div class="gmd-field">
-                            <label>Bóng chữ</label>
-                            <select class="gmd-select" data-goal-key="textShadow">
-                                <option value="none" ${selected.textShadow === 'none' ? 'selected' : ''}>Không bóng</option>
-                                <option value="0 0 8px rgba(168,85,247,0.8)" ${selected.textShadow === '0 0 8px rgba(168,85,247,0.8)' ? 'selected' : ''}>Tím Neon Glow</option>
-                                <option value="0 0 8px rgba(245,158,11,0.8)" ${selected.textShadow === '0 0 8px rgba(245,158,11,0.8)' ? 'selected' : ''}>Vàng Neon Glow</option>
-                                <option value="0 0 8px rgba(236,72,153,0.8)" ${selected.textShadow === '0 0 8px rgba(236,72,153,0.8)' ? 'selected' : ''}>Hồng Neon Glow</option>
-                                <option value="2px 2px 4px rgba(0,0,0,0.8)" ${selected.textShadow === '2px 2px 4px rgba(0,0,0,0.8)' ? 'selected' : ''}>Bóng đổ đen dịu</option>
+                        ` : ''}
+
+                        <!-- VIỀN CHỮ (TEXT STROKE) -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
+                            <label style="font-size:11px;font-weight:700;color:#fde047;"><i class="fas fa-border-all"></i> Viền chữ (Stroke)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="enableStroke" ${selected.enableStroke ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.enableStroke ? `
+                        <div class="gmd-row" style="margin-top:4px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Màu viền</label>
+                                <input class="gmd-color" type="color" data-goal-key="strokeColor" value="${selected.strokeColor || '#000000'}">
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Độ dày</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="1" max="8" data-goal-key="strokeWidth" value="${selected.strokeWidth !== undefined ? selected.strokeWidth : 2}"><span>px</span>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- CHỮ NỔI 3D -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
+                            <label style="font-size:11px;font-weight:700;color:#fb923c;"><i class="fas fa-cube"></i> Chữ nổi khối 3D (3D Text)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="enable3D" ${selected.enable3D ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.enable3D ? `
+                        <div class="gmd-row" style="margin-top:4px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Màu khối 3D</label>
+                                <input class="gmd-color" type="color" data-goal-key="depth3DColor" value="${selected.depth3DColor || '#1e1b4b'}">
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Độ sâu khối</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="1" max="10" data-goal-key="depth3DSize" value="${selected.depth3DSize !== undefined ? selected.depth3DSize : 4}"><span>px</span>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- CHỮ PHÁT SÁNG (NEON GLOW) -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
+                            <label style="font-size:11px;font-weight:700;color:#c084fc;"><i class="fas fa-sun"></i> Chữ phát sáng (Neon Glow)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="enableGlow" ${selected.enableGlow ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.enableGlow ? `
+                        <div class="gmd-row" style="margin-top:4px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Màu phát sáng</label>
+                                <input class="gmd-color" type="color" data-goal-key="glowColor" value="${selected.glowColor || '#a855f7'}">
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Cường độ</label>
+                                <select class="gmd-select" data-goal-key="glowIntensity">
+                                    <option value="0.8" ${selected.glowIntensity == 0.8 ? 'selected' : ''}>Nhẹ dịu (0.8x)</option>
+                                    <option value="1.2" ${(selected.glowIntensity == 1.2 || !selected.glowIntensity) ? 'selected' : ''}>Vừa chuẩn (1.2x)</option>
+                                    <option value="2" ${selected.glowIntensity == 2 ? 'selected' : ''}>Rực rỡ (2.0x)</option>
+                                </select>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- LỚP NỀN VĂN BẢN (BACKGROUND BOX GIỐNG GỘP QUÀ) -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
+                            <label style="font-size:12px;font-weight:800;color:#34d399;"><i class="fas fa-layer-group"></i> Bật lớp nền khung chữ (Background)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="showBackground" ${selected.showBackground ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.showBackground ? `
+                        <div class="gmd-field" style="margin-top:4px;">
+                            <label style="font-size:11px;">Kiểu nền</label>
+                            <select class="gmd-select" data-goal-key="bgFillType">
+                                <option value="solid" ${(selected.bgFillType || 'solid') === 'solid' ? 'selected' : ''}>Màu đơn</option>
+                                <option value="gradient" ${selected.bgFillType === 'gradient' ? 'selected' : ''}>Gradient (Chuyển sắc)</option>
                             </select>
                         </div>
+                        ${(selected.bgFillType || 'solid') === 'gradient' ? `
+                        <div class="gmd-field" style="margin-top:4px;">
+                            <label style="font-size:11px;">Màu gradient (Từ ➔ Đến)</label>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+                                <input class="gmd-color" type="color" data-goal-key="bgGradientFrom" value="${selected.bgGradientFrom || '#1e1b4b'}">
+                                <input class="gmd-color" type="color" data-goal-key="bgGradientTo" value="${selected.bgGradientTo || '#3b0764'}">
+                            </div>
+                            <div class="gmd-inline-input gmd-inline-input-single">
+                                <input class="gmd-input gmd-input-compact" type="number" min="0" max="360" data-goal-key="bgGradientAngle" value="${selected.bgGradientAngle !== undefined ? selected.bgGradientAngle : 135}"><span>deg</span>
+                            </div>
+                        </div>
+                        ` : `
+                        <div class="gmd-field" style="margin-top:4px;">
+                            <label style="font-size:11px;">Màu nền</label>
+                            <input class="gmd-color" type="color" data-goal-key="bgColor" value="${selected.bgColor && selected.bgColor.startsWith('#') ? selected.bgColor.slice(0,7) : '#0f172a'}">
+                        </div>
+                        `}
+
+                        <div class="gmd-row" style="margin-top:6px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Độ trong suốt nền</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="0" max="100" data-goal-key="bgOpacity" value="${selected.bgOpacity !== undefined ? selected.bgOpacity : 90}"><span>%</span>
+                                </div>
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Bo góc (Radius)</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="0" max="40" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 12}"><span>px</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gmd-row" style="margin-top:6px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Đệm ngang (Pad X)</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="0" max="50" data-goal-key="paddingX" value="${selected.paddingX !== undefined ? selected.paddingX : 16}"><span>px</span>
+                                </div>
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Đệm dọc (Pad Y)</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="0" max="50" data-goal-key="paddingY" value="${selected.paddingY !== undefined ? selected.paddingY : 8}"><span>px</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VIỀN KHUNG NỀN -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:8px;">
+                            <label style="font-size:11px;">Bật viền khung nền</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="showBorder" ${selected.showBorder ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.showBorder ? `
+                        <div class="gmd-row" style="margin-top:4px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Màu viền khung</label>
+                                <input class="gmd-color" type="color" data-goal-key="borderColor" value="${selected.borderColor || '#38bdf8'}">
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Độ dày viền</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="1" max="6" data-goal-key="borderWidth" value="${selected.borderWidth !== undefined ? selected.borderWidth : 1}"><span>px</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:6px;">
+                            <label style="font-size:11px;">Phát sáng viền khung (Border Glow)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="borderGlow" ${selected.borderGlow ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ` : ''}
+                        ` : ''}
                     </div>
                 `;
             }
@@ -8189,7 +8664,7 @@
                 this.applyTalentTitleEffect(selected);
                 const styleSection = document.createElement('div');
                 styleSection.className = 'gmd-section';
-                styleSection.innerHTML = `<h4><i class="fas fa-font"></i> CỠ CHỮ & HIỆU ỨNG</h4><div class="gmd-field"><label>Cỡ chữ tiêu đề</label><input class="gmd-input" type="number" min="14" max="96" value="${selected.fontSize || 32}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value)"></div><div class="gmd-row"><div class="gmd-field"><label>Cỡ chữ vòng</label><input class="gmd-input" type="number" min="10" max="48" value="${selected.subtitleFontSize || 16}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','subtitleFontSize',this.value)"></div><div class="gmd-field"><label>Cỡ chữ danh sách</label><input class="gmd-input" type="number" min="10" max="42" value="${selected.rowFontSize || 18}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value)"></div></div><div class="gmd-field"><label>Hiệu ứng tiêu đề</label><select class="gmd-select" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','titleEffect',this.value)"><option value="glow">Phát sáng</option><option value="neon">Neon</option><option value="rainbow">Cầu vồng</option><option value="fire">Lửa</option><option value="pulse">Nhịp đập</option><option value="none">Không hiệu ứng</option></select></div>`;
+                styleSection.innerHTML = `<h4><i class="fas fa-font"></i> CỠ CHỮ & HIỆU ỨNG</h4><div class="gmd-field"><label>Phông chữ (Font UTM)</label>${this.renderFontSelect('fontFamily', selected.fontFamily, `onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontFamily',this.value)"`)}</div><div class="gmd-field"><label>Cỡ chữ tiêu đề</label><input class="gmd-input" type="number" min="14" max="96" value="${selected.fontSize || 32}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value)"></div><div class="gmd-row"><div class="gmd-field"><label>Cỡ chữ vòng</label><input class="gmd-input" type="number" min="10" max="48" value="${selected.subtitleFontSize || 16}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','subtitleFontSize',this.value)"></div><div class="gmd-field"><label>Cỡ chữ danh sách</label><input class="gmd-input" type="number" min="10" max="42" value="${selected.rowFontSize || 18}" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value)"></div></div><div class="gmd-field"><label>Hiệu ứng tiêu đề</label><select class="gmd-select" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','titleEffect',this.value)"><option value="glow">Phát sáng</option><option value="neon">Neon</option><option value="rainbow">Cầu vồng</option><option value="fire">Lửa</option><option value="pulse">Nhịp đập</option><option value="none">Không hiệu ứng</option></select></div>`;
                 styleSection.insertAdjacentHTML('beforeend', `<div class="gmd-field"><label>Kéo chỉnh cỡ chữ tiêu đề</label><input class="gmd-range" type="range" min="14" max="96" value="${selected.fontSize || 32}" oninput="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value,true)" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','fontSize',this.value)"></div><div class="gmd-field"><label>Kéo chỉnh cỡ chữ danh sách</label><input class="gmd-range" type="range" min="10" max="42" value="${selected.rowFontSize || 18}" oninput="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value,true)" onchange="window.giftMenuDesigner.updateTalentStyle('${selected.id}','rowFontSize',this.value)"></div>`);
                 const firstSection = inspector.querySelector('.gmd-section');
                 if (firstSection) firstSection.parentNode.insertBefore(styleSection, firstSection.nextSibling);
@@ -8205,11 +8680,130 @@
             }
         }
 
+        applyTextPreset(itemId, presetName) {
+            const item = this.findInteractiveItem(itemId);
+            if (!item) return;
+            if (presetName === 'gaming-stroke') {
+                item.showBackground = false;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#fff000';
+                item.textGradientTo = '#ff8800';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#000000';
+                item.strokeWidth = 2.5;
+                item.enable3D = true;
+                item.depth3DColor = '#000000';
+                item.depth3DSize = 4;
+                item.enableGlow = true;
+                item.glowColor = '#ff6b00';
+                item.glowIntensity = 1;
+                item.fontWeight = '900';
+            } else if (presetName === 'gold-3d') {
+                item.showBackground = false;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#fffbeb';
+                item.textGradientTo = '#d97706';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#ffffff';
+                item.strokeWidth = 1;
+                item.enable3D = true;
+                item.depth3DColor = '#78350f';
+                item.depth3DSize = 4;
+                item.enableGlow = true;
+                item.glowColor = '#f59e0b';
+                item.glowIntensity = 1;
+                item.fontWeight = '900';
+            } else if (presetName === 'cyber-neon') {
+                item.showBackground = false;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#ffffff';
+                item.textGradientTo = '#06b6d4';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#0891b2';
+                item.strokeWidth = 1.5;
+                item.enable3D = true;
+                item.depth3DColor = '#083344';
+                item.depth3DSize = 4;
+                item.enableGlow = true;
+                item.glowColor = '#00f0ff';
+                item.glowIntensity = 1.8;
+                item.fontWeight = '900';
+            } else if (presetName === 'idol-pink') {
+                item.showBackground = false;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#ffffff';
+                item.textGradientTo = '#ff2a85';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#831843';
+                item.strokeWidth = 1.5;
+                item.enable3D = true;
+                item.depth3DColor = '#500724';
+                item.depth3DSize = 4;
+                item.enableGlow = true;
+                item.glowColor = '#ff2a85';
+                item.glowIntensity = 1.4;
+                item.fontWeight = '900';
+            } else if (presetName === 'fire-red') {
+                item.showBackground = false;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#fff500';
+                item.textGradientTo = '#ef4444';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#450a0a';
+                item.strokeWidth = 1.5;
+                item.enable3D = true;
+                item.depth3DColor = '#450a0a';
+                item.depth3DSize = 4;
+                item.enableGlow = true;
+                item.glowColor = '#ef4444';
+                item.glowIntensity = 1.5;
+                item.fontWeight = '900';
+            } else if (presetName === 'vip-badge') {
+                item.showBackground = true;
+                item.bgFillType = 'gradient';
+                item.bgGradientFrom = '#0f172a';
+                item.bgGradientTo = '#1e1b4b';
+                item.bgGradientAngle = 135;
+                item.showBorder = true;
+                item.borderColor = '#f59e0b';
+                item.borderWidth = 1.5;
+                item.borderGlow = true;
+                item.borderGlowColor = 'rgba(245, 158, 11, 0.5)';
+                item.borderRadius = 16;
+                item.paddingX = 28;
+                item.paddingY = 12;
+                item.bgOpacity = 95;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#fffbeb';
+                item.textGradientTo = '#f59e0b';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#ffffff';
+                item.strokeWidth = 1;
+                item.enable3D = true;
+                item.depth3DColor = '#78350f';
+                item.depth3DSize = 3;
+                item.enableGlow = true;
+                item.glowColor = '#f59e0b';
+                item.glowIntensity = 1;
+                item.fontWeight = '900';
+            }
+            this.invalidateItemVisual(item);
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('apply-text-preset');
+        }
+
         updateGoalBoardSelectedItem(key, value, pushHist = true) {
             const item = this.findInteractiveItem(this.selectedId);
             if (!item) return;
 
-            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'backgroundOpacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'contributorAvatarSize', 'iconSize', 'progressSize', 'goalIconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'giftTextGap', 'labelGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerOffsetY', 'pkBarOffsetY', 'versusFontSize', 'bgColorGradientAngle'].includes(key)) {
+            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'backgroundOpacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'contributorAvatarSize', 'iconSize', 'progressSize', 'goalIconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'giftTextGap', 'labelGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerOffsetY', 'pkBarOffsetY', 'versusFontSize', 'bgColorGradientAngle', 'strokeWidth', 'depth3DSize', 'glowIntensity', 'textGradientAngle', 'marqueeSpeed', 'bgGradientAngle', 'bgOpacity', 'paddingX', 'paddingY', 'borderWidth'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
                     const previousW = Math.max(1, Number(item.w) || Number(item.width) || 1);
@@ -8272,8 +8866,12 @@
                         }
                     }
                 } else {
-                    item[key] = key === 'backgroundOpacity'
+                    item[key] = (key === 'padding' || key === 'paddingX' || key === 'paddingY' || key === 'borderRadius' || key === 'contentOffsetY' || key === 'timerOffsetY' || key === 'pkBarOffsetY' || key === 'strokeWidth' || key === 'depth3DSize' || key === 'borderWidth')
+                        ? numVal
+                        : (key === 'opacity' || key === 'backgroundOpacity' || key === 'bgOpacity')
                         ? Math.max(0, Math.min(100, numVal))
+                        : (key === 'panelGlowIntensity' || key === 'borderGlowIntensity' || key === 'glowIntensity')
+                        ? Math.max(0, Math.min(3, numVal))
                         : numVal;
                 }
             } else if (key === 'useCustomBgGradient') {
@@ -8281,7 +8879,7 @@
                 // Choosing a background style means the board background must be visible.
                 item.useCustomBg = true;
                 item.hideBg = false;
-            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg' || key === 'showName' || key === 'showVs' || key === 'loopEnabled' || key === 'showPanel' || key === 'showBorder' || key === 'useCustomPkBorderColor' || key === 'timerRunning' || key === 'showTimer') {
+            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg' || key === 'showName' || key === 'showVs' || key === 'loopEnabled' || key === 'showPanel' || key === 'showBorder' || key === 'useCustomPkBorderColor' || key === 'timerRunning' || key === 'showTimer' || key === 'enableStroke' || key === 'enable3D' || key === 'enableGlow' || key === 'isMarquee' || key === 'showBackground' || key === 'borderGlow') {
                 const wasLocked = item.lockRatio !== false;
                 let visibleGoalListScale = 1;
                 let visiblePkScale = 1;
@@ -8398,7 +8996,7 @@
 
             this.invalidateItemVisual(item);
             this.renderCanvas();
-            if (key === 'layoutDirection' || key === 'showVs' || key === 'showAvatar' || key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage' || key === 'useBarGradient') {
+            if (key === 'layoutDirection' || key === 'showVs' || key === 'showAvatar' || key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage' || key === 'useBarGradient' || key === 'enableStroke' || key === 'enable3D' || key === 'enableGlow' || key === 'textFillType' || key === 'isMarquee' || key === 'showBackground' || key === 'bgFillType' || key === 'showBorder' || key === 'borderGlow') {
                 this.renderInspector();
             }
             if (pushHist) {
@@ -8794,6 +9392,10 @@
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) },
                     body: JSON.stringify({
+                        // Lets the backend repair a legacy/deleted wheel ID
+                        // against this exact user layout instead of failing
+                        // the first Save after an app upgrade.
+                        layoutId: this.currentLayoutId || undefined,
                         title: item.title,
                         segments: item.segments || [],
                         durationMs: item.durationMs,
@@ -9296,6 +9898,19 @@
             // Handled with 2D Rigid-Body Physics in GiftJarPhysics
         }
 
+        scheduleGiftJarUiRefresh() {
+            // Rapid test clicks can produce a gift burst. Rebuilding the full
+            // Designer for every individual click competes with Matter.js and
+            // is the main source of perceived input lag. Coalesce visual UI
+            // refreshes; coin totals and socket events still update per gift.
+            if (this._giftJarUiRefreshTimer) return;
+            this._giftJarUiRefreshTimer = setTimeout(() => {
+                this._giftJarUiRefreshTimer = null;
+                this.renderCanvas();
+                this.renderInspector();
+            }, 90);
+        }
+
         testGiftJarDrop(itemId, coins = 50, extra = {}) {
             const item = this.items.find((entry) => entry.id === itemId && entry.type === 'gift-jar');
             if (!item) return;
@@ -9311,8 +9926,7 @@
             } else {
                 if (window.app?.showNotification) window.app.showNotification('info', `🧪 Nhận +${coins.toLocaleString()} Xu (${extra.giftName || 'Quà TikTok'}) -> Tổng: ${currentCoins.toLocaleString()} / ${targetCoins.toLocaleString()} Xu`);
             }
-            this.renderCanvas();
-            this.renderInspector();
+            this.scheduleGiftJarUiRefresh();
 
             if (this.socket && this.socket.connected) {
                 this.socket.emit('gift_jar_drop', {
@@ -9461,7 +10075,7 @@
             const item = this.items.find((entry) => entry.id === itemId);
             if (!item || !['talent-live', 'talent-leaderboard'].includes(item.type)) return;
             const numeric = ['fontSize', 'subtitleFontSize', 'rowFontSize', 'valueFontSize'];
-            item[key] = numeric.includes(key) ? Math.max(8, Number(value) || 8) : String(value || 'none');
+            item[key] = numeric.includes(key) ? Math.max(8, Number(value) || 8) : (key === 'fontFamily' ? String(value || '') : String(value || 'none'));
             this.invalidateItemVisual(item);
             this.renderCanvas();
             this.applyTalentTitleEffect(item);

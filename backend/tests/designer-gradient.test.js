@@ -265,4 +265,51 @@ assert.ok(overlaySource.includes("const isFlexibleTalentLive = item.type === 'ta
 assert.ok(overlaySource.includes('Number(item.talentLiveContentScale) || (boardWidth / refW)'));
 assert.ok(overlaySource.includes('Math.max(1, boardHeight / talentContentScale)'));
 
+// Verify Text Element Enhancements (Marquee, Background Box, 3D, Stroke, Glow, Gradient)
+const textItem = {
+    id: 'text-test-1',
+    type: 'text',
+    text: 'CHÀO MỪNG ĐẾN VỚI LIVE',
+    isMarquee: true,
+    marqueeSpeed: 8,
+    showBackground: true,
+    bgFillType: 'gradient',
+    bgGradientAngle: 135,
+    bgGradientFrom: '#1e1b4b',
+    bgGradientTo: '#3b0764',
+    showBorder: true,
+    borderColor: '#38bdf8',
+    borderWidth: 2,
+    borderGlow: true,
+    borderGlowColor: 'rgba(56, 189, 248, 0.6)',
+    borderRadius: 14,
+    paddingX: 20,
+    paddingY: 10,
+    enableStroke: true,
+    strokeColor: '#000000',
+    strokeWidth: 3,
+    enable3D: true,
+    depth3DColor: '#78350f',
+    depth3DSize: 4,
+    enableGlow: true,
+    glowColor: '#f59e0b',
+    glowIntensity: 1.2,
+    textFillType: 'gradient',
+    textGradientFrom: '#fef08a',
+    textGradientTo: '#d97706',
+    textGradientAngle: 90
+};
+const desktopRenderer = loadRenderer(desktopPath);
+const textHtml = desktopRenderer.renderByType(textItem, { scale: 1 });
+assert.ok(textHtml.includes('gmd-text-marquee-box'), 'Marquee class must be rendered when isMarquee is enabled');
+assert.ok(textHtml.includes('animation: gmd-marquee-text-test-1 8s linear infinite'), 'Marquee animation style must be applied');
+assert.ok(textHtml.includes('linear-gradient(135deg'), 'Background gradient must be applied');
+assert.ok(textHtml.includes('border: 2px solid #38bdf8'), 'Border must be applied');
+assert.ok(textHtml.includes('box-shadow: 0 0 14px rgba(56, 189, 248, 0.6)'), 'Border glow must be applied');
+assert.ok(textHtml.includes('-webkit-text-stroke: 3px #000000'), 'Text stroke must be applied');
+assert.ok(textHtml.includes('1px 1px 0 #78350f, 2px 2px 0 #78350f'), '3D extrusion text shadow must be generated');
+assert.ok(textHtml.includes('0 0 17px #f59e0b'), 'Neon glow text shadow must be generated');
+assert.ok(textHtml.includes('-webkit-background-clip: text'), 'Gradient text clipping must be applied');
+assert.ok(designerSource.includes('applyTextPreset(itemId, presetName)'), 'GiftMenuDesigner must implement applyTextPreset');
+
 console.log('designer gradient tests passed');

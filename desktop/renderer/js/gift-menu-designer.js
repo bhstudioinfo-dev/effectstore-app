@@ -1523,6 +1523,40 @@
                     width: item.width,
                     height: item.height,
                     name: item.name,
+                    text: item.text,
+                    color: item.color,
+                    fontWeight: item.fontWeight,
+                    textShadow: item.textShadow,
+                    textFillType: item.textFillType,
+                    textGradientFrom: item.textGradientFrom,
+                    textGradientTo: item.textGradientTo,
+                    textGradientAngle: item.textGradientAngle,
+                    enableStroke: item.enableStroke,
+                    strokeColor: item.strokeColor,
+                    strokeWidth: item.strokeWidth,
+                    enable3D: item.enable3D,
+                    depth3DColor: item.depth3DColor,
+                    depth3DSize: item.depth3DSize,
+                    enableGlow: item.enableGlow,
+                    glowColor: item.glowColor,
+                    glowIntensity: item.glowIntensity,
+                    isMarquee: item.isMarquee,
+                    marqueeSpeed: item.marqueeSpeed,
+                    showBackground: item.showBackground,
+                    bgFillType: item.bgFillType,
+                    bgColor: item.bgColor,
+                    bgGradientFrom: item.bgGradientFrom,
+                    bgGradientTo: item.bgGradientTo,
+                    bgGradientAngle: item.bgGradientAngle,
+                    bgOpacity: item.bgOpacity,
+                    borderRadius: item.borderRadius,
+                    paddingX: item.paddingX,
+                    paddingY: item.paddingY,
+                    showBorder: item.showBorder,
+                    borderColor: item.borderColor,
+                    borderWidth: item.borderWidth,
+                    borderGlow: item.borderGlow,
+                    borderGlowColor: item.borderGlowColor,
                     giftId: item.giftId,
                     giftName: item.giftName,
                     iconUrl: item.iconUrl,
@@ -5685,6 +5719,29 @@
                 fontWeight: 'bold',
                 textShadow: 'none',
                 textAlign: 'center',
+                textFillType: 'solid',
+                enableStroke: false,
+                strokeColor: '#000000',
+                strokeWidth: 2,
+                enable3D: false,
+                depth3DColor: '#1e1b4b',
+                depth3DSize: 4,
+                enableGlow: false,
+                glowColor: '#a855f7',
+                glowIntensity: 1.2,
+                isMarquee: false,
+                marqueeSpeed: 12,
+                showBackground: false,
+                bgFillType: 'solid',
+                bgColor: '#0f172a',
+                bgOpacity: 90,
+                borderRadius: 12,
+                paddingX: 16,
+                paddingY: 8,
+                showBorder: false,
+                borderColor: '#38bdf8',
+                borderWidth: 1,
+                borderGlow: false,
                 zIndex: this.items.length + 1,
                 visible: true,
                 locked: false
@@ -7858,35 +7915,260 @@
                         <h4><i class="fas fa-font"></i> THUỘC TÍNH VĂN BẢN</h4>
                         <div class="gmd-field">
                             <label>Nội dung văn bản</label>
-                            <textarea class="gmd-input" style="height:60px; font-family:inherit; font-size:12px; resize:none; background:#1e293b; color:#fff;" data-goal-key="text">${selected.text || 'Nhập văn bản'}</textarea>
+                            <textarea class="gmd-input" style="height:55px; font-family:inherit; font-size:12px; resize:none; background:#1e293b; color:#fff;" data-goal-key="text">${selected.text || 'Nhập văn bản'}</textarea>
                         </div>
                         <div class="gmd-field">
                             <label>Phông chữ (Font UTM)</label>
                             ${this.renderFontSelect('fontFamily', selected.fontFamily, 'data-goal-key')}
                         </div>
-                        <div class="gmd-field">
-                            <label>Màu chữ</label>
-                            <input class="gmd-color" type="color" data-goal-key="color" value="${selected.color || '#ffffff'}">
+                        <div class="gmd-row">
+                            <div class="gmd-field" style="flex:1;">
+                                <label>Kiểu tô màu</label>
+                                <select class="gmd-select" data-goal-key="textFillType">
+                                    <option value="solid" ${(selected.textFillType || 'solid') === 'solid' ? 'selected' : ''}>Màu đơn</option>
+                                    <option value="gradient" ${selected.textFillType === 'gradient' ? 'selected' : ''}>Chuyển sắc (Gradient)</option>
+                                </select>
+                            </div>
+                            ${(selected.textFillType || 'solid') === 'solid' ? `
+                            <div class="gmd-field" style="flex:1;">
+                                <label>Màu chữ</label>
+                                <input class="gmd-color" type="color" data-goal-key="color" value="${selected.color || '#ffffff'}">
+                            </div>
+                            ` : ''}
                         </div>
+
+                        ${selected.textFillType === 'gradient' ? `
+                        <div class="gmd-field" style="margin-top:4px;">
+                            <label style="font-size:11px;">Màu Gradient chữ (Từ ➔ Đến)</label>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+                                <input class="gmd-color" type="color" data-goal-key="textGradientFrom" value="${selected.textGradientFrom || '#f59e0b'}">
+                                <input class="gmd-color" type="color" data-goal-key="textGradientTo" value="${selected.textGradientTo || '#ec4899'}">
+                            </div>
+                            <div class="gmd-inline-input gmd-inline-input-single">
+                                <input class="gmd-input gmd-input-compact" type="number" min="0" max="360" data-goal-key="textGradientAngle" value="${selected.textGradientAngle !== undefined ? selected.textGradientAngle : 90}"><span>deg</span>
+                            </div>
+                        </div>
+                        ` : ''}
+
                         ${makeCompactFontSizeField('Cỡ chữ (Font Size)', 'fontSize', 36, 12, 120)}
-                        <div class="gmd-field">
-                            <label>Độ đậm (Font Weight)</label>
-                            <select class="gmd-select" data-goal-key="fontWeight">
-                                <option value="normal" ${selected.fontWeight === 'normal' ? 'selected' : ''}>Bình thường</option>
-                                <option value="bold" ${selected.fontWeight === 'bold' ? 'selected' : ''}>In đậm (Bold)</option>
-                                <option value="900" ${selected.fontWeight === '900' ? 'selected' : ''}>Siêu đậm (Black)</option>
+
+                        <div class="gmd-row" style="margin-top:6px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label>Độ đậm</label>
+                                <select class="gmd-select" data-goal-key="fontWeight">
+                                    <option value="normal" ${selected.fontWeight === 'normal' ? 'selected' : ''}>Bình thường</option>
+                                    <option value="bold" ${selected.fontWeight === 'bold' ? 'selected' : ''}>In đậm (Bold)</option>
+                                    <option value="900" ${selected.fontWeight === '900' ? 'selected' : ''}>Siêu đậm (Black)</option>
+                                </select>
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label>Căn lề</label>
+                                <select class="gmd-select" data-goal-key="textAlign">
+                                    <option value="left" ${selected.textAlign === 'left' ? 'selected' : ''}>Căn trái</option>
+                                    <option value="center" ${(selected.textAlign || 'center') === 'center' ? 'selected' : ''}>Căn giữa</option>
+                                    <option value="right" ${selected.textAlign === 'right' ? 'selected' : ''}>Căn phải</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- MẪU PHONG CÁCH 1-CLICK -->
+                        <div class="gmd-field" style="margin-top:10px;">
+                            <label style="font-size:11px;color:#cbd5e1;font-weight:700;"><i class="fas fa-magic" style="color:#c084fc;"></i> Mẫu phong cách nhanh (1-Click):</label>
+                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px;">
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:rgba(250,204,21,0.15);border:1px solid #facc15;color:#facc15;font-weight:700;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','gaming-stroke')">🎮 Gaming Stroke</button>
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(217,119,6,0.2));border:1px solid #f59e0b;color:#fbbf24;font-weight:800;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','gold-3d')">👑 Gold 3D VIP</button>
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:rgba(34,211,238,0.15);border:1px solid #22d3ee;color:#38bdf8;font-weight:700;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','cyber-neon')">⚡ Cyber Neon</button>
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:rgba(236,72,153,0.15);border:1px solid #ec4899;color:#f472b6;font-weight:700;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','idol-pink')">💖 Idol Pink</button>
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:rgba(239,68,68,0.15);border:1px solid #ef4444;color:#f87171;font-weight:700;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','fire-red')">🔥 Fire Red</button>
+                                <button type="button" class="gmd-btn" style="font-size:10px;padding:5px 2px;background:rgba(168,85,247,0.15);border:1px solid #a855f7;color:#c084fc;font-weight:700;cursor:pointer;" onclick="window.giftMenuDesigner.applyTextPreset('${selected.id}','vip-badge')">🏷️ Khung VIP</button>
+                            </div>
+                        </div>
+
+                        <!-- TÍNH NĂNG CHỮ CHẠY (MARQUEE) -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:12px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
+                            <label style="font-size:11px;font-weight:700;color:#38bdf8;"><i class="fas fa-arrows-left-right"></i> Bật chữ chạy cuộn ngang (Marquee)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="isMarquee" ${selected.isMarquee ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.isMarquee ? `
+                        <div class="gmd-field" style="margin-top:4px;">
+                            <label style="font-size:11px;">Tốc độ chạy chữ</label>
+                            <select class="gmd-select" data-goal-key="marqueeSpeed">
+                                <option value="20" ${selected.marqueeSpeed == 20 ? 'selected' : ''}>Chậm (20s / vòng)</option>
+                                <option value="12" ${(selected.marqueeSpeed == 12 || !selected.marqueeSpeed) ? 'selected' : ''}>Vừa phải (12s / vòng - Mặc định)</option>
+                                <option value="7" ${selected.marqueeSpeed == 7 ? 'selected' : ''}>Nhanh (7s / vòng)</option>
+                                <option value="4" ${selected.marqueeSpeed == 4 ? 'selected' : ''}>Rất nhanh (4s / vòng)</option>
                             </select>
                         </div>
-                        <div class="gmd-field">
-                            <label>Bóng chữ</label>
-                            <select class="gmd-select" data-goal-key="textShadow">
-                                <option value="none" ${selected.textShadow === 'none' ? 'selected' : ''}>Không bóng</option>
-                                <option value="0 0 8px rgba(168,85,247,0.8)" ${selected.textShadow === '0 0 8px rgba(168,85,247,0.8)' ? 'selected' : ''}>Tím Neon Glow</option>
-                                <option value="0 0 8px rgba(245,158,11,0.8)" ${selected.textShadow === '0 0 8px rgba(245,158,11,0.8)' ? 'selected' : ''}>Vàng Neon Glow</option>
-                                <option value="0 0 8px rgba(236,72,153,0.8)" ${selected.textShadow === '0 0 8px rgba(236,72,153,0.8)' ? 'selected' : ''}>Hồng Neon Glow</option>
-                                <option value="2px 2px 4px rgba(0,0,0,0.8)" ${selected.textShadow === '2px 2px 4px rgba(0,0,0,0.8)' ? 'selected' : ''}>Bóng đổ đen dịu</option>
+                        ` : ''}
+
+                        <!-- VIỀN CHỮ (TEXT STROKE) -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
+                            <label style="font-size:11px;font-weight:700;color:#fde047;"><i class="fas fa-border-all"></i> Viền chữ (Stroke)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="enableStroke" ${selected.enableStroke ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.enableStroke ? `
+                        <div class="gmd-row" style="margin-top:4px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Màu viền</label>
+                                <input class="gmd-color" type="color" data-goal-key="strokeColor" value="${selected.strokeColor || '#000000'}">
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Độ dày</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="1" max="8" data-goal-key="strokeWidth" value="${selected.strokeWidth !== undefined ? selected.strokeWidth : 2}"><span>px</span>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- CHỮ NỔI 3D -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
+                            <label style="font-size:11px;font-weight:700;color:#fb923c;"><i class="fas fa-cube"></i> Chữ nổi khối 3D (3D Text)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="enable3D" ${selected.enable3D ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.enable3D ? `
+                        <div class="gmd-row" style="margin-top:4px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Màu khối 3D</label>
+                                <input class="gmd-color" type="color" data-goal-key="depth3DColor" value="${selected.depth3DColor || '#1e1b4b'}">
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Độ sâu khối</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="1" max="10" data-goal-key="depth3DSize" value="${selected.depth3DSize !== undefined ? selected.depth3DSize : 4}"><span>px</span>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- CHỮ PHÁT SÁNG (NEON GLOW) -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
+                            <label style="font-size:11px;font-weight:700;color:#c084fc;"><i class="fas fa-sun"></i> Chữ phát sáng (Neon Glow)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="enableGlow" ${selected.enableGlow ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.enableGlow ? `
+                        <div class="gmd-row" style="margin-top:4px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Màu phát sáng</label>
+                                <input class="gmd-color" type="color" data-goal-key="glowColor" value="${selected.glowColor || '#a855f7'}">
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Cường độ</label>
+                                <select class="gmd-select" data-goal-key="glowIntensity">
+                                    <option value="0.8" ${selected.glowIntensity == 0.8 ? 'selected' : ''}>Nhẹ dịu (0.8x)</option>
+                                    <option value="1.2" ${(selected.glowIntensity == 1.2 || !selected.glowIntensity) ? 'selected' : ''}>Vừa chuẩn (1.2x)</option>
+                                    <option value="2" ${selected.glowIntensity == 2 ? 'selected' : ''}>Rực rỡ (2.0x)</option>
+                                </select>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- LỚP NỀN VĂN BẢN (BACKGROUND BOX GIỐNG GỘP QUÀ) -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);">
+                            <label style="font-size:12px;font-weight:800;color:#34d399;"><i class="fas fa-layer-group"></i> Bật lớp nền khung chữ (Background)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="showBackground" ${selected.showBackground ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.showBackground ? `
+                        <div class="gmd-field" style="margin-top:4px;">
+                            <label style="font-size:11px;">Kiểu nền</label>
+                            <select class="gmd-select" data-goal-key="bgFillType">
+                                <option value="solid" ${(selected.bgFillType || 'solid') === 'solid' ? 'selected' : ''}>Màu đơn</option>
+                                <option value="gradient" ${selected.bgFillType === 'gradient' ? 'selected' : ''}>Gradient (Chuyển sắc)</option>
                             </select>
                         </div>
+                        ${(selected.bgFillType || 'solid') === 'gradient' ? `
+                        <div class="gmd-field" style="margin-top:4px;">
+                            <label style="font-size:11px;">Màu gradient (Từ ➔ Đến)</label>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+                                <input class="gmd-color" type="color" data-goal-key="bgGradientFrom" value="${selected.bgGradientFrom || '#1e1b4b'}">
+                                <input class="gmd-color" type="color" data-goal-key="bgGradientTo" value="${selected.bgGradientTo || '#3b0764'}">
+                            </div>
+                            <div class="gmd-inline-input gmd-inline-input-single">
+                                <input class="gmd-input gmd-input-compact" type="number" min="0" max="360" data-goal-key="bgGradientAngle" value="${selected.bgGradientAngle !== undefined ? selected.bgGradientAngle : 135}"><span>deg</span>
+                            </div>
+                        </div>
+                        ` : `
+                        <div class="gmd-field" style="margin-top:4px;">
+                            <label style="font-size:11px;">Màu nền</label>
+                            <input class="gmd-color" type="color" data-goal-key="bgColor" value="${selected.bgColor && selected.bgColor.startsWith('#') ? selected.bgColor.slice(0,7) : '#0f172a'}">
+                        </div>
+                        `}
+
+                        <div class="gmd-row" style="margin-top:6px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Độ trong suốt nền</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="0" max="100" data-goal-key="bgOpacity" value="${selected.bgOpacity !== undefined ? selected.bgOpacity : 90}"><span>%</span>
+                                </div>
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Bo góc (Radius)</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="0" max="40" data-goal-key="borderRadius" value="${selected.borderRadius !== undefined ? selected.borderRadius : 12}"><span>px</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gmd-row" style="margin-top:6px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Đệm ngang (Pad X)</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="0" max="50" data-goal-key="paddingX" value="${selected.paddingX !== undefined ? selected.paddingX : 16}"><span>px</span>
+                                </div>
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Đệm dọc (Pad Y)</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="0" max="50" data-goal-key="paddingY" value="${selected.paddingY !== undefined ? selected.paddingY : 8}"><span>px</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VIỀN KHUNG NỀN -->
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:8px;">
+                            <label style="font-size:11px;">Bật viền khung nền</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="showBorder" ${selected.showBorder ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ${selected.showBorder ? `
+                        <div class="gmd-row" style="margin-top:4px;">
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Màu viền khung</label>
+                                <input class="gmd-color" type="color" data-goal-key="borderColor" value="${selected.borderColor || '#38bdf8'}">
+                            </div>
+                            <div class="gmd-field" style="flex:1;">
+                                <label style="font-size:11px;">Độ dày viền</label>
+                                <div class="gmd-inline-input gmd-inline-input-single">
+                                    <input class="gmd-input gmd-input-compact" type="number" min="1" max="6" data-goal-key="borderWidth" value="${selected.borderWidth !== undefined ? selected.borderWidth : 1}"><span>px</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gmd-field gmd-toggle-row" style="margin-top:6px;">
+                            <label style="font-size:11px;">Phát sáng viền khung (Border Glow)</label>
+                            <label class="gmd-switch">
+                                <input type="checkbox" data-goal-key="borderGlow" ${selected.borderGlow ? 'checked' : ''}>
+                                <span></span>
+                            </label>
+                        </div>
+                        ` : ''}
+                        ` : ''}
                     </div>
                 `;
             }
@@ -8398,11 +8680,130 @@
             }
         }
 
+        applyTextPreset(itemId, presetName) {
+            const item = this.findInteractiveItem(itemId);
+            if (!item) return;
+            if (presetName === 'gaming-stroke') {
+                item.showBackground = false;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#fff000';
+                item.textGradientTo = '#ff8800';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#000000';
+                item.strokeWidth = 2.5;
+                item.enable3D = true;
+                item.depth3DColor = '#000000';
+                item.depth3DSize = 4;
+                item.enableGlow = true;
+                item.glowColor = '#ff6b00';
+                item.glowIntensity = 1;
+                item.fontWeight = '900';
+            } else if (presetName === 'gold-3d') {
+                item.showBackground = false;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#fffbeb';
+                item.textGradientTo = '#d97706';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#ffffff';
+                item.strokeWidth = 1;
+                item.enable3D = true;
+                item.depth3DColor = '#78350f';
+                item.depth3DSize = 4;
+                item.enableGlow = true;
+                item.glowColor = '#f59e0b';
+                item.glowIntensity = 1;
+                item.fontWeight = '900';
+            } else if (presetName === 'cyber-neon') {
+                item.showBackground = false;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#ffffff';
+                item.textGradientTo = '#06b6d4';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#0891b2';
+                item.strokeWidth = 1.5;
+                item.enable3D = true;
+                item.depth3DColor = '#083344';
+                item.depth3DSize = 4;
+                item.enableGlow = true;
+                item.glowColor = '#00f0ff';
+                item.glowIntensity = 1.8;
+                item.fontWeight = '900';
+            } else if (presetName === 'idol-pink') {
+                item.showBackground = false;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#ffffff';
+                item.textGradientTo = '#ff2a85';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#831843';
+                item.strokeWidth = 1.5;
+                item.enable3D = true;
+                item.depth3DColor = '#500724';
+                item.depth3DSize = 4;
+                item.enableGlow = true;
+                item.glowColor = '#ff2a85';
+                item.glowIntensity = 1.4;
+                item.fontWeight = '900';
+            } else if (presetName === 'fire-red') {
+                item.showBackground = false;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#fff500';
+                item.textGradientTo = '#ef4444';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#450a0a';
+                item.strokeWidth = 1.5;
+                item.enable3D = true;
+                item.depth3DColor = '#450a0a';
+                item.depth3DSize = 4;
+                item.enableGlow = true;
+                item.glowColor = '#ef4444';
+                item.glowIntensity = 1.5;
+                item.fontWeight = '900';
+            } else if (presetName === 'vip-badge') {
+                item.showBackground = true;
+                item.bgFillType = 'gradient';
+                item.bgGradientFrom = '#0f172a';
+                item.bgGradientTo = '#1e1b4b';
+                item.bgGradientAngle = 135;
+                item.showBorder = true;
+                item.borderColor = '#f59e0b';
+                item.borderWidth = 1.5;
+                item.borderGlow = true;
+                item.borderGlowColor = 'rgba(245, 158, 11, 0.5)';
+                item.borderRadius = 16;
+                item.paddingX = 28;
+                item.paddingY = 12;
+                item.bgOpacity = 95;
+                item.textFillType = 'gradient';
+                item.textGradientFrom = '#fffbeb';
+                item.textGradientTo = '#f59e0b';
+                item.textGradientAngle = 180;
+                item.enableStroke = true;
+                item.strokeColor = '#ffffff';
+                item.strokeWidth = 1;
+                item.enable3D = true;
+                item.depth3DColor = '#78350f';
+                item.depth3DSize = 3;
+                item.enableGlow = true;
+                item.glowColor = '#f59e0b';
+                item.glowIntensity = 1;
+                item.fontWeight = '900';
+            }
+            this.invalidateItemVisual(item);
+            this.renderCanvas();
+            this.renderInspector();
+            this.pushHistory('apply-text-preset');
+        }
+
         updateGoalBoardSelectedItem(key, value, pushHist = true) {
             const item = this.findInteractiveItem(this.selectedId);
             if (!item) return;
 
-            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'backgroundOpacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'contributorAvatarSize', 'iconSize', 'progressSize', 'goalIconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'giftTextGap', 'labelGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerOffsetY', 'pkBarOffsetY', 'versusFontSize', 'bgColorGradientAngle'].includes(key)) {
+            if (['x', 'y', 'w', 'h', 'targetCount', 'currentCount', 'limitCount', 'borderRadius', 'opacity', 'backgroundOpacity', 'fontSize', 'subtitleFontSize', 'rowFontSize', 'numberFontSize', 'valueFontSize', 'footerFontSize', 'comboCount', 'barHeight', 'contentOffsetY', 'podiumGap', 'podiumHeaderGap', 'contributorAvatarSize', 'iconSize', 'progressSize', 'goalIconSize', 'gap', 'textSize', 'subtextSize', 'textGap', 'giftTextGap', 'labelGap', 'loopSpeed', 'panelGradientAngle', 'panelEffectSpeed', 'panelGlowIntensity', 'borderGradientAngle', 'borderEffectSpeed', 'borderGlowIntensity', 'padding', 'timerDurationSeconds', 'timerRemainingSeconds', 'timerStartedAt', 'timerOffsetY', 'pkBarOffsetY', 'versusFontSize', 'bgColorGradientAngle', 'strokeWidth', 'depth3DSize', 'glowIntensity', 'textGradientAngle', 'marqueeSpeed', 'bgGradientAngle', 'bgOpacity', 'paddingX', 'paddingY', 'borderWidth'].includes(key)) {
                 const numVal = Number(value);
                 if (key === 'x' || key === 'y' || key === 'w' || key === 'h') {
                     const previousW = Math.max(1, Number(item.w) || Number(item.width) || 1);
@@ -8465,8 +8866,12 @@
                         }
                     }
                 } else {
-                    item[key] = key === 'backgroundOpacity'
+                    item[key] = (key === 'padding' || key === 'paddingX' || key === 'paddingY' || key === 'borderRadius' || key === 'contentOffsetY' || key === 'timerOffsetY' || key === 'pkBarOffsetY' || key === 'strokeWidth' || key === 'depth3DSize' || key === 'borderWidth')
+                        ? numVal
+                        : (key === 'opacity' || key === 'backgroundOpacity' || key === 'bgOpacity')
                         ? Math.max(0, Math.min(100, numVal))
+                        : (key === 'panelGlowIntensity' || key === 'borderGlowIntensity' || key === 'glowIntensity')
+                        ? Math.max(0, Math.min(3, numVal))
                         : numVal;
                 }
             } else if (key === 'useCustomBgGradient') {
@@ -8474,7 +8879,7 @@
                 // Choosing a background style means the board background must be visible.
                 item.useCustomBg = true;
                 item.hideBg = false;
-            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg' || key === 'showName' || key === 'showVs' || key === 'loopEnabled' || key === 'showPanel' || key === 'showBorder' || key === 'useCustomPkBorderColor' || key === 'timerRunning' || key === 'showTimer') {
+            } else if (key === 'showPercentage' || key === 'showAvatar' || key === 'showValue' || key === 'lockRatio' || key === 'showGiftName' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'hideBg' || key === 'showName' || key === 'showVs' || key === 'loopEnabled' || key === 'showPanel' || key === 'showBorder' || key === 'useCustomPkBorderColor' || key === 'timerRunning' || key === 'showTimer' || key === 'enableStroke' || key === 'enable3D' || key === 'enableGlow' || key === 'isMarquee' || key === 'showBackground' || key === 'borderGlow') {
                 const wasLocked = item.lockRatio !== false;
                 let visibleGoalListScale = 1;
                 let visiblePkScale = 1;
@@ -8591,7 +8996,7 @@
 
             this.invalidateItemVisual(item);
             this.renderCanvas();
-            if (key === 'layoutDirection' || key === 'showVs' || key === 'showAvatar' || key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage' || key === 'useBarGradient') {
+            if (key === 'layoutDirection' || key === 'showVs' || key === 'showAvatar' || key === 'showPanel' || key === 'showBorder' || key === 'panelFillType' || key === 'panelEffect' || key === 'borderFillType' || key === 'borderEffect' || key === 'useCustomBg' || key === 'useCustomTextColor' || key === 'useCustomPkBorderColor' || key === 'showTimer' || key === 'hideBg' || key === 'useCustomBgGradient' || key === 'titleEffect' || key === 'contribStyle' || key === 'progressEffect' || key === 'showPercentage' || key === 'useBarGradient' || key === 'enableStroke' || key === 'enable3D' || key === 'enableGlow' || key === 'textFillType' || key === 'isMarquee' || key === 'showBackground' || key === 'bgFillType' || key === 'showBorder' || key === 'borderGlow') {
                 this.renderInspector();
             }
             if (pushHist) {

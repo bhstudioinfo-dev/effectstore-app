@@ -194,9 +194,130 @@
 
     function renderText(item, options) {
         const ctx = createContext(options);
+        const fontSize = font(ctx, item.fontSize, 36);
+        const fontFamily = item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit';
+        const fontWeight = item.fontWeight || 'bold';
+        const textAlign = item.textAlign || 'center';
+
+        // 1. Text fill & color
+        let textFillStyle = '';
+        if (item.textFillType === 'gradient') {
+            const angle = item.textGradientAngle !== undefined ? item.textGradientAngle : 90;
+            const from = item.textGradientFrom || '#f59e0b';
+            const to = item.textGradientTo || '#ec4899';
+            textFillStyle = `background: linear-gradient(${angle}deg, ${from}, ${to}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent;`;
+        } else {
+            textFillStyle = `color: ${item.color || '#ffffff'};`;
+        }
+
+        // 2. Text stroke (Viền chữ)
+        let strokeStyle = '';
+        if (item.enableStroke) {
+            const sWidth = Math.max(1, Math.round((Number(item.strokeWidth) || 2) * (ctx.scale || 1)));
+            const sColor = item.strokeColor || '#000000';
+            strokeStyle = `-webkit-text-stroke: ${sWidth}px ${sColor}; paint-order: stroke fill;`;
+        }
+
+        // 3. Multi-layer Shadows (3D Extrusion + Glow + Custom textShadow)
+        const shadowList = [];
+        if (item.enable3D) {
+            const dSize = Math.max(1, Math.round((Number(item.depth3DSize) || 4) * (ctx.scale || 1)));
+            const dColor = item.depth3DColor || '#78350f';
+            for (let i = 1; i <= dSize; i++) {
+                shadowList.push(`${i}px ${i}px 0 ${dColor}`);
+            }
+            shadowList.push(`${dSize + 1}px ${dSize + 1}px ${Math.max(2, Math.round(5 * (ctx.scale || 1)))}px rgba(0,0,0,0.8)`);
+        }
+        if (item.enableGlow) {
+            const gColor = item.glowColor || '#a855f7';
+            const gInt = Math.max(0.5, Math.min(3, Number(item.glowIntensity) || 1));
+            const r1 = Math.round(6 * gInt * (ctx.scale || 1));
+            const r2 = Math.round(14 * gInt * (ctx.scale || 1));
+            const r3 = Math.round(24 * gInt * (ctx.scale || 1));
+            shadowList.push(`0 0 ${r1}px ${gColor}`, `0 0 ${r2}px ${gColor}`, `0 0 ${r3}px ${gColor}`);
+        }
+        if (item.textShadow && item.textShadow !== 'none') {
+            shadowList.push(item.textShadow);
+        }
+        const textShadowStyle = shadowList.length > 0 ? `text-shadow: ${shadowList.join(', ')};` : '';
+
+        // 4. Background Box (Lớp nền giống Gộp Quà)
+        let boxStyle = 'width:100%; height:100%; box-sizing:border-box;';
+        if (item.showBackground) {
+            const padX = roundPx(item.paddingX !== undefined ? item.paddingX : 16, ctx.scale);
+            const padY = roundPx(item.paddingY !== undefined ? item.paddingY : 8, ctx.scale);
+            const bRadius = roundPx(item.borderRadius !== undefined ? item.borderRadius : 12, ctx.scale);
+            const bWidth = Math.max(1, roundPx(item.borderWidth !== undefined ? item.borderWidth : 1, ctx.scale));
+            const bColor = item.borderColor || '#38bdf8';
+
+            let bgVal = '';
+            if (item.bgFillType === 'gradient') {
+                const bgAngle = item.bgGradientAngle !== undefined ? item.bgGradientAngle : 135;
+                const bgFrom = item.bgGradientFrom || '#1e1b4b';
+                const bgTo = item.bgGradientTo || '#3b0764';
+                bgVal = `linear-gradient(${bgAngle}deg, ${bgFrom}, ${bgTo})`;
+            } else {
+                bgVal = item.bgColor || 'rgba(15, 23, 42, 0.85)';
+            }
+
+            const bgOp = item.bgOpacity !== undefined ? Math.max(0, Math.min(100, Number(item.bgOpacity))) / 100 : 1;
+            const borderVal = item.showBorder ? `border: ${bWidth}px solid ${bColor};` : 'border: none;';
+            const glowVal = (item.showBorder && item.borderGlow)
+                ? `box-shadow: 0 0 ${roundPx(14, ctx.scale)}px ${item.borderGlowColor || bColor};`
+                : '';
+
+            boxStyle += ` padding: ${padY}px ${padX}px; border-radius: ${bRadius}px; ${borderVal} ${glowVal} background: ${bgVal}; opacity: ${bgOp};`;
+        }
+
+        // 5. Build Content HTML
+        // Use dual-layer when 3D is enabled so the extruded block is placed on the back layer
+        // and NEVER bleeds through or obscures the face text.
+        const isMarquee = Boolean(item.isMarquee);
+        const marqueeSpeed = Math.max(2, Number(item.marqueeSpeed) || 12);
+        const rawContent = text(ctx, item.text || 'Nhập văn bản');
+        const animId = String(item.id || 'text').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const needsDualLayer = Boolean(item.enable3D) || (item.textFillType === 'gradient' && shadowList.length > 0);
+
+        let innerContentHtml = '';
+        if (needsDualLayer) {
+            const backColor = item.enable3D ? (item.depth3DColor || '#78350f') : 'transparent';
+            innerContentHtml = `
+                <span class="gmd-3d-wrap" style="position:relative; display:inline-block; vertical-align:middle; line-height:inherit;">
+                    <span class="gmd-3d-back" aria-hidden="true" style="position:absolute; left:0; top:0; z-index:1; color:${backColor}; -webkit-text-stroke:0 !important; ${textShadowStyle} user-select:none; pointer-events:none; white-space:inherit;">${rawContent}</span>
+                    <span class="gmd-3d-front" style="position:relative; z-index:2; display:inline-block; ${textFillStyle} ${strokeStyle} line-height:inherit; white-space:inherit;">${rawContent}</span>
+                </span>
+            `;
+        } else {
+            innerContentHtml = `
+                <span class="gmd-text-inner" style="${textFillStyle} ${strokeStyle} ${textShadowStyle} display:inline-block; line-height:inherit; white-space:inherit;">
+                    ${rawContent}
+                </span>
+            `;
+        }
+
+        if (isMarquee) {
+            return `
+                <div class="gmd-text-widget gmd-text-marquee-box" style="${boxStyle} overflow:hidden; display:flex; align-items:center; pointer-events:none;">
+                    <style>
+                        @keyframes gmd-marquee-${animId} {
+                            0% { transform: translateX(100%); }
+                            100% { transform: translateX(-100%); }
+                        }
+                    </style>
+                    <div style="display:inline-block; white-space:nowrap; width:100%; will-change:transform; animation: gmd-marquee-${animId} ${marqueeSpeed}s linear infinite; font-size:${fontSize}px; font-weight:${fontWeight}; font-family:${fontFamily}; line-height:1.2; text-align:${textAlign};">
+                        ${innerContentHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Justify-content based on textAlign
+        const justifyMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+        const justifyVal = justifyMap[textAlign] || 'center';
+
         return `
-            <div class="gmd-text-widget" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:${item.color || '#ffffff'}; font-size:${font(ctx, item.fontSize, 36)}px; font-weight:${item.fontWeight || 'bold'}; text-shadow:${item.textShadow || 'none'}; text-align:${item.textAlign || 'center'}; font-family:${item.fontFamily ? `'${item.fontFamily}', sans-serif` : 'inherit'}; line-height:1.2; word-break:break-word; pointer-events:none;">
-                ${text(ctx, item.text || 'Nhap van ban')}
+            <div class="gmd-text-widget" style="${boxStyle} display:flex; align-items:center; justify-content:${justifyVal}; font-size:${fontSize}px; font-weight:${fontWeight}; font-family:${fontFamily}; line-height:1.2; text-align:${textAlign}; word-break:break-word; pointer-events:none;">
+                ${innerContentHtml}
             </div>
         `;
     }
