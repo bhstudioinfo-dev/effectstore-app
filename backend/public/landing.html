@@ -332,108 +332,55 @@
             color: #475569;
         }
 
-        /* RIGHT VISUAL: GIAO DIỆN APP 3D THẬT CỦA BẠN */
+        /* RIGHT VISUAL: GIAO DIỆN APP 3D SIÊU THỰC */
         .hero-right-visual {
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            perspective: 1400px;
+            perspective: 1600px;
+            transform-style: preserve-3d;
+            padding: 24px 10px;
         }
 
         .hero-visual-glow {
             position: absolute;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at center, rgba(168, 85, 247, 0.32) 0%, rgba(236, 72, 153, 0.2) 45%, transparent 70%);
-            filter: blur(55px);
+            width: 110%;
+            height: 110%;
+            background: radial-gradient(circle at center, rgba(168, 85, 247, 0.35) 0%, rgba(236, 72, 153, 0.22) 42%, transparent 70%);
+            filter: blur(60px);
             pointer-events: none;
             z-index: 0;
         }
 
+        /* Khung 3D Chassis chính */
         .app-3d-window-frame {
             position: relative;
-            z-index: 1;
+            z-index: 2;
             background: #090d22;
             border-radius: 18px;
-            border: 1.5px solid rgba(255, 255, 255, 0.14);
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            border-right: 5px solid rgba(255, 255, 255, 0.12);
+            border-bottom: 7px solid rgba(15, 23, 42, 0.95);
             box-shadow: 
-                0 30px 70px rgba(0, 0, 0, 0.85),
-                0 0 40px rgba(168, 85, 247, 0.3),
-                0 0 80px rgba(236, 72, 153, 0.2);
-            transform: rotateY(-8deg) rotateX(4deg);
-            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease;
-            overflow: hidden;
+                -28px 38px 80px rgba(0, 0, 0, 0.88),
+                0 0 50px rgba(168, 85, 247, 0.35),
+                0 0 90px rgba(236, 72, 153, 0.2);
+            /* Góc nghiêng 3D chính định sẵn theo yêu cầu */
+            transform: perspective(1400px) rotateY(-18deg) rotateX(12deg) rotateZ(2deg);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+            overflow: visible;
             width: 100%;
+            transform-style: preserve-3d;
+            cursor: pointer;
         }
 
         .app-3d-window-frame:hover {
-            transform: rotateY(0deg) rotateX(0deg) scale(1.02);
             box-shadow: 
-                0 40px 90px rgba(0, 0, 0, 0.9),
-                0 0 60px rgba(236, 72, 153, 0.45);
-            border-color: rgba(236, 72, 153, 0.45);
-        }
-
-        .window-titlebar {
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(12px);
-            padding: 10px 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .window-dots {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-        }
-
-        .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .dot-red { background: #ef4444; }
-        .dot-yellow { background: #f59e0b; }
-        .dot-green { background: #10b981; }
-
-        .window-app-title {
-            font-size: 11.5px;
-            font-weight: 800;
-            color: #cbd5e1;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-        }
-
-        .window-badges {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .win-badge {
-            font-size: 10px;
-            font-weight: 800;
-            padding: 2px 8px;
-            border-radius: 5px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .win-badge.green {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.4);
-        }
-        .win-badge.purple {
-            background: rgba(168, 85, 247, 0.2);
-            color: #c084fc;
-            border: 1px solid rgba(168, 85, 247, 0.4);
+                -34px 48px 100px rgba(0, 0, 0, 0.95),
+                0 0 70px rgba(236, 72, 153, 0.55),
+                0 0 110px rgba(168, 85, 247, 0.4);
+            border-color: rgba(236, 72, 153, 0.55);
         }
 
         .window-screen-frame {
@@ -441,6 +388,7 @@
             width: 100%;
             line-height: 0;
             overflow: hidden;
+            border-radius: 16px;
             background: #050713;
         }
 
@@ -449,13 +397,81 @@
             height: auto;
             display: block;
             object-fit: cover;
+            border-radius: 16px;
         }
 
         .window-glass-reflection {
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 40%, transparent 60%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 40%, transparent 60%);
             pointer-events: none;
+            border-radius: 16px;
+        }
+
+        /* 3D Floating Tags (Tạo chiều sâu 3D nhiều lớp) */
+        .floating-3d-tag {
+            position: absolute;
+            z-index: 10;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.65), 0 0 25px rgba(168, 85, 247, 0.3);
+            pointer-events: none;
+            transform: translateZ(55px);
+            transition: all 0.3s;
+        }
+
+        .tag-top-right {
+            top: -15px;
+            right: -15px;
+            border-color: rgba(16, 185, 129, 0.45);
+        }
+
+        .tag-bottom-left {
+            bottom: -15px;
+            left: -15px;
+            border-color: rgba(236, 72, 153, 0.45);
+        }
+
+        .tag-icon-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .tag-icon-circle.green {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .tag-icon-circle.pink {
+            background: rgba(236, 72, 153, 0.2);
+            color: #f472b6;
+            border: 1px solid rgba(236, 72, 153, 0.4);
+        }
+
+        .tag-title {
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.2;
+        }
+
+        .tag-desc {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 2px;
         }
 
         /* SECTION: CÁCH LIVEFLOW HOẠT ĐỘNG */
@@ -1545,24 +1561,29 @@
                     </div>
                 </div>
 
-                <!-- CỘT PHẢI: GIAO DIỆN APP 3D THẬT CỦA BẠN -->
+                <!-- CỘT PHẢI: GIAO DIỆN APP 3D THẬT (ĐÃ BỎ THANH DÀY THÔ, TĂNG ĐỘ NỔI KHỐI 3D) -->
                 <div class="hero-right-visual">
                     <div class="hero-visual-glow"></div>
                     <div class="app-3d-window-frame" id="heroDevices3D">
-                        <div class="window-titlebar">
-                            <div class="window-dots">
-                                <span class="dot dot-red"></span>
-                                <span class="dot dot-yellow"></span>
-                                <span class="dot dot-green"></span>
-                            </div>
-                            <div class="window-app-title">
-                                <i class="fas fa-bolt" style="color:#ec4899; margin-right:6px;"></i> LiveFlow - Premium Livestream Effects (v1.0.1 PRO)
-                            </div>
-                            <div class="window-badges">
-                                <span class="win-badge green"><i class="fas fa-video"></i> OBS: ĐÃ KẾT NỐI</span>
-                                <span class="win-badge purple"><i class="fab fa-tiktok"></i> TIKTOK: SẴN SÀNG</span>
+                        <!-- 3D Floating Tag 1: Góc trên bên phải -->
+                        <div class="floating-3d-tag tag-top-right">
+                            <div class="tag-icon-circle green"><i class="fas fa-check-circle"></i></div>
+                            <div>
+                                <div class="tag-title">OBS Studio 1-Click</div>
+                                <div class="tag-desc">Sẵn sàng kích hoạt hiệu ứng</div>
                             </div>
                         </div>
+
+                        <!-- 3D Floating Tag 2: Góc dưới bên trái -->
+                        <div class="floating-3d-tag tag-bottom-left">
+                            <div class="tag-icon-circle pink"><i class="fas fa-gift"></i></div>
+                            <div>
+                                <div class="tag-title">686+ Quà TikTok</div>
+                                <div class="tag-desc">Tự động nhận diện & nổ 3D</div>
+                            </div>
+                        </div>
+
+                        <!-- Màn hình app sạch đẹp, sắc sảo chuẩn 100% -->
                         <div class="window-screen-frame">
                             <img src="assets/images/app-3d-mockup.png" alt="Giao diện LiveFlow App" class="app-screen-img">
                             <div class="window-glass-reflection"></div>
@@ -2252,20 +2273,25 @@
             });
         });
 
-        // 3D Parallax Tilt for Hero Devices 3D (Laptop + Phone)
+        // 3D Parallax Tilt for Hero App 3D (Nghiêng 3D là trạng thái chính, di chuột tương tác sống động)
         const heroDevices = document.getElementById('heroDevices3D');
         if (heroDevices) {
             const visualCol = heroDevices.parentElement;
+            const baseRotY = -18;
+            const baseRotX = 12;
+            const baseRotZ = 2;
+
             visualCol.addEventListener('mousemove', e => {
                 const rect = visualCol.getBoundingClientRect();
                 const x = e.clientX - rect.left - rect.width / 2;
                 const y = e.clientY - rect.top - rect.height / 2;
-                const rotX = (-y / rect.height) * 14;
-                const rotY = (x / rect.width) * 14;
-                heroDevices.style.transform = `perspective(1200px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateY(-4px) scale(1.02)`;
+                const deltaX = (x / rect.width) * 14;
+                const deltaY = (-y / rect.height) * 14;
+                heroDevices.style.transform = `perspective(1400px) rotateY(${baseRotY + deltaX}deg) rotateX(${baseRotX + deltaY}deg) rotateZ(${baseRotZ}deg) translateY(-8px) scale(1.02)`;
             });
+
             visualCol.addEventListener('mouseleave', () => {
-                heroDevices.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg) translateY(0) scale(1)';
+                heroDevices.style.transform = `perspective(1400px) rotateY(${baseRotY}deg) rotateX(${baseRotX}deg) rotateZ(${baseRotZ}deg) translateY(0) scale(1)`;
             });
         }
     </script>
