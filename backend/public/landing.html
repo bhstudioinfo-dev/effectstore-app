@@ -332,41 +332,130 @@
             color: #475569;
         }
 
-        /* RIGHT VISUAL: 3D LAPTOP & PHONE */
+        /* RIGHT VISUAL: GIAO DIỆN APP 3D THẬT CỦA BẠN */
         .hero-right-visual {
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
+            perspective: 1400px;
         }
 
         .hero-visual-glow {
             position: absolute;
-            width: 90%;
-            height: 90%;
-            background: radial-gradient(circle at center, rgba(168, 85, 247, 0.28) 0%, rgba(236, 72, 153, 0.18) 45%, transparent 70%);
-            filter: blur(50px);
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(168, 85, 247, 0.32) 0%, rgba(236, 72, 153, 0.2) 45%, transparent 70%);
+            filter: blur(55px);
             pointer-events: none;
             z-index: 0;
         }
 
-        .devices-3d-wrapper {
+        .app-3d-window-frame {
             position: relative;
             z-index: 1;
+            background: #090d22;
+            border-radius: 18px;
+            border: 1.5px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 
+                0 30px 70px rgba(0, 0, 0, 0.85),
+                0 0 40px rgba(168, 85, 247, 0.3),
+                0 0 80px rgba(236, 72, 153, 0.2);
+            transform: rotateY(-8deg) rotateX(4deg);
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease;
+            overflow: hidden;
             width: 100%;
-            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .devices-3d-wrapper:hover {
-            transform: translateY(-6px) scale(1.02);
+        .app-3d-window-frame:hover {
+            transform: rotateY(0deg) rotateX(0deg) scale(1.02);
+            box-shadow: 
+                0 40px 90px rgba(0, 0, 0, 0.9),
+                0 0 60px rgba(236, 72, 153, 0.45);
+            border-color: rgba(236, 72, 153, 0.45);
         }
 
-        .devices-img-fluid {
+        .window-titlebar {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .window-dots {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot-red { background: #ef4444; }
+        .dot-yellow { background: #f59e0b; }
+        .dot-green { background: #10b981; }
+
+        .window-app-title {
+            font-size: 11.5px;
+            font-weight: 800;
+            color: #cbd5e1;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .window-badges {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .win-badge {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .win-badge.green {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+        .win-badge.purple {
+            background: rgba(168, 85, 247, 0.2);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+
+        .window-screen-frame {
+            position: relative;
+            width: 100%;
+            line-height: 0;
+            overflow: hidden;
+            background: #050713;
+        }
+
+        .app-screen-img {
             width: 100%;
             height: auto;
             display: block;
-            border-radius: 20px;
-            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 35px rgba(168, 85, 247, 0.3));
+            object-fit: cover;
+        }
+
+        .window-glass-reflection {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 40%, transparent 60%);
+            pointer-events: none;
         }
 
         /* SECTION: CÁCH LIVEFLOW HOẠT ĐỘNG */
@@ -1456,11 +1545,28 @@
                     </div>
                 </div>
 
-                <!-- CỘT PHẢI: MÔ HÌNH 3D LAPTOP & SMARTPHONE BẢN QUYỀN -->
+                <!-- CỘT PHẢI: GIAO DIỆN APP 3D THẬT CỦA BẠN -->
                 <div class="hero-right-visual">
                     <div class="hero-visual-glow"></div>
-                    <div class="devices-3d-wrapper" id="heroDevices3D">
-                        <img src="assets/images/hero-devices-clean.png" alt="LiveFlow 3D Laptop and TikTok Live Phone Mockup" class="devices-img-fluid">
+                    <div class="app-3d-window-frame" id="heroDevices3D">
+                        <div class="window-titlebar">
+                            <div class="window-dots">
+                                <span class="dot dot-red"></span>
+                                <span class="dot dot-yellow"></span>
+                                <span class="dot dot-green"></span>
+                            </div>
+                            <div class="window-app-title">
+                                <i class="fas fa-bolt" style="color:#ec4899; margin-right:6px;"></i> LiveFlow - Premium Livestream Effects (v1.0.1 PRO)
+                            </div>
+                            <div class="window-badges">
+                                <span class="win-badge green"><i class="fas fa-video"></i> OBS: ĐÃ KẾT NỐI</span>
+                                <span class="win-badge purple"><i class="fab fa-tiktok"></i> TIKTOK: SẴN SÀNG</span>
+                            </div>
+                        </div>
+                        <div class="window-screen-frame">
+                            <img src="assets/images/app-3d-mockup.png" alt="Giao diện LiveFlow App" class="app-screen-img">
+                            <div class="window-glass-reflection"></div>
+                        </div>
                     </div>
                 </div>
             </div>
