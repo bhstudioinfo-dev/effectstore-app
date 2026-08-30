@@ -2669,7 +2669,7 @@
                     <video src="assets/videos/streamer-live-portrait.mp4" autoplay loop muted playsinline class="gm-phone-video-bg"></video>
                     
                     <!-- Hiệu ứng hoa hồng WebM gốc ĐẬM & RÕ (Alpha transparency chuẩn, không mờ) -->
-                    <video src="assets/videos/effect-rose-burst.webm" loop muted playsinline class="gm-effect-video-overlay" id="gmEffectVideo"></video>
+                    <video src="assets/videos/effect-rose-burst.webm" muted playsinline class="gm-effect-video-overlay" id="gmEffectVideo"></video>
 
                     <!-- Glow nền nổ bừng hoa hồng rực rỡ -->
                     <div class="gm-streamer-rose-burst" id="gmRoseBurst"></div>
@@ -3341,7 +3341,12 @@
                 if (obsBanner) obsBanner.classList.remove('show');
             }
 
+            let isCycleRunning = false;
+            let cycleTimer = null;
+
             function runCycle() {
+                if (isCycleRunning) return;
+                isCycleRunning = true;
                 resetAll();
 
                 // Phase 1: 0.0s - 2.0s: Normal Live Stream, Step 1 active
@@ -3353,7 +3358,7 @@
                     if (phoneLeft) phoneLeft.classList.add('active-glow');
                 }, 2000);
 
-                // 2.5s: Signal travels from Left Phone to LiveFlow App
+                // 2.6s: Signal travels from Left Phone to LiveFlow App
                 setTimeout(() => {
                     if (step1) step1.classList.remove('active');
                     if (step2) step2.classList.add('active');
@@ -3361,9 +3366,9 @@
                         pulse1.style.opacity = '1';
                         pulse1.style.left = '95%';
                     }
-                }, 2500);
+                }, 2600);
 
-                // 3.2s: Signal hits LiveFlow App -> Logo Pulses -> "Gift detected ✓"
+                // 3.3s: Signal hits LiveFlow App -> Logo Pulses -> "Gift detected ✓"
                 setTimeout(() => {
                     if (pulse1) pulse1.style.opacity = '0';
                     if (appLogo) appLogo.classList.add('active-pulse');
@@ -3371,24 +3376,24 @@
                         statusPill.className = 'gm-status-pill detected-active';
                         statusPill.innerHTML = '<i class="fas fa-check-circle"></i> Gift detected ✓';
                     }
-                }, 3200);
+                }, 3300);
 
-                // 3.7s: Signal travels from LiveFlow App to Mapping Card
+                // 3.8s: Signal travels from LiveFlow App to Mapping Card
                 setTimeout(() => {
                     if (pulse2) {
                         pulse2.style.opacity = '1';
                         pulse2.style.left = '95%';
                     }
-                }, 3700);
+                }, 3800);
 
-                // 4.2s: Mapping Card activation (Rose -> Hoa Hồng)
+                // 4.3s: Mapping Card activation (Rose -> Hoa Hồng)
                 setTimeout(() => {
                     if (pulse2) pulse2.style.opacity = '0';
                     if (step2) step2.classList.remove('active');
                     if (step3) step3.classList.add('active');
                     if (mappingCard) mappingCard.classList.add('active-glow');
                     if (mapRose) mapRose.classList.add('lit');
-                }, 4200);
+                }, 4300);
 
                 setTimeout(() => {
                     if (mapEffect) mapEffect.classList.add('lit');
@@ -3396,44 +3401,69 @@
                         mappingPill.className = 'gm-status-pill triggered-active';
                         mappingPill.innerHTML = '<i class="fas fa-bolt"></i> Effect triggered';
                     }
-                }, 4700);
+                }, 4800);
 
-                // 5.0s: Signal travels from Mapping Card to Right Phone
+                // 5.2s: Signal travels from Mapping Card to Right Phone
                 setTimeout(() => {
                     if (pulse3) {
                         pulse3.style.opacity = '1';
                         pulse3.style.left = '95%';
                     }
-                }, 5000);
+                }, 5200);
 
-                // 5.6s: Hits Right Phone -> Authentic WebM 3D Rose Effect Bursts ĐẬM & RÕ over Streamer!
+                // 5.8s: Hits Right Phone -> Authentic WebM 3D Rose Effect Bursts ĐẬM & RÕ, CHẠY HẾT TRỌN VẸN!
                 setTimeout(() => {
                     if (step3) step3.classList.remove('active');
                     if (step4) step4.classList.add('active');
                     if (pulse3) pulse3.style.opacity = '0';
                     if (phoneRight) phoneRight.classList.add('active-glow');
-                    if (effectVideo) {
-                        effectVideo.currentTime = 0;
-                        effectVideo.play().catch(() => {});
-                        effectVideo.classList.add('active');
-                    }
                     if (roseBurst) roseBurst.classList.add('active');
                     if (obsBanner) obsBanner.classList.add('show');
-                }, 5600);
 
-                // 7.4s - 8.0s: Clean fade out, ready for loop
-                setTimeout(() => {
-                    if (effectVideo) effectVideo.classList.remove('active');
-                    if (roseBurst) roseBurst.classList.remove('active');
-                    if (obsBanner) obsBanner.classList.remove('show');
-                    if (phoneRight) phoneRight.classList.remove('active-glow');
-                    if (appLogo) appLogo.classList.remove('active-pulse');
-                    if (mappingCard) mappingCard.classList.remove('active-glow');
-                }, 7400);
+                    if (effectVideo) {
+                        effectVideo.currentTime = 0;
+                        effectVideo.classList.add('active');
+                        effectVideo.play().catch(() => {});
+
+                        let hasEnded = false;
+                        function finishAndScheduleNext() {
+                            if (hasEnded) return;
+                            hasEnded = true;
+                            effectVideo.removeEventListener('ended', finishAndScheduleNext);
+
+                            // Giữ thêm 1.5s sau khi hiệu ứng hoa hồng chạy hết để người xem chiêm ngưỡng
+                            setTimeout(() => {
+                                effectVideo.classList.remove('active');
+                                if (roseBurst) roseBurst.classList.remove('active');
+                                if (obsBanner) obsBanner.classList.remove('show');
+                                if (phoneRight) phoneRight.classList.remove('active-glow');
+                                if (appLogo) appLogo.classList.remove('active-pulse');
+                                if (mappingCard) mappingCard.classList.remove('active-glow');
+                                isCycleRunning = false;
+
+                                // Bắt đầu vòng lặp tiếp theo mượt mà
+                                setTimeout(runCycle, 1500);
+                            }, 1500);
+                        }
+
+                        effectVideo.addEventListener('ended', finishAndScheduleNext);
+
+                        // Fallback an toàn nếu video không phát sự kiện ended (tính theo độ dài video thực tế)
+                        const durationMs = (effectVideo.duration && !isNaN(effectVideo.duration) && effectVideo.duration > 0)
+                            ? Math.round(effectVideo.duration * 1000)
+                            : 5000;
+
+                        setTimeout(finishAndScheduleNext, durationMs + 200);
+                    } else {
+                        setTimeout(() => {
+                            isCycleRunning = false;
+                            setTimeout(runCycle, 1500);
+                        }, 5000);
+                    }
+                }, 5800);
             }
 
             runCycle();
-            setInterval(runCycle, 8000);
         })();
     </script>
 </body>
