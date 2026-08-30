@@ -502,36 +502,48 @@
             box-shadow: 0 0 30px rgba(168, 85, 247, 0.25);
         }
 
-        .p-step-icon {
+        .p-step-logo-wrap {
             width: 52px;
             height: 52px;
             border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
             flex-shrink: 0;
+            position: relative;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
         }
 
-        .p-step-icon.tiktok-bg {
-            background: linear-gradient(135deg, #010101, #25f4ee);
-            color: #fff;
-            border: 1px solid rgba(37, 244, 238, 0.4);
-            box-shadow: 0 0 16px rgba(37, 244, 238, 0.25);
+        .p-step-logo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            border-radius: 12px;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .p-step-icon.liveflow-bg {
-            background: linear-gradient(135deg, #a855f7, #ec4899);
-            color: #fff;
-            border: 1px solid rgba(236, 72, 153, 0.4);
-            box-shadow: 0 0 20px rgba(236, 72, 153, 0.35);
+        .pipeline-step-item:hover .p-step-logo-img {
+            transform: scale(1.1);
         }
 
-        .p-step-icon.obs-bg {
-            background: linear-gradient(135deg, #090d16, #3b82f6);
-            color: #fff;
-            border: 1px solid rgba(59, 130, 246, 0.4);
-            box-shadow: 0 0 16px rgba(59, 130, 246, 0.25);
+        .p-step-logo-wrap.tiktok-glow {
+            border-color: rgba(37, 244, 238, 0.35);
+            box-shadow: 0 0 18px rgba(37, 244, 238, 0.2);
+        }
+
+        .p-step-logo-wrap.liveflow-glow {
+            border-color: rgba(168, 85, 247, 0.5);
+            box-shadow: 0 0 24px rgba(168, 85, 247, 0.4), 0 0 10px rgba(236, 72, 153, 0.3);
+        }
+
+        .p-step-logo-wrap.obs-glow {
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 18px rgba(59, 130, 246, 0.25);
         }
 
         .p-step-info h4 {
@@ -1558,8 +1570,8 @@
             <div class="pipeline-steps-grid">
                 <!-- Bước 1: TikTok Gift -->
                 <div class="pipeline-step-item">
-                    <div class="p-step-icon tiktok-bg">
-                        <i class="fab fa-tiktok"></i>
+                    <div class="p-step-logo-wrap tiktok-glow">
+                        <img src="assets/images/tiktok-logo.png" alt="TikTok LIVE" class="p-step-logo-img">
                     </div>
                     <div class="p-step-info">
                         <h4>TikTok Gift</h4>
@@ -1572,8 +1584,8 @@
 
                 <!-- Bước 2: LiveFlow Core -->
                 <div class="pipeline-step-item active-core">
-                    <div class="p-step-icon liveflow-bg">
-                        <i class="fas fa-play"></i>
+                    <div class="p-step-logo-wrap liveflow-glow">
+                        <img src="assets/images/live-flow-app-icon.png" alt="LiveFlow App" class="p-step-logo-img">
                     </div>
                     <div class="p-step-info">
                         <h4>LiveFlow</h4>
@@ -1586,8 +1598,8 @@
 
                 <!-- Bước 3: OBS Effect -->
                 <div class="pipeline-step-item">
-                    <div class="p-step-icon obs-bg">
-                        <i class="fas fa-circle-notch"></i>
+                    <div class="p-step-logo-wrap obs-glow">
+                        <img src="assets/images/obs-logo.png" alt="OBS Studio" class="p-step-logo-img" style="padding: 2px;">
                     </div>
                     <div class="p-step-info">
                         <h4>OBS Effect</h4>
