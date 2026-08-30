@@ -3626,24 +3626,25 @@
                             hasEnded = true;
                             effectVideo.removeEventListener('ended', finishAndStartNext);
                             effectVideo.classList.remove('active');
+                            if (step4) step4.classList.remove('active');
+                            if (phoneRight) phoneRight.classList.remove('active-glow');
 
-                            // CHUYỂN GIAO TRỰC TIẾP 100%: Bước 4 tắt -> Bước 1 sáng NGAY LẬP TỨC (0s delay)
+                            // KHI BƯỚC 4 ẨN -> CHUYỂN QUA BƯỚC 1 NGAY LẬP TỨC (0s delay)
                             isCycleRunning = false;
                             runCycle();
                         }
 
                         effectVideo.addEventListener('ended', finishAndStartNext);
 
-                        const durationMs = (effectVideo.duration && !isNaN(effectVideo.duration) && effectVideo.duration > 0)
-                            ? Math.round(effectVideo.duration * 1000)
-                            : 4500;
-
-                        setTimeout(finishAndStartNext, durationMs + 50);
+                        // Hiệu ứng hoa hồng bung nở trọn vẹn 3.5s rồi chuyển giao ngay lập tức
+                        setTimeout(finishAndStartNext, 3500);
                     } else {
                         setTimeout(() => {
+                            if (step4) step4.classList.remove('active');
+                            if (phoneRight) phoneRight.classList.remove('active-glow');
                             isCycleRunning = false;
                             runCycle();
-                        }, 4500);
+                        }, 3500);
                     }
                 }, 4600);
             }
