@@ -13,7 +13,7 @@
     <!-- Fonts: Outfit & Inter & UTM Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/utm-fonts.css">
     
     <!-- FontAwesome Pro Icons -->
@@ -254,27 +254,29 @@
         }
 
         .hero-main-title {
-            font-size: clamp(30px, 3vw, 40px);
-            font-weight: 750;
-            line-height: 1.25;
-            letter-spacing: -0.03em;
+            font-size: clamp(32px, 3.2vw, 44px);
+            font-weight: 800;
+            line-height: 1.22;
+            letter-spacing: -0.035em;
             margin-bottom: 22px;
             color: #ffffff;
+            text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
         }
 
-        .gradient-text-pink {
-            background: linear-gradient(135deg, #f43f5e 0%, #ec4899 50%, #c084fc 100%);
+        .text-highlight-app {
+            background: linear-gradient(135deg, #ffffff 0%, #ff5e98 25%, #c084fc 65%, #38bdf8 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             display: inline;
-            font-weight: 800;
+            font-weight: 850;
+            filter: drop-shadow(0 0 22px rgba(236, 72, 153, 0.45)) drop-shadow(0 0 45px rgba(168, 85, 247, 0.3));
         }
 
         .hero-main-desc {
             font-size: 16px;
             color: #94a3b8;
             line-height: 1.68;
-            margin-bottom: 34px;
+            margin-bottom: 30px;
             max-width: 520px;
             letter-spacing: -0.01em;
         }
@@ -286,64 +288,57 @@
             }
         }
 
-        .hero-cta-flex {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
+        .hero-cta-wrap {
+            margin-bottom: 32px;
         }
 
         @media (max-width: 1024px) {
-            .hero-cta-flex {
-                justify-content: center;
+            .hero-cta-wrap {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
             }
         }
 
         .btn-live-primary {
-            padding: 14px 28px;
-            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            padding: 16px 36px;
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f43f5e 100%);
             color: #fff;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 750;
             letter-spacing: -0.01em;
-            border-radius: 12px;
+            border-radius: 14px;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            box-shadow: 0 0 25px rgba(236, 72, 153, 0.45);
-            transition: all 0.3s;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            gap: 12px;
+            box-shadow: 0 0 30px rgba(236, 72, 153, 0.5), 0 8px 24px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            position: relative;
+            overflow: hidden;
         }
 
         .btn-live-primary:hover {
             transform: translateY(-2px) scale(1.02);
-            box-shadow: 0 0 35px rgba(236, 72, 153, 0.7);
+            box-shadow: 0 0 45px rgba(236, 72, 153, 0.75), 0 12px 30px rgba(168, 85, 247, 0.4);
+            border-color: rgba(255, 255, 255, 0.5);
         }
 
-        .btn-live-secondary {
-            padding: 14px 28px;
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: #e2e8f0;
-            font-size: 15px;
-            font-weight: 700;
-            letter-spacing: -0.01em;
-            border-radius: 12px;
-            text-decoration: none;
-            display: inline-flex;
+        .cta-sub-perk {
+            display: flex;
             align-items: center;
             gap: 8px;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s;
+            font-size: 12.5px;
+            color: #64748b;
+            margin-top: 12px;
+            font-weight: 500;
         }
 
-        .btn-live-secondary:hover {
-            background: rgba(30, 41, 59, 0.85);
-            border-color: rgba(255, 255, 255, 0.3);
-            color: #fff;
-            transform: translateY(-2px);
+        @media (max-width: 1024px) {
+            .cta-sub-perk {
+                justify-content: center;
+            }
         }
 
         .hero-compat-row {
@@ -1478,7 +1473,7 @@
             </nav>
 
             <!-- Nút Tải LiveFlow Ánh Kim Shimmer -->
-            <a href="#pricing" class="btn-header-cta">
+            <a href="https://github.com/bhstudioinfo-dev/effectstore-app/releases/latest" class="btn-header-cta" target="_blank" rel="noopener">
                 <i class="fab fa-windows"></i> Tải LiveFlow
             </a>
         </div>
@@ -1492,21 +1487,22 @@
                 <div class="hero-left-content">
                     <h1 class="hero-main-title">
                         Bộ công cụ hỗ trợ <br>
-                        <span class="gradient-text-pink">tương tác Livestream toàn diện.</span>
+                        <span class="text-highlight-app">tương tác Livestream toàn diện.</span>
                     </h1>
                     
                     <p class="hero-main-desc">
                         Tự động hóa toàn bộ hiệu ứng, âm thanh và minigame quà tặng trên OBS theo thời gian thực — mang đến trải nghiệm tương tác liền mạch cho buổi livestream của bạn.
                     </p>
 
-                    <!-- Nút bấm hành động -->
-                    <div class="hero-cta-flex">
-                        <a href="#pricing" class="btn-live-primary">
-                            <i class="fas fa-play"></i> Trải nghiệm LiveFlow
+                    <!-- Nút bấm tải về chính thức -->
+                    <div class="hero-cta-wrap">
+                        <a href="https://github.com/bhstudioinfo-dev/effectstore-app/releases/latest" class="btn-live-primary" target="_blank" rel="noopener">
+                            <i class="fab fa-windows" style="font-size:18px;"></i> Tải LiveFlow Cho Windows
                         </a>
-                        <a href="#store-deck" class="btn-live-secondary">
-                            Xem Demo
-                        </a>
+                        <div class="cta-sub-perk">
+                            <i class="fas fa-check-circle" style="color:#10b981;"></i>
+                            <span>Bản cài đặt chính thức • Windows 10/11 • Miễn phí trải nghiệm</span>
+                        </div>
                     </div>
 
                     <!-- Dòng tương thích -->
