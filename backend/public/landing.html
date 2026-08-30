@@ -267,28 +267,30 @@
             background: linear-gradient(
                 110deg,
                 #ff5e98 0%,
-                #c084fc 25%,
-                #ffffff 46%,
-                #ffd6e7 50%,
-                #ffffff 54%,
-                #c084fc 75%,
-                #38bdf8 100%
+                #c084fc 18%,
+                #ffffff 28%,
+                #ffd6e7 32%,
+                #ffffff 36%,
+                #c084fc 48%,
+                #38bdf8 65%,
+                #a855f7 82%,
+                #ff5e98 100%
             );
-            background-size: 250% 100%;
+            background-size: 200% 100%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             display: inline;
             font-weight: 850;
             filter: drop-shadow(0 0 20px rgba(236, 72, 153, 0.45)) drop-shadow(0 0 40px rgba(168, 85, 247, 0.3));
-            animation: textLightSweep 5.5s infinite ease-in-out;
+            animation: textLightSweep 4s linear infinite;
         }
 
         @keyframes textLightSweep {
             0% {
-                background-position: 100% 0;
+                background-position: 0% 50%;
             }
-            32%, 100% {
-                background-position: -80% 0;
+            100% {
+                background-position: -200% 50%;
             }
         }
 
