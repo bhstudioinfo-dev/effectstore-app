@@ -228,10 +228,10 @@
 
         .hero-split-grid {
             display: grid;
-            grid-template-columns: 1fr 1.15fr;
+            grid-template-columns: 1.18fr 1fr;
             gap: 40px;
             align-items: center;
-            max-width: 1240px;
+            max-width: 1260px;
             margin: 0 auto;
         }
 
@@ -254,10 +254,10 @@
         }
 
         .hero-main-title {
-            font-size: clamp(34px, 4vw, 50px);
+            font-size: clamp(30px, 3vw, 40px);
             font-weight: 750;
-            line-height: 1.18;
-            letter-spacing: -0.035em;
+            line-height: 1.25;
+            letter-spacing: -0.03em;
             margin-bottom: 22px;
             color: #ffffff;
         }
@@ -361,40 +361,7 @@
             }
         }
 
-        /* HERO EYEBROW PILL */
-        .hero-eyebrow-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 14px;
-            background: rgba(168, 85, 247, 0.12);
-            border: 1px solid rgba(168, 85, 247, 0.28);
-            border-radius: 999px;
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: -0.01em;
-            color: #d8b4fe;
-            margin-bottom: 20px;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 0 20px rgba(168, 85, 247, 0.15);
-            transition: all 0.3s ease;
-        }
 
-        .hero-eyebrow-pill:hover {
-            border-color: rgba(236, 72, 153, 0.5);
-            background: rgba(168, 85, 247, 0.18);
-            transform: translateY(-1px);
-        }
-
-        .eyebrow-sparkle {
-            display: inline-block;
-            animation: sparkleRotate 3s infinite ease-in-out;
-        }
-
-        @keyframes sparkleRotate {
-            0%, 100% { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(15deg) scale(1.15); }
-        }
 
         .compat-item {
             color: #94a3b8;
@@ -1523,19 +1490,13 @@
             <div class="hero-split-grid">
                 <!-- CỘT TRÁI: NỘI DUNG & KÊU GỌI HÀNH ĐỘNG -->
                 <div class="hero-left-content">
-                    <!-- Nhãn nhận diện thanh lịch -->
-                    <div class="hero-eyebrow-pill">
-                        <span class="eyebrow-sparkle">✨</span>
-                        <span>Bộ công cụ hỗ trợ tương tác Livestream toàn diện</span>
-                    </div>
-
                     <h1 class="hero-main-title">
-                        Nâng tầm buổi Livestream của bạn <br>
-                        với <span class="gradient-text-pink">trải nghiệm tương tác toàn diện.</span>
+                        Bộ công cụ hỗ trợ <br>
+                        <span class="gradient-text-pink">tương tác Livestream toàn diện.</span>
                     </h1>
                     
                     <p class="hero-main-desc">
-                        LiveFlow đồng bộ trực tiếp TikTok LIVE với OBS trong 30 giây: Tự động nổ hiệu ứng quà tặng, thiết kế bảng quà 3D với 195+ font chữ nghệ thuật và rảnh tay tương tác cùng khán giả.
+                        Tự động hóa toàn bộ hiệu ứng, âm thanh và minigame quà tặng trên OBS theo thời gian thực — mang đến trải nghiệm tương tác liền mạch cho buổi livestream của bạn.
                     </p>
 
                     <!-- Nút bấm hành động -->
