@@ -3493,7 +3493,7 @@
 
         /* ========================================================
            CONTROLLER: GIFT MAPPING & EFFECTS AUTOMATION WORKFLOW
-           Seamless Continuous Loop Timeline (Không khoảng chết, chuyển giao mượt mà)
+           Zero-Gap Continuous Flow (Không bao giờ có khoảng trống tắt hết)
            (TikTok LIVE -> LiveFlow App -> Mapping -> OBS Livestream)
            ======================================================== */
         (function initGiftMappingWorkflow() {
@@ -3518,55 +3518,42 @@
             const mappingPill = document.getElementById('gmMappingPill');
             const effectVideo = document.getElementById('gmEffectVideo');
 
-            function resetAll() {
-                [step1, step2, step3, step4].forEach(s => s && s.classList.remove('active'));
-                if (phoneLeft) phoneLeft.classList.remove('active-glow');
-                if (phoneRight) phoneRight.classList.remove('active-glow');
-                if (appNode) appNode.classList.remove('active-node');
-                if (appLogo) appLogo.classList.remove('active-pulse');
-                if (mappingCard) mappingCard.classList.remove('active-glow');
-                if (pulse1) { pulse1.style.opacity = '0'; pulse1.style.left = '0%'; }
-                if (pulse2) { pulse2.style.opacity = '0'; pulse2.style.left = '0%'; }
-                if (pulse3) { pulse3.style.opacity = '0'; pulse3.style.left = '0%'; }
-                if (statusPill) {
-                    statusPill.className = 'gm-status-pill';
-                    statusPill.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Chờ tín hiệu...';
-                }
-                if (mapRose) mapRose.classList.remove('lit');
-                if (mapEffect) mapEffect.classList.remove('lit');
-                if (mappingPill) {
-                    mappingPill.className = 'gm-status-pill';
-                    mappingPill.innerHTML = '<i class="fas fa-bolt"></i> Effect triggered';
-                }
-                if (effectVideo) {
-                    effectVideo.classList.remove('active');
-                    effectVideo.pause();
-                }
-            }
-
             let isCycleRunning = false;
 
             function runCycle() {
                 if (isCycleRunning) return;
                 isCycleRunning = true;
-                resetAll();
 
-                // Phase 1: 0.5s - Quà được tặng -> CẢ 2 BẢNG DONATE ĐỒNG THỜI HIỆN LÊN!
-                // CHỈ Bước 1 & Điện thoại 1 phát sáng rực rỡ, các phần khác giữ 52%
+                // Reset các đường laser & trạng thái trung gian
+                if (pulse1) { pulse1.style.opacity = '0'; pulse1.style.left = '0%'; }
+                if (pulse2) { pulse2.style.opacity = '0'; pulse2.style.left = '0%'; }
+                if (pulse3) { pulse3.style.opacity = '0'; pulse3.style.left = '0%'; }
+                if (mapRose) mapRose.classList.remove('lit');
+                if (mapEffect) mapEffect.classList.remove('lit');
+                if (statusPill) {
+                    statusPill.className = 'gm-status-pill';
+                    statusPill.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Chờ tín hiệu...';
+                }
+                if (mappingPill) {
+                    mappingPill.className = 'gm-status-pill';
+                    mappingPill.innerHTML = '<i class="fas fa-bolt"></i> Effect triggered';
+                }
+
+                // GIAI ĐOẠN 1: BƯỚC 1 & ĐIỆN THOẠI 1 BỪNG SÁNG NGAY LẬP TỨC (t = 0s)
+                if (step4) step4.classList.remove('active');
+                if (phoneRight) phoneRight.classList.remove('active-glow');
+                if (step1) step1.classList.add('active');
+                if (phoneLeft) phoneLeft.classList.add('active-glow');
+                if (giftPopupLeft) giftPopupLeft.classList.add('show');
+                if (giftPopupRight) giftPopupRight.classList.add('show');
+
+                // Tắt popup sau 4.5s
                 setTimeout(() => {
-                    if (step1) step1.classList.add('active');
-                    if (phoneLeft) phoneLeft.classList.add('active-glow');
-                    if (giftPopupLeft) giftPopupLeft.classList.add('show');
-                    if (giftPopupRight) giftPopupRight.classList.add('show');
+                    if (giftPopupLeft) giftPopupLeft.classList.remove('show');
+                    if (giftPopupRight) giftPopupRight.classList.remove('show');
+                }, 4500);
 
-                    // Hiện bảng donate ~4.5s rồi fade out nhẹ nhàng
-                    setTimeout(() => {
-                        if (giftPopupLeft) giftPopupLeft.classList.remove('show');
-                        if (giftPopupRight) giftPopupRight.classList.remove('show');
-                    }, 4500);
-                }, 500);
-
-                // 1.3s: Tín hiệu laser 1 rời Phone 1 sang LiveFlow App -> Phone 1 & Bước 1 chuyển về 52%
+                // 1.0s: Bắn tia laser 1 sang LiveFlow -> Bước 1 tắt, laser di chuyển
                 setTimeout(() => {
                     if (step1) step1.classList.remove('active');
                     if (phoneLeft) phoneLeft.classList.remove('active-glow');
@@ -3574,9 +3561,9 @@
                         pulse1.style.opacity = '1';
                         pulse1.style.left = '95%';
                     }
-                }, 1300);
+                }, 1000);
 
-                // 1.9s: Tín hiệu chạm Logo LiveFlow -> CHỈ Logo LiveFlow & Bước 2 bừng sáng!
+                // 1.7s: Tia laser chạm LiveFlow Logo -> BƯỚC 2 SÁNG
                 setTimeout(() => {
                     if (pulse1) pulse1.style.opacity = '0';
                     if (step2) step2.classList.add('active');
@@ -3586,9 +3573,9 @@
                         statusPill.className = 'gm-status-pill detected-active';
                         statusPill.innerHTML = '<i class="fas fa-check-circle"></i> Gift detected ✓';
                     }
-                }, 1900);
+                }, 1700);
 
-                // 2.6s: Tín hiệu laser 2 rời LiveFlow Logo -> Logo & Bước 2 chuyển về 52%
+                // 2.4s: Bắn tia laser 2 sang Bảng Mapping -> Bước 2 tắt, laser di chuyển
                 setTimeout(() => {
                     if (step2) step2.classList.remove('active');
                     if (appNode) appNode.classList.remove('active-node');
@@ -3597,9 +3584,9 @@
                         pulse2.style.opacity = '1';
                         pulse2.style.left = '95%';
                     }
-                }, 2600);
+                }, 2400);
 
-                // 3.2s: Tín hiệu chạm Bảng Mapping -> CHỈ Bảng Mapping & Bước 3 bừng sáng!
+                // 3.1s: Tia laser chạm Bảng Mapping -> BƯỚC 3 SÁNG
                 setTimeout(() => {
                     if (pulse2) pulse2.style.opacity = '0';
                     if (step3) step3.classList.add('active');
@@ -3610,9 +3597,9 @@
                         mappingPill.className = 'gm-status-pill triggered-active';
                         mappingPill.innerHTML = '<i class="fas fa-bolt"></i> Effect triggered';
                     }
-                }, 3200);
+                }, 3100);
 
-                // 4.0s: Tín hiệu laser 3 rời Bảng Mapping -> Mapping & Bước 3 chuyển về 52%
+                // 3.9s: Bắn tia laser 3 sang Điện thoại 2 -> Bước 3 tắt, laser di chuyển
                 setTimeout(() => {
                     if (step3) step3.classList.remove('active');
                     if (mappingCard) mappingCard.classList.remove('active-glow');
@@ -3620,9 +3607,9 @@
                         pulse3.style.opacity = '1';
                         pulse3.style.left = '95%';
                     }
-                }, 4000);
+                }, 3900);
 
-                // 4.6s: Tín hiệu chạm Phone 2 -> CHỈ Phone 2 & Bước 4 bừng sáng, HIỆU ỨNG HOA HỒNG 3D BUNG NỞ!
+                // 4.6s: Tia laser chạm Điện thoại 2 -> BƯỚC 4 SÁNG & HIỆU ỨNG 3D BUNG NỞ
                 setTimeout(() => {
                     if (pulse3) pulse3.style.opacity = '0';
                     if (step4) step4.classList.add('active');
@@ -3634,45 +3621,28 @@
                         effectVideo.play().catch(() => {});
 
                         let hasEnded = false;
-                        function finishAndScheduleNext() {
+                        function finishAndStartNext() {
                             if (hasEnded) return;
                             hasEnded = true;
-                            effectVideo.removeEventListener('ended', finishAndScheduleNext);
+                            effectVideo.removeEventListener('ended', finishAndStartNext);
+                            effectVideo.classList.remove('active');
 
-                            // Chuyển tiếp mượt mà ngay sang chu kỳ tiếp theo (không còn khoảng dừng chết)
-                            setTimeout(() => {
-                                effectVideo.classList.remove('active');
-                                if (step4) step4.classList.remove('active');
-                                if (phoneRight) phoneRight.classList.remove('active-glow');
-                                if (statusPill) {
-                                    statusPill.className = 'gm-status-pill';
-                                    statusPill.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Chờ tín hiệu...';
-                                }
-                                if (mappingPill) {
-                                    mappingPill.className = 'gm-status-pill';
-                                    mappingPill.innerHTML = '<i class="fas fa-bolt"></i> Effect triggered';
-                                }
-                                isCycleRunning = false;
-
-                                // Chuyển vòng lặp tiếp theo chỉ sau 0.6 giây mượt mà
-                                setTimeout(runCycle, 600);
-                            }, 800);
+                            // CHUYỂN GIAO TRỰC TIẾP 100%: Bước 4 tắt -> Bước 1 sáng NGAY LẬP TỨC (0s delay)
+                            isCycleRunning = false;
+                            runCycle();
                         }
 
-                        effectVideo.addEventListener('ended', finishAndScheduleNext);
+                        effectVideo.addEventListener('ended', finishAndStartNext);
 
-                        // Fallback an toàn nếu video không phát sự kiện ended
                         const durationMs = (effectVideo.duration && !isNaN(effectVideo.duration) && effectVideo.duration > 0)
                             ? Math.round(effectVideo.duration * 1000)
                             : 4500;
 
-                        setTimeout(finishAndScheduleNext, durationMs + 100);
+                        setTimeout(finishAndStartNext, durationMs + 50);
                     } else {
                         setTimeout(() => {
-                            if (step4) step4.classList.remove('active');
-                            if (phoneRight) phoneRight.classList.remove('active-glow');
                             isCycleRunning = false;
-                            setTimeout(runCycle, 600);
+                            runCycle();
                         }, 4500);
                     }
                 }, 4600);
