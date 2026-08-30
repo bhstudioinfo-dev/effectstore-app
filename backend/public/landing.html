@@ -451,18 +451,57 @@
 
         /* SECTION: CÁCH LIVEFLOW HOẠT ĐỘNG */
         .how-it-works-bar-section {
-            padding: 15px 0 24px;
+            padding: 20px 0 28px;
             position: relative;
             z-index: 2;
         }
 
+        .how-it-works-header-wrap {
+            text-align: center;
+            margin-bottom: 42px;
+            position: relative;
+        }
+
+        .hiw-tag-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 16px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(56, 189, 248, 0.12));
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            font-size: 11.5px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+        }
+
+        .hiw-tag-badge i {
+            color: #25f4ee;
+            font-size: 11px;
+        }
+
         .how-it-works-heading {
             text-align: center;
-            font-size: 26px;
-            font-weight: 800;
+            font-size: clamp(28px, 3.5vw, 36px);
+            font-weight: 850;
             color: #ffffff;
-            margin-bottom: 22px;
-            letter-spacing: -0.025em;
+            letter-spacing: -0.03em;
+            margin: 0;
+            line-height: 1.25;
+            text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+        }
+
+        .text-highlight-brand {
+            background: linear-gradient(135deg, #ff5e98 10%, #c084fc 60%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+            filter: drop-shadow(0 0 20px rgba(236, 72, 153, 0.45));
+            display: inline-block;
         }
 
         .pipeline-steps-grid {
@@ -1685,7 +1724,12 @@
     <!-- SECTION: CÁCH LIVEFLOW HOẠT ĐỘNG (3 BƯỚC PIPELINE) -->
     <section class="how-it-works-bar-section" id="how-it-works">
         <div class="container">
-            <h3 class="how-it-works-heading">Cách LiveFlow hoạt động</h3>
+            <div class="how-it-works-header-wrap">
+                <span class="hiw-tag-badge"><i class="fas fa-bolt"></i> QUY TRÌNH KẾT NỐI TỰ ĐỘNG</span>
+                <h3 class="how-it-works-heading">
+                    Cách <span class="text-highlight-brand">LiveFlow</span> hoạt động
+                </h3>
+            </div>
             <div class="pipeline-steps-grid">
                 <!-- Bước 1: TikTok Gift -->
                 <div class="pipeline-step-item step-tiktok">
