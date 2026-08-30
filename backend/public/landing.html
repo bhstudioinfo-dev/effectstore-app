@@ -736,9 +736,53 @@
            SECTION 1: 3D CURVED FAN ARC GALLERY (Ảnh 2 Solana NFT Style)
            ======================================================== */
         .effects-store-section {
-            padding: 30px 0 65px;
+            padding: 40px 0 70px;
             position: relative;
-            background: radial-gradient(circle at 50% 40%, rgba(30, 16, 60, 0.45) 0%, transparent 75%);
+            background: radial-gradient(circle at 50% 35%, rgba(30, 16, 60, 0.45) 0%, transparent 75%);
+        }
+
+        /* Tiêu đề chuẩn đẹp, căn giữa nổi bật cho Kho Thẻ Bài Hiệu Ứng */
+        .section-header-wrap {
+            text-align: center;
+            max-width: 860px;
+            margin: 0 auto 36px;
+        }
+
+        .section-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 18px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2));
+            border: 1px solid rgba(236, 72, 153, 0.4);
+            color: #f472b6;
+            font-size: 12.5px;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.25);
+        }
+
+        .section-title {
+            font-size: 38px;
+            font-weight: 900;
+            letter-spacing: -0.025em;
+            color: #ffffff;
+            margin-bottom: 14px;
+            line-height: 1.25;
+            background: linear-gradient(135deg, #ffffff 30%, #ffd6e7 70%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-desc {
+            font-size: 15.5px;
+            color: #94a3b8;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 720px;
         }
 
         .fan-arc-container {
@@ -795,9 +839,11 @@
             transition: opacity 0.35s ease;
         }
 
-        /* Khi thẻ lên giữa phát video, ẩn ảnh thumbnail tĩnh để không bị dính hình */
-        .fan-card.slot-center .fan-card-img {
-            opacity: 0;
+        /* Riêng thẻ TikTok (index 4), khi active lên giữa ẩn sạch thumbnail để không bao giờ bị dính thumb */
+        .fan-card[data-index="4"].slot-center .fan-card-img {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
         }
 
         .fan-card-video {
@@ -808,6 +854,10 @@
             object-fit: cover;
             opacity: 0;
             transition: opacity 0.45s ease;
+        }
+
+        .fan-card.slot-center .fan-card-video {
+            opacity: 1;
         }
 
         .fan-card-video.blend-screen,
@@ -1675,7 +1725,7 @@
     <section class="effects-store-section" id="store-deck">
         <div class="container">
             <div class="section-header-wrap">
-                <span class="section-tag">CỬA HÀNG HIỆU ỨNG ĐỘC BẢN</span>
+                <span class="section-tag"><i class="fas fa-sync-alt fa-spin"></i> Cập Nhật Thêm Hiệu Ứng Liên Tục</span>
                 <h2 class="section-title">Kho Thẻ Bài Hiệu Ứng Sống Động</h2>
                 <p class="section-desc">Mỗi hiệu ứng là một thẻ bài ma thuật Holographic 3D với video trong suốt 4K nổ trực tiếp trên màn hình live khi nhận được quà tặng tương ứng.</p>
             </div>
