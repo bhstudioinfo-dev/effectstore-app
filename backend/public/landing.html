@@ -1314,13 +1314,20 @@
             100% { transform: translateY(-60px) scale(0.6); opacity: 0; }
         }
 
-        /* Comment Feed (Chuẩn phong cách TikTok như Ảnh 1) */
+        /* Comment Feed (Chuẩn phong cách TikTok Real-time) */
         .gm-comment-feed {
+            position: absolute;
+            bottom: 38px;
+            left: 8px;
+            right: 36px;
             display: flex;
             flex-direction: column;
             gap: 4px;
-            max-width: 86%;
-            margin-bottom: 38px;
+            z-index: 5;
+            pointer-events: none;
+            max-height: 110px;
+            overflow: hidden;
+            justify-content: flex-end;
         }
 
         .gm-comment-bubble {
@@ -1331,12 +1338,20 @@
             font-size: 10px;
             color: #fff;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            max-width: 92%;
+            width: fit-content;
+            animation: commentSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes commentSlideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .gm-badge-level {
@@ -1348,34 +1363,37 @@
             display: inline-flex;
             align-items: center;
             gap: 2px;
+            flex-shrink: 0;
         }
         .gm-badge-level.blue { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
         .gm-badge-level.purple { background: linear-gradient(135deg, #8b5cf6, #d946ef); }
         .gm-badge-level.orange { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+        .gm-badge-level.gold { background: linear-gradient(135deg, #eab308, #f59e0b); }
 
         .gm-comment-user {
             color: #93c5fd;
             font-weight: 700;
+            flex-shrink: 0;
         }
 
         /* Gift Notification Popup (Rose x1 Chuẩn Capsule Pill Nhô Hoa 3D Hình 2) */
         .gm-gift-event-popup {
             position: absolute;
-            bottom: 125px;
+            bottom: 156px;
             left: 8px;
             right: auto;
             width: fit-content;
-            max-width: 215px;
-            background: linear-gradient(90deg, rgba(20, 14, 40, 0.92), rgba(48, 16, 70, 0.92));
-            border: 1.5px solid rgba(236, 72, 153, 0.9);
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), 0 0 16px rgba(236, 72, 153, 0.65), inset 0 0 10px rgba(236, 72, 153, 0.25);
+            max-width: 220px;
+            background: linear-gradient(90deg, rgba(22, 13, 44, 0.94), rgba(58, 16, 80, 0.94));
+            border: 1.5px solid #e879f9;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 16px rgba(232, 121, 249, 0.65), inset 0 0 8px rgba(232, 121, 249, 0.25);
             border-radius: 999px;
-            padding: 3px 12px 3px 5px;
+            padding: 4px 12px 4px 5px;
             display: inline-flex;
             align-items: center;
             gap: 6px;
             opacity: 0;
-            transform: translateX(-30px);
+            transform: translateX(-35px);
             transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 10;
             pointer-events: none;
@@ -1395,8 +1413,8 @@
         }
 
         .gm-popup-user-avatar {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             object-fit: cover;
             border: 1.5px solid #ec4899;
@@ -1405,7 +1423,7 @@
         }
 
         .gm-popup-text h6 {
-            font-size: 11.5px;
+            font-size: 11px;
             color: #ffffff;
             font-weight: 700;
             margin: 0;
@@ -1414,9 +1432,9 @@
         }
 
         .gm-popup-text p {
-            font-size: 9.5px;
-            color: rgba(255, 255, 255, 0.8);
-            font-weight: 500;
+            font-size: 9px;
+            color: #f472b6;
+            font-weight: 600;
             margin: 0;
             line-height: 1.2;
             white-space: nowrap;
@@ -1430,19 +1448,19 @@
         }
 
         .gm-popup-big-rose {
-            width: 44px;
-            height: 44px;
+            width: 42px;
+            height: 42px;
             object-fit: contain;
-            margin-top: -9px;
-            margin-bottom: -9px;
-            margin-left: 2px;
+            margin-top: -8px;
+            margin-bottom: -8px;
+            margin-left: 3px;
             filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.95));
             animation: roseBounce 0.8s infinite alternate ease-in-out;
             flex-shrink: 0;
         }
 
         .gm-popup-mult {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 900;
             font-style: italic;
             color: #ffffff;
@@ -2616,25 +2634,8 @@
                             <i class="fas fa-heart gm-heart" style="animation-delay: 2.1s; color: #f43f5e;"></i>
                         </div>
 
-                        <!-- Bảng bình luận TikTok có level badge chuẩn Ảnh 1 -->
-                        <div class="gm-comment-feed">
-                            <div class="gm-comment-bubble" id="gmComment1">
-                                <span class="gm-badge-level blue">💎 18</span>
-                                <span class="gm-comment-user">Anh Khoa:</span> xinh quá chị ơi 😍😍
-                            </div>
-                            <div class="gm-comment-bubble" id="gmComment2">
-                                <span class="gm-badge-level purple">💎 25</span>
-                                <span class="gm-comment-user">Minh Anh Fan:</span> Hello chị Minh Anh 💖
-                            </div>
-                            <div class="gm-comment-bubble" id="gmComment3">
-                                <span class="gm-badge-level blue">💎 10</span>
-                                <span class="gm-comment-user">Đức Lê:</span> giọng chị ngọt quá 🥰
-                            </div>
-                            <div class="gm-comment-bubble" id="gmComment4">
-                                <span class="gm-badge-level orange">💎 15</span>
-                                <span class="gm-comment-user">Thanh Trúc:</span> chị ơi hát bài này đi ạ 🥰
-                            </div>
-                        </div>
+                        <!-- Bảng bình luận TikTok Real-time Live (Đồng bộ 2 bên) -->
+                        <div class="gm-comment-feed" id="gmCommentFeedLeft"></div>
 
                         <!-- Thanh công cụ tương tác dưới đáy chuẩn TikTok LIVE (Hình 1) -->
                         <div class="gm-live-bottom-bar">
@@ -2749,25 +2750,8 @@
                             <i class="fas fa-heart gm-heart" style="animation-delay: 1.6s; color: #38bdf8;"></i>
                         </div>
 
-                        <!-- Bảng bình luận TikTok trôi tự nhiên trên LIVE -->
-                        <div class="gm-comment-feed">
-                            <div class="gm-comment-bubble">
-                                <span class="gm-badge-level blue">💎 18</span>
-                                <span class="gm-comment-user">Anh Khoa:</span> đã gửi Rose 🌹 x1
-                            </div>
-                            <div class="gm-comment-bubble">
-                                <span class="gm-badge-level purple">💎 25</span>
-                                <span class="gm-comment-user">Minh Anh Fan:</span> Hiệu ứng đỉnh quá chị ơi! 🔥
-                            </div>
-                            <div class="gm-comment-bubble">
-                                <span class="gm-badge-level blue">💎 10</span>
-                                <span class="gm-comment-user">Đức Lê:</span> Wow hoa hồng nở kìa 🌹✨
-                            </div>
-                            <div class="gm-comment-bubble">
-                                <span class="gm-badge-level orange">💎 15</span>
-                                <span class="gm-comment-user">Thanh Trúc:</span> Xinh quá nè ❤️
-                            </div>
-                        </div>
+                        <!-- Bảng bình luận TikTok Real-time Live (Đồng bộ 2 bên) -->
+                        <div class="gm-comment-feed" id="gmCommentFeedRight"></div>
 
                         <!-- Thanh công cụ tương tác dưới đáy chuẩn TikTok LIVE (Hình 1) -->
                         <div class="gm-live-bottom-bar">
@@ -3397,6 +3381,56 @@
         })();
 
         /* ========================================================
+           TIKTOK LIVE REAL-TIME SYNCHRONIZED COMMENTS STREAM
+           (Đồng bộ luồng bình luận tự nhiên trên cả 2 màn hình)
+           ======================================================== */
+        (function initTikTokLiveComments() {
+            const feedLeft = document.getElementById('gmCommentFeedLeft');
+            const feedRight = document.getElementById('gmCommentFeedRight');
+            if (!feedLeft || !feedRight) return;
+
+            const commentsPool = [
+                { badge: '💎 18', class: 'blue', user: 'Anh Khoa', text: 'xinh quá chị ơi 😍😍' },
+                { badge: '💎 25', class: 'purple', user: 'Minh Anh Fan', text: 'Hello chị Minh Anh 💖' },
+                { badge: '💎 10', class: 'blue', user: 'Đức Lê', text: 'giọng chị ngọt quá 🥰' },
+                { badge: '💎 15', class: 'orange', user: 'Thanh Trúc', text: 'chị ơi hát bài này đi ạ 🎵' },
+                { badge: '💎 20', class: 'purple', user: 'Hoàng Nam', text: 'Chào cả nhà xem live 👋' },
+                { badge: '💎 30', class: 'gold', user: 'Bé Mèo Cute', text: 'Thả tim mỏi tay luôn chị ơi ❤️🔥' },
+                { badge: '💎 12', class: 'blue', user: 'Khánh Vy', text: 'Hiệu ứng hoa hồng nở đẹp xỉu 🌹✨' },
+                { badge: '💎 28', class: 'purple', user: 'Tuấn Idol', text: 'Top 1 BXH tối nay rồi 🔥' },
+                { badge: '💎 16', class: 'orange', user: 'Ngọc Ánh', text: 'Xinh xuất sắc luôn ạ ✨' }
+            ];
+
+            let index = 0;
+
+            function addNextComment() {
+                const item = commentsPool[index % commentsPool.length];
+                index++;
+
+                const html = `<span class="gm-badge-level ${item.class}">${item.badge}</span> <span class="gm-comment-user">${item.user}:</span> ${item.text}`;
+
+                [feedLeft, feedRight].forEach(feed => {
+                    const bubble = document.createElement('div');
+                    bubble.className = 'gm-comment-bubble';
+                    bubble.innerHTML = html;
+                    feed.appendChild(bubble);
+
+                    while (feed.children.length > 4) {
+                        feed.removeChild(feed.firstChild);
+                    }
+                });
+            }
+
+            // Tạo 4 comment ban đầu
+            for (let i = 0; i < 4; i++) {
+                addNextComment();
+            }
+
+            // Đẩy comment mới mượt mà đều đặn mỗi 2.2 giây
+            setInterval(addNextComment, 2200);
+        })();
+
+        /* ========================================================
            CONTROLLER: GIFT MAPPING & EFFECTS AUTOMATION WORKFLOW
            8-Second Seamless Loop Timeline
            (TikTok LIVE -> LiveFlow App -> Mapping -> OBS Livestream)
@@ -3464,6 +3498,12 @@
                     if (phoneLeft) phoneLeft.classList.add('active-glow');
                     if (giftPopupLeft) giftPopupLeft.classList.add('show');
                     if (giftPopupRight) giftPopupRight.classList.add('show');
+
+                    // Hiện đúng khoảng 5 giây rồi fade out tự nhiên
+                    setTimeout(() => {
+                        if (giftPopupLeft) giftPopupLeft.classList.remove('show');
+                        if (giftPopupRight) giftPopupRight.classList.remove('show');
+                    }, 5000);
                 }, 2000);
 
                 // 2.7s: Tín hiệu laser 1 rời Phone 1 -> Phone 1 và Bước 1 tắt sáng
@@ -3537,11 +3577,8 @@
                             hasEnded = true;
                             effectVideo.removeEventListener('ended', finishAndScheduleNext);
 
-                            // Sau khi hiệu ứng hoa hồng chạy xong:
-                            // CẢ 2 BẢNG DONATE ĐỒNG THỜI FADE TẮT CÙNG LÚC!
+                            // Sau khi hiệu ứng kết thúc: Giữ 1.5s rồi chuẩn bị chu kỳ mới
                             setTimeout(() => {
-                                if (giftPopupLeft) giftPopupLeft.classList.remove('show');
-                                if (giftPopupRight) giftPopupRight.classList.remove('show');
                                 effectVideo.classList.remove('active');
                                 if (step4) step4.classList.remove('active');
                                 if (phoneRight) phoneRight.classList.remove('active-glow');
@@ -3570,8 +3607,6 @@
                         setTimeout(finishAndScheduleNext, durationMs + 200);
                     } else {
                         setTimeout(() => {
-                            if (giftPopupLeft) giftPopupLeft.classList.remove('show');
-                            if (giftPopupRight) giftPopupRight.classList.remove('show');
                             if (step4) step4.classList.remove('active');
                             if (phoneRight) phoneRight.classList.remove('active-glow');
                             isCycleRunning = false;
