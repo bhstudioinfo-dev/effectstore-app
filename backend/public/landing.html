@@ -1089,24 +1089,32 @@
             overflow: hidden;
         }
 
-        /* Minimalist Cyber Process Flow (Không dùng bảng hộp đóng khung) */
+        /* Minimalist Cyber Process Flow (Căn thẳng hàng chuẩn xác với 4 khối bên dưới) */
         .gm-steps-row {
             display: flex;
             align-items: center;
             justify-content: center;
-            max-width: 1040px;
+            max-width: 1280px;
             margin: 0 auto 36px;
-            gap: 12px;
+            padding: 0 10px;
+            gap: 18px;
             position: relative;
+        }
+
+        .gm-step-col {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
         }
 
         .gm-step-item {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             background: transparent;
             border: none;
-            padding: 6px 12px;
+            padding: 4px 8px;
             opacity: 0.35;
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
@@ -1114,17 +1122,17 @@
 
         .gm-step-item.active {
             opacity: 1;
-            transform: scale(1.06);
+            transform: scale(1.08);
         }
 
         .gm-step-num {
-            width: 30px;
-            height: 30px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.08);
             border: 1.5px solid rgba(255, 255, 255, 0.2);
             color: #94a3b8;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 800;
             display: flex;
             align-items: center;
@@ -1141,7 +1149,7 @@
         }
 
         .gm-step-content h5 {
-            font-size: 13.5px;
+            font-size: 13px;
             font-weight: 700;
             color: #94a3b8;
             margin: 0;
@@ -1155,11 +1163,14 @@
             text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
         }
 
-        .gm-step-divider {
-            color: rgba(255, 255, 255, 0.18);
-            font-size: 12px;
+        .gm-step-fiber-spacer {
+            flex: 1;
+            min-width: 40px;
             display: flex;
             align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.18);
+            font-size: 12px;
         }
 
         /* Center Interactive Stage */
@@ -1174,23 +1185,27 @@
             gap: 18px;
         }
 
-        /* Phone Mockups (Chân thực 9:16) */
+        /* Phone Mockups (Chân thực 9:16 - Chìm nhẹ khi không có tín hiệu) */
         .gm-phone-mockup {
             width: 255px;
             height: 454px;
             border-radius: 36px;
-            border: 3px solid rgba(255, 255, 255, 0.22);
+            border: 3px solid rgba(255, 255, 255, 0.15);
             background: #090d16;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(168, 85, 247, 0.25);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
             flex-shrink: 0;
-            transition: all 0.4s ease;
+            opacity: 0.38;
+            filter: brightness(0.75) grayscale(10%);
+            transition: all 0.45s ease;
         }
 
         .gm-phone-mockup.active-glow {
-            border-color: rgba(236, 72, 153, 0.85);
-            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 50px rgba(236, 72, 153, 0.55);
+            opacity: 1;
+            filter: brightness(1) grayscale(0);
+            border-color: rgba(236, 72, 153, 0.95);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 50px rgba(236, 72, 153, 0.6);
         }
 
         .gm-phone-video-bg {
@@ -1292,8 +1307,8 @@
         /* Floating Hearts */
         .gm-hearts-col {
             position: absolute;
-            right: 10px;
-            bottom: 60px;
+            right: 8px;
+            bottom: 54px;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -1314,38 +1329,28 @@
             100% { transform: translateY(-60px) scale(0.6); opacity: 0; }
         }
 
-        /* Comment Feed (Chuẩn phong cách TikTok Real-time) */
+        /* Comment Feed (Chuẩn phong cách TikTok Live Không Nền như ảnh mẫu) */
         .gm-comment-feed {
             position: absolute;
-            bottom: 38px;
-            left: 8px;
+            bottom: 34px;
+            left: 10px;
             right: 36px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
             z-index: 5;
             pointer-events: none;
-            max-height: 98px;
+            max-height: 125px;
             overflow: hidden;
             justify-content: flex-end;
         }
 
-        .gm-comment-bubble {
-            background: rgba(0, 0, 0, 0.58);
-            backdrop-filter: blur(6px);
-            border-radius: 999px;
-            padding: 3px 8px;
-            font-size: 9.5px;
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 92%;
+        .gm-comment-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
             width: fit-content;
+            max-width: 95%;
             animation: commentSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
@@ -1354,11 +1359,33 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        .gm-comment-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+            margin-top: 1px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+        }
+
+        .gm-comment-body {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .gm-comment-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
         .gm-badge-level {
-            font-size: 8px;
+            font-size: 7.5px;
             font-weight: 800;
             padding: 1px 4px;
-            border-radius: 4px;
+            border-radius: 3px;
             color: #fff;
             display: inline-flex;
             align-items: center;
@@ -1371,33 +1398,36 @@
         .gm-badge-level.gold { background: linear-gradient(135deg, #eab308, #f59e0b); }
 
         .gm-comment-user {
-            color: #93c5fd;
+            color: #60a5fa;
+            font-size: 9.5px;
             font-weight: 700;
-            flex-shrink: 0;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+            white-space: nowrap;
         }
 
-        /* Gift Notification Popup (Rose x1 Chuẩn Capsule Pill Nhô Hoa 3D Hình 2) */
+        .gm-comment-text {
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 500;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+            line-height: 1.25;
+            word-break: break-word;
+        }
+
+        /* Gift Notification Popup (Chuẩn 100% ảnh mẫu: Capsule mỏng, Hoa hồng 3D nhô hẳn ra ngoài, x1 nằm ngoài bảng) */
         .gm-gift-event-popup {
             position: absolute;
             bottom: 172px;
             left: 8px;
             right: auto;
             width: fit-content;
-            max-width: 215px;
-            background: linear-gradient(90deg, rgba(24, 12, 46, 0.94), rgba(56, 14, 76, 0.94));
-            border: 1.5px solid rgba(244, 63, 124, 0.95);
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 16px rgba(244, 63, 124, 0.7), inset 0 0 8px rgba(244, 63, 124, 0.25);
-            border-radius: 999px;
-            padding: 3px 12px 3px 4px;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
             opacity: 0;
             transform: translateX(-35px);
             transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 10;
             pointer-events: none;
-            backdrop-filter: blur(10px);
             overflow: visible;
         }
 
@@ -1406,24 +1436,30 @@
             transform: translateX(0);
         }
 
-        .gm-popup-left {
+        .gm-gift-capsule-box {
+            background: linear-gradient(90deg, rgba(20, 10, 45, 0.85), rgba(45, 10, 65, 0.75));
+            border: 1px solid rgba(217, 70, 239, 0.65);
+            box-shadow: 0 0 10px rgba(217, 70, 239, 0.35);
+            border-radius: 999px;
+            padding: 3px 8px 3px 5px;
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            backdrop-filter: blur(8px);
+            position: relative;
+            overflow: visible;
         }
 
-        .gm-popup-user-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1.5px solid #ff4499;
-            box-shadow: 0 0 8px rgba(255, 68, 153, 0.8);
+        .gm-popup-rose-mini {
+            width: 22px;
+            height: 22px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 4px rgba(244, 63, 94, 0.8));
             flex-shrink: 0;
         }
 
         .gm-popup-text h6 {
-            font-size: 11px;
+            font-size: 10.5px;
             color: #ffffff;
             font-weight: 700;
             margin: 0;
@@ -1432,31 +1468,27 @@
         }
 
         .gm-popup-text p {
-            font-size: 9px;
-            color: #ff80bf;
-            font-weight: 600;
+            font-size: 8.5px;
+            color: #cbd5e1;
+            font-weight: 500;
             margin: 0;
             line-height: 1.15;
             white-space: nowrap;
         }
 
-        .gm-popup-right {
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
-            overflow: visible;
-        }
-
         .gm-popup-big-rose {
-            width: 42px;
-            height: 42px;
+            width: 44px;
+            height: 44px;
             object-fit: contain;
-            margin-top: -9px;
-            margin-bottom: -9px;
+            margin-top: -12px;
+            margin-bottom: -12px;
             margin-left: 2px;
-            filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.95));
+            margin-right: -4px;
+            filter: drop-shadow(0 0 8px rgba(255, 60, 110, 0.95));
             animation: roseBounce 0.8s infinite alternate ease-in-out;
             flex-shrink: 0;
+            position: relative;
+            z-index: 2;
         }
 
         .gm-popup-mult {
@@ -1464,9 +1496,10 @@
             font-weight: 900;
             font-style: italic;
             color: #ffffff;
-            text-shadow: 0 0 12px rgba(244, 63, 124, 0.9), 0 2px 6px rgba(0,0,0,0.8);
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9), 0 0 10px rgba(255, 255, 255, 0.6);
             letter-spacing: -0.5px;
-            margin-left: 2px;
+            margin-left: 8px;
+            flex-shrink: 0;
         }
 
         /* Bottom Controls Bar chuẩn TikTok LIVE (Hình 1) */
@@ -1478,6 +1511,9 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            pointer-events: none;
+            z-index: 6;
+        }
             z-index: 6;
         }
 
@@ -2572,33 +2608,41 @@
                 </p>
             </div>
 
-            <!-- 4 Bước quy trình Tối Giản (Minimal Step Process Indicator) -->
+            <!-- 4 Bước quy trình Tối Giản (Căn thẳng hàng chuẩn xác với 4 khối bên dưới) -->
             <div class="gm-steps-row">
-                <div class="gm-step-item" id="gmStep1">
-                    <div class="gm-step-num">1</div>
-                    <div class="gm-step-content">
-                        <h5>Gift từ người xem</h5>
+                <div class="gm-step-col" style="width: 255px;">
+                    <div class="gm-step-item" id="gmStep1">
+                        <div class="gm-step-num">1</div>
+                        <div class="gm-step-content">
+                            <h5>Gift từ người xem</h5>
+                        </div>
                     </div>
                 </div>
-                <div class="gm-step-divider"><i class="fas fa-chevron-right"></i></div>
-                <div class="gm-step-item" id="gmStep2">
-                    <div class="gm-step-num">2</div>
-                    <div class="gm-step-content">
-                        <h5>LiveFlow nhận tín hiệu</h5>
+                <div class="gm-step-fiber-spacer"><i class="fas fa-chevron-right"></i></div>
+                <div class="gm-step-col" style="width: 170px;">
+                    <div class="gm-step-item" id="gmStep2">
+                        <div class="gm-step-num">2</div>
+                        <div class="gm-step-content">
+                            <h5>LiveFlow nhận tín hiệu</h5>
+                        </div>
                     </div>
                 </div>
-                <div class="gm-step-divider"><i class="fas fa-chevron-right"></i></div>
-                <div class="gm-step-item" id="gmStep3">
-                    <div class="gm-step-num">3</div>
-                    <div class="gm-step-content">
-                        <h5>Kích hoạt mapping</h5>
+                <div class="gm-step-fiber-spacer"><i class="fas fa-chevron-right"></i></div>
+                <div class="gm-step-col" style="width: 245px;">
+                    <div class="gm-step-item" id="gmStep3">
+                        <div class="gm-step-num">3</div>
+                        <div class="gm-step-content">
+                            <h5>Kích hoạt mapping</h5>
+                        </div>
                     </div>
                 </div>
-                <div class="gm-step-divider"><i class="fas fa-chevron-right"></i></div>
-                <div class="gm-step-item" id="gmStep4">
-                    <div class="gm-step-num">4</div>
-                    <div class="gm-step-content">
-                        <h5>Phát effect trên LIVE</h5>
+                <div class="gm-step-fiber-spacer"><i class="fas fa-chevron-right"></i></div>
+                <div class="gm-step-col" style="width: 255px;">
+                    <div class="gm-step-item" id="gmStep4">
+                        <div class="gm-step-num">4</div>
+                        <div class="gm-step-content">
+                            <h5>Phát effect trên LIVE</h5>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2634,7 +2678,7 @@
                             <i class="fas fa-heart gm-heart" style="animation-delay: 2.1s; color: #f43f5e;"></i>
                         </div>
 
-                        <!-- Bảng bình luận TikTok Real-time Live (Đồng bộ 2 bên) -->
+                        <!-- Bảng bình luận TikTok Real-time Live Không Nền (Đồng bộ 2 bên) -->
                         <div class="gm-comment-feed" id="gmCommentFeedLeft"></div>
 
                         <!-- Thanh công cụ tương tác dưới đáy chuẩn TikTok LIVE (Hình 1) -->
@@ -2649,19 +2693,17 @@
                         </div>
                     </div>
 
-                    <!-- Gift Notification Popup: Avatar Anh Khoa + Rose 3D x1 (Capsule bo tròn Hình 1) -->
+                    <!-- Gift Notification Popup: Chuẩn theo mẫu ảnh 100% (Capsule mỏng, Hoa nhô ra ngoài, x1 ngoài bảng) -->
                     <div class="gm-gift-event-popup" id="gmGiftPopup">
-                        <div class="gm-popup-left">
-                            <img src="assets/images/avatar-anh-khoa.jpg" class="gm-popup-user-avatar" alt="Anh Khoa">
+                        <div class="gm-gift-capsule-box">
+                            <img src="assets/images/tiktok-rose-official.png" class="gm-popup-rose-mini" alt="Rose">
                             <div class="gm-popup-text">
                                 <h6>Anh Khoa</h6>
                                 <p>đã gửi Rose</p>
                             </div>
-                        </div>
-                        <div class="gm-popup-right">
                             <img src="assets/images/tiktok-rose-official.png" class="gm-popup-big-rose" alt="Rose">
-                            <span class="gm-popup-mult">x1</span>
                         </div>
+                        <span class="gm-popup-mult">x1</span>
                     </div>
                 </div>
 
@@ -2671,7 +2713,7 @@
                 </div>
 
                 <!-- Khối trung tâm: LiveFlow App (Chỉ đúng logo phát sáng, không còn vòng tròn) -->
-                <div class="gm-liveflow-app-node">
+                <div class="gm-liveflow-app-node" id="gmLiveFlowAppNode">
                     <div class="gm-clean-logo-wrap" id="gmAppLogo">
                         <img src="assets/images/live-flow-logo.png" alt="LiveFlow App" class="gm-app-clean-logo">
                     </div>
@@ -2750,7 +2792,7 @@
                             <i class="fas fa-heart gm-heart" style="animation-delay: 1.6s; color: #38bdf8;"></i>
                         </div>
 
-                        <!-- Bảng bình luận TikTok Real-time Live (Đồng bộ 2 bên) -->
+                        <!-- Bảng bình luận TikTok Real-time Live Không Nền (Đồng bộ 2 bên) -->
                         <div class="gm-comment-feed" id="gmCommentFeedRight"></div>
 
                         <!-- Thanh công cụ tương tác dưới đáy chuẩn TikTok LIVE (Hình 1) -->
@@ -2765,19 +2807,17 @@
                         </div>
                     </div>
 
-                    <!-- Gift Notification Popup trên điện thoại phải: Cũng xuất hiện khi nhận quà rồi fade biến mất -->
+                    <!-- Gift Notification Popup trên điện thoại phải: Chuẩn theo mẫu ảnh 100% -->
                     <div class="gm-gift-event-popup" id="gmGiftPopupRight">
-                        <div class="gm-popup-left">
-                            <img src="assets/images/avatar-anh-khoa.jpg" class="gm-popup-user-avatar" alt="Anh Khoa">
+                        <div class="gm-gift-capsule-box">
+                            <img src="assets/images/tiktok-rose-official.png" class="gm-popup-rose-mini" alt="Rose">
                             <div class="gm-popup-text">
                                 <h6>Anh Khoa</h6>
                                 <p>đã gửi Rose</p>
                             </div>
-                        </div>
-                        <div class="gm-popup-right">
                             <img src="assets/images/tiktok-rose-official.png" class="gm-popup-big-rose" alt="Rose">
-                            <span class="gm-popup-mult">x1</span>
                         </div>
+                        <span class="gm-popup-mult">x1</span>
                     </div>
                 </div>
             </div>
@@ -3382,7 +3422,7 @@
 
         /* ========================================================
            TIKTOK LIVE REAL-TIME SYNCHRONIZED COMMENTS STREAM
-           (Đồng bộ luồng bình luận tự nhiên trên cả 2 màn hình)
+           (Đồng bộ luồng bình luận tự nhiên 2 dòng + avatar chuẩn TikTok LIVE)
            ======================================================== */
         (function initTikTokLiveComments() {
             const feedLeft = document.getElementById('gmCommentFeedLeft');
@@ -3390,15 +3430,15 @@
             if (!feedLeft || !feedRight) return;
 
             const commentsPool = [
-                { badge: '💎 18', class: 'blue', user: 'Anh Khoa', text: 'xinh quá chị ơi 😍😍' },
-                { badge: '💎 25', class: 'purple', user: 'Minh Anh Fan', text: 'Hello chị Minh Anh 💖' },
-                { badge: '💎 10', class: 'blue', user: 'Đức Lê', text: 'giọng chị ngọt quá 🥰' },
-                { badge: '💎 15', class: 'orange', user: 'Thanh Trúc', text: 'chị ơi hát bài này đi ạ 🎵' },
-                { badge: '💎 20', class: 'purple', user: 'Hoàng Nam', text: 'Chào cả nhà xem live 👋' },
-                { badge: '💎 30', class: 'gold', user: 'Bé Mèo Cute', text: 'Thả tim mỏi tay luôn chị ơi ❤️🔥' },
-                { badge: '💎 12', class: 'blue', user: 'Khánh Vy', text: 'Hiệu ứng hoa hồng nở đẹp xỉu 🌹✨' },
-                { badge: '💎 28', class: 'purple', user: 'Tuấn Idol', text: 'Top 1 BXH tối nay rồi 🔥' },
-                { badge: '💎 16', class: 'orange', user: 'Ngọc Ánh', text: 'Xinh xuất sắc luôn ạ ✨' }
+                { avatar: 'assets/images/avatar-anh-khoa.jpg', badge: '💎 18', class: 'blue', user: 'Anh Khoa', text: 'xinh quá chị ơi 😍😍' },
+                { avatar: 'assets/images/avatar-minh-anh.jpg', badge: '💎 25', class: 'purple', user: 'Minh Anh Fan', text: 'Hello chị Minh Anh 💖' },
+                { avatar: 'assets/images/avatar-anh-khoa.jpg', badge: '💎 10', class: 'blue', user: 'Đức Lê', text: 'giọng chị ngọt quá 🥰' },
+                { avatar: 'assets/images/avatar-minh-anh.jpg', badge: '💎 15', class: 'orange', user: 'Thanh Trúc', text: 'chị ơi hát bài này đi ạ 🎵' },
+                { avatar: 'assets/images/avatar-anh-khoa.jpg', badge: '💎 20', class: 'purple', user: 'Hoàng Nam', text: 'Chào cả nhà xem live 👋' },
+                { avatar: 'assets/images/avatar-minh-anh.jpg', badge: '💎 30', class: 'gold', user: 'Bé Mèo Cute', text: 'Thả tim mỏi tay luôn chị ơi ❤️🔥' },
+                { avatar: 'assets/images/avatar-anh-khoa.jpg', badge: '💎 12', class: 'blue', user: 'Khánh Vy', text: 'Hiệu ứng hoa hồng nở đẹp xỉu 🌹✨' },
+                { avatar: 'assets/images/avatar-minh-anh.jpg', badge: '💎 28', class: 'purple', user: 'Tuấn Idol', text: 'Top 1 BXH tối nay rồi 🔥' },
+                { avatar: 'assets/images/avatar-anh-khoa.jpg', badge: '💎 16', class: 'orange', user: 'Ngọc Ánh', text: 'Xinh xuất sắc luôn ạ ✨' }
             ];
 
             let index = 0;
@@ -3407,13 +3447,22 @@
                 const item = commentsPool[index % commentsPool.length];
                 index++;
 
-                const html = `<span class="gm-badge-level ${item.class}">${item.badge}</span> <span class="gm-comment-user">${item.user}:</span> ${item.text}`;
+                const html = `
+                    <img src="${item.avatar}" class="gm-comment-avatar" alt="${item.user}">
+                    <div class="gm-comment-body">
+                        <div class="gm-comment-header">
+                            <span class="gm-badge-level ${item.class}">${item.badge}</span>
+                            <span class="gm-comment-user">${item.user}</span>
+                        </div>
+                        <div class="gm-comment-text">${item.text}</div>
+                    </div>
+                `;
 
                 [feedLeft, feedRight].forEach(feed => {
-                    const bubble = document.createElement('div');
-                    bubble.className = 'gm-comment-bubble';
-                    bubble.innerHTML = html;
-                    feed.appendChild(bubble);
+                    const row = document.createElement('div');
+                    row.className = 'gm-comment-row';
+                    row.innerHTML = html;
+                    feed.appendChild(row);
 
                     while (feed.children.length > 4) {
                         feed.removeChild(feed.firstChild);
@@ -3448,6 +3497,7 @@
             const pulse1 = document.getElementById('gmPulse1');
             const pulse2 = document.getElementById('gmPulse2');
             const pulse3 = document.getElementById('gmPulse3');
+            const appNode = document.getElementById('gmLiveFlowAppNode');
             const appLogo = document.getElementById('gmAppLogo');
             const statusPill = document.getElementById('gmStatusPill');
             const mappingCard = document.getElementById('gmMappingCard');
@@ -3460,17 +3510,18 @@
                 [step1, step2, step3, step4].forEach(s => s && s.classList.remove('active'));
                 if (phoneLeft) phoneLeft.classList.remove('active-glow');
                 if (phoneRight) phoneRight.classList.remove('active-glow');
+                if (appNode) appNode.classList.remove('active-node');
+                if (appLogo) appLogo.classList.remove('active-pulse');
+                if (mappingCard) mappingCard.classList.remove('active-glow');
                 if (giftPopupLeft) giftPopupLeft.classList.remove('show');
                 if (giftPopupRight) giftPopupRight.classList.remove('show');
                 if (pulse1) { pulse1.style.opacity = '0'; pulse1.style.left = '0%'; }
                 if (pulse2) { pulse2.style.opacity = '0'; pulse2.style.left = '0%'; }
                 if (pulse3) { pulse3.style.opacity = '0'; pulse3.style.left = '0%'; }
-                if (appLogo) appLogo.classList.remove('active-pulse');
                 if (statusPill) {
                     statusPill.className = 'gm-status-pill';
                     statusPill.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Chờ tín hiệu...';
                 }
-                if (mappingCard) mappingCard.classList.remove('active-glow');
                 if (mapRose) mapRose.classList.remove('lit');
                 if (mapEffect) mapEffect.classList.remove('lit');
                 if (mappingPill) {
@@ -3492,7 +3543,7 @@
 
                 // Phase 1: 0.0s - 2.0s: Normal Live Stream
                 // 2.0s: Quà được tặng -> CẢ 2 BẢNG DONATE ĐỒNG THỜI HIỆN LÊN CÙNG LÚC!
-                // Chỉ Bước 1 & Điện thoại 1 phát sáng!
+                // CHỈ Bước 1 & Điện thoại 1 phát sáng rực rỡ, các phần khác chìm nhẹ!
                 setTimeout(() => {
                     if (step1) step1.classList.add('active');
                     if (phoneLeft) phoneLeft.classList.add('active-glow');
@@ -3506,7 +3557,7 @@
                     }, 5000);
                 }, 2000);
 
-                // 2.7s: Tín hiệu laser 1 rời Phone 1 -> Phone 1 và Bước 1 tắt sáng
+                // 2.7s: Tín hiệu laser 1 rời Phone 1 -> Phone 1 và Bước 1 tắt sáng (chìm xuống)
                 setTimeout(() => {
                     if (step1) step1.classList.remove('active');
                     if (phoneLeft) phoneLeft.classList.remove('active-glow');
@@ -3520,6 +3571,7 @@
                 setTimeout(() => {
                     if (pulse1) pulse1.style.opacity = '0';
                     if (step2) step2.classList.add('active');
+                    if (appNode) appNode.classList.add('active-node');
                     if (appLogo) appLogo.classList.add('active-pulse');
                     if (statusPill) {
                         statusPill.className = 'gm-status-pill detected-active';
@@ -3527,9 +3579,10 @@
                     }
                 }, 3300);
 
-                // 3.9s: Tín hiệu laser 2 rời LiveFlow Logo -> Logo và Bước 2 tắt sáng
+                // 3.9s: Tín hiệu laser 2 rời LiveFlow Logo -> Logo và Bước 2 tắt sáng (chìm xuống)
                 setTimeout(() => {
                     if (step2) step2.classList.remove('active');
+                    if (appNode) appNode.classList.remove('active-node');
                     if (appLogo) appLogo.classList.remove('active-pulse');
                     if (pulse2) {
                         pulse2.style.opacity = '1';
@@ -3550,7 +3603,7 @@
                     }
                 }, 4400);
 
-                // 5.2s: Tín hiệu laser 3 rời Bảng Mapping -> Mapping và Bước 3 tắt sáng
+                // 5.2s: Tín hiệu laser 3 rời Bảng Mapping -> Mapping và Bước 3 tắt sáng (chìm xuống)
                 setTimeout(() => {
                     if (step3) step3.classList.remove('active');
                     if (mappingCard) mappingCard.classList.remove('active-glow');
