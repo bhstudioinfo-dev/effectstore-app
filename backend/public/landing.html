@@ -784,7 +784,7 @@
             height: 100%;
             position: relative;
             overflow: hidden;
-            background: #000;
+            background: radial-gradient(circle at 50% 60%, rgba(35, 18, 55, 0.95) 0%, rgba(10, 14, 28, 0.98) 100%);
         }
 
         .fan-card-img {
@@ -792,6 +792,12 @@
             height: 100%;
             object-fit: cover;
             display: block;
+            transition: opacity 0.35s ease;
+        }
+
+        /* Khi thẻ lên giữa phát video, ẩn ảnh thumbnail tĩnh để không bị dính hình */
+        .fan-card.slot-center .fan-card-img {
+            opacity: 0;
         }
 
         .fan-card-video {
@@ -835,13 +841,13 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
 
-        .fan-card-badge.vip {
-            background: linear-gradient(135deg, rgba(244, 63, 94, 0.9), rgba(236, 72, 153, 0.9));
-            border-color: rgba(244, 63, 94, 0.5);
-            box-shadow: 0 0 14px rgba(244, 63, 94, 0.5);
+        .fan-card-badge.hot {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(217, 70, 239, 0.9));
+            border-color: rgba(239, 68, 68, 0.5);
+            box-shadow: 0 0 14px rgba(239, 68, 68, 0.5);
         }
 
-        .fan-card-badge.hot {
+        .fan-card-badge.vip {
             background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(234, 88, 12, 0.9));
             border-color: rgba(245, 158, 11, 0.5);
             box-shadow: 0 0 14px rgba(245, 158, 11, 0.5);
@@ -869,15 +875,9 @@
         .fan-card-sub {
             display: flex;
             align-items: center;
-            justify-content: space-between;
             font-size: 12.5px;
             color: #cbd5e1;
             font-weight: 600;
-        }
-
-        .fan-card-price {
-            color: #fbbf24;
-            font-weight: 800;
         }
 
         /* 3D FAN SLOTS (Curved Arc Form from Photo 2) */
@@ -1695,7 +1695,6 @@
                             <div class="fan-card-title">Minato Đại Chiến Cửu Vĩ</div>
                             <div class="fan-card-sub">
                                 <span>Biến Hình Anime</span>
-                                <span class="fan-card-price">79.000₫</span>
                             </div>
                         </div>
                     </div>
@@ -1712,7 +1711,6 @@
                             <div class="fan-card-title">Chảo PUBG Gõ Đầu Troll</div>
                             <div class="fan-card-sub">
                                 <span>Quà Tặng PK</span>
-                                <span class="fan-card-price">49.000₫</span>
                             </div>
                         </div>
                     </div>
@@ -1729,7 +1727,6 @@
                             <div class="fan-card-title">Bạch Nguyệt Quang</div>
                             <div class="fan-card-sub">
                                 <span>Thiên Thần Cánh Bạc</span>
-                                <span class="fan-card-price">79.000₫</span>
                             </div>
                         </div>
                     </div>
@@ -1746,14 +1743,13 @@
                             <div class="fan-card-title">Kinich Xuất Trận</div>
                             <div class="fan-card-sub">
                                 <span>Biến Hình Chiến Binh</span>
-                                <span class="fan-card-price">79.000₫</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Thẻ 4: TikTok Vòng Xoáy Huyền Ảo -->
                     <div class="fan-card slot-left-1" data-index="4">
-                        <div class="fan-card-badge hot"><i class="fas fa-fire"></i> MIỄN PHÍ</div>
+                        <div class="fan-card-badge hot"><i class="fas fa-bolt"></i> HOT TREND</div>
                         <div class="fan-card-media">
                             <img src="/uploads/thumbs/69f07a15bd815bb0cc729db8.png" alt="TikTok Vòng Xoáy Huyền Ảo" class="fan-card-img" onerror="this.src='assets/images/placeholder-effect.png'">
                             <video src="assets/videos/preview-tiktok.webm" class="fan-card-video blend-screen" loop muted playsinline></video>
@@ -1763,7 +1759,6 @@
                             <div class="fan-card-title">TikTok Vòng Xoáy</div>
                             <div class="fan-card-sub">
                                 <span>Nhận Diện Live</span>
-                                <span class="fan-card-price" style="color: #34d399;">MIỄN PHÍ</span>
                             </div>
                         </div>
                     </div>
@@ -1775,7 +1770,6 @@
                     <div class="fan-active-effect-meta">
                         <span class="meta-tag" id="fanActiveTag">Biến Hình Anime</span>
                         <span id="fanActiveDuration"><i class="fas fa-clock"></i> 16.5 giây</span>
-                        <span id="fanActivePrice" style="color: #fbbf24;"><i class="fas fa-coins"></i> 79.000₫</span>
                     </div>
                     <!-- Chấm định vị vòng quay tự động (Không có nút mũi tên) -->
                     <div class="fan-dots-row" id="fanDotsRow">
@@ -2242,32 +2236,27 @@
                 {
                     title: "Minato Đại Chiến Cửu Vĩ",
                     cat: "Biến Hình Anime",
-                    duration: "16.5 giây",
-                    price: "79.000₫"
+                    duration: "16.5 giây"
                 },
                 {
                     title: "Chảo PUBG Gõ Đầu Troll",
                     cat: "Quà Tặng PK",
-                    duration: "10.1 giây",
-                    price: "49.000₫"
+                    duration: "10.1 giây"
                 },
                 {
                     title: "Bạch Nguyệt Quang",
                     cat: "Thiên Thần Cánh Bạc",
-                    duration: "18.6 giây",
-                    price: "79.000₫"
+                    duration: "18.6 giây"
                 },
                 {
                     title: "Kinich Xuất Trận",
                     cat: "Biến Hình Chiến Binh",
-                    duration: "13.7 giây",
-                    price: "79.000₫"
+                    duration: "13.7 giây"
                 },
                 {
                     title: "TikTok Vòng Xoáy Huyền Ảo",
                     cat: "Nhận Diện Live",
-                    duration: "5.0 giây",
-                    price: "MIỄN PHÍ"
+                    duration: "5.0 giây"
                 }
             ];
 
@@ -2275,7 +2264,6 @@
             const nameEl = document.getElementById('fanActiveName');
             const tagEl = document.getElementById('fanActiveTag');
             const durationEl = document.getElementById('fanActiveDuration');
-            const priceEl = document.getElementById('fanActivePrice');
             const dots = Array.from(document.querySelectorAll('.fan-dot-item'));
 
             let currentIndex = 0;
@@ -2317,7 +2305,6 @@
                     if (nameEl) nameEl.textContent = data.title;
                     if (tagEl) tagEl.textContent = data.cat;
                     if (durationEl) durationEl.innerHTML = `<i class="fas fa-clock"></i> ${data.duration}`;
-                    if (priceEl) priceEl.innerHTML = `<i class="fas fa-coins"></i> ${data.price}`;
                 }
 
                 // Update dots
