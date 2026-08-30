@@ -1609,55 +1609,22 @@
             transform: scale(1.04);
         }
 
-        /* Phone 2: Result Livestream with CRISP 100% CLEAR Rose Effect Overlay */
-        .gm-streamer-effect-layer {
+        /* Phone 2: Result Livestream with Authentic Rose WebM Video (Đậm và Rõ 100%, không bị mờ do blend-mode) */
+        .gm-effect-video-overlay {
             position: absolute;
             inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             opacity: 0;
-            transition: opacity 0.4s ease;
-            z-index: 5;
-        }
-
-        .gm-streamer-effect-layer.active {
-            opacity: 1;
-        }
-
-        /* Big 3D Rose - Sắc nét 100% không mờ, rực rỡ */
-        .gm-hero-rose-3d {
-            width: 140px;
-            height: 140px;
-            object-fit: contain;
-            filter: drop-shadow(0 0 25px rgba(244, 63, 94, 0.95)) drop-shadow(0 0 50px rgba(236, 72, 153, 0.8));
-            animation: heroRosePulse 1.6s infinite alternate ease-in-out;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
             z-index: 6;
+            filter: contrast(1.18) saturate(1.28) drop-shadow(0 0 22px rgba(244, 63, 94, 0.85));
         }
 
-        @keyframes heroRosePulse {
-            0% { transform: scale(1) rotate(-4deg); }
-            100% { transform: scale(1.12) rotate(4deg); }
-        }
-
-        .gm-rose-petal {
-            position: absolute;
-            width: 36px;
-            height: 36px;
-            object-fit: contain;
-            filter: drop-shadow(0 0 10px rgba(236, 72, 153, 0.9));
-        }
-
-        .gm-rose-petal.p1 { top: 22%; left: 16%; animation: floatPetal 2.2s infinite ease-in-out; }
-        .gm-rose-petal.p2 { top: 26%; right: 18%; animation: floatPetal 2.6s infinite 0.4s ease-in-out; }
-        .gm-rose-petal.p3 { bottom: 28%; left: 22%; animation: floatPetal 2.4s infinite 0.8s ease-in-out; }
-        .gm-rose-petal.p4 { bottom: 32%; right: 20%; animation: floatPetal 2.5s infinite 1.2s ease-in-out; }
-
-        @keyframes floatPetal {
-            0% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-12px) rotate(15deg); }
-            100% { transform: translateY(0) rotate(0deg); }
+        .gm-effect-video-overlay.active {
+            opacity: 1;
         }
 
         .gm-streamer-rose-burst {
@@ -2697,19 +2664,12 @@
                     <div class="gm-fiber-pulse" id="gmPulse3"></div>
                 </div>
 
-                <!-- Điện thoại 2: Livestream kết quả nổ hiệu ứng 3D RÕ NÉT 100% trên OBS -->
+                <!-- Điện thoại 2: Livestream kết quả nổ hiệu ứng 3D RÕ & ĐẬM trên OBS -->
                 <div class="gm-phone-mockup" id="gmPhoneRight">
                     <video src="assets/videos/streamer-live-portrait.mp4" autoplay loop muted playsinline class="gm-phone-video-bg"></video>
                     
-                    <!-- Lớp hiệu ứng Overlay RÕ NÉT 100% (Không bị mờ) -->
-                    <div class="gm-streamer-effect-layer" id="gmEffectLayer">
-                        <!-- Hoa hồng 3D TikTok rực rỡ phát sáng trung tâm -->
-                        <img src="assets/images/tiktok-rose-official.png" class="gm-hero-rose-3d" alt="3D Rose Burst">
-                        <img src="assets/images/tiktok-rose-official.png" class="gm-rose-petal p1" alt="Petal">
-                        <img src="assets/images/tiktok-rose-official.png" class="gm-rose-petal p2" alt="Petal">
-                        <img src="assets/images/tiktok-rose-official.png" class="gm-rose-petal p3" alt="Petal">
-                        <img src="assets/images/tiktok-rose-official.png" class="gm-rose-petal p4" alt="Petal">
-                    </div>
+                    <!-- Hiệu ứng hoa hồng WebM gốc ĐẬM & RÕ (Alpha transparency chuẩn, không mờ) -->
+                    <video src="assets/videos/effect-rose-burst.webm" loop muted playsinline class="gm-effect-video-overlay" id="gmEffectVideo"></video>
 
                     <!-- Glow nền nổ bừng hoa hồng rực rỡ -->
                     <div class="gm-streamer-rose-burst" id="gmRoseBurst"></div>
@@ -3349,7 +3309,7 @@
             const mapRose = document.getElementById('gmMapRose');
             const mapEffect = document.getElementById('gmMapEffect');
             const mappingPill = document.getElementById('gmMappingPill');
-            const effectLayer = document.getElementById('gmEffectLayer');
+            const effectVideo = document.getElementById('gmEffectVideo');
             const roseBurst = document.getElementById('gmRoseBurst');
             const obsBanner = document.getElementById('gmObsBanner');
 
@@ -3373,7 +3333,10 @@
                     mappingPill.className = 'gm-status-pill';
                     mappingPill.innerHTML = '<i class="fas fa-bolt"></i> Effect triggered';
                 }
-                if (effectLayer) effectLayer.classList.remove('active');
+                if (effectVideo) {
+                    effectVideo.classList.remove('active');
+                    effectVideo.pause();
+                }
                 if (roseBurst) roseBurst.classList.remove('active');
                 if (obsBanner) obsBanner.classList.remove('show');
             }
@@ -3443,20 +3406,24 @@
                     }
                 }, 5000);
 
-                // 5.6s: Hits Right Phone -> 3D Rose Effect Bursts Crisp & Bright over Streamer!
+                // 5.6s: Hits Right Phone -> Authentic WebM 3D Rose Effect Bursts ĐẬM & RÕ over Streamer!
                 setTimeout(() => {
                     if (step3) step3.classList.remove('active');
                     if (step4) step4.classList.add('active');
                     if (pulse3) pulse3.style.opacity = '0';
                     if (phoneRight) phoneRight.classList.add('active-glow');
-                    if (effectLayer) effectLayer.classList.add('active');
+                    if (effectVideo) {
+                        effectVideo.currentTime = 0;
+                        effectVideo.play().catch(() => {});
+                        effectVideo.classList.add('active');
+                    }
                     if (roseBurst) roseBurst.classList.add('active');
                     if (obsBanner) obsBanner.classList.add('show');
                 }, 5600);
 
                 // 7.4s - 8.0s: Clean fade out, ready for loop
                 setTimeout(() => {
-                    if (effectLayer) effectLayer.classList.remove('active');
+                    if (effectVideo) effectVideo.classList.remove('active');
                     if (roseBurst) roseBurst.classList.remove('active');
                     if (obsBanner) obsBanner.classList.remove('show');
                     if (phoneRight) phoneRight.classList.remove('active-glow');
