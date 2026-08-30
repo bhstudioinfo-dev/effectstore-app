@@ -264,12 +264,32 @@
         }
 
         .text-highlight-app {
-            background: linear-gradient(135deg, #ffffff 0%, #ff5e98 25%, #c084fc 65%, #38bdf8 100%);
+            background: linear-gradient(
+                110deg,
+                #ff5e98 0%,
+                #c084fc 25%,
+                #ffffff 46%,
+                #ffd6e7 50%,
+                #ffffff 54%,
+                #c084fc 75%,
+                #38bdf8 100%
+            );
+            background-size: 250% 100%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             display: inline;
             font-weight: 850;
-            filter: drop-shadow(0 0 22px rgba(236, 72, 153, 0.45)) drop-shadow(0 0 45px rgba(168, 85, 247, 0.3));
+            filter: drop-shadow(0 0 20px rgba(236, 72, 153, 0.45)) drop-shadow(0 0 40px rgba(168, 85, 247, 0.3));
+            animation: textLightSweep 5.5s infinite ease-in-out;
+        }
+
+        @keyframes textLightSweep {
+            0% {
+                background-position: 100% 0;
+            }
+            32%, 100% {
+                background-position: -80% 0;
+            }
         }
 
         .hero-main-desc {
