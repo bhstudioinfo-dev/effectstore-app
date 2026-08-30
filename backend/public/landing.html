@@ -1089,62 +1089,77 @@
             overflow: hidden;
         }
 
-        /* 4 Process Steps Pill Bar */
+        /* Minimalist Cyber Process Flow (Không dùng bảng hộp đóng khung) */
         .gm-steps-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            max-width: 1180px;
-            margin: 0 auto 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 1040px;
+            margin: 0 auto 36px;
+            gap: 12px;
+            position: relative;
         }
 
         .gm-step-item {
             display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            background: rgba(15, 23, 42, 0.65);
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            border-radius: 14px;
-            padding: 14px 16px;
-            backdrop-filter: blur(12px);
-            transition: all 0.35s ease;
+            align-items: center;
+            gap: 10px;
+            background: transparent;
+            border: none;
+            padding: 6px 12px;
+            opacity: 0.35;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
         }
 
         .gm-step-item.active {
-            border-color: rgba(168, 85, 247, 0.7);
-            background: rgba(28, 18, 58, 0.85);
-            box-shadow: 0 0 24px rgba(168, 85, 247, 0.35);
-            transform: translateY(-2px);
+            opacity: 1;
+            transform: scale(1.06);
         }
 
         .gm-step-num {
-            width: 28px;
-            height: 28px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #7c3aed, #ec4899);
-            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            color: #94a3b8;
             font-size: 13px;
             font-weight: 800;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
+            transition: all 0.4s ease;
+        }
+
+        .gm-step-item.active .gm-step-num {
+            background: linear-gradient(135deg, #7c3aed, #ec4899);
+            border-color: #ec4899;
+            color: #fff;
+            box-shadow: 0 0 16px rgba(236, 72, 153, 0.85), 0 0 25px rgba(124, 58, 237, 0.6);
         }
 
         .gm-step-content h5 {
-            font-size: 14.5px;
-            font-weight: 800;
-            color: #ffffff;
-            margin-bottom: 3px;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #94a3b8;
+            margin: 0;
             letter-spacing: -0.01em;
+            white-space: nowrap;
+            transition: color 0.3s ease;
         }
 
-        .gm-step-content p {
+        .gm-step-item.active .gm-step-content h5 {
+            color: #ffffff;
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+        }
+
+        .gm-step-divider {
+            color: rgba(255, 255, 255, 0.18);
             font-size: 12px;
-            color: #94a3b8;
-            line-height: 1.45;
-            margin: 0;
+            display: flex;
+            align-items: center;
         }
 
         /* Center Interactive Stage */
@@ -1195,24 +1210,25 @@
             padding: 14px 10px;
             background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 22%, transparent 55%, rgba(0,0,0,0.85) 100%);
             pointer-events: none;
-            z-index: 2;
+            z-index: 5;
         }
 
         .gm-live-top-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            width: 100%;
         }
 
         .gm-streamer-pill {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 999px;
+            padding: 3px 8px 3px 3px;
             display: flex;
             align-items: center;
             gap: 6px;
-            background: rgba(0, 0, 0, 0.55);
-            backdrop-filter: blur(8px);
-            padding: 3px 8px 3px 3px;
-            border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.12);
         }
 
         .gm-avatar-mini {
@@ -1304,7 +1320,7 @@
             flex-direction: column;
             gap: 4px;
             max-width: 86%;
-            margin-bottom: 6px;
+            margin-bottom: 38px;
         }
 
         .gm-comment-bubble {
@@ -1342,26 +1358,29 @@
             font-weight: 700;
         }
 
-        /* Gift Notification Popup (Rose x1 Chuẩn Capsule Pill Hình 1) */
+        /* Gift Notification Popup (Rose x1 Chuẩn Capsule Pill Nhô Hoa 3D Hình 2) */
         .gm-gift-event-popup {
             position: absolute;
-            bottom: 140px;
+            bottom: 125px;
             left: 8px;
-            right: 8px;
-            background: linear-gradient(90deg, rgba(22, 14, 42, 0.88), rgba(52, 16, 72, 0.88));
-            border: 1px solid rgba(236, 72, 153, 0.85);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 16px rgba(236, 72, 153, 0.5), inset 0 0 10px rgba(236, 72, 153, 0.2);
+            right: auto;
+            width: fit-content;
+            max-width: 215px;
+            background: linear-gradient(90deg, rgba(20, 14, 40, 0.92), rgba(48, 16, 70, 0.92));
+            border: 1.5px solid rgba(236, 72, 153, 0.9);
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), 0 0 16px rgba(236, 72, 153, 0.65), inset 0 0 10px rgba(236, 72, 153, 0.25);
             border-radius: 999px;
-            padding: 5px 12px 5px 6px;
-            display: flex;
+            padding: 3px 12px 3px 5px;
+            display: inline-flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 6px;
             opacity: 0;
             transform: translateX(-30px);
             transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 10;
             pointer-events: none;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(10px);
+            overflow: visible;
         }
 
         .gm-gift-event-popup.show {
@@ -1370,9 +1389,9 @@
         }
 
         .gm-popup-left {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .gm-popup-user-avatar {
@@ -1382,43 +1401,54 @@
             object-fit: cover;
             border: 1.5px solid #ec4899;
             box-shadow: 0 0 10px rgba(236, 72, 153, 0.7);
+            flex-shrink: 0;
         }
 
         .gm-popup-text h6 {
             font-size: 11.5px;
             color: #ffffff;
-            font-weight: 800;
-            margin: 0 0 1px 0;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1.2;
+            white-space: nowrap;
         }
 
         .gm-popup-text p {
             font-size: 9.5px;
-            color: #f472b6;
-            font-weight: 700;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
             margin: 0;
+            line-height: 1.2;
+            white-space: nowrap;
         }
 
         .gm-popup-right {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 2px;
+            overflow: visible;
         }
 
         .gm-popup-big-rose {
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
             object-fit: contain;
-            filter: drop-shadow(0 0 12px rgba(236, 72, 153, 0.9));
+            margin-top: -9px;
+            margin-bottom: -9px;
+            margin-left: 2px;
+            filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.95));
             animation: roseBounce 0.8s infinite alternate ease-in-out;
+            flex-shrink: 0;
         }
 
         .gm-popup-mult {
-            font-size: 19px;
+            font-size: 24px;
             font-weight: 900;
             font-style: italic;
             color: #ffffff;
-            text-shadow: 0 0 10px rgba(236, 72, 153, 0.8);
+            text-shadow: 0 0 12px rgba(236, 72, 153, 0.9), 0 2px 6px rgba(0,0,0,0.8);
             letter-spacing: -0.5px;
+            margin-left: 2px;
         }
 
         /* Bottom Controls Bar chuẩn TikTok LIVE (Hình 1) */
@@ -2524,34 +2554,33 @@
                 </p>
             </div>
 
-            <!-- 4 Bước quy trình (Process Steps Row chuẩn Mockup) -->
+            <!-- 4 Bước quy trình Tối Giản (Minimal Step Process Indicator) -->
             <div class="gm-steps-row">
                 <div class="gm-step-item" id="gmStep1">
                     <div class="gm-step-num">1</div>
                     <div class="gm-step-content">
                         <h5>Gift từ người xem</h5>
-                        <p>Người xem gửi quà tặng trên TikTok LIVE</p>
                     </div>
                 </div>
+                <div class="gm-step-divider"><i class="fas fa-chevron-right"></i></div>
                 <div class="gm-step-item" id="gmStep2">
                     <div class="gm-step-num">2</div>
                     <div class="gm-step-content">
                         <h5>LiveFlow nhận tín hiệu</h5>
-                        <p>Ứng dụng ghi nhận và xử lý tín hiệu quà tặng</p>
                     </div>
                 </div>
+                <div class="gm-step-divider"><i class="fas fa-chevron-right"></i></div>
                 <div class="gm-step-item" id="gmStep3">
                     <div class="gm-step-num">3</div>
                     <div class="gm-step-content">
                         <h5>Kích hoạt mapping</h5>
-                        <p>Tự động tìm effect đã gán cho món quà</p>
                     </div>
                 </div>
+                <div class="gm-step-divider"><i class="fas fa-chevron-right"></i></div>
                 <div class="gm-step-item" id="gmStep4">
                     <div class="gm-step-num">4</div>
                     <div class="gm-step-content">
                         <h5>Phát effect trên LIVE</h5>
-                        <p>Hiệu ứng hiển thị ngay lập tức trên livestream</p>
                     </div>
                 </div>
             </div>
@@ -3427,28 +3456,30 @@
                 isCycleRunning = true;
                 resetAll();
 
-                // Phase 1: 0.0s - 2.0s: Normal Live Stream, Step 1 active
-                if (step1) step1.classList.add('active');
-
-                // 2.0s: Rose received on Left Phone -> Popup slides in
+                // Phase 1: 0.0s - 2.0s: Normal Live Stream
+                // 2.0s: Quà được tặng -> CẢ 2 BẢNG DONATE ĐỒNG THỜI HIỆN LÊN CÙNG LÚC!
+                // Chỉ Bước 1 & Điện thoại 1 phát sáng!
                 setTimeout(() => {
-                    if (giftPopupLeft) giftPopupLeft.classList.add('show');
+                    if (step1) step1.classList.add('active');
                     if (phoneLeft) phoneLeft.classList.add('active-glow');
+                    if (giftPopupLeft) giftPopupLeft.classList.add('show');
+                    if (giftPopupRight) giftPopupRight.classList.add('show');
                 }, 2000);
 
-                // 2.6s: Signal travels from Left Phone to LiveFlow App
+                // 2.7s: Tín hiệu laser 1 rời Phone 1 -> Phone 1 và Bước 1 tắt sáng
                 setTimeout(() => {
                     if (step1) step1.classList.remove('active');
-                    if (step2) step2.classList.add('active');
+                    if (phoneLeft) phoneLeft.classList.remove('active-glow');
                     if (pulse1) {
                         pulse1.style.opacity = '1';
                         pulse1.style.left = '95%';
                     }
-                }, 2600);
+                }, 2700);
 
-                // 3.3s: Signal hits LiveFlow App -> Logo Pulses -> "Gift detected ✓"
+                // 3.3s: Tín hiệu chạm Logo LiveFlow -> CHỈ Logo LiveFlow & Bước 2 bừng sáng!
                 setTimeout(() => {
                     if (pulse1) pulse1.style.opacity = '0';
+                    if (step2) step2.classList.add('active');
                     if (appLogo) appLogo.classList.add('active-pulse');
                     if (statusPill) {
                         statusPill.className = 'gm-status-pill detected-active';
@@ -3456,51 +3487,44 @@
                     }
                 }, 3300);
 
-                // 3.8s: Signal travels from LiveFlow App to Mapping Card
+                // 3.9s: Tín hiệu laser 2 rời LiveFlow Logo -> Logo và Bước 2 tắt sáng
                 setTimeout(() => {
+                    if (step2) step2.classList.remove('active');
+                    if (appLogo) appLogo.classList.remove('active-pulse');
                     if (pulse2) {
                         pulse2.style.opacity = '1';
                         pulse2.style.left = '95%';
                     }
-                }, 3800);
+                }, 3900);
 
-                // 4.3s: Mapping Card activation (Rose -> Hoa Hồng)
+                // 4.4s: Tín hiệu chạm Bảng Mapping -> CHỈ Bảng Mapping & Bước 3 bừng sáng!
                 setTimeout(() => {
                     if (pulse2) pulse2.style.opacity = '0';
-                    if (step2) step2.classList.remove('active');
                     if (step3) step3.classList.add('active');
                     if (mappingCard) mappingCard.classList.add('active-glow');
                     if (mapRose) mapRose.classList.add('lit');
-                }, 4300);
-
-                // 4.6s: Left Popup fades out smoothly
-                setTimeout(() => {
-                    if (giftPopupLeft) giftPopupLeft.classList.remove('show');
-                }, 4600);
-
-                setTimeout(() => {
                     if (mapEffect) mapEffect.classList.add('lit');
                     if (mappingPill) {
                         mappingPill.className = 'gm-status-pill triggered-active';
                         mappingPill.innerHTML = '<i class="fas fa-bolt"></i> Effect triggered';
                     }
-                }, 4800);
+                }, 4400);
 
-                // 5.2s: Signal travels from Mapping Card to Right Phone
+                // 5.2s: Tín hiệu laser 3 rời Bảng Mapping -> Mapping và Bước 3 tắt sáng
                 setTimeout(() => {
+                    if (step3) step3.classList.remove('active');
+                    if (mappingCard) mappingCard.classList.remove('active-glow');
                     if (pulse3) {
                         pulse3.style.opacity = '1';
                         pulse3.style.left = '95%';
                     }
                 }, 5200);
 
-                // 5.8s: Hits Right Phone -> Effect plays ĐẬM & RÕ, Right Popup ALSO slides in!
+                // 5.8s: Tín hiệu chạm Phone 2 -> CHỈ Phone 2 & Bước 4 bừng sáng, HIỆU ỨNG HOA HỒNG 3D BUNG NỞ!
                 setTimeout(() => {
-                    if (step3) step3.classList.remove('active');
-                    if (step4) step4.classList.add('active');
                     if (pulse3) pulse3.style.opacity = '0';
+                    if (step4) step4.classList.add('active');
                     if (phoneRight) phoneRight.classList.add('active-glow');
-                    if (giftPopupRight) giftPopupRight.classList.add('show');
 
                     if (effectVideo) {
                         effectVideo.currentTime = 0;
@@ -3513,17 +3537,26 @@
                             hasEnded = true;
                             effectVideo.removeEventListener('ended', finishAndScheduleNext);
 
-                            // Sau khi hiệu ứng kết thúc: Fade out popup bên phải và video, giữ sạch live stream
+                            // Sau khi hiệu ứng hoa hồng chạy xong:
+                            // CẢ 2 BẢNG DONATE ĐỒNG THỜI FADE TẮT CÙNG LÚC!
                             setTimeout(() => {
+                                if (giftPopupLeft) giftPopupLeft.classList.remove('show');
                                 if (giftPopupRight) giftPopupRight.classList.remove('show');
                                 effectVideo.classList.remove('active');
+                                if (step4) step4.classList.remove('active');
                                 if (phoneRight) phoneRight.classList.remove('active-glow');
-                                if (appLogo) appLogo.classList.remove('active-pulse');
-                                if (mappingCard) mappingCard.classList.remove('active-glow');
+                                if (statusPill) {
+                                    statusPill.className = 'gm-status-pill';
+                                    statusPill.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Chờ tín hiệu...';
+                                }
+                                if (mappingPill) {
+                                    mappingPill.className = 'gm-status-pill';
+                                    mappingPill.innerHTML = '<i class="fas fa-bolt"></i> Effect triggered';
+                                }
                                 isCycleRunning = false;
 
                                 // Bắt đầu vòng lặp tiếp theo mượt mà
-                                setTimeout(runCycle, 1600);
+                                setTimeout(runCycle, 1500);
                             }, 1500);
                         }
 
@@ -3537,7 +3570,10 @@
                         setTimeout(finishAndScheduleNext, durationMs + 200);
                     } else {
                         setTimeout(() => {
+                            if (giftPopupLeft) giftPopupLeft.classList.remove('show');
                             if (giftPopupRight) giftPopupRight.classList.remove('show');
+                            if (step4) step4.classList.remove('active');
+                            if (phoneRight) phoneRight.classList.remove('active-glow');
                             isCycleRunning = false;
                             setTimeout(runCycle, 1500);
                         }, 5000);
