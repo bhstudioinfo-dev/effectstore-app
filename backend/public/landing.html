@@ -1089,15 +1089,15 @@
             overflow: hidden;
         }
 
-        /* Minimalist Cyber Process Flow (Căn thẳng hàng chuẩn xác với 4 khối bên dưới) */
+        /* 7-Column Synchronized Grid for Steps & Stage */
         .gm-steps-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: 255px 1fr 180px 1fr 250px 1fr 255px;
             align-items: center;
-            justify-content: center;
             max-width: 1280px;
             margin: 0 auto 36px;
             padding: 0 10px;
-            gap: 18px;
+            gap: 16px;
             position: relative;
         }
 
@@ -1105,7 +1105,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            flex-shrink: 0;
+            width: 100%;
         }
 
         .gm-step-item {
@@ -1114,8 +1114,8 @@
             gap: 8px;
             background: transparent;
             border: none;
-            padding: 4px 8px;
-            opacity: 0.35;
+            padding: 4px 6px;
+            opacity: 0.52;
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
         }
@@ -1130,7 +1130,7 @@
             height: 28px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.08);
-            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            border: 1.5px solid rgba(255, 255, 255, 0.25);
             color: #94a3b8;
             font-size: 12px;
             font-weight: 800;
@@ -1164,46 +1164,44 @@
         }
 
         .gm-step-fiber-spacer {
-            flex: 1;
-            min-width: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(255, 255, 255, 0.18);
-            font-size: 12px;
+            color: rgba(255, 255, 255, 0.22);
+            font-size: 13px;
         }
 
-        /* Center Interactive Stage */
+        /* Center Interactive Stage (Exact 7-column grid matching steps) */
         .gm-workflow-stage {
-            display: flex;
+            display: grid;
+            grid-template-columns: 255px 1fr 180px 1fr 250px 1fr 255px;
             align-items: center;
-            justify-content: center;
             max-width: 1280px;
             margin: 0 auto;
             position: relative;
             padding: 24px 10px 30px;
-            gap: 18px;
+            gap: 16px;
         }
 
-        /* Phone Mockups (Chân thực 9:16 - Chìm nhẹ khi không có tín hiệu) */
+        /* Phone Mockups (Chân thực 9:16 - 52% Opacity khi không có tín hiệu) */
         .gm-phone-mockup {
             width: 255px;
             height: 454px;
             border-radius: 36px;
-            border: 3px solid rgba(255, 255, 255, 0.15);
+            border: 3px solid rgba(255, 255, 255, 0.18);
             background: #090d16;
             position: relative;
             overflow: hidden;
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
             flex-shrink: 0;
-            opacity: 0.38;
-            filter: brightness(0.75) grayscale(10%);
+            opacity: 0.52;
+            filter: brightness(0.85);
             transition: all 0.45s ease;
         }
 
         .gm-phone-mockup.active-glow {
             opacity: 1;
-            filter: brightness(1) grayscale(0);
+            filter: brightness(1);
             border-color: rgba(236, 72, 153, 0.95);
             box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 50px rgba(236, 72, 153, 0.6);
         }
@@ -1332,7 +1330,7 @@
         /* Comment Feed (Chuẩn phong cách TikTok Live Không Nền như ảnh mẫu) */
         .gm-comment-feed {
             position: absolute;
-            bottom: 34px;
+            bottom: 44px;
             left: 10px;
             right: 36px;
             display: flex;
@@ -1417,7 +1415,7 @@
         /* Gift Notification Popup (Chuẩn 100% ảnh mẫu: Capsule mỏng, Hoa hồng 3D nhô hẳn ra ngoài, x1 nằm ngoài bảng) */
         .gm-gift-event-popup {
             position: absolute;
-            bottom: 172px;
+            bottom: 175px;
             left: 8px;
             right: auto;
             width: fit-content;
@@ -1514,8 +1512,6 @@
             pointer-events: none;
             z-index: 6;
         }
-            z-index: 6;
-        }
 
         .gm-comment-input-pill {
             flex: 1;
@@ -1557,7 +1553,7 @@
 
         /* High-End Fiber Optic / Cyber Laser Lines */
         .gm-fiber-line {
-            flex: 1;
+            width: 100%;
             height: 4px;
             background: linear-gradient(90deg, rgba(236, 72, 153, 0.25), rgba(168, 85, 247, 0.6), rgba(37, 244, 238, 0.5));
             position: relative;
@@ -1578,14 +1574,24 @@
             transition: left 0.75s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
         }
 
-        /* Center Node: LiveFlow Logo (Không còn vòng tròn, chỉ đúng Logo tinh gọn) */
+        /* Center Node: LiveFlow Logo (52% Opacity khi không có tín hiệu) */
         .gm-liveflow-app-node {
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             gap: 14px;
+            width: 180px;
             flex-shrink: 0;
-            padding: 0 8px;
+            padding: 0 4px;
+            opacity: 0.52;
+            filter: brightness(0.85);
+            transition: all 0.45s ease;
+        }
+
+        .gm-liveflow-app-node.active-node {
+            opacity: 1;
+            filter: brightness(1);
         }
 
         .gm-clean-logo-wrap {
@@ -1636,9 +1642,9 @@
             transform: scale(1.04);
         }
 
-        /* Mapping Card (In-App Desktop Style - Có khoảng cách rõ ràng) */
+        /* Mapping Card (52% Opacity khi không có tín hiệu) */
         .gm-mapping-card {
-            width: 245px;
+            width: 250px;
             background: rgba(15, 23, 42, 0.9);
             border: 1.5px solid rgba(255, 255, 255, 0.14);
             border-radius: 20px;
@@ -1649,10 +1655,14 @@
             flex-direction: column;
             gap: 12px;
             flex-shrink: 0;
-            transition: all 0.4s ease;
+            opacity: 0.52;
+            filter: brightness(0.85);
+            transition: all 0.45s ease;
         }
 
         .gm-mapping-card.active-glow {
+            opacity: 1;
+            filter: brightness(1);
             border-color: rgba(168, 85, 247, 0.9);
             box-shadow: 0 0 40px rgba(168, 85, 247, 0.5);
             transform: translateY(-2px);
@@ -2608,9 +2618,9 @@
                 </p>
             </div>
 
-            <!-- 4 Bước quy trình Tối Giản (Căn thẳng hàng chuẩn xác với 4 khối bên dưới) -->
+            <!-- 4 Bước quy trình Tối Giản (Căn thẳng hàng chuẩn xác với 4 khối bên dưới qua 7-Column Grid) -->
             <div class="gm-steps-row">
-                <div class="gm-step-col" style="width: 255px;">
+                <div class="gm-step-col">
                     <div class="gm-step-item" id="gmStep1">
                         <div class="gm-step-num">1</div>
                         <div class="gm-step-content">
@@ -2619,7 +2629,7 @@
                     </div>
                 </div>
                 <div class="gm-step-fiber-spacer"><i class="fas fa-chevron-right"></i></div>
-                <div class="gm-step-col" style="width: 170px;">
+                <div class="gm-step-col">
                     <div class="gm-step-item" id="gmStep2">
                         <div class="gm-step-num">2</div>
                         <div class="gm-step-content">
@@ -2628,7 +2638,7 @@
                     </div>
                 </div>
                 <div class="gm-step-fiber-spacer"><i class="fas fa-chevron-right"></i></div>
-                <div class="gm-step-col" style="width: 245px;">
+                <div class="gm-step-col">
                     <div class="gm-step-item" id="gmStep3">
                         <div class="gm-step-num">3</div>
                         <div class="gm-step-content">
@@ -2637,7 +2647,7 @@
                     </div>
                 </div>
                 <div class="gm-step-fiber-spacer"><i class="fas fa-chevron-right"></i></div>
-                <div class="gm-step-col" style="width: 255px;">
+                <div class="gm-step-col">
                     <div class="gm-step-item" id="gmStep4">
                         <div class="gm-step-num">4</div>
                         <div class="gm-step-content">
