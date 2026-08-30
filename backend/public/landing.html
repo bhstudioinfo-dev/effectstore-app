@@ -87,11 +87,12 @@
             position: sticky;
             top: 0;
             width: 100%;
-            z-index: 100;
-            background: rgba(5, 7, 19, 0.85);
+            z-index: 1000;
+            background: rgba(5, 7, 19, 0.88);
             backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border-glass);
-            padding: 16px 0;
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 14px 0;
             transition: all 0.3s;
         }
 
@@ -99,89 +100,90 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 20px;
         }
 
         .brand-logo {
             display: flex;
             align-items: center;
-            gap: 12px;
             text-decoration: none;
-            color: #fff;
+            flex-shrink: 0;
         }
 
-        .logo-icon-badge {
-            background: var(--primary-gradient);
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            box-shadow: 0 0 18px var(--primary-glow);
+        .brand-logo-img {
+            height: 32px;
+            width: auto;
+            display: block;
+            object-fit: contain;
+            filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.45));
+            transition: transform 0.2s ease;
         }
 
-        .brand-title {
-            font-size: 22px;
-            font-weight: 900;
-            letter-spacing: -0.5px;
-            background: linear-gradient(to right, #fff, #f472b6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .version-badge {
-            font-size: 10px;
-            font-weight: 800;
-            padding: 2px 7px;
-            border-radius: 6px;
-            background: rgba(168, 85, 247, 0.2);
-            color: #c084fc;
-            border: 1px solid rgba(168, 85, 247, 0.4);
-            margin-left: 4px;
+        .brand-logo-img:hover {
+            transform: scale(1.03);
         }
 
         nav.nav-menu {
             display: flex;
             align-items: center;
-            gap: 28px;
+            gap: 20px;
+            flex-wrap: nowrap;
         }
 
         nav.nav-menu a {
-            color: var(--text-muted);
+            color: #94a3b8;
             text-decoration: none;
-            font-size: 14.5px;
+            font-size: 13px;
             font-weight: 600;
             transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            white-space: nowrap;
+            position: relative;
+            padding: 6px 0;
         }
 
         nav.nav-menu a:hover {
-            color: #fff;
-            transform: translateY(-1px);
+            color: #ffffff;
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
         }
 
-        .btn-download-nav {
-            padding: 10px 22px;
-            background: var(--primary-gradient);
+        nav.nav-menu a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0%;
+            height: 2px;
+            background: linear-gradient(90deg, #a855f7, #ec4899);
+            transition: width 0.25s ease;
+            border-radius: 2px;
+        }
+
+        nav.nav-menu a:hover::after {
+            width: 100%;
+        }
+
+        .btn-header-cta {
+            padding: 9px 20px;
+            background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
             color: #fff;
-            border-radius: 999px;
-            text-decoration: none;
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 800;
-            box-shadow: 0 4px 20px var(--primary-glow);
-            transition: all 0.3s;
+            border-radius: 10px;
+            text-decoration: none;
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.35);
+            transition: all 0.25s ease;
             border: 1px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+            white-space: nowrap;
         }
 
-        .btn-download-nav:hover {
-            transform: scale(1.05);
-            /* SPLIT HERO SECTION (2 CỘT CHUẨN MẪU) */
+        .btn-header-cta:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 30px rgba(236, 72, 153, 0.6);
+            border-color: rgba(255, 255, 255, 0.4);
         }
         .hero-split-section {
             padding: 70px 0 50px;
@@ -1500,25 +1502,25 @@
     <!-- Header Navigation -->
     <header class="site-header">
         <div class="container nav-content">
-            <a href="#" class="brand-logo">
-                <div class="logo-icon-badge" style="background:linear-gradient(135deg, #a855f7, #ec4899); border-radius:10px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:16px; color:#fff;">
-                    <i class="fas fa-play" style="margin-left:2px;"></i>
-                </div>
-                <div>
-                    <span class="brand-title" style="letter-spacing:-0.5px; font-weight:900;">LiveFlow</span>
-                </div>
+            <!-- Đúng Logo gốc của bạn trong App -->
+            <a href="#" class="brand-logo" title="LiveFlow - Trang chủ">
+                <img src="assets/images/live-flow-logo.png" alt="LiveFlow Logo" class="brand-logo-img">
             </a>
 
+            <!-- 7 Mục menu đúng chính xác yêu cầu của bạn -->
             <nav class="nav-menu">
-                <a href="#hero-top">Trang chủ</a>
-                <a href="#how-it-works">Tính năng</a>
-                <a href="#store-deck">Kho Thẻ Bài</a>
-                <a href="#pricing">Bảng giá</a>
-                <a href="#faq">Hỏi đáp</a>
+                <a href="#hero-top">Giới Thiệu</a>
+                <a href="#store-deck">Cửa hàng hiệu ứng</a>
+                <a href="#how-it-works">Liên kết thực tế với live trên tiktok</a>
+                <a href="#menu-designer">Thiết kế menu quà tặng</a>
+                <a href="#special-features">Tính năng đặc biệt</a>
+                <a href="#pricing">Bảng Giá</a>
+                <a href="#faq">Hỏi đáp & Liên hệ</a>
             </nav>
 
-            <a href="#pricing" class="btn-live-primary" style="padding: 10px 22px; font-size: 14px;">
-                Trải nghiệm LiveFlow
+            <!-- Nút hành động -->
+            <a href="#pricing" class="btn-header-cta">
+                <i class="fab fa-windows"></i> Tải LiveFlow
             </a>
         </div>
     </header>
