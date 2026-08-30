@@ -1448,11 +1448,13 @@
             overflow: visible;
         }
 
-        .gm-popup-rose-mini {
-            width: 22px;
-            height: 22px;
-            object-fit: contain;
-            filter: drop-shadow(0 0 4px rgba(244, 63, 94, 0.8));
+        .gm-popup-user-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid #ec4899;
+            box-shadow: 0 0 6px rgba(236, 72, 153, 0.8);
             flex-shrink: 0;
         }
 
@@ -2703,10 +2705,10 @@
                         </div>
                     </div>
 
-                    <!-- Gift Notification Popup: Chuẩn theo mẫu ảnh 100% (Capsule mỏng, Hoa nhô ra ngoài, x1 ngoài bảng) -->
+                    <!-- Gift Notification Popup: Chuẩn theo mẫu ảnh 100% (Avatar Anh Khoa + Hoa nhô ra ngoài, x1 ngoài bảng) -->
                     <div class="gm-gift-event-popup" id="gmGiftPopup">
                         <div class="gm-gift-capsule-box">
-                            <img src="assets/images/tiktok-rose-official.png" class="gm-popup-rose-mini" alt="Rose">
+                            <img src="assets/images/avatar-anh-khoa.jpg" class="gm-popup-user-avatar" alt="Anh Khoa">
                             <div class="gm-popup-text">
                                 <h6>Anh Khoa</h6>
                                 <p>đã gửi Rose</p>
@@ -2820,7 +2822,7 @@
                     <!-- Gift Notification Popup trên điện thoại phải: Chuẩn theo mẫu ảnh 100% -->
                     <div class="gm-gift-event-popup" id="gmGiftPopupRight">
                         <div class="gm-gift-capsule-box">
-                            <img src="assets/images/tiktok-rose-official.png" class="gm-popup-rose-mini" alt="Rose">
+                            <img src="assets/images/avatar-anh-khoa.jpg" class="gm-popup-user-avatar" alt="Anh Khoa">
                             <div class="gm-popup-text">
                                 <h6>Anh Khoa</h6>
                                 <p>đã gửi Rose</p>
