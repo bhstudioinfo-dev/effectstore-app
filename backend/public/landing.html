@@ -478,7 +478,7 @@
         .pipeline-step-item {
             flex: 1;
             min-width: 260px;
-            background: rgba(15, 23, 42, 0.65);
+            background: rgba(15, 23, 42, 0.55);
             backdrop-filter: blur(14px);
             border: 1.5px solid rgba(255, 255, 255, 0.08);
             border-radius: 18px;
@@ -486,20 +486,94 @@
             display: flex;
             align-items: center;
             gap: 16px;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-            transition: all 0.3s;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            transition: opacity 0.3s ease;
+            position: relative;
         }
 
-        .pipeline-step-item:hover {
-            transform: translateY(-4px);
-            border-color: rgba(168, 85, 247, 0.4);
-            box-shadow: 0 16px 36px rgba(168, 85, 247, 0.2);
+        /* AUTO PIPELINE ANIMATIONS (TikTok -> LiveFlow -> OBS -> Loop) */
+        .pipeline-step-item.step-tiktok {
+            animation: pipelineTikTok 4.8s infinite cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .pipeline-step-item.active-core {
-            border-color: rgba(168, 85, 247, 0.45);
-            background: rgba(26, 16, 48, 0.7);
-            box-shadow: 0 0 30px rgba(168, 85, 247, 0.25);
+        .pipeline-step-item.step-liveflow {
+            animation: pipelineLiveFlow 4.8s infinite cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .pipeline-step-item.step-obs {
+            animation: pipelineOBS 4.8s infinite cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes pipelineTikTok {
+            0%, 25% {
+                transform: translateY(-8px) scale(1.03);
+                border-color: rgba(37, 244, 238, 0.75);
+                box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 30px rgba(37, 244, 238, 0.35);
+                background: rgba(15, 23, 42, 0.9);
+                opacity: 1;
+            }
+            33.3%, 92% {
+                transform: translateY(0) scale(1);
+                border-color: rgba(255, 255, 255, 0.08);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+                background: rgba(15, 23, 42, 0.55);
+                opacity: 0.65;
+            }
+            100% {
+                transform: translateY(-8px) scale(1.03);
+                border-color: rgba(37, 244, 238, 0.75);
+                box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 30px rgba(37, 244, 238, 0.35);
+                background: rgba(15, 23, 42, 0.9);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pipelineLiveFlow {
+            0%, 26% {
+                transform: translateY(0) scale(1);
+                border-color: rgba(255, 255, 255, 0.08);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+                background: rgba(15, 23, 42, 0.55);
+                opacity: 0.65;
+            }
+            33.3%, 58% {
+                transform: translateY(-8px) scale(1.03);
+                border-color: rgba(236, 72, 153, 0.8);
+                box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 35px rgba(168, 85, 247, 0.45), 0 0 18px rgba(236, 72, 153, 0.35);
+                background: rgba(26, 16, 48, 0.9);
+                opacity: 1;
+            }
+            66.6%, 100% {
+                transform: translateY(0) scale(1);
+                border-color: rgba(255, 255, 255, 0.08);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+                background: rgba(15, 23, 42, 0.55);
+                opacity: 0.65;
+            }
+        }
+
+        @keyframes pipelineOBS {
+            0%, 59% {
+                transform: translateY(0) scale(1);
+                border-color: rgba(255, 255, 255, 0.08);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+                background: rgba(15, 23, 42, 0.55);
+                opacity: 0.65;
+            }
+            66.6%, 91% {
+                transform: translateY(-8px) scale(1.03);
+                border-color: rgba(56, 189, 248, 0.8);
+                box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 30px rgba(56, 189, 248, 0.4);
+                background: rgba(15, 23, 42, 0.9);
+                opacity: 1;
+            }
+            97%, 100% {
+                transform: translateY(0) scale(1);
+                border-color: rgba(255, 255, 255, 0.08);
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+                background: rgba(15, 23, 42, 0.55);
+                opacity: 0.65;
+            }
         }
 
         .p-step-logo-wrap {
@@ -525,10 +599,6 @@
             display: block;
             border-radius: 12px;
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .pipeline-step-item:hover .p-step-logo-img {
-            transform: scale(1.1);
         }
 
         .p-step-logo-wrap.tiktok-glow {
@@ -560,15 +630,59 @@
         }
 
         .pipeline-arrow {
-            color: #c084fc;
             font-size: 20px;
-            animation: pulseArrow 2s infinite ease-in-out;
             padding: 0 4px;
+            transition: all 0.3s ease;
         }
 
-        @keyframes pulseArrow {
-            0%, 100% { transform: translateX(0); opacity: 0.7; }
-            50% { transform: translateX(4px); opacity: 1; filter: drop-shadow(0 0 6px #c084fc); }
+        .pipeline-arrow.arrow-1 {
+            animation: pipelineArrow1 4.8s infinite ease-in-out;
+        }
+
+        .pipeline-arrow.arrow-2 {
+            animation: pipelineArrow2 4.8s infinite ease-in-out;
+        }
+
+        @keyframes pipelineArrow1 {
+            0%, 20% {
+                color: #475569;
+                transform: translateX(0) scale(1);
+                filter: none;
+                opacity: 0.4;
+            }
+            25%, 33.3% {
+                color: #25f4ee;
+                transform: translateX(6px) scale(1.35);
+                filter: drop-shadow(0 0 12px #25f4ee);
+                opacity: 1;
+            }
+            38%, 100% {
+                color: #475569;
+                transform: translateX(0) scale(1);
+                filter: none;
+                opacity: 0.4;
+            }
+        }
+
+        @keyframes pipelineArrow2 {
+            0%, 53% {
+                color: #475569;
+                transform: translateX(0) scale(1);
+                filter: none;
+                opacity: 0.4;
+            }
+            58%, 66.6% {
+                color: #ec4899;
+                transform: translateX(6px) scale(1.35);
+                filter: drop-shadow(0 0 12px #ec4899);
+                opacity: 1;
+            }
+            72%, 100% {
+                color: #475569;
+                transform: translateX(0) scale(1);
+                filter: none;
+                opacity: 0.4;
+            }
         }
 
         @media (max-width: 900px) {
@@ -1569,7 +1683,7 @@
             <h3 class="how-it-works-heading">Cách LiveFlow hoạt động</h3>
             <div class="pipeline-steps-grid">
                 <!-- Bước 1: TikTok Gift -->
-                <div class="pipeline-step-item">
+                <div class="pipeline-step-item step-tiktok">
                     <div class="p-step-logo-wrap tiktok-glow">
                         <img src="assets/images/tiktok-logo.png" alt="TikTok LIVE" class="p-step-logo-img">
                     </div>
@@ -1580,10 +1694,10 @@
                 </div>
 
                 <!-- Mũi tên 1 -->
-                <div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>
+                <div class="pipeline-arrow arrow-1"><i class="fas fa-arrow-right"></i></div>
 
                 <!-- Bước 2: LiveFlow Core -->
-                <div class="pipeline-step-item active-core">
+                <div class="pipeline-step-item step-liveflow">
                     <div class="p-step-logo-wrap liveflow-glow">
                         <img src="assets/images/live-flow-app-icon.png" alt="LiveFlow App" class="p-step-logo-img">
                     </div>
@@ -1594,10 +1708,10 @@
                 </div>
 
                 <!-- Mũi tên 2 -->
-                <div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>
+                <div class="pipeline-arrow arrow-2"><i class="fas fa-arrow-right"></i></div>
 
                 <!-- Bước 3: OBS Effect -->
-                <div class="pipeline-step-item">
+                <div class="pipeline-step-item step-obs">
                     <div class="p-step-logo-wrap obs-glow">
                         <img src="assets/images/obs-logo.png" alt="OBS Studio" class="p-step-logo-img" style="padding: 2px;">
                     </div>
