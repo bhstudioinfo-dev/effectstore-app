@@ -1151,19 +1151,19 @@
         .gm-workflow-stage {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            max-width: 1240px;
+            justify-content: center;
+            max-width: 1280px;
             margin: 0 auto;
             position: relative;
             padding: 24px 10px 30px;
-            gap: 14px;
+            gap: 18px;
         }
 
         /* Phone Mockups (Chân thực 9:16) */
         .gm-phone-mockup {
-            width: 250px;
-            height: 444px;
-            border-radius: 34px;
+            width: 255px;
+            height: 454px;
+            border-radius: 36px;
             border: 3px solid rgba(255, 255, 255, 0.22);
             background: #090d16;
             position: relative;
@@ -1174,8 +1174,8 @@
         }
 
         .gm-phone-mockup.active-glow {
-            border-color: rgba(236, 72, 153, 0.8);
-            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 45px rgba(236, 72, 153, 0.5);
+            border-color: rgba(236, 72, 153, 0.85);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 50px rgba(236, 72, 153, 0.55);
         }
 
         .gm-phone-video-bg {
@@ -1185,15 +1185,15 @@
             display: block;
         }
 
-        /* Phone 1: TikTok Live Overlay */
+        /* Phone 1: TikTok Live Overlay (Chuẩn theo Ảnh 1) */
         .gm-tiktok-overlay {
             position: absolute;
             inset: 0;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 14px 12px;
-            background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 25%, transparent 60%, rgba(0,0,0,0.75) 100%);
+            padding: 14px 10px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 22%, transparent 55%, rgba(0,0,0,0.85) 100%);
             pointer-events: none;
             z-index: 2;
         }
@@ -1207,8 +1207,8 @@
         .gm-streamer-pill {
             display: flex;
             align-items: center;
-            gap: 8px;
-            background: rgba(0, 0, 0, 0.5);
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.55);
             backdrop-filter: blur(8px);
             padding: 3px 8px 3px 3px;
             border-radius: 999px;
@@ -1216,8 +1216,8 @@
         }
 
         .gm-avatar-mini {
-            width: 24px;
-            height: 24px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             background: linear-gradient(135deg, #ff5e98, #c084fc);
             display: flex;
@@ -1226,37 +1226,46 @@
             font-size: 11px;
             color: #fff;
             font-weight: 800;
+            overflow: hidden;
+        }
+
+        .gm-avatar-mini img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .gm-streamer-meta h6 {
             font-size: 11px;
             color: #fff;
-            font-weight: 700;
+            font-weight: 800;
             margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 3px;
         }
 
         .gm-streamer-meta small {
-            font-size: 9px;
-            color: #cbd5e1;
+            font-size: 8.5px;
+            color: #94a3b8;
         }
 
-        .gm-live-badge {
+        .gm-follow-btn {
             background: #ef4444;
             color: #fff;
-            font-size: 9.5px;
-            font-weight: 900;
+            font-size: 9px;
+            font-weight: 800;
             padding: 2px 7px;
-            border-radius: 6px;
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
-            letter-spacing: 0.5px;
+            border-radius: 999px;
+            margin-left: 2px;
         }
 
         .gm-viewer-count {
             color: #fff;
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 700;
-            background: rgba(0, 0, 0, 0.45);
-            padding: 3px 8px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 3px 7px;
             border-radius: 999px;
             display: flex;
             align-items: center;
@@ -1267,8 +1276,8 @@
         /* Floating Hearts */
         .gm-hearts-col {
             position: absolute;
-            right: 12px;
-            bottom: 65px;
+            right: 10px;
+            bottom: 60px;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -1289,46 +1298,64 @@
             100% { transform: translateY(-60px) scale(0.6); opacity: 0; }
         }
 
-        /* Comment Feed */
+        /* Comment Feed (Chuẩn phong cách TikTok như Ảnh 1) */
         .gm-comment-feed {
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            max-width: 82%;
+            gap: 4px;
+            max-width: 86%;
             margin-bottom: 6px;
         }
 
         .gm-comment-bubble {
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.55);
             backdrop-filter: blur(6px);
             border-radius: 999px;
-            padding: 4px 10px;
-            font-size: 11px;
+            padding: 3px 8px;
+            font-size: 10px;
             color: #fff;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: opacity 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
+
+        .gm-badge-level {
+            font-size: 8px;
+            font-weight: 800;
+            padding: 1px 4px;
+            border-radius: 4px;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .gm-badge-level.blue { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
+        .gm-badge-level.purple { background: linear-gradient(135deg, #8b5cf6, #d946ef); }
+        .gm-badge-level.orange { background: linear-gradient(135deg, #f59e0b, #ea580c); }
 
         .gm-comment-user {
-            color: #38bdf8;
+            color: #93c5fd;
             font-weight: 700;
-            margin-right: 4px;
         }
 
-        /* Gift Notification Popup (Rose x1) */
+        /* Gift Notification Popup (Rose x1 Chuẩn Ảnh 1) */
         .gm-gift-event-popup {
             position: absolute;
             bottom: 125px;
-            left: 10px;
-            right: 10px;
-            background: linear-gradient(135deg, rgba(42, 16, 75, 0.95), rgba(15, 23, 42, 0.96));
+            left: 8px;
+            right: 8px;
+            background: linear-gradient(135deg, rgba(48, 18, 86, 0.95), rgba(15, 23, 42, 0.96));
             border: 1.5px solid #ec4899;
-            box-shadow: 0 0 30px rgba(236, 72, 153, 0.7);
-            border-radius: 16px;
-            padding: 8px 12px;
+            box-shadow: 0 0 30px rgba(236, 72, 153, 0.7), inset 0 0 15px rgba(236, 72, 153, 0.3);
+            border-radius: 20px;
+            padding: 7px 12px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
             opacity: 0;
             transform: translateX(-35px);
             transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1340,136 +1367,145 @@
             transform: translateX(0);
         }
 
-        .gm-popup-rose-img {
-            font-size: 26px;
-            filter: drop-shadow(0 0 10px rgba(236, 72, 153, 0.8));
-            animation: roseBounce 0.8s infinite alternate ease-in-out;
+        .gm-popup-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        @keyframes roseBounce {
-            0% { transform: scale(1) rotate(-6deg); }
-            100% { transform: scale(1.18) rotate(6deg); }
+        .gm-popup-mini-rose {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.8));
         }
 
-        .gm-popup-info h5 {
-            font-size: 12.5px;
+        .gm-popup-text h6 {
+            font-size: 12px;
             color: #ffffff;
             font-weight: 800;
+            margin: 0 0 1px 0;
+        }
+
+        .gm-popup-text p {
+            font-size: 10px;
+            color: #f472b6;
+            font-weight: 700;
             margin: 0;
         }
 
-        .gm-popup-info small {
-            font-size: 10.5px;
-            color: #f472b6;
-            font-weight: 700;
+        .gm-popup-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
-        /* Connection Fiber / Laser Lines */
+        .gm-popup-big-rose {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 12px rgba(236, 72, 153, 0.9));
+            animation: roseBounce 0.8s infinite alternate ease-in-out;
+        }
+
+        .gm-popup-mult {
+            font-size: 19px;
+            font-weight: 900;
+            font-style: italic;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(236, 72, 153, 0.8);
+            letter-spacing: -0.5px;
+        }
+
+        /* High-End Fiber Optic / Cyber Laser Lines */
         .gm-fiber-line {
             flex: 1;
-            height: 3px;
-            background: linear-gradient(90deg, rgba(236, 72, 153, 0.3), rgba(168, 85, 247, 0.5), rgba(56, 189, 248, 0.3));
+            height: 4px;
+            background: linear-gradient(90deg, rgba(236, 72, 153, 0.25), rgba(168, 85, 247, 0.6), rgba(37, 244, 238, 0.5));
             position: relative;
             border-radius: 999px;
-            margin: 0 8px;
-            box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+            box-shadow: 0 0 14px rgba(168, 85, 247, 0.45);
         }
 
         .gm-fiber-pulse {
             position: absolute;
-            top: -5px;
+            top: -6px;
             left: 0;
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             background: #25f4ee;
-            box-shadow: 0 0 16px 4px #25f4ee, 0 0 24px #ec4899;
+            box-shadow: 0 0 20px 6px #25f4ee, 0 0 35px 8px #ec4899;
             opacity: 0;
-            transition: left 0.8s linear, opacity 0.2s ease;
+            transition: left 0.75s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
         }
 
-        /* Center Node: LiveFlow App Portal */
+        /* Center Node: LiveFlow Logo (Không còn vòng tròn, chỉ đúng Logo tinh gọn) */
         .gm-liveflow-app-node {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
             flex-shrink: 0;
+            padding: 0 8px;
         }
 
-        .gm-app-portal-circle {
-            width: 145px;
-            height: 145px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, rgba(15, 23, 42, 0.96) 75%);
-            border: 2px solid rgba(168, 85, 247, 0.45);
+        .gm-clean-logo-wrap {
+            position: relative;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            position: relative;
-            box-shadow: 0 0 35px rgba(168, 85, 247, 0.3), inset 0 0 20px rgba(168, 85, 247, 0.2);
-            transition: all 0.4s ease;
+            padding: 10px 16px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .gm-app-portal-circle.active-pulse {
-            border-color: #25f4ee;
-            box-shadow: 0 0 60px rgba(37, 244, 238, 0.65), inset 0 0 30px rgba(37, 244, 238, 0.4);
-            transform: scale(1.05);
+        .gm-clean-logo-wrap.active-pulse {
+            transform: scale(1.12);
         }
 
-        .gm-app-icon-img {
-            width: 48px;
-            height: 48px;
-            object-fit: contain;
-            filter: drop-shadow(0 0 14px rgba(168, 85, 247, 0.8));
-            margin-bottom: 4px;
+        .gm-app-clean-logo {
+            height: 38px;
+            width: auto;
+            display: block;
+            filter: drop-shadow(0 0 18px rgba(168, 85, 247, 0.7));
+            transition: filter 0.4s ease;
         }
 
-        .gm-app-label {
-            font-size: 13px;
-            font-weight: 900;
-            color: #ffffff;
-            letter-spacing: 0.8px;
-        }
-
-        .gm-app-subtag {
-            font-size: 9.5px;
-            color: #c084fc;
-            font-weight: 800;
-            text-transform: uppercase;
+        .gm-clean-logo-wrap.active-pulse .gm-app-clean-logo {
+            filter: drop-shadow(0 0 30px rgba(37, 244, 238, 0.95)) drop-shadow(0 0 15px rgba(236, 72, 153, 0.8));
         }
 
         .gm-status-pill {
             padding: 5px 14px;
             border-radius: 999px;
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 800;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             color: #94a3b8;
             transition: all 0.35s ease;
+            white-space: nowrap;
         }
 
         .gm-status-pill.detected-active {
-            background: rgba(16, 185, 129, 0.2);
-            border-color: rgba(16, 185, 129, 0.7);
+            background: rgba(16, 185, 129, 0.22);
+            border-color: rgba(16, 185, 129, 0.8);
             color: #34d399;
-            box-shadow: 0 0 22px rgba(16, 185, 129, 0.5);
-            transform: scale(1.03);
+            box-shadow: 0 0 24px rgba(16, 185, 129, 0.55);
+            transform: scale(1.04);
         }
 
-        /* Mapping Card (In-App Desktop Style) */
+        /* Mapping Card (In-App Desktop Style - Có khoảng cách rõ ràng) */
         .gm-mapping-card {
-            width: 250px;
-            background: rgba(15, 23, 42, 0.88);
-            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            width: 245px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1.5px solid rgba(255, 255, 255, 0.14);
             border-radius: 20px;
             padding: 16px;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65);
             backdrop-filter: blur(16px);
             display: flex;
             flex-direction: column;
@@ -1479,8 +1515,8 @@
         }
 
         .gm-mapping-card.active-glow {
-            border-color: rgba(168, 85, 247, 0.85);
-            box-shadow: 0 0 35px rgba(168, 85, 247, 0.45);
+            border-color: rgba(168, 85, 247, 0.9);
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.5);
             transform: translateY(-2px);
         }
 
@@ -1503,7 +1539,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(26, 16, 51, 0.7);
+            background: rgba(26, 16, 51, 0.75);
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 12px;
             padding: 8px 10px;
@@ -1513,7 +1549,7 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 700;
             color: #ffffff;
             padding: 4px 8px;
@@ -1524,9 +1560,16 @@
 
         .gm-mapping-item.lit {
             background: linear-gradient(135deg, rgba(236, 72, 153, 0.4), rgba(168, 85, 247, 0.4));
-            border: 1px solid rgba(236, 72, 153, 0.8);
-            box-shadow: 0 0 14px rgba(236, 72, 153, 0.5);
+            border: 1px solid rgba(236, 72, 153, 0.85);
+            box-shadow: 0 0 16px rgba(236, 72, 153, 0.6);
             color: #fff;
+        }
+
+        .gm-map-rose-icon {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 4px rgba(236, 72, 153, 0.8));
         }
 
         .gm-mapping-arrow {
@@ -1559,35 +1602,68 @@
         }
 
         .gm-status-pill.triggered-active {
-            background: rgba(168, 85, 247, 0.28);
-            border-color: rgba(168, 85, 247, 0.85);
+            background: rgba(168, 85, 247, 0.3);
+            border-color: rgba(168, 85, 247, 0.9);
             color: #d8b4fe;
-            box-shadow: 0 0 22px rgba(168, 85, 247, 0.55);
-            transform: scale(1.03);
+            box-shadow: 0 0 24px rgba(168, 85, 247, 0.6);
+            transform: scale(1.04);
         }
 
-        /* Phone 2: Result Livestream with Rose Effect Overlay */
-        .gm-effect-video-overlay {
+        /* Phone 2: Result Livestream with CRISP 100% CLEAR Rose Effect Overlay */
+        .gm-streamer-effect-layer {
             position: absolute;
             inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            mix-blend-mode: screen;
-            opacity: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             pointer-events: none;
+            opacity: 0;
             transition: opacity 0.4s ease;
             z-index: 5;
         }
 
-        .gm-effect-video-overlay.active {
+        .gm-streamer-effect-layer.active {
             opacity: 1;
+        }
+
+        /* Big 3D Rose - Sắc nét 100% không mờ, rực rỡ */
+        .gm-hero-rose-3d {
+            width: 140px;
+            height: 140px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 25px rgba(244, 63, 94, 0.95)) drop-shadow(0 0 50px rgba(236, 72, 153, 0.8));
+            animation: heroRosePulse 1.6s infinite alternate ease-in-out;
+            z-index: 6;
+        }
+
+        @keyframes heroRosePulse {
+            0% { transform: scale(1) rotate(-4deg); }
+            100% { transform: scale(1.12) rotate(4deg); }
+        }
+
+        .gm-rose-petal {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 10px rgba(236, 72, 153, 0.9));
+        }
+
+        .gm-rose-petal.p1 { top: 22%; left: 16%; animation: floatPetal 2.2s infinite ease-in-out; }
+        .gm-rose-petal.p2 { top: 26%; right: 18%; animation: floatPetal 2.6s infinite 0.4s ease-in-out; }
+        .gm-rose-petal.p3 { bottom: 28%; left: 22%; animation: floatPetal 2.4s infinite 0.8s ease-in-out; }
+        .gm-rose-petal.p4 { bottom: 32%; right: 20%; animation: floatPetal 2.5s infinite 1.2s ease-in-out; }
+
+        @keyframes floatPetal {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-12px) rotate(15deg); }
+            100% { transform: translateY(0) rotate(0deg); }
         }
 
         .gm-streamer-rose-burst {
             position: absolute;
             inset: 0;
-            background: radial-gradient(circle at 50% 60%, rgba(244, 63, 94, 0.4) 0%, transparent 70%);
+            background: radial-gradient(circle at 50% 55%, rgba(244, 63, 94, 0.45) 0%, rgba(236, 72, 153, 0.2) 45%, transparent 75%);
             opacity: 0;
             transition: opacity 0.4s ease;
             pointer-events: none;
@@ -1600,21 +1676,21 @@
 
         .gm-obs-result-banner {
             position: absolute;
-            bottom: 18px;
+            bottom: 16px;
             left: 10px;
             right: 10px;
-            background: rgba(15, 23, 42, 0.9);
-            border: 1.5px solid rgba(236, 72, 153, 0.6);
-            box-shadow: 0 0 20px rgba(236, 72, 153, 0.45);
-            border-radius: 12px;
-            padding: 6px 10px;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1.5px solid rgba(236, 72, 153, 0.7);
+            box-shadow: 0 0 24px rgba(236, 72, 153, 0.5);
+            border-radius: 14px;
+            padding: 7px 10px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             font-size: 11.5px;
             color: #fff;
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(12px);
             transition: all 0.35s ease;
             z-index: 10;
         }
@@ -2508,59 +2584,84 @@
                     
                     <!-- UI Layer TikTok Live -->
                     <div class="gm-tiktok-overlay">
-                        <!-- Top Bar: Streamer Avatar, LIVE badge, Mắt xem -->
+                        <!-- Top Bar: Streamer Avatar, LIVE badge, Mắt xem (Chuẩn Ảnh 1) -->
                         <div class="gm-live-top-bar">
                             <div class="gm-streamer-pill">
-                                <div class="gm-avatar-mini">LF</div>
-                                <div class="gm-streamer-meta">
-                                    <h6>Linh Streamer</h6>
-                                    <small>@linhlive</small>
+                                <div class="gm-avatar-mini">
+                                    <img src="assets/images/tiktok-rose-official.png" alt="Avatar">
                                 </div>
-                                <span class="gm-live-badge">LIVE</span>
+                                <div class="gm-streamer-meta">
+                                    <h6>Minh Anh <i class="fas fa-check-circle" style="color:#38bdf8; font-size:10px;"></i></h6>
+                                    <small>❤️ 125.6K</small>
+                                </div>
+                                <span class="gm-follow-btn">+ Follow</span>
                             </div>
-                            <div class="gm-viewer-count"><i class="fas fa-user"></i> 1.4K</div>
+                            <div class="gm-viewer-count"><i class="fas fa-user"></i> 2.4K</div>
                         </div>
 
                         <!-- Cột tim bay nhẹ bên phải -->
                         <div class="gm-hearts-col">
-                            <i class="fas fa-heart gm-heart" style="animation-delay: 0s;"></i>
-                            <i class="fas fa-heart gm-heart" style="animation-delay: 0.8s; color: #ec4899;"></i>
-                            <i class="fas fa-heart gm-heart" style="animation-delay: 1.6s; color: #a855f7;"></i>
+                            <i class="fas fa-heart gm-heart" style="animation-delay: 0s; color:#ff3b5c;"></i>
+                            <i class="fas fa-heart gm-heart" style="animation-delay: 0.7s; color: #ec4899;"></i>
+                            <i class="fas fa-heart gm-heart" style="animation-delay: 1.4s; color: #38bdf8;"></i>
+                            <i class="fas fa-heart gm-heart" style="animation-delay: 2.1s; color: #f43f5e;"></i>
                         </div>
 
-                        <!-- Bảng bình luận TikTok trôi tự nhiên -->
+                        <!-- Bảng bình luận TikTok có level badge chuẩn Ảnh 1 -->
                         <div class="gm-comment-feed">
-                            <div class="gm-comment-bubble" id="gmComment1"><span class="gm-comment-user">Minh Anh:</span> Xinh quá 😍</div>
-                            <div class="gm-comment-bubble" id="gmComment2"><span class="gm-comment-user">Thanh Trúc:</span> Hello chị ❤️</div>
-                            <div class="gm-comment-bubble" id="gmComment3"><span class="gm-comment-user">Đức Lê:</span> Nay live sớm vậy chị</div>
+                            <div class="gm-comment-bubble" id="gmComment1">
+                                <span class="gm-badge-level blue">💎 18</span>
+                                <span class="gm-comment-user">Anh Khoa:</span> xinh quá chị ơi 😍😍
+                            </div>
+                            <div class="gm-comment-bubble" id="gmComment2">
+                                <span class="gm-badge-level purple">💎 25</span>
+                                <span class="gm-comment-user">Minh Anh Fan:</span> Hello chị Minh Anh 💖
+                            </div>
+                            <div class="gm-comment-bubble" id="gmComment3">
+                                <span class="gm-badge-level blue">💎 10</span>
+                                <span class="gm-comment-user">Đức Lê:</span> giọng chị ngọt quá 🥰
+                            </div>
+                            <div class="gm-comment-bubble" id="gmComment4">
+                                <span class="gm-badge-level orange">💎 15</span>
+                                <span class="gm-comment-user">Thanh Trúc:</span> chị ơi hát bài này đi ạ 🥰
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Gift Notification Popup: Rose x1 trượt vào ở giây thứ 2 -->
+                    <!-- Gift Notification Popup: Rose x1 chuẩn như Ảnh 1 -->
                     <div class="gm-gift-event-popup" id="gmGiftPopup">
-                        <span class="gm-popup-rose-img">🌹</span>
-                        <div class="gm-popup-info">
-                            <h5>Anh Khoa</h5>
-                            <small>đã gửi Rose ×1</small>
+                        <div class="gm-popup-left">
+                            <img src="assets/images/tiktok-rose-official.png" class="gm-popup-mini-rose" alt="Rose">
+                            <div class="gm-popup-text">
+                                <h6>Anh Khoa</h6>
+                                <p>đã gửi Rose</p>
+                            </div>
+                        </div>
+                        <div class="gm-popup-right">
+                            <img src="assets/images/tiktok-rose-official.png" class="gm-popup-big-rose" alt="Rose">
+                            <span class="gm-popup-mult">x1</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Đường laser 1: Từ điện thoại sang LiveFlow App Portal -->
+                <!-- Đường laser 1: Từ Phone 1 sang LiveFlow Logo -->
                 <div class="gm-fiber-line">
                     <div class="gm-fiber-pulse" id="gmPulse1"></div>
                 </div>
 
-                <!-- Khối trung tâm: LiveFlow Desktop App Node -->
+                <!-- Khối trung tâm: LiveFlow App (Chỉ đúng logo phát sáng, không còn vòng tròn) -->
                 <div class="gm-liveflow-app-node">
-                    <div class="gm-app-portal-circle" id="gmAppPortal">
-                        <img src="assets/images/live-flow-app-icon.png" alt="LiveFlow App" class="gm-app-icon-img">
-                        <span class="gm-app-label">LIVEFLOW</span>
-                        <span class="gm-app-subtag">DESKTOP APP</span>
+                    <div class="gm-clean-logo-wrap" id="gmAppLogo">
+                        <img src="assets/images/live-flow-logo.png" alt="LiveFlow App" class="gm-app-clean-logo">
                     </div>
                     <div class="gm-status-pill" id="gmStatusPill">
                         <i class="fas fa-circle-notch fa-spin"></i> Chờ tín hiệu...
                     </div>
+                </div>
+
+                <!-- Đường laser 2: Từ LiveFlow App sang Bảng Mapping (Tạo khoảng cách rõ ràng) -->
+                <div class="gm-fiber-line">
+                    <div class="gm-fiber-pulse" id="gmPulse2"></div>
                 </div>
 
                 <!-- Khối Card Mapping (Giao diện trong App LiveFlow) -->
@@ -2571,7 +2672,7 @@
                     </div>
                     <div class="gm-mapping-row">
                         <div class="gm-mapping-item" id="gmMapRose">
-                            <span>🌹</span> Rose
+                            <img src="assets/images/tiktok-rose-official.png" class="gm-map-rose-icon" alt="Rose"> Rose
                         </div>
                         <div class="gm-mapping-arrow"><i class="fas fa-arrow-right"></i></div>
                         <div class="gm-mapping-item" id="gmMapEffect">
@@ -2591,31 +2692,38 @@
                     </div>
                 </div>
 
-                <!-- Đường laser 2: Từ Mapping Card sang Màn hình Livestream OBS -->
+                <!-- Đường laser 3: Từ Mapping Card sang Màn hình Livestream OBS -->
                 <div class="gm-fiber-line">
-                    <div class="gm-fiber-pulse" id="gmPulse2"></div>
+                    <div class="gm-fiber-pulse" id="gmPulse3"></div>
                 </div>
 
-                <!-- Điện thoại 2: Livestream kết quả nổ hiệu ứng 3D trên OBS -->
+                <!-- Điện thoại 2: Livestream kết quả nổ hiệu ứng 3D RÕ NÉT 100% trên OBS -->
                 <div class="gm-phone-mockup" id="gmPhoneRight">
                     <video src="assets/videos/streamer-live-portrait.mp4" autoplay loop muted playsinline class="gm-phone-video-bg"></video>
                     
-                    <!-- Hiệu ứng hoa hồng nở 3D độc lập (Transparent Video Layer) -->
-                    <video src="assets/videos/effect-rose-burst.webm" loop muted playsinline class="gm-effect-video-overlay" id="gmEffectVideo"></video>
-                    
-                    <!-- Glow nền nổ bừng hoa hồng -->
+                    <!-- Lớp hiệu ứng Overlay RÕ NÉT 100% (Không bị mờ) -->
+                    <div class="gm-streamer-effect-layer" id="gmEffectLayer">
+                        <!-- Hoa hồng 3D TikTok rực rỡ phát sáng trung tâm -->
+                        <img src="assets/images/tiktok-rose-official.png" class="gm-hero-rose-3d" alt="3D Rose Burst">
+                        <img src="assets/images/tiktok-rose-official.png" class="gm-rose-petal p1" alt="Petal">
+                        <img src="assets/images/tiktok-rose-official.png" class="gm-rose-petal p2" alt="Petal">
+                        <img src="assets/images/tiktok-rose-official.png" class="gm-rose-petal p3" alt="Petal">
+                        <img src="assets/images/tiktok-rose-official.png" class="gm-rose-petal p4" alt="Petal">
+                    </div>
+
+                    <!-- Glow nền nổ bừng hoa hồng rực rỡ -->
                     <div class="gm-streamer-rose-burst" id="gmRoseBurst"></div>
 
                     <!-- Banner Vinh Danh Người Tặng Quà phía dưới -->
                     <div class="gm-obs-result-banner" id="gmObsBanner">
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span style="font-size:14px;">🌹</span>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <img src="assets/images/tiktok-rose-official.png" style="width:24px; height:24px; object-fit:contain;" alt="Rose">
                             <div>
-                                <strong style="display:block; font-size:11px;">Anh Khoa</strong>
-                                <span style="font-size:9.5px; color:#f472b6;">đã gửi Rose ×1</span>
+                                <strong style="display:block; font-size:11px; color:#fff;">Anh Khoa</strong>
+                                <span style="font-size:9.5px; color:#f472b6; font-weight:700;">đã gửi Rose ×1</span>
                             </div>
                         </div>
-                        <span style="font-weight:800; color:#34d399; font-size:10.5px;">KÍCH HOẠT OBS</span>
+                        <span style="font-weight:800; color:#34d399; font-size:10.5px; letter-spacing:0.5px;">KÍCH HOẠT OBS</span>
                     </div>
                 </div>
             </div>
@@ -3234,19 +3342,16 @@
             const giftPopup = document.getElementById('gmGiftPopup');
             const pulse1 = document.getElementById('gmPulse1');
             const pulse2 = document.getElementById('gmPulse2');
-            const appPortal = document.getElementById('gmAppPortal');
+            const pulse3 = document.getElementById('gmPulse3');
+            const appLogo = document.getElementById('gmAppLogo');
             const statusPill = document.getElementById('gmStatusPill');
             const mappingCard = document.getElementById('gmMappingCard');
             const mapRose = document.getElementById('gmMapRose');
             const mapEffect = document.getElementById('gmMapEffect');
             const mappingPill = document.getElementById('gmMappingPill');
-            const effectVideo = document.getElementById('gmEffectVideo');
+            const effectLayer = document.getElementById('gmEffectLayer');
             const roseBurst = document.getElementById('gmRoseBurst');
             const obsBanner = document.getElementById('gmObsBanner');
-
-            const c1 = document.getElementById('gmComment1');
-            const c2 = document.getElementById('gmComment2');
-            const c3 = document.getElementById('gmComment3');
 
             function resetAll() {
                 [step1, step2, step3, step4].forEach(s => s && s.classList.remove('active'));
@@ -3255,7 +3360,8 @@
                 if (giftPopup) giftPopup.classList.remove('show');
                 if (pulse1) { pulse1.style.opacity = '0'; pulse1.style.left = '0%'; }
                 if (pulse2) { pulse2.style.opacity = '0'; pulse2.style.left = '0%'; }
-                if (appPortal) appPortal.classList.remove('active-pulse');
+                if (pulse3) { pulse3.style.opacity = '0'; pulse3.style.left = '0%'; }
+                if (appLogo) appLogo.classList.remove('active-pulse');
                 if (statusPill) {
                     statusPill.className = 'gm-status-pill';
                     statusPill.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Chờ tín hiệu...';
@@ -3267,16 +3373,9 @@
                     mappingPill.className = 'gm-status-pill';
                     mappingPill.innerHTML = '<i class="fas fa-bolt"></i> Effect triggered';
                 }
-                if (effectVideo) {
-                    effectVideo.classList.remove('active');
-                    effectVideo.pause();
-                }
+                if (effectLayer) effectLayer.classList.remove('active');
                 if (roseBurst) roseBurst.classList.remove('active');
                 if (obsBanner) obsBanner.classList.remove('show');
-
-                if (c1) c1.style.opacity = '1';
-                if (c2) c2.style.opacity = '1';
-                if (c3) c3.style.opacity = '1';
             }
 
             function runCycle() {
@@ -3285,13 +3384,13 @@
                 // Phase 1: 0.0s - 2.0s: Normal Live Stream, Step 1 active
                 if (step1) step1.classList.add('active');
 
-                // 2.0s: Rose received (Gift Popup slides in)
+                // 2.0s: Rose received (Gift Popup slides in with TikTok 3D Rose)
                 setTimeout(() => {
                     if (giftPopup) giftPopup.classList.add('show');
                     if (phoneLeft) phoneLeft.classList.add('active-glow');
                 }, 2000);
 
-                // 2.5s: Signal travels from Left Phone to LiveFlow App Portal
+                // 2.5s: Signal travels from Left Phone to LiveFlow App
                 setTimeout(() => {
                     if (step1) step1.classList.remove('active');
                     if (step2) step2.classList.add('active');
@@ -3301,23 +3400,32 @@
                     }
                 }, 2500);
 
-                // 3.2s: Signal hits LiveFlow App Node -> "Gift detected ✓"
+                // 3.2s: Signal hits LiveFlow App -> Logo Pulses -> "Gift detected ✓"
                 setTimeout(() => {
                     if (pulse1) pulse1.style.opacity = '0';
-                    if (appPortal) appPortal.classList.add('active-pulse');
+                    if (appLogo) appLogo.classList.add('active-pulse');
                     if (statusPill) {
                         statusPill.className = 'gm-status-pill detected-active';
                         statusPill.innerHTML = '<i class="fas fa-check-circle"></i> Gift detected ✓';
                     }
                 }, 3200);
 
-                // 3.8s: Mapping Card activation (Rose -> Hoa Hồng)
+                // 3.7s: Signal travels from LiveFlow App to Mapping Card
                 setTimeout(() => {
+                    if (pulse2) {
+                        pulse2.style.opacity = '1';
+                        pulse2.style.left = '95%';
+                    }
+                }, 3700);
+
+                // 4.2s: Mapping Card activation (Rose -> Hoa Hồng)
+                setTimeout(() => {
+                    if (pulse2) pulse2.style.opacity = '0';
                     if (step2) step2.classList.remove('active');
                     if (step3) step3.classList.add('active');
                     if (mappingCard) mappingCard.classList.add('active-glow');
                     if (mapRose) mapRose.classList.add('lit');
-                }, 3800);
+                }, 4200);
 
                 setTimeout(() => {
                     if (mapEffect) mapEffect.classList.add('lit');
@@ -3325,40 +3433,36 @@
                         mappingPill.className = 'gm-status-pill triggered-active';
                         mappingPill.innerHTML = '<i class="fas fa-bolt"></i> Effect triggered';
                     }
-                }, 4300);
+                }, 4700);
 
-                // 4.6s: Signal travels from Mapping Card to Right Phone
+                // 5.0s: Signal travels from Mapping Card to Right Phone
                 setTimeout(() => {
-                    if (pulse2) {
-                        pulse2.style.opacity = '1';
-                        pulse2.style.left = '95%';
+                    if (pulse3) {
+                        pulse3.style.opacity = '1';
+                        pulse3.style.left = '95%';
                     }
-                }, 4600);
+                }, 5000);
 
-                // 5.2s: Hits Right Phone -> 3D Rose Effect Bursts over Streamer!
+                // 5.6s: Hits Right Phone -> 3D Rose Effect Bursts Crisp & Bright over Streamer!
                 setTimeout(() => {
                     if (step3) step3.classList.remove('active');
                     if (step4) step4.classList.add('active');
-                    if (pulse2) pulse2.style.opacity = '0';
+                    if (pulse3) pulse3.style.opacity = '0';
                     if (phoneRight) phoneRight.classList.add('active-glow');
-                    if (effectVideo) {
-                        effectVideo.currentTime = 0;
-                        effectVideo.play().catch(() => {});
-                        effectVideo.classList.add('active');
-                    }
+                    if (effectLayer) effectLayer.classList.add('active');
                     if (roseBurst) roseBurst.classList.add('active');
                     if (obsBanner) obsBanner.classList.add('show');
-                }, 5200);
+                }, 5600);
 
-                // 7.2s - 8.0s: Clean fade out, ready for loop
+                // 7.4s - 8.0s: Clean fade out, ready for loop
                 setTimeout(() => {
-                    if (effectVideo) effectVideo.classList.remove('active');
+                    if (effectLayer) effectLayer.classList.remove('active');
                     if (roseBurst) roseBurst.classList.remove('active');
                     if (obsBanner) obsBanner.classList.remove('show');
                     if (phoneRight) phoneRight.classList.remove('active-glow');
-                    if (appPortal) appPortal.classList.remove('active-pulse');
+                    if (appLogo) appLogo.classList.remove('active-pulse');
                     if (mappingCard) mappingCard.classList.remove('active-glow');
-                }, 7200);
+                }, 7400);
             }
 
             runCycle();
