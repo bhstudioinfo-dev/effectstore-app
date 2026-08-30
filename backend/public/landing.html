@@ -732,400 +732,298 @@
             }
         }
 
-        /* 4 Value Blocks (Phương Án 2 - Chuẩn Style App) */
-        .value-blocks-section {
-            padding: 4px 0 28px;
+        /* ========================================================
+           SECTION 1: 3D CURVED FAN ARC GALLERY (Ảnh 2 Solana NFT Style)
+           ======================================================== */
+        .effects-store-section {
+            padding: 30px 0 65px;
             position: relative;
+            background: radial-gradient(circle at 50% 40%, rgba(30, 16, 60, 0.45) 0%, transparent 75%);
         }
 
-        .hero-value-blocks-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            max-width: 1140px;
-            margin: 0 auto;
-        }
-
-        @media (max-width: 900px) {
-            .hero-value-blocks-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 600px) {
-            .hero-value-blocks-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .value-block-card {
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 18px;
-            padding: 18px 16px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            text-align: left;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        .fan-arc-container {
             position: relative;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            max-width: 1200px;
+            margin: 10px auto 0;
+            overflow: visible;
         }
 
-        .value-block-card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent);
-            pointer-events: none;
-        }
-
-        .value-block-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(236, 72, 153, 0.4);
-            box-shadow: 0 16px 36px rgba(236, 72, 153, 0.2);
-            background: rgba(22, 33, 62, 0.85);
-        }
-
-        .val-icon-box {
-            width: 48px;
-            height: 48px;
-            border-radius: 14px;
+        .fan-arc-stage {
+            position: relative;
+            height: 460px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
-            flex-shrink: 0;
-            box-shadow: 0 0 16px rgba(0, 0, 0, 0.3);
+            perspective: 1200px;
+            transform-style: preserve-3d;
+            margin-bottom: 24px;
         }
 
-        .icon-purple {
-            background: linear-gradient(135deg, #a855f7, #6366f1);
-            color: #fff;
-            box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+        .fan-card {
+            position: absolute;
+            width: 250px;
+            height: 360px;
+            border-radius: 24px;
+            background: linear-gradient(165deg, rgba(26, 16, 51, 0.85) 0%, rgba(10, 14, 28, 0.95) 100%);
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+            transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+                        opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+                        filter 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+                        box-shadow 0.85s ease,
+                        border-color 0.85s ease;
+            backdrop-filter: blur(16px);
+            user-select: none;
+            will-change: transform, opacity;
+            pointer-events: none; /* No mouse interaction needed as requested */
         }
 
-        .icon-pink {
-            background: linear-gradient(135deg, #ec4899, #f43f5e);
-            color: #fff;
-            box-shadow: 0 0 20px rgba(236, 72, 153, 0.4);
+        .fan-card-media {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            background: #000;
         }
 
-        .icon-emerald {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: #fff;
-            box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+        .fan-card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
         }
 
-        .icon-amber {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: #fff;
-            box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+        .fan-card-video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.45s ease;
         }
 
-        .val-text-wrap h4 {
+        .fan-card-video.blend-screen,
+        .fan-card[data-index="4"] .fan-card-video {
+            mix-blend-mode: screen;
+        }
+
+        /* Overlay Holographic Gradient */
+        .fan-card-glare {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.25) 50%, rgba(5,7,15,0.92) 100%);
+            pointer-events: none;
+        }
+
+        .fan-card-badge {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            z-index: 3;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .fan-card-badge.vip {
+            background: linear-gradient(135deg, rgba(244, 63, 94, 0.9), rgba(236, 72, 153, 0.9));
+            border-color: rgba(244, 63, 94, 0.5);
+            box-shadow: 0 0 14px rgba(244, 63, 94, 0.5);
+        }
+
+        .fan-card-badge.hot {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(234, 88, 12, 0.9));
+            border-color: rgba(245, 158, 11, 0.5);
+            box-shadow: 0 0 14px rgba(245, 158, 11, 0.5);
+        }
+
+        .fan-card-info-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px;
+            z-index: 3;
+        }
+
+        .fan-card-title {
             font-size: 15.5px;
             font-weight: 800;
             color: #ffffff;
             margin-bottom: 5px;
-            letter-spacing: -0.01em;
-        }
-
-        .val-text-wrap p {
-            font-size: 13px;
-            color: #cbd5e1;
-            font-weight: 500;
-            line-height: 1.45;
-        }
-
-        /* Trust Badges Bar */
-        .trust-badges-bar {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 32px;
-            flex-wrap: wrap;
-            padding-top: 10px;
-        }
-
-        .trust-badge-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13.5px;
-            font-weight: 600;
-            color: #cbd5e1;
-        }
-
-        .trust-badge-item i {
-            color: #10b981;
-            font-size: 15px;
-        }
-
-        /* Section Global Heading */
-        .section-header-wrap {
-            text-align: center;
-            max-width: 800px;
-            margin: 0 auto 34px;
-        }
-
-        .section-tag {
-            display: inline-block;
-            padding: 5px 14px;
-            border-radius: 999px;
-            background: rgba(236, 72, 153, 0.12);
-            color: #f472b6;
-            font-size: 12px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 12px;
-            border: 1px solid rgba(236, 72, 153, 0.3);
-        }
-
-        .section-title {
-            font-size: clamp(28px, 4vw, 44px);
-            font-weight: 900;
-            letter-spacing: -0.5px;
-            margin-bottom: 14px;
-            background: linear-gradient(to right, #ffffff, #cbd5e1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .section-desc {
-            font-size: 15.5px;
-            color: #cbd5e1;
-            font-weight: 500;
-            line-height: 1.6;
-        }
-
-        /* SECTION 1: CỬA HÀNG HIỆU ỨNG DÀN THẺ BÀI HÀNG NGANG (TRADING CARDS DECK) */
-        .effects-store-section {
-            padding: 35px 0 75px;
-            position: relative;
-            background: radial-gradient(circle at 50% 50%, rgba(26, 16, 51, 0.4) 0%, transparent 80%);
-        }
-
-        .cards-deck-container {
-            position: relative;
-            margin-top: 20px;
-        }
-
-        .cards-track-wrap {
-            display: flex;
-            gap: 22px;
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            padding: 25px 10px 40px;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(236, 72, 153, 0.4) rgba(15, 23, 42, 0.6);
-        }
-
-        .cards-track-wrap::-webkit-scrollbar {
-            height: 8px;
-        }
-        .cards-track-wrap::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.6);
-            border-radius: 999px;
-        }
-        .cards-track-wrap::-webkit-scrollbar-thumb {
-            background: linear-gradient(to right, #a855f7, #ec4899);
-            border-radius: 999px;
-        }
-
-        /* Single Trading Card */
-        .effect-trading-card {
-            flex: 0 0 280px;
-            height: 420px;
-            background: linear-gradient(165deg, rgba(30, 27, 75, 0.75) 0%, rgba(15, 23, 42, 0.9) 100%);
-            border: 1.5px solid rgba(168, 85, 247, 0.25);
-            border-radius: 22px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer;
-            backdrop-filter: blur(12px);
-        }
-
-        .effect-trading-card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 50% 0%, rgba(236, 72, 153, 0.2) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.4s;
-            pointer-events: none;
-        }
-
-        .effect-trading-card:hover {
-            transform: translateY(-12px) scale(1.02);
-            border-color: rgba(236, 72, 153, 0.7);
-            box-shadow: 0 22px 50px rgba(236, 72, 153, 0.35), 0 0 20px rgba(168, 85, 247, 0.4);
-        }
-
-        .effect-trading-card:hover::before {
-            opacity: 1;
-        }
-
-        .card-top-badges {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            z-index: 2;
-        }
-
-        .badge-cat {
-            font-size: 11px;
-            font-weight: 800;
-            padding: 4px 10px;
-            border-radius: 8px;
-            background: rgba(59, 130, 246, 0.25);
-            color: #93c5fd;
-            border: 1px solid rgba(59, 130, 246, 0.4);
-            text-transform: uppercase;
-        }
-
-        .badge-hot {
-            font-size: 11px;
-            font-weight: 800;
-            padding: 4px 10px;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #f43f5e, #e11d48);
-            color: #fff;
-            box-shadow: 0 0 12px rgba(244, 63, 94, 0.6);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .card-visual-frame {
-            height: 220px;
-            border-radius: 16px;
-            overflow: hidden;
-            position: relative;
-            background: #020617;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 12px 0;
-        }
-
-        .card-visual-frame img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.6s ease;
-        }
-
-        .effect-trading-card:hover .card-visual-frame img {
-            transform: scale(1.08);
-        }
-
-        .play-indicator-overlay {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.35);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .effect-trading-card:hover .play-indicator-overlay {
-            opacity: 1;
-        }
-
-        .play-circle-btn {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: var(--primary-gradient);
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            box-shadow: 0 0 20px var(--primary-glow);
-        }
-
-        .card-details-box {
-            z-index: 2;
-        }
-
-        .card-title-text {
-            font-size: 17px;
-            font-weight: 800;
-            color: #fff;
-            margin-bottom: 6px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .card-meta-row {
+        .fan-card-sub {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 12.5px;
+            color: #cbd5e1;
+            font-weight: 600;
         }
 
-        .card-price-text {
-            font-size: 16px;
-            font-weight: 900;
+        .fan-card-price {
             color: #fbbf24;
-            display: flex;
-            align-items: center;
-            gap: 4px;
+            font-weight: 800;
         }
 
-        .card-duration-text {
-            font-size: 12px;
-            color: var(--text-muted);
-            background: rgba(255, 255, 255, 0.05);
-            padding: 3px 8px;
-            border-radius: 6px;
+        /* 3D FAN SLOTS (Curved Arc Form from Photo 2) */
+        /* Center (Active Focus) */
+        .fan-card.slot-center {
+            transform: translateX(0) translateY(0) rotateZ(0deg) rotateY(0deg) scale(1.18);
+            z-index: 10;
+            opacity: 1;
+            filter: brightness(1.05);
+            border-color: rgba(236, 72, 153, 0.7);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 45px rgba(168, 85, 247, 0.5), 0 0 15px rgba(236, 72, 153, 0.4);
         }
 
-        /* Controls for horizontal deck */
-        .deck-controls-row {
+        .fan-card.slot-center .fan-card-video {
+            opacity: 1;
+        }
+
+        /* Immediate Left */
+        .fan-card.slot-left-1 {
+            transform: translateX(-240px) translateY(32px) rotateZ(-9deg) rotateY(20deg) scale(0.88);
+            z-index: 5;
+            opacity: 0.75;
+            filter: brightness(0.8);
+        }
+
+        /* Immediate Right */
+        .fan-card.slot-right-1 {
+            transform: translateX(240px) translateY(32px) rotateZ(9deg) rotateY(-20deg) scale(0.88);
+            z-index: 5;
+            opacity: 0.75;
+            filter: brightness(0.8);
+        }
+
+        /* Far Left */
+        .fan-card.slot-left-2 {
+            transform: translateX(-430px) translateY(80px) rotateZ(-17deg) rotateY(32deg) scale(0.72);
+            z-index: 2;
+            opacity: 0.38;
+            filter: brightness(0.55);
+        }
+
+        /* Far Right */
+        .fan-card.slot-right-2 {
+            transform: translateX(430px) translateY(80px) rotateZ(17deg) rotateY(-32deg) scale(0.72);
+            z-index: 2;
+            opacity: 0.38;
+            filter: brightness(0.55);
+        }
+
+        /* Hidden back cards */
+        .fan-card.slot-hidden {
+            transform: translateX(0) translateY(140px) scale(0.5);
+            opacity: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ACTIVE META BAR BELOW FAN (Style from Photo 2) */
+        .fan-active-info-panel {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .fan-active-effect-name {
+            font-size: 24px;
+            font-weight: 850;
+            color: #ffffff;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 30%, #ffd6e7 70%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transition: all 0.4s ease;
+        }
+
+        .fan-active-effect-meta {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 16px;
-            margin-top: 20px;
+            font-size: 14px;
+            color: #cbd5e1;
+            font-weight: 600;
+            margin-bottom: 18px;
         }
 
-        .btn-deck-nav {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid var(--border-glass);
-            color: #fff;
+        .fan-active-effect-meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .fan-active-effect-meta .meta-tag {
+            background: rgba(168, 85, 247, 0.2);
+            color: #c084fc;
+            padding: 3px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            font-size: 12px;
+        }
+
+        .fan-dots-row {
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 16px;
+            gap: 8px;
         }
 
-        .btn-deck-nav:hover {
-            background: var(--primary-gradient);
-            box-shadow: 0 0 16px var(--primary-glow);
-            transform: scale(1.1);
+        .fan-dot-item {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.4s ease;
+        }
+
+        .fan-dot-item.active {
+            width: 24px;
+            background: linear-gradient(90deg, #ff5e98, #c084fc);
+            box-shadow: 0 0 12px rgba(236, 72, 153, 0.6);
+        }
+
+        @media (max-width: 900px) {
+            .fan-arc-stage {
+                height: 420px;
+            }
+            .fan-card {
+                width: 210px;
+                height: 310px;
+            }
+            .fan-card.slot-left-1 {
+                transform: translateX(-160px) translateY(24px) rotateZ(-8deg) rotateY(16deg) scale(0.85);
+            }
+            .fan-card.slot-right-1 {
+                transform: translateX(160px) translateY(24px) rotateZ(8deg) rotateY(-16deg) scale(0.85);
+            }
+            .fan-card.slot-left-2 {
+                transform: translateX(-280px) translateY(60px) rotateZ(-14deg) rotateY(24deg) scale(0.7);
+                opacity: 0.25;
+            }
+            .fan-card.slot-right-2 {
+                transform: translateX(280px) translateY(60px) rotateZ(14deg) rotateY(-24deg) scale(0.7);
+                opacity: 0.25;
+            }
         }
 
         /* SECTION 2: BẢNG QUÀ & 3D TYPOGRAPHY SHOWCASE */
@@ -1773,58 +1671,7 @@
         </div>
     </section>
 
-    <!-- 4 VALUE BLOCKS (PHƯƠNG ÁN 2 - CHUẨN STYLE APP) -->
-    <section class="value-blocks-section">
-        <div class="container">
-            <div class="hero-value-blocks-grid">
-                <!-- Block 1 -->
-                <div class="value-block-card">
-                    <div class="val-icon-box icon-purple">
-                        <i class="fas fa-gift"></i>
-                    </div>
-                    <div class="val-text-wrap">
-                        <h4>Tự Động Hóa Quà Tặng</h4>
-                        <p>Hiệu ứng 3D Alpha 4K kích thích nạp xu liên tục</p>
-                    </div>
-                </div>
-
-                <!-- Block 2 -->
-                <div class="value-block-card">
-                    <div class="val-icon-box icon-pink">
-                        <i class="fas fa-palette"></i>
-                    </div>
-                    <div class="val-text-wrap">
-                        <h4>Bảng Quà Độc Bản</h4>
-                        <p>195 Font UTM, chữ 3D & Vòng quay may mắn</p>
-                    </div>
-                </div>
-
-                <!-- Block 3 -->
-                <div class="value-block-card">
-                    <div class="val-icon-box icon-emerald">
-                        <i class="fas fa-bolt"></i>
-                    </div>
-                    <div class="val-text-wrap">
-                        <h4>Tối Ưu Nhẹ (CPU &lt; 3%)</h4>
-                        <p>Live game mượt mà, không tụt FPS, GPU tăng tốc</p>
-                    </div>
-                </div>
-
-                <!-- Block 4 -->
-                <div class="value-block-card">
-                    <div class="val-icon-box icon-amber">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <div class="val-text-wrap">
-                        <h4>Trợ Lý AI Cà Khịa</h4>
-                        <p>Giữ chân người xem & đọc tên cảm xúc chuẩn Việt</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- SECTION 1: CỬA HÀNG HIỆU ỨNG DÀN THẺ BÀI HÀNG NGANG -->
+    <!-- SECTION 1: KHO HIỆU ỨNG TƯƠNG TÁC (3D CURVED FAN ARC GALLERY) -->
     <section class="effects-store-section" id="store-deck">
         <div class="container">
             <div class="section-header-wrap">
@@ -1833,184 +1680,111 @@
                 <p class="section-desc">Mỗi hiệu ứng là một thẻ bài ma thuật Holographic 3D với video trong suốt 4K nổ trực tiếp trên màn hình live khi nhận được quà tặng tương ứng.</p>
             </div>
 
-            <!-- Trading Cards Deck Container -->
-            <div class="cards-deck-container">
-                <div class="cards-track-wrap" id="tradingCardsTrack">
-                    <!-- Thẻ 1: Minato -->
-                    <div class="effect-trading-card">
-                        <div class="card-top-badges">
-                            <span class="badge-cat">Biến Hình Anime</span>
-                            <span class="badge-hot"><i class="fas fa-fire"></i> HOT</span>
+            <!-- 3D Fan Arc Gallery (Phong cách Vòm 3D Solana NFT) -->
+            <div class="fan-arc-container" id="fanArcContainer">
+                <div class="fan-arc-stage" id="fanArcStage">
+                    <!-- Thẻ 0: Minato Đại Chiến Cửu Vĩ -->
+                    <div class="fan-card slot-center" data-index="0">
+                        <div class="fan-card-badge hot"><i class="fas fa-fire"></i> HOT</div>
+                        <div class="fan-card-media">
+                            <img src="/uploads/thumbs/6a906e51f8c5cfa6a021336e.png" alt="Minato Đại Chiến Cửu Vĩ" class="fan-card-img" onerror="this.src='assets/images/placeholder-effect.png'">
+                            <video src="assets/videos/preview-minato.webm" class="fan-card-video" autoplay loop muted playsinline></video>
+                            <div class="fan-card-glare"></div>
                         </div>
-                        <div class="card-visual-frame">
-                            <img src="/uploads/thumbs/6a906e51f8c5cfa6a021336e.png" alt="Minato Đại Chiến Cửu Vĩ" onerror="this.src='assets/images/placeholder-effect.png'">
-                            <div class="play-indicator-overlay">
-                                <div class="play-circle-btn"><i class="fas fa-play"></i></div>
-                            </div>
-                        </div>
-                        <div class="card-details-box">
-                            <div class="card-title-text">Minato Đại Chiến Cửu Vĩ</div>
-                            <div class="card-meta-row">
-                                <span class="card-price-text"><i class="fas fa-coins"></i> 79.000₫</span>
-                                <span class="card-duration-text"><i class="fas fa-clock"></i> 16.5s</span>
+                        <div class="fan-card-info-bottom">
+                            <div class="fan-card-title">Minato Đại Chiến Cửu Vĩ</div>
+                            <div class="fan-card-sub">
+                                <span>Biến Hình Anime</span>
+                                <span class="fan-card-price">79.000₫</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Thẻ 2: Raiden Shogun -->
-                    <div class="effect-trading-card">
-                        <div class="card-top-badges">
-                            <span class="badge-cat">Genshin Sấm Sét</span>
-                            <span class="badge-hot"><i class="fas fa-star"></i> VIP</span>
+                    <!-- Thẻ 1: Chảo PUBG Gõ Đầu Troll -->
+                    <div class="fan-card slot-right-1" data-index="1">
+                        <div class="fan-card-badge vip"><i class="fas fa-check"></i> 151 DÙNG</div>
+                        <div class="fan-card-media">
+                            <img src="/uploads/thumbs/6a91b9ecf82cd1d22007ea70.png" alt="Chảo PUBG Gõ Đầu Troll" class="fan-card-img" onerror="this.src='assets/images/placeholder-effect.png'">
+                            <video src="assets/videos/preview-pan.webm" class="fan-card-video" loop muted playsinline></video>
+                            <div class="fan-card-glare"></div>
                         </div>
-                        <div class="card-visual-frame">
-                            <img src="/uploads/thumbs/6a927a839dba0118abb30771.png" alt="Raiden Shogun" onerror="this.src='assets/images/placeholder-effect.png'">
-                            <div class="play-indicator-overlay">
-                                <div class="play-circle-btn"><i class="fas fa-play"></i></div>
-                            </div>
-                        </div>
-                        <div class="card-details-box">
-                            <div class="card-title-text">Raiden Shogun Lôi Thần</div>
-                            <div class="card-meta-row">
-                                <span class="card-price-text"><i class="fas fa-coins"></i> 79.000₫</span>
-                                <span class="card-duration-text"><i class="fas fa-clock"></i> 14.2s</span>
+                        <div class="fan-card-info-bottom">
+                            <div class="fan-card-title">Chảo PUBG Gõ Đầu Troll</div>
+                            <div class="fan-card-sub">
+                                <span>Quà Tặng PK</span>
+                                <span class="fan-card-price">49.000₫</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Thẻ 3: Sun Wukong -->
-                    <div class="effect-trading-card">
-                        <div class="card-top-badges">
-                            <span class="badge-cat">Hắc Ngộ Không</span>
-                            <span class="badge-hot"><i class="fas fa-bolt"></i> HOT TREND</span>
+                    <!-- Thẻ 2: Bạch Nguyệt Quang -->
+                    <div class="fan-card slot-right-2" data-index="2">
+                        <div class="fan-card-badge vip"><i class="fas fa-star"></i> VIP</div>
+                        <div class="fan-card-media">
+                            <img src="/uploads/thumbs/6a907189f8c5cfa6a02138d6.png" alt="Bạch Nguyệt Quang" class="fan-card-img" onerror="this.src='assets/images/placeholder-effect.png'">
+                            <video src="assets/videos/preview-bachnguyet.webm" class="fan-card-video" loop muted playsinline></video>
+                            <div class="fan-card-glare"></div>
                         </div>
-                        <div class="card-visual-frame">
-                            <img src="/uploads/thumbs/6a927b499dba0118abb30b4e.png" alt="Sun Wukong" onerror="this.src='assets/images/placeholder-effect.png'">
-                            <div class="play-indicator-overlay">
-                                <div class="play-circle-btn"><i class="fas fa-play"></i></div>
-                            </div>
-                        </div>
-                        <div class="card-details-box">
-                            <div class="card-title-text">Tề Thiên Đại Thánh Wukong</div>
-                            <div class="card-meta-row">
-                                <span class="card-price-text"><i class="fas fa-coins"></i> 79.000₫</span>
-                                <span class="card-duration-text"><i class="fas fa-clock"></i> 15.0s</span>
+                        <div class="fan-card-info-bottom">
+                            <div class="fan-card-title">Bạch Nguyệt Quang</div>
+                            <div class="fan-card-sub">
+                                <span>Thiên Thần Cánh Bạc</span>
+                                <span class="fan-card-price">79.000₫</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Thẻ 4: Chảo Troll PK -->
-                    <div class="effect-trading-card">
-                        <div class="card-top-badges">
-                            <span class="badge-cat">Quà Tặng PK</span>
-                            <span class="badge-hot" style="background:#10b981;"><i class="fas fa-check"></i> 151 LƯỢT DÙNG</span>
+                    <!-- Thẻ 3: Kinich Xuất Trận -->
+                    <div class="fan-card slot-left-2" data-index="3">
+                        <div class="fan-card-badge hot"><i class="fas fa-bolt"></i> TREND</div>
+                        <div class="fan-card-media">
+                            <img src="/uploads/thumbs/6a9071f6f8c5cfa6a0213adc.png" alt="Kinich Xuất Trận" class="fan-card-img" onerror="this.src='assets/images/placeholder-effect.png'">
+                            <video src="assets/videos/preview-kinich.webm" class="fan-card-video" loop muted playsinline></video>
+                            <div class="fan-card-glare"></div>
                         </div>
-                        <div class="card-visual-frame">
-                            <img src="/uploads/thumbs/6a91b9ecf82cd1d22007ea70.png" alt="Chảo Troll PK" onerror="this.src='assets/images/placeholder-effect.png'">
-                            <div class="play-indicator-overlay">
-                                <div class="play-circle-btn"><i class="fas fa-play"></i></div>
-                            </div>
-                        </div>
-                        <div class="card-details-box">
-                            <div class="card-title-text">Chảo PUBG Gõ Đầu Troll</div>
-                            <div class="card-meta-row">
-                                <span class="card-price-text"><i class="fas fa-coins"></i> 49.000₫</span>
-                                <span class="card-duration-text"><i class="fas fa-clock"></i> 10.1s</span>
+                        <div class="fan-card-info-bottom">
+                            <div class="fan-card-title">Kinich Xuất Trận</div>
+                            <div class="fan-card-sub">
+                                <span>Biến Hình Chiến Binh</span>
+                                <span class="fan-card-price">79.000₫</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Thẻ 5: Thần Tiễn -->
-                    <div class="effect-trading-card">
-                        <div class="card-top-badges">
-                            <span class="badge-cat">Cung Thủ Ma Thuật</span>
+                    <!-- Thẻ 4: TikTok Vòng Xoáy Huyền Ảo -->
+                    <div class="fan-card slot-left-1" data-index="4">
+                        <div class="fan-card-badge hot"><i class="fas fa-fire"></i> MIỄN PHÍ</div>
+                        <div class="fan-card-media">
+                            <img src="/uploads/thumbs/69f07a15bd815bb0cc729db8.png" alt="TikTok Vòng Xoáy Huyền Ảo" class="fan-card-img" onerror="this.src='assets/images/placeholder-effect.png'">
+                            <video src="assets/videos/preview-tiktok.webm" class="fan-card-video blend-screen" loop muted playsinline></video>
+                            <div class="fan-card-glare"></div>
                         </div>
-                        <div class="card-visual-frame">
-                            <img src="/uploads/thumbs/6a91be4bde98975886e49b45.png" alt="Thần Tiễn" onerror="this.src='assets/images/placeholder-effect.png'">
-                            <div class="play-indicator-overlay">
-                                <div class="play-circle-btn"><i class="fas fa-play"></i></div>
-                            </div>
-                        </div>
-                        <div class="card-details-box">
-                            <div class="card-title-text">Thần Tiễn Băng Thiên Tuyết</div>
-                            <div class="card-meta-row">
-                                <span class="card-price-text"><i class="fas fa-coins"></i> 79.000₫</span>
-                                <span class="card-duration-text"><i class="fas fa-clock"></i> 17.7s</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Thẻ 6: Kinich Xuất Trận -->
-                    <div class="effect-trading-card">
-                        <div class="card-top-badges">
-                            <span class="badge-cat">Biến Hình Chiến Binh</span>
-                        </div>
-                        <div class="card-visual-frame">
-                            <img src="/uploads/thumbs/6a9071f6f8c5cfa6a0213adc.png" alt="Kinich Xuất Trận" onerror="this.src='assets/images/placeholder-effect.png'">
-                            <div class="play-indicator-overlay">
-                                <div class="play-circle-btn"><i class="fas fa-play"></i></div>
-                            </div>
-                        </div>
-                        <div class="card-details-box">
-                            <div class="card-title-text">Kinich Xuất Trận Rực Lửa</div>
-                            <div class="card-meta-row">
-                                <span class="card-price-text"><i class="fas fa-coins"></i> 79.000₫</span>
-                                <span class="card-duration-text"><i class="fas fa-clock"></i> 13.7s</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Thẻ 7: Sage Rút Kiếm -->
-                    <div class="effect-trading-card">
-                        <div class="card-top-badges">
-                            <span class="badge-cat">Kiếm Đạo Cổ Phong</span>
-                        </div>
-                        <div class="card-visual-frame">
-                            <img src="/uploads/thumbs/6a91c095de98975886e4a2cf.png" alt="Sage Rút Kiếm" onerror="this.src='assets/images/placeholder-effect.png'">
-                            <div class="play-indicator-overlay">
-                                <div class="play-circle-btn"><i class="fas fa-play"></i></div>
-                            </div>
-                        </div>
-                        <div class="card-details-box">
-                            <div class="card-title-text">Sage Khí Kiếm Tuyệt Đỉnh</div>
-                            <div class="card-meta-row">
-                                <span class="card-price-text"><i class="fas fa-coins"></i> 79.000₫</span>
-                                <span class="card-duration-text"><i class="fas fa-clock"></i> 12.0s</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Thẻ 8: TikTok Trend -->
-                    <div class="effect-trading-card">
-                        <div class="card-top-badges">
-                            <span class="badge-cat">Nhận Diện Live</span>
-                            <span class="badge-hot" style="background:#06b6d4;"><i class="fas fa-fire"></i> 178 LƯỢT DÙNG</span>
-                        </div>
-                        <div class="card-visual-frame">
-                            <img src="/uploads/thumbs/69f07a15bd815bb0cc729db8.png" alt="TikTok Trend" onerror="this.src='assets/images/placeholder-effect.png'">
-                            <div class="play-indicator-overlay">
-                                <div class="play-circle-btn"><i class="fas fa-play"></i></div>
-                            </div>
-                        </div>
-                        <div class="card-details-box">
-                            <div class="card-title-text">TikTok Vòng Xoáy Huyền Ảo</div>
-                            <div class="card-meta-row">
-                                <span class="card-price-text" style="color:#34d399;"><i class="fas fa-gift"></i> MIỄN PHÍ</span>
-                                <span class="card-duration-text"><i class="fas fa-clock"></i> 5.0s</span>
+                        <div class="fan-card-info-bottom">
+                            <div class="fan-card-title">TikTok Vòng Xoáy</div>
+                            <div class="fan-card-sub">
+                                <span>Nhận Diện Live</span>
+                                <span class="fan-card-price" style="color: #34d399;">MIỄN PHÍ</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Navigation Controls -->
-                <div class="deck-controls-row">
-                    <button class="btn-deck-nav" onclick="document.getElementById('tradingCardsTrack').scrollBy({left: -320, behavior: 'smooth'})">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <span style="font-size:13px; color:var(--text-muted); font-weight:600;">Vuốt ngang hoặc bấm mũi tên để xem trọn bộ 10+ thẻ bài</span>
-                    <button class="btn-deck-nav" onclick="document.getElementById('tradingCardsTrack').scrollBy({left: 320, behavior: 'smooth'})">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
+                <!-- Bảng chi tiết hiệu ứng đang active (Chuẩn Style Ảnh 2) -->
+                <div class="fan-active-info-panel">
+                    <h3 class="fan-active-effect-name" id="fanActiveName">Minato Đại Chiến Cửu Vĩ</h3>
+                    <div class="fan-active-effect-meta">
+                        <span class="meta-tag" id="fanActiveTag">Biến Hình Anime</span>
+                        <span id="fanActiveDuration"><i class="fas fa-clock"></i> 16.5 giây</span>
+                        <span id="fanActivePrice" style="color: #fbbf24;"><i class="fas fa-coins"></i> 79.000₫</span>
+                    </div>
+                    <!-- Chấm định vị vòng quay tự động (Không có nút mũi tên) -->
+                    <div class="fan-dots-row" id="fanDotsRow">
+                        <div class="fan-dot-item active"></div>
+                        <div class="fan-dot-item"></div>
+                        <div class="fan-dot-item"></div>
+                        <div class="fan-dot-item"></div>
+                        <div class="fan-dot-item"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2455,6 +2229,111 @@
                     link.style.transform = 'scale(1) translateY(0)';
                 });
             });
+        })();
+
+        // ==========================================
+        // 3D FAN ARC GALLERY AUTO-ROTATING PREVIEW LOOP
+        // ==========================================
+        (function initFanArcGallery() {
+            const stage = document.getElementById('fanArcStage');
+            if (!stage) return;
+
+            const cardsData = [
+                {
+                    title: "Minato Đại Chiến Cửu Vĩ",
+                    cat: "Biến Hình Anime",
+                    duration: "16.5 giây",
+                    price: "79.000₫"
+                },
+                {
+                    title: "Chảo PUBG Gõ Đầu Troll",
+                    cat: "Quà Tặng PK",
+                    duration: "10.1 giây",
+                    price: "49.000₫"
+                },
+                {
+                    title: "Bạch Nguyệt Quang",
+                    cat: "Thiên Thần Cánh Bạc",
+                    duration: "18.6 giây",
+                    price: "79.000₫"
+                },
+                {
+                    title: "Kinich Xuất Trận",
+                    cat: "Biến Hình Chiến Binh",
+                    duration: "13.7 giây",
+                    price: "79.000₫"
+                },
+                {
+                    title: "TikTok Vòng Xoáy Huyền Ảo",
+                    cat: "Nhận Diện Live",
+                    duration: "5.0 giây",
+                    price: "MIỄN PHÍ"
+                }
+            ];
+
+            const fanCards = Array.from(stage.querySelectorAll('.fan-card'));
+            const nameEl = document.getElementById('fanActiveName');
+            const tagEl = document.getElementById('fanActiveTag');
+            const durationEl = document.getElementById('fanActiveDuration');
+            const priceEl = document.getElementById('fanActivePrice');
+            const dots = Array.from(document.querySelectorAll('.fan-dot-item'));
+
+            let currentIndex = 0;
+            const total = fanCards.length;
+
+            function renderArc() {
+                fanCards.forEach((card, i) => {
+                    const diff = (i - currentIndex + total) % total;
+                    card.classList.remove('slot-center', 'slot-left-1', 'slot-right-1', 'slot-left-2', 'slot-right-2', 'slot-hidden');
+                    const video = card.querySelector('video');
+
+                    if (diff === 0) {
+                        card.classList.add('slot-center');
+                        if (video) {
+                            video.currentTime = 0;
+                            video.play().catch(() => {});
+                        }
+                    } else if (diff === 1) {
+                        card.classList.add('slot-right-1');
+                        if (video) video.pause();
+                    } else if (diff === 2) {
+                        card.classList.add('slot-right-2');
+                        if (video) video.pause();
+                    } else if (diff === total - 2) {
+                        card.classList.add('slot-left-2');
+                        if (video) video.pause();
+                    } else if (diff === total - 1) {
+                        card.classList.add('slot-left-1');
+                        if (video) video.pause();
+                    } else {
+                        card.classList.add('slot-hidden');
+                        if (video) video.pause();
+                    }
+                });
+
+                // Update active info
+                const data = cardsData[currentIndex];
+                if (data) {
+                    if (nameEl) nameEl.textContent = data.title;
+                    if (tagEl) tagEl.textContent = data.cat;
+                    if (durationEl) durationEl.innerHTML = `<i class="fas fa-clock"></i> ${data.duration}`;
+                    if (priceEl) priceEl.innerHTML = `<i class="fas fa-coins"></i> ${data.price}`;
+                }
+
+                // Update dots
+                dots.forEach((dot, idx) => {
+                    if (idx === currentIndex) dot.classList.add('active');
+                    else dot.classList.remove('active');
+                });
+            }
+
+            renderArc();
+
+            // Auto loop continuously every 3.8 seconds with no interaction
+            setInterval(() => {
+                currentIndex = (currentIndex + 1) % total;
+                renderArc();
+            }, 3800);
         })();
     </script>
 </body>
