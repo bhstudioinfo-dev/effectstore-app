@@ -1373,11 +1373,13 @@
             gap: 8px;
         }
 
-        .gm-popup-mini-rose {
-            width: 30px;
-            height: 30px;
-            object-fit: contain;
-            filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.8));
+        .gm-popup-user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1.5px solid #ec4899;
+            box-shadow: 0 0 10px rgba(236, 72, 153, 0.7);
         }
 
         .gm-popup-text h6 {
@@ -1609,7 +1611,7 @@
             transform: scale(1.04);
         }
 
-        /* Phone 2: Result Livestream with Authentic Rose WebM Video (Đậm và Rõ 100%, không bị mờ do blend-mode) */
+        /* Phone 2: Result Livestream with Authentic Rose WebM Video (Đậm và Rõ 100%, nằm dưới lớp overlay LIVE) */
         .gm-effect-video-overlay {
             position: absolute;
             inset: 0;
@@ -1619,7 +1621,7 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
-            z-index: 6;
+            z-index: 2;
             filter: contrast(1.18) saturate(1.28) drop-shadow(0 0 22px rgba(244, 63, 94, 0.85));
         }
 
@@ -2551,11 +2553,11 @@
                     
                     <!-- UI Layer TikTok Live -->
                     <div class="gm-tiktok-overlay">
-                        <!-- Top Bar: Streamer Avatar, LIVE badge, Mắt xem (Chuẩn Ảnh 1) -->
+                        <!-- Top Bar: Streamer Avatar Minh Anh, LIVE badge, Mắt xem (Chuẩn Ảnh 1) -->
                         <div class="gm-live-top-bar">
                             <div class="gm-streamer-pill">
                                 <div class="gm-avatar-mini">
-                                    <img src="assets/images/tiktok-rose-official.png" alt="Avatar">
+                                    <img src="assets/images/avatar-minh-anh.jpg" alt="Minh Anh">
                                 </div>
                                 <div class="gm-streamer-meta">
                                     <h6>Minh Anh <i class="fas fa-check-circle" style="color:#38bdf8; font-size:10px;"></i></h6>
@@ -2595,10 +2597,10 @@
                         </div>
                     </div>
 
-                    <!-- Gift Notification Popup: Rose x1 chuẩn như Ảnh 1 -->
+                    <!-- Gift Notification Popup: Avatar Anh Khoa + Rose 3D x1 -->
                     <div class="gm-gift-event-popup" id="gmGiftPopup">
                         <div class="gm-popup-left">
-                            <img src="assets/images/tiktok-rose-official.png" class="gm-popup-mini-rose" alt="Rose">
+                            <img src="assets/images/avatar-anh-khoa.jpg" class="gm-popup-user-avatar" alt="Anh Khoa">
                             <div class="gm-popup-text">
                                 <h6>Anh Khoa</h6>
                                 <p>đã gửi Rose</p>
@@ -2664,26 +2666,60 @@
                     <div class="gm-fiber-pulse" id="gmPulse3"></div>
                 </div>
 
-                <!-- Điện thoại 2: Livestream kết quả nổ hiệu ứng 3D RÕ & ĐẬM trên OBS -->
+                <!-- Điện thoại 2: Livestream kết quả nổ hiệu ứng 3D RÕ & ĐẬM trên OBS (Nằm dưới lớp overlay LIVE) -->
                 <div class="gm-phone-mockup" id="gmPhoneRight">
+                    <!-- Layer 1: Video nền streamer -->
                     <video src="assets/videos/streamer-live-portrait.mp4" autoplay loop muted playsinline class="gm-phone-video-bg"></video>
                     
-                    <!-- Hiệu ứng hoa hồng WebM gốc ĐẬM & RÕ (Alpha transparency chuẩn, không mờ) -->
+                    <!-- Layer 2: Hiệu ứng hoa hồng WebM gốc ĐẬM & RÕ (Nằm dưới overlay LIVE) -->
                     <video src="assets/videos/effect-rose-burst.webm" muted playsinline class="gm-effect-video-overlay" id="gmEffectVideo"></video>
 
                     <!-- Glow nền nổ bừng hoa hồng rực rỡ -->
                     <div class="gm-streamer-rose-burst" id="gmRoseBurst"></div>
 
-                    <!-- Banner Vinh Danh Người Tặng Quà phía dưới -->
-                    <div class="gm-obs-result-banner" id="gmObsBanner">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <img src="assets/images/tiktok-rose-official.png" style="width:24px; height:24px; object-fit:contain;" alt="Rose">
-                            <div>
-                                <strong style="display:block; font-size:11px; color:#fff;">Anh Khoa</strong>
-                                <span style="font-size:9.5px; color:#f472b6; font-weight:700;">đã gửi Rose ×1</span>
+                    <!-- Layer 3: Toàn bộ lớp UI Overlay TikTok LIVE (Nổi lên trên hiệu ứng, không có bảng OBS thừa) -->
+                    <div class="gm-tiktok-overlay">
+                        <!-- Top Bar: Streamer Avatar, LIVE badge, Mắt xem -->
+                        <div class="gm-live-top-bar">
+                            <div class="gm-streamer-pill">
+                                <div class="gm-avatar-mini">
+                                    <img src="assets/images/avatar-minh-anh.jpg" alt="Minh Anh">
+                                </div>
+                                <div class="gm-streamer-meta">
+                                    <h6>Minh Anh <i class="fas fa-check-circle" style="color:#38bdf8; font-size:10px;"></i></h6>
+                                    <small>❤️ 125.6K</small>
+                                </div>
+                                <span class="gm-follow-btn">+ Follow</span>
+                            </div>
+                            <div class="gm-viewer-count"><i class="fas fa-user"></i> 2.4K</div>
+                        </div>
+
+                        <!-- Cột tim bay nhẹ bên phải -->
+                        <div class="gm-hearts-col">
+                            <i class="fas fa-heart gm-heart" style="animation-delay: 0.2s; color:#ff3b5c;"></i>
+                            <i class="fas fa-heart gm-heart" style="animation-delay: 0.9s; color: #ec4899;"></i>
+                            <i class="fas fa-heart gm-heart" style="animation-delay: 1.6s; color: #38bdf8;"></i>
+                        </div>
+
+                        <!-- Bảng bình luận TikTok trôi tự nhiên trên LIVE -->
+                        <div class="gm-comment-feed">
+                            <div class="gm-comment-bubble">
+                                <span class="gm-badge-level blue">💎 18</span>
+                                <span class="gm-comment-user">Anh Khoa:</span> đã gửi Rose 🌹 x1
+                            </div>
+                            <div class="gm-comment-bubble">
+                                <span class="gm-badge-level purple">💎 25</span>
+                                <span class="gm-comment-user">Minh Anh Fan:</span> Hiệu ứng đỉnh quá chị ơi! 🔥
+                            </div>
+                            <div class="gm-comment-bubble">
+                                <span class="gm-badge-level blue">💎 10</span>
+                                <span class="gm-comment-user">Đức Lê:</span> Wow hoa hồng nở kìa 🌹✨
+                            </div>
+                            <div class="gm-comment-bubble">
+                                <span class="gm-badge-level orange">💎 15</span>
+                                <span class="gm-comment-user">Thanh Trúc:</span> Xinh quá nè ❤️
                             </div>
                         </div>
-                        <span style="font-weight:800; color:#34d399; font-size:10.5px; letter-spacing:0.5px;">KÍCH HOẠT OBS</span>
                     </div>
                 </div>
             </div>
@@ -3311,7 +3347,6 @@
             const mappingPill = document.getElementById('gmMappingPill');
             const effectVideo = document.getElementById('gmEffectVideo');
             const roseBurst = document.getElementById('gmRoseBurst');
-            const obsBanner = document.getElementById('gmObsBanner');
 
             function resetAll() {
                 [step1, step2, step3, step4].forEach(s => s && s.classList.remove('active'));
@@ -3338,7 +3373,6 @@
                     effectVideo.pause();
                 }
                 if (roseBurst) roseBurst.classList.remove('active');
-                if (obsBanner) obsBanner.classList.remove('show');
             }
 
             let isCycleRunning = false;
@@ -3418,7 +3452,6 @@
                     if (pulse3) pulse3.style.opacity = '0';
                     if (phoneRight) phoneRight.classList.add('active-glow');
                     if (roseBurst) roseBurst.classList.add('active');
-                    if (obsBanner) obsBanner.classList.add('show');
 
                     if (effectVideo) {
                         effectVideo.currentTime = 0;
@@ -3435,7 +3468,6 @@
                             setTimeout(() => {
                                 effectVideo.classList.remove('active');
                                 if (roseBurst) roseBurst.classList.remove('active');
-                                if (obsBanner) obsBanner.classList.remove('show');
                                 if (phoneRight) phoneRight.classList.remove('active-glow');
                                 if (appLogo) appLogo.classList.remove('active-pulse');
                                 if (mappingCard) mappingCard.classList.remove('active-glow');
@@ -3448,7 +3480,7 @@
 
                         effectVideo.addEventListener('ended', finishAndScheduleNext);
 
-                        // Fallback an toàn nếu video không phát sự kiện ended (tính theo độ dài video thực tế)
+                        // Fallback an toàn nếu video không phát sự kiện ended
                         const durationMs = (effectVideo.duration && !isNaN(effectVideo.duration) && effectVideo.duration > 0)
                             ? Math.round(effectVideo.duration * 1000)
                             : 5000;
