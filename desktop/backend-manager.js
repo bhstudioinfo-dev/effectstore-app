@@ -3,7 +3,34 @@ const fs = require('fs');
 const http = require('http');
 const net = require('net');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
+
+function freeZombiesOnPorts(ports = [9000, 9001]) {
+    if (process.platform !== 'win32') return Promise.resolve(false);
+    return new Promise((resolve) => {
+        exec('netstat -ano', (err, stdout) => {
+            if (err || !stdout) return resolve(false);
+            const lines = stdout.split('\r\n');
+            const targetPids = new Set();
+            for (const line of lines) {
+                if (!line.includes('LISTENING')) continue;
+                const matched = ports.some((p) => line.includes(`:${p}`));
+                if (!matched) continue;
+                const parts = line.trim().split(/\s+/);
+                const pid = parts[parts.length - 1];
+                if (pid && /^\d+$/.test(pid) && pid !== '0' && pid !== String(process.pid)) {
+                    targetPids.add(pid);
+                }
+            }
+            if (targetPids.size === 0) return resolve(false);
+            console.log(`[backend-manager] 🧹 Phát hiện cổng ${ports.join(', ')} bị kẹt bởi tiến trình PID: ${Array.from(targetPids).join(', ')}. Đang tự động giải phóng...`);
+            const killArgs = Array.from(targetPids).map((pid) => `/PID ${pid}`).join(' ');
+            exec(`taskkill /F ${killArgs}`, () => {
+                setTimeout(() => resolve(true), 600);
+            });
+        });
+    });
+}
 
 function rotateLogFile(logPath, maxBytes = 5 * 1024 * 1024, keep = 5) {
     if (!fs.existsSync(logPath) || fs.statSync(logPath).size <= maxBytes) return false;
@@ -179,6 +206,11 @@ function resolveBackendPath({ isPackaged, resourcesPath, desktopDirectory }) {
 
 async function startManagedBackend(options) {
     if (await backendHealthCheck(1500)) return { process: null, managed: false, reason: 'already-running' };
+
+    // Tự động dọn sạch tiến trình mồ côi (zombie) chiếm cổng nếu backend không phản hồi
+    try {
+        await freeZombiesOnPorts([BACKEND_PORT, 9001]);
+    } catch (_err) {}
 
     const backendEntry = resolveBackendPath(options);
     if (!fs.existsSync(backendEntry)) throw new Error(`Không tìm thấy backend: ${backendEntry}`);

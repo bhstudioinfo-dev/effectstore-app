@@ -332,146 +332,142 @@
             color: #475569;
         }
 
-        /* RIGHT VISUAL: GIAO DIỆN APP 3D SIÊU THỰC */
+        /* RIGHT VISUAL: MÔ HÌNH LAPTOP 3D CHÂN THỰC */
         .hero-right-visual {
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
             perspective: 1600px;
-            transform-style: preserve-3d;
-            padding: 24px 10px;
+            padding: 30px 10px;
         }
 
         .hero-visual-glow {
             position: absolute;
-            width: 110%;
-            height: 110%;
-            background: radial-gradient(circle at center, rgba(168, 85, 247, 0.35) 0%, rgba(236, 72, 153, 0.22) 42%, transparent 70%);
-            filter: blur(60px);
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(circle at center, rgba(168, 85, 247, 0.35) 0%, rgba(236, 72, 153, 0.2) 45%, transparent 70%);
+            filter: blur(65px);
             pointer-events: none;
             z-index: 0;
         }
 
-        /* Khung 3D Chassis chính */
-        .app-3d-window-frame {
+        .laptop-3d-chassis {
             position: relative;
             z-index: 2;
-            background: #090d22;
-            border-radius: 18px;
-            border: 1.5px solid rgba(255, 255, 255, 0.2);
-            border-right: 5px solid rgba(255, 255, 255, 0.12);
-            border-bottom: 7px solid rgba(15, 23, 42, 0.95);
-            box-shadow: 
-                -28px 38px 80px rgba(0, 0, 0, 0.88),
-                0 0 50px rgba(168, 85, 247, 0.35),
-                0 0 90px rgba(236, 72, 153, 0.2);
-            /* Góc nghiêng 3D chính định sẵn theo yêu cầu */
-            transform: perspective(1400px) rotateY(-18deg) rotateX(12deg) rotateZ(2deg);
-            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
-            overflow: visible;
             width: 100%;
+            max-width: 650px;
             transform-style: preserve-3d;
-            cursor: pointer;
+            transform: perspective(1400px) rotateX(10deg) rotateY(-8deg) rotateZ(1deg);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
         }
 
-        .app-3d-window-frame:hover {
-            box-shadow: 
-                -34px 48px 100px rgba(0, 0, 0, 0.95),
-                0 0 70px rgba(236, 72, 153, 0.55),
-                0 0 110px rgba(168, 85, 247, 0.4);
-            border-color: rgba(236, 72, 153, 0.55);
+        .laptop-3d-chassis:hover {
+            transform: perspective(1400px) rotateX(4deg) rotateY(-2deg) scale(1.02);
         }
 
-        .window-screen-frame {
+        /* Nắp màn hình Laptop (Lid) */
+        .laptop-lid {
+            background: #0f172a;
+            border-radius: 16px 16px 0 0;
+            padding: 10px 12px 0;
+            border: 2px solid #334155;
+            border-bottom: none;
+            box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.6);
             position: relative;
-            width: 100%;
-            line-height: 0;
-            overflow: hidden;
-            border-radius: 16px;
-            background: #050713;
         }
 
-        .app-screen-img {
+        /* Camera WebCam nhỏ ở đỉnh màn hình */
+        .laptop-webcam-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding-bottom: 8px;
+        }
+
+        .laptop-camera-lens {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #020617;
+            border: 1px solid #475569;
+            box-shadow: inset 0 0 3px #000;
+        }
+
+        .laptop-camera-indicator {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 6px #10b981;
+        }
+
+        /* Màn hình hiển thị app bên trong */
+        .laptop-display-screen {
+            position: relative;
+            border-radius: 6px 6px 0 0;
+            overflow: hidden;
+            background: #020617;
+            line-height: 0;
+            box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.9);
+        }
+
+        .laptop-screen-img {
             width: 100%;
             height: auto;
             display: block;
             object-fit: cover;
-            border-radius: 16px;
         }
 
-        .window-glass-reflection {
+        .laptop-screen-reflection {
             position: absolute;
             inset: 0;
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 40%, transparent 60%);
             pointer-events: none;
-            border-radius: 16px;
         }
 
-        /* 3D Floating Tags (Tạo chiều sâu 3D nhiều lớp) */
-        .floating-3d-tag {
-            position: absolute;
-            z-index: 10;
-            background: rgba(15, 23, 42, 0.88);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 14px;
-            padding: 10px 14px;
+        /* Khớp bản lề Laptop (Hinge) */
+        .laptop-hinge {
+            height: 6px;
+            background: #0b0f19;
+            border-left: 2px solid #334155;
+            border-right: 2px solid #334155;
+        }
+
+        /* Thân đế Laptop kim loại (Base Keyboard Deck) */
+        .laptop-base {
+            position: relative;
+            height: 22px;
+            background: linear-gradient(180deg, #334155 0%, #1e293b 40%, #0f172a 100%);
+            border-radius: 0 0 16px 16px;
+            border: 1.5px solid #475569;
+            border-top: 1px solid #64748b;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.85);
             display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.65), 0 0 25px rgba(168, 85, 247, 0.3);
-            pointer-events: none;
-            transform: translateZ(55px);
-            transition: all 0.3s;
-        }
-
-        .tag-top-right {
-            top: -15px;
-            right: -15px;
-            border-color: rgba(16, 185, 129, 0.45);
-        }
-
-        .tag-bottom-left {
-            bottom: -15px;
-            left: -15px;
-            border-color: rgba(236, 72, 153, 0.45);
-        }
-
-        .tag-icon-circle {
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            font-size: 14px;
-            flex-shrink: 0;
         }
 
-        .tag-icon-circle.green {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.4);
+        /* Khe lõm mở nắp (Opening Notch) */
+        .laptop-notch {
+            width: 80px;
+            height: 6px;
+            background: #090d16;
+            border-radius: 0 0 8px 8px;
+            border: 1px solid #1e293b;
+            border-top: none;
         }
 
-        .tag-icon-circle.pink {
-            background: rgba(236, 72, 153, 0.2);
-            color: #f472b6;
-            border: 1px solid rgba(236, 72, 153, 0.4);
-        }
-
-        .tag-title {
-            font-size: 12.5px;
-            font-weight: 800;
-            color: #fff;
-            line-height: 1.2;
-        }
-
-        .tag-desc {
-            font-size: 11px;
-            color: #94a3b8;
-            margin-top: 2px;
+        /* Đèn gầm neon phát sáng dưới đế Laptop */
+        .laptop-underglow {
+            width: 90%;
+            height: 18px;
+            margin: 0 auto;
+            background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.65) 0%, rgba(236, 72, 153, 0.35) 40%, transparent 75%);
+            filter: blur(10px);
+            border-radius: 50%;
+            transform: translateY(-4px);
         }
 
         /* SECTION: CÁCH LIVEFLOW HOẠT ĐỘNG */
@@ -1561,33 +1557,33 @@
                     </div>
                 </div>
 
-                <!-- CỘT PHẢI: GIAO DIỆN APP 3D THẬT (ĐÃ BỎ THANH DÀY THÔ, TĂNG ĐỘ NỔI KHỐI 3D) -->
+                <!-- CỘT PHẢI: MÔ HÌNH LAPTOP 3D CHÂN THỰC -->
                 <div class="hero-right-visual">
                     <div class="hero-visual-glow"></div>
-                    <div class="app-3d-window-frame" id="heroDevices3D">
-                        <!-- 3D Floating Tag 1: Góc trên bên phải -->
-                        <div class="floating-3d-tag tag-top-right">
-                            <div class="tag-icon-circle green"><i class="fas fa-check-circle"></i></div>
-                            <div>
-                                <div class="tag-title">OBS Studio 1-Click</div>
-                                <div class="tag-desc">Sẵn sàng kích hoạt hiệu ứng</div>
+                    
+                    <div class="laptop-3d-chassis" id="heroDevices3D">
+                        <!-- Nắp Laptop & Màn hình hiển thị -->
+                        <div class="laptop-lid">
+                            <div class="laptop-webcam-bar">
+                                <div class="laptop-camera-lens"></div>
+                                <div class="laptop-camera-indicator"></div>
+                            </div>
+                            <div class="laptop-display-screen">
+                                <img src="assets/images/app-3d-mockup.png" alt="Giao diện LiveFlow trên màn hình Laptop 3D" class="laptop-screen-img">
+                                <div class="laptop-screen-reflection"></div>
                             </div>
                         </div>
 
-                        <!-- 3D Floating Tag 2: Góc dưới bên trái -->
-                        <div class="floating-3d-tag tag-bottom-left">
-                            <div class="tag-icon-circle pink"><i class="fas fa-gift"></i></div>
-                            <div>
-                                <div class="tag-title">686+ Quà TikTok</div>
-                                <div class="tag-desc">Tự động nhận diện & nổ 3D</div>
-                            </div>
+                        <!-- Khớp nối bản lề Laptop -->
+                        <div class="laptop-hinge"></div>
+
+                        <!-- Thân đế Laptop kim loại -->
+                        <div class="laptop-base">
+                            <div class="laptop-notch"></div>
                         </div>
 
-                        <!-- Màn hình app sạch đẹp, sắc sảo chuẩn 100% -->
-                        <div class="window-screen-frame">
-                            <img src="assets/images/app-3d-mockup.png" alt="Giao diện LiveFlow App" class="app-screen-img">
-                            <div class="window-glass-reflection"></div>
-                        </div>
+                        <!-- Đèn gầm neon phát sáng dưới đáy Laptop -->
+                        <div class="laptop-underglow"></div>
                     </div>
                 </div>
             </div>
@@ -2273,21 +2269,21 @@
             });
         });
 
-        // 3D Parallax Tilt for Hero App 3D (Nghiêng 3D là trạng thái chính, di chuột tương tác sống động)
+        // 3D Parallax Tilt for Hero Laptop 3D (Góc nhìn Laptop 3D chân thực, di chuột tương tác mượt mà)
         const heroDevices = document.getElementById('heroDevices3D');
         if (heroDevices) {
             const visualCol = heroDevices.parentElement;
-            const baseRotY = -18;
-            const baseRotX = 12;
-            const baseRotZ = 2;
+            const baseRotY = -10;
+            const baseRotX = 8;
+            const baseRotZ = 1;
 
             visualCol.addEventListener('mousemove', e => {
                 const rect = visualCol.getBoundingClientRect();
                 const x = e.clientX - rect.left - rect.width / 2;
                 const y = e.clientY - rect.top - rect.height / 2;
-                const deltaX = (x / rect.width) * 14;
-                const deltaY = (-y / rect.height) * 14;
-                heroDevices.style.transform = `perspective(1400px) rotateY(${baseRotY + deltaX}deg) rotateX(${baseRotX + deltaY}deg) rotateZ(${baseRotZ}deg) translateY(-8px) scale(1.02)`;
+                const deltaX = (x / rect.width) * 10;
+                const deltaY = (-y / rect.height) * 8;
+                heroDevices.style.transform = `perspective(1400px) rotateY(${baseRotY + deltaX}deg) rotateX(${baseRotX + deltaY}deg) rotateZ(${baseRotZ}deg) translateY(-6px) scale(1.02)`;
             });
 
             visualCol.addEventListener('mouseleave', () => {
