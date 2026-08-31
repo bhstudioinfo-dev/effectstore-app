@@ -1843,6 +1843,451 @@
             .gm-features-row { grid-template-columns: 1fr; }
         }
 
+        /* ========================================================
+           SECTION: TRÌNH THIẾT KẾ BẢNG QUÀ KÉO - THẢ TRỰC QUAN
+           (Interactive 3-Step Gift Menu Designer Showcase)
+           ======================================================== */
+        .gmd-showcase-section {
+            padding: 95px 0 105px;
+            background: linear-gradient(180deg, rgba(8, 12, 22, 0.95), rgba(16, 12, 34, 0.8) 50%, rgba(8, 12, 22, 0.95));
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gmd-showcase-section::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.12) 0%, rgba(236, 72, 153, 0.08) 50%, transparent 80%);
+            filter: blur(80px);
+            pointer-events: none;
+        }
+
+        /* 3-Step Process Header Row */
+        .gmd-steps-row {
+            display: grid;
+            grid-template-columns: 240px 1fr 280px;
+            align-items: center;
+            max-width: 1240px;
+            margin: 0 auto 30px;
+            padding: 0 10px;
+            gap: 20px;
+        }
+
+        .gmd-step-badge-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            padding: 8px 16px;
+            transition: all 0.35s ease;
+        }
+
+        .gmd-step-badge-item.active {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(236, 72, 153, 0.25));
+            border-color: rgba(236, 72, 153, 0.7);
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.35);
+        }
+
+        .gmd-step-badge-item .num {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gmd-step-badge-item.active .num {
+            background: linear-gradient(135deg, #7c3aed, #ec4899);
+        }
+
+        .gmd-step-badge-item h5 {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #cbd5e1;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .gmd-step-badge-item.active h5 {
+            color: #ffffff;
+        }
+
+        /* 3-Column Interactive Workspace Grid */
+        .gmd-workspace-grid {
+            display: grid;
+            grid-template-columns: 240px 1fr 280px;
+            gap: 20px;
+            max-width: 1240px;
+            margin: 0 auto;
+            align-items: stretch;
+            position: relative;
+        }
+
+        /* Column 1: Kho Quà TikTok */
+        .gmd-catalog-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 16px;
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .gmd-col-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11.5px;
+            font-weight: 800;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .gmd-gift-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .gmd-gift-drag-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .gmd-gift-drag-item:hover, .gmd-gift-drag-item.dragging-source {
+            background: rgba(236, 72, 153, 0.15);
+            border-color: rgba(236, 72, 153, 0.8);
+            transform: translateX(4px);
+            box-shadow: 0 0 16px rgba(236, 72, 153, 0.4);
+        }
+
+        .gmd-item-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .gmd-gift-icon-img {
+            width: 26px;
+            height: 26px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 6px rgba(255, 75, 125, 0.7));
+        }
+
+        .gmd-item-meta h6 {
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0;
+        }
+
+        .gmd-item-meta small {
+            font-size: 9.5px;
+            color: #94a3b8;
+        }
+
+        .gmd-drag-handle {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 11px;
+        }
+
+        /* Column 2: Canvas Thiết Kế Trực Quan */
+        .gmd-canvas-container {
+            background: rgba(11, 15, 28, 0.9);
+            border: 1.5px solid rgba(168, 85, 247, 0.35);
+            border-radius: 20px;
+            padding: 16px 20px;
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 35px rgba(124, 58, 237, 0.15);
+            position: relative;
+            min-height: 440px;
+        }
+
+        /* Toolbar on top of Canvas */
+        .gmd-canvas-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 6px 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .gmd-tool-pill {
+            font-size: 11px;
+            font-weight: 700;
+            color: #cbd5e1;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Actual Gift Menu Board on Canvas */
+        .gmd-canvas-board-preview {
+            background: rgba(20, 14, 40, 0.85);
+            border: 2px solid rgba(236, 72, 153, 0.7);
+            border-radius: 18px;
+            padding: 16px;
+            box-shadow: 0 0 30px rgba(236, 72, 153, 0.35), inset 0 0 20px rgba(124, 58, 237, 0.2);
+            backdrop-filter: blur(12px);
+            margin: auto 0;
+        }
+
+        .gmd-board-header {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .gmd-board-header h4 {
+            font-family: 'UTM Akashi', sans-serif;
+            font-size: 16px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            background: linear-gradient(180deg, #fff7ed 0%, #fed7aa 40%, #f97316 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+            filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.7));
+        }
+
+        .gmd-board-grid-slots {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .gmd-board-slot {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 8px 10px;
+            transition: all 0.35s ease;
+            position: relative;
+        }
+
+        .gmd-board-slot.active-target {
+            border-color: #25f4ee;
+            box-shadow: 0 0 20px rgba(37, 244, 238, 0.8);
+            background: rgba(37, 244, 238, 0.15);
+            transform: scale(1.03);
+        }
+
+        .gmd-board-slot.empty-dropzone {
+            border: 1.5px dashed rgba(236, 72, 153, 0.6);
+            background: rgba(236, 72, 153, 0.08);
+            justify-content: center;
+            color: #ec4899;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .gmd-slot-icon {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .gmd-slot-info h6 {
+            font-size: 11px;
+            font-weight: 800;
+            color: #ffffff;
+            margin: 0 0 2px 0;
+            line-height: 1.2;
+        }
+
+        .gmd-slot-info p {
+            font-size: 9.5px;
+            color: #fbcfe8;
+            margin: 0;
+            line-height: 1.2;
+            font-weight: 600;
+        }
+
+        .gmd-canvas-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .gmd-sync-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #ffffff;
+            font-size: 11.5px;
+            font-weight: 800;
+            padding: 6px 14px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .gmd-sync-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 24px rgba(16, 185, 129, 0.8);
+        }
+
+        /* Column 3: Màn Hình Livestream OBS Thực Tế */
+        .gmd-obs-preview-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 16px;
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .gmd-phone-obs-frame {
+            width: 100%;
+            height: 380px;
+            border-radius: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.18);
+            background: #090d16;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8);
+        }
+
+        .gmd-phone-obs-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Overlay mini Gift Menu placed directly in stream */
+        .gmd-obs-overlay-menu {
+            position: absolute;
+            top: 50px;
+            right: 8px;
+            width: 145px;
+            background: rgba(20, 14, 40, 0.85);
+            border: 1px solid rgba(236, 72, 153, 0.8);
+            border-radius: 12px;
+            padding: 6px;
+            box-shadow: 0 0 16px rgba(236, 72, 153, 0.6);
+            backdrop-filter: blur(6px);
+            z-index: 5;
+            transition: all 0.4s ease;
+        }
+
+        .gmd-obs-overlay-menu.pulse-update {
+            transform: scale(1.08);
+            border-color: #25f4ee;
+            box-shadow: 0 0 25px rgba(37, 244, 238, 0.9);
+        }
+
+        .gmd-obs-menu-title {
+            font-family: 'UTM Akashi', sans-serif;
+            font-size: 8px;
+            font-weight: 800;
+            color: #fed7aa;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .gmd-obs-mini-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 3px;
+        }
+
+        .gmd-obs-mini-slot {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+
+        .gmd-obs-mini-slot img {
+            width: 12px;
+            height: 12px;
+            object-fit: contain;
+        }
+
+        .gmd-obs-mini-slot span {
+            font-size: 7px;
+            color: #fff;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Virtual Animated Hand / Cursor for Drag Simulation */
+        .gmd-virtual-cursor {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            pointer-events: none;
+            z-index: 20;
+            filter: drop-shadow(0 0 10px rgba(37, 244, 238, 0.9));
+            transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+            opacity: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .gmd-steps-row { grid-template-columns: 1fr; }
+            .gmd-workspace-grid { grid-template-columns: 1fr; }
+        }
+
         /* SECTION 2: BẢNG QUÀ & 3D TYPOGRAPHY SHOWCASE */
         .typography-showcase-section {
             padding: 90px 0;
@@ -2893,6 +3338,183 @@
         </div>
     </section>
 
+    <!-- SECTION: TRÌNH THIẾT KẾ BẢNG QUÀ KÉO - THẢ TRỰC QUAN (GIFT MENU CANVAS DESIGNER) -->
+    <section class="gmd-showcase-section" id="gift-menu-designer-flow">
+        <div class="container">
+            <div class="how-it-works-header-wrap" style="margin-bottom: 36px;">
+                <span class="hiw-tag-badge"><i class="fas fa-palette"></i> THIẾT KẾ BẢNG QUÀ KÉO - THẢ TRỰC QUAN</span>
+                <h2 class="how-it-works-heading" style="line-height: 1.35; font-size: clamp(26px, 3.2vw, 36px);">
+                    Tạo Bảng Quà Trong 30 Giây.<br>
+                    <span class="text-highlight-brand">Kéo Thả Đơn Giản Như Canva</span>
+                </h2>
+                <p style="font-size: 15px; color: #94a3b8; max-width: 740px; margin: 14px auto 0; line-height: 1.6; text-align: center;">
+                    Không cần phần mềm thiết kế đồ họa phức tạp. Chỉ cần chọn icon quà TikTok, kéo vào Canvas, chỉnh nội dung thử thách và xuất 1-Click đồng bộ trực tiếp lên livestream OBS.
+                </p>
+            </div>
+
+            <!-- 3 Bước quy trình Trực quan -->
+            <div class="gmd-steps-row">
+                <div class="gmd-step-badge-item active" id="gmdStep1">
+                    <div class="num">1</div>
+                    <h5>1. Chọn Quà TikTok</h5>
+                </div>
+                <div class="gmd-step-badge-item" id="gmdStep2">
+                    <div class="num">2</div>
+                    <h5>2. Kéo Thả & Tùy Biến Canvas</h5>
+                </div>
+                <div class="gmd-step-badge-item" id="gmdStep3">
+                    <div class="num">3</div>
+                    <h5>3. Xuất 1-Click Lên LIVE OBS</h5>
+                </div>
+            </div>
+
+            <!-- 3 Khối Không Gian Làm Việc Trực Quan -->
+            <div class="gmd-workspace-grid">
+                <!-- Cột 1: Kho Icon Quà TikTok -->
+                <div class="gmd-catalog-card" id="gmdCatalogBox">
+                    <div class="gmd-col-header">
+                        <span><i class="fas fa-boxes"></i> KHO QUÀ TIKTOK</span>
+                        <span style="color:#a855f7;">150+ Quà</span>
+                    </div>
+                    <div class="gmd-gift-list">
+                        <div class="gmd-gift-drag-item" id="gmdGiftItemRose">
+                            <div class="gmd-item-meta">
+                                <img src="assets/images/tiktok-rose-official.png" class="gmd-gift-icon-img" alt="Rose">
+                                <div>
+                                    <h6>Hoa hồng</h6>
+                                    <small>1 Xu TikTok</small>
+                                </div>
+                            </div>
+                            <i class="fas fa-grip-vertical gmd-drag-handle"></i>
+                        </div>
+                        <div class="gmd-gift-drag-item" id="gmdGiftItemHeart">
+                            <div class="gmd-item-meta">
+                                <span style="font-size:22px;">💖</span>
+                                <div>
+                                    <h6>Trái tim</h6>
+                                    <small>10 Xu TikTok</small>
+                                </div>
+                            </div>
+                            <i class="fas fa-grip-vertical gmd-drag-handle"></i>
+                        </div>
+                        <div class="gmd-gift-drag-item" id="gmdGiftItemCap">
+                            <div class="gmd-item-meta">
+                                <span style="font-size:22px;">🍦</span>
+                                <div>
+                                    <h6>Mũ kem</h6>
+                                    <small>99 Xu TikTok</small>
+                                </div>
+                            </div>
+                            <i class="fas fa-grip-vertical gmd-drag-handle"></i>
+                        </div>
+                        <div class="gmd-gift-drag-item dragging-source" id="gmdGiftItemGun">
+                            <div class="gmd-item-meta">
+                                <span style="font-size:22px;">🔫</span>
+                                <div>
+                                    <h6>Súng tiền</h6>
+                                    <small>500 Xu TikTok</small>
+                                </div>
+                            </div>
+                            <i class="fas fa-hand-pointer" style="color:#25f4ee; font-size:12px;"></i>
+                        </div>
+                        <div class="gmd-gift-drag-item" id="gmdGiftItemRocket">
+                            <div class="gmd-item-meta">
+                                <span style="font-size:22px;">🚀</span>
+                                <div>
+                                    <h6>Tên lửa</h6>
+                                    <small>1000 Xu TikTok</small>
+                                </div>
+                            </div>
+                            <i class="fas fa-grip-vertical gmd-drag-handle"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cột 2: Canvas Thiết Kế Trực Quan -->
+                <div class="gmd-canvas-container" id="gmdCanvasBox">
+                    <div class="gmd-canvas-toolbar">
+                        <div class="gmd-tool-pill"><i class="fas fa-font"></i> Font: UTM Akashi</div>
+                        <div class="gmd-tool-pill"><i class="fas fa-palette"></i> Style: Neon Hồng Tím</div>
+                        <div class="gmd-tool-pill"><i class="fas fa-th"></i> Lưới 2x2</div>
+                    </div>
+
+                    <!-- Bảng Menu Quà Trên Canvas -->
+                    <div class="gmd-canvas-board-preview" id="gmdBoardPreview">
+                        <div class="gmd-board-header">
+                            <h4>✨ MENU THỬ THÁCH LIVESTREAM ✨</h4>
+                        </div>
+                        <div class="gmd-board-grid-slots">
+                            <div class="gmd-board-slot">
+                                <img src="assets/images/tiktok-rose-official.png" class="gmd-slot-icon" alt="Rose">
+                                <div class="gmd-slot-info">
+                                    <h6>1 Rose (1 Xu)</h6>
+                                    <p>Hát 1 câu theo yêu cầu</p>
+                                </div>
+                            </div>
+                            <div class="gmd-board-slot">
+                                <span style="font-size:20px;">🍦</span>
+                                <div class="gmd-slot-info">
+                                    <h6>Mũ Kem (99 Xu)</h6>
+                                    <p>Ăn 1 thìa chanh tươi</p>
+                                </div>
+                            </div>
+                            <div class="gmd-board-slot">
+                                <span style="font-size:20px;">💖</span>
+                                <div class="gmd-slot-info">
+                                    <h6>Trái Tim (10 Xu)</h6>
+                                    <p>Gọi tên fan & chúc ngủ ngon</p>
+                                </div>
+                            </div>
+                            <div class="gmd-board-slot active-target" id="gmdSlot4">
+                                <span style="font-size:20px;" id="gmdSlot4Icon">🔫</span>
+                                <div class="gmd-slot-info">
+                                    <h6 id="gmdSlot4Title">Súng Tiền (500 Xu)</h6>
+                                    <p id="gmdSlot4Desc">Hát trọn vẹn 1 bài hát tủ</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="gmd-canvas-footer">
+                        <span style="font-size:11px; color:#94a3b8;"><i class="fas fa-check-circle" style="color:#10b981;"></i> Tự động căn chỉnh nam châm hít (Auto-Snap)</span>
+                        <button class="gmd-sync-btn" id="gmdSyncBtn"><i class="fas fa-bolt"></i> Xuất 1-Click sang OBS</button>
+                    </div>
+                </div>
+
+                <!-- Cột 3: Màn Hình Livestream OBS Thực Tế -->
+                <div class="gmd-obs-preview-card" id="gmdObsBox">
+                    <div class="gmd-col-header">
+                        <span><i class="fas fa-video"></i> MÀN HÌNH OBS LIVE</span>
+                        <span style="color:#10b981;"><i class="fas fa-circle" style="font-size:8px;"></i> LIVE</span>
+                    </div>
+                    <div class="gmd-phone-obs-frame">
+                        <video src="assets/videos/streamer-live-portrait.mp4" autoplay loop muted playsinline class="gmd-phone-obs-video"></video>
+                        
+                        <!-- Overlay bảng quà đính trên góc màn hình live -->
+                        <div class="gmd-obs-overlay-menu" id="gmdObsMenu">
+                            <div class="gmd-obs-menu-title">★ MENU THỬ THÁCH ★</div>
+                            <div class="gmd-obs-mini-grid">
+                                <div class="gmd-obs-mini-slot">
+                                    <img src="assets/images/tiktok-rose-official.png" alt="Rose">
+                                    <span>Rose: Hát 1 câu</span>
+                                </div>
+                                <div class="gmd-obs-mini-slot">
+                                    <span>🍦 Kem: Ăn chanh</span>
+                                </div>
+                                <div class="gmd-obs-mini-slot">
+                                    <span>💖 Tim: Gọi tên fan</span>
+                                </div>
+                                <div class="gmd-obs-mini-slot" id="gmdObsSlot4" style="background:rgba(37,244,238,0.2); border:1px solid #25f4ee;">
+                                    <span>🔫 Súng: Hát 1 bài</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- SECTION 2: TRÌNH THIẾT KẾ BẢNG QUÀ & 6 PHONG CÁCH CHỮ 3D ĐỘC BẢN -->
     <section class="typography-showcase-section" id="typography-showcase">
         <div class="container">
@@ -3650,6 +4272,120 @@
             }
 
             runCycle();
+        })();
+
+        /* ========================================================
+           CONTROLLER: GIFT MENU DESIGNER INTERACTIVE SHOWCASE
+           (Mô phỏng 3 bước Kéo - Thả - Xuất lên LIVE OBS)
+           ======================================================== */
+        (function initGiftMenuDesignerShowcase() {
+            const step1 = document.getElementById('gmdStep1');
+            const step2 = document.getElementById('gmdStep2');
+            const step3 = document.getElementById('gmdStep3');
+            const slot4 = document.getElementById('gmdSlot4');
+            const slot4Icon = document.getElementById('gmdSlot4Icon');
+            const slot4Title = document.getElementById('gmdSlot4Title');
+            const slot4Desc = document.getElementById('gmdSlot4Desc');
+            const syncBtn = document.getElementById('gmdSyncBtn');
+            const obsMenu = document.getElementById('gmdObsMenu');
+            const obsSlot4 = document.getElementById('gmdObsSlot4');
+
+            const giftItems = [
+                { id: 'gmdGiftItemRose', icon: 'assets/images/tiktok-rose-official.png', isImg: true, title: '1 Rose (1 Xu)', desc: 'Hát 1 câu theo yêu cầu', obsShort: 'Rose: Hát 1 câu' },
+                { id: 'gmdGiftItemHeart', icon: '💖', isImg: false, title: 'Trái Tim (10 Xu)', desc: 'Gọi tên fan & chúc ngủ ngon', obsShort: '💖 Tim: Gọi tên fan' },
+                { id: 'gmdGiftItemCap', icon: '🍦', isImg: false, title: 'Mũ Kem (99 Xu)', desc: 'Ăn 1 thìa chanh tươi', obsShort: '🍦 Kem: Ăn chanh' },
+                { id: 'gmdGiftItemGun', icon: '🔫', isImg: false, title: 'Súng Tiền (500 Xu)', desc: 'Hát trọn vẹn 1 bài hát tủ', obsShort: '🔫 Súng: Hát 1 bài' },
+                { id: 'gmdGiftItemRocket', icon: '🚀', isImg: false, title: 'Tên Lửa (1000 Xu)', desc: 'Múa quạt + Biến hình Anime', obsShort: '🚀 Tên Lửa: Múa quạt' }
+            ];
+
+            function applyGiftToSlot(gift) {
+                // Update Canvas Slot 4
+                if (gift.isImg) {
+                    slot4Icon.innerHTML = `<img src="${gift.icon}" style="width:20px;height:20px;object-fit:contain;">`;
+                } else {
+                    slot4Icon.textContent = gift.icon;
+                }
+                if (slot4Title) slot4Title.textContent = gift.title;
+                if (slot4Desc) slot4Desc.textContent = gift.desc;
+
+                // Update OBS mini slot 4
+                if (obsSlot4) {
+                    if (gift.isImg) {
+                        obsSlot4.innerHTML = `<img src="${gift.icon}"> <span>${gift.obsShort}</span>`;
+                    } else {
+                        obsSlot4.innerHTML = `<span>${gift.obsShort}</span>`;
+                    }
+                }
+
+                // Visual Glow Flash
+                if (slot4) {
+                    slot4.classList.add('active-target');
+                    setTimeout(() => slot4.classList.remove('active-target'), 1200);
+                }
+                if (obsMenu) {
+                    obsMenu.classList.add('pulse-update');
+                    setTimeout(() => obsMenu.classList.remove('pulse-update'), 1200);
+                }
+            }
+
+            // Click listener for manual user interaction
+            giftItems.forEach(gift => {
+                const el = document.getElementById(gift.id);
+                if (el) {
+                    el.addEventListener('click', () => {
+                        document.querySelectorAll('.gmd-gift-drag-item').forEach(i => i.classList.remove('dragging-source'));
+                        el.classList.add('dragging-source');
+                        applyGiftToSlot(gift);
+                    });
+                }
+            });
+
+            if (syncBtn) {
+                syncBtn.addEventListener('click', () => {
+                    if (obsMenu) {
+                        obsMenu.classList.add('pulse-update');
+                        setTimeout(() => obsMenu.classList.remove('pulse-update'), 1200);
+                    }
+                });
+            }
+
+            // Automatic 3-Step Demo Animation Cycle
+            let cycleIndex = 0;
+            function runGmdCycle() {
+                const activeGift = giftItems[cycleIndex % giftItems.length];
+                cycleIndex++;
+
+                // Phase 1 (0s): Highlight Step 1 & Catalog item
+                if (step1) step1.classList.add('active');
+                if (step2) step2.classList.remove('active');
+                if (step3) step3.classList.remove('active');
+
+                document.querySelectorAll('.gmd-gift-drag-item').forEach(i => i.classList.remove('dragging-source'));
+                const srcEl = document.getElementById(activeGift.id);
+                if (srcEl) srcEl.classList.add('dragging-source');
+
+                // Phase 2 (1.2s): Drop into Canvas & Step 2
+                setTimeout(() => {
+                    if (step1) step1.classList.remove('active');
+                    if (step2) step2.classList.add('active');
+                    applyGiftToSlot(activeGift);
+                }, 1200);
+
+                // Phase 3 (2.6s): Sync to OBS & Step 3
+                setTimeout(() => {
+                    if (step2) step2.classList.remove('active');
+                    if (step3) step3.classList.add('active');
+                    if (syncBtn) {
+                        syncBtn.style.transform = 'scale(1.08)';
+                        setTimeout(() => { syncBtn.style.transform = 'scale(1)'; }, 600);
+                    }
+                }, 2600);
+
+                // Loop next cycle after 4.5s
+                setTimeout(runGmdCycle, 4500);
+            }
+
+            runGmdCycle();
         })();
     </script>
 </body>
