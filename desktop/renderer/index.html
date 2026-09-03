@@ -3874,7 +3874,11 @@
                                         
                                         <!-- Real PNG Frame Image - Placed at z-index: 5 ON TOP of Avatar edge -->
                                         <img id="vip-preview-frame-img" src="assets/frames/khung_ho_trang.png" 
-                                            style="width:110px; height:110px; object-fit:contain; position:absolute; inset:0; z-index:5; pointer-events:none; filter:none;">
+                                            style="width:110px; height:110px; object-fit:contain; position:absolute; inset:0; z-index:5; pointer-events:none; filter:none; display:none;">
+                                        
+                                        <!-- Animated WebM Video Frame - Placed at z-index: 5 ON TOP of Avatar edge -->
+                                        <video id="vip-preview-frame-video" src="assets/frames/khung_ho_trang.webm" autoplay loop muted playsinline 
+                                            style="width:110px; height:110px; object-fit:contain; position:absolute; inset:0; z-index:5; pointer-events:none; filter:none; display:block;"></video>
                                         
                                         <!-- Name text placed neatly inside the bottom dark ribbon banner - Placed at z-index: 10 ON TOP of frame ribbon -->
                                         <div id="vip-preview-name" 
