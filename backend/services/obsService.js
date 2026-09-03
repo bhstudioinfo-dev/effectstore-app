@@ -143,7 +143,59 @@ class OBSService {
         this._isConnected = false;
     }
 
-    async ensureEffectPlayerSource() {
+    async resolveTargetScene(preferredScene = '', userId = null) {
+        if (!this._isConnected) return null;
+        try {
+            const { scenes, currentProgramSceneName } = await this.obs.call('GetSceneList');
+            if (!scenes || scenes.length === 0) return null;
+            const sceneNames = new Set(scenes.map(s => s.sceneName));
+
+            // 1. Explicitly requested scene
+            if (preferredScene && sceneNames.has(preferredScene)) {
+                return preferredScene;
+            }
+
+            // 2. Saved preference in OBSSettings
+            try {
+                const OBSSettings = require('../models/OBSSettings');
+                const settings = userId
+                    ? (await OBSSettings.findOne({ userId })) || (await OBSSettings.findOne({ userId: { $exists: false } }))
+                    : await OBSSettings.findOne({ userId: { $exists: false } });
+                if (settings?.selectedSceneName && sceneNames.has(settings.selectedSceneName)) {
+                    return settings.selectedSceneName;
+                }
+            } catch (_e) {}
+
+            // 3. Fall back to currentProgramSceneName (active live scene)
+            if (currentProgramSceneName && sceneNames.has(currentProgramSceneName)) {
+                return currentProgramSceneName;
+            }
+
+            // 4. Fall back to the first available scene
+            return scenes[0]?.sceneName || null;
+        } catch (_err) {
+            return null;
+        }
+    }
+
+    async getScenes() {
+        if (!this._isConnected) return { scenes: [], currentProgramSceneName: '' };
+        try {
+            const result = await this.obs.call('GetSceneList');
+            return {
+                scenes: (result.scenes || []).map((s) => ({
+                    sceneName: s.sceneName,
+                    sceneIndex: s.sceneIndex
+                })),
+                currentProgramSceneName: result.currentProgramSceneName || ''
+            };
+        } catch (error) {
+            console.warn('GetSceneList error:', error.message || error);
+            return { scenes: [], currentProgramSceneName: '' };
+        }
+    }
+
+    async ensureEffectPlayerSource(targetSceneName = '', userId = null, forceRefresh = false) {
         if (!this._isConnected) return false;
 
         const sourceName = 'effect_player';
@@ -152,13 +204,10 @@ class OBSService {
         const sourceUrl = `http://127.0.0.1:${PORT}/effect-player-overlay.html?wsToken=${wsToken}`;
         
         try {
-            const { scenes, currentProgramSceneName } = await this.obs.call('GetSceneList');
-            const targetScenes = new Set(['EffectStore']);
-            if (currentProgramSceneName) targetScenes.add(currentProgramSceneName);
-
-            // First ensure EffectStore scene exists
-            if (!scenes.some((scene) => scene.sceneName === 'EffectStore')) {
-                await this.obs.call('CreateScene', { sceneName: 'EffectStore' }).catch(() => {});
+            const targetScene = await this.resolveTargetScene(targetSceneName, userId);
+            if (!targetScene) {
+                console.warn('ensureEffectPlayerSource: No valid OBS scene found.');
+                return false;
             }
 
             const { inputs } = await this.obs.call('GetInputList').catch(() => ({ inputs: [] }));
@@ -166,7 +215,7 @@ class OBSService {
 
             if (!inputExists) {
                 await this.obs.call('CreateInput', {
-                    sceneName: 'EffectStore',
+                    sceneName: targetScene,
                     inputName: sourceName,
                     inputKind: 'browser_source',
                     inputSettings: {
@@ -181,49 +230,54 @@ class OBSService {
                     }
                 }).catch(() => {});
             } else {
-                await this.obs.call('SetInputSettings', {
-                    inputName: sourceName,
-                    inputSettings: {
-                        url: sourceUrl,
-                        width: 1080,
-                        height: 1920,
-                        fps: 30,
-                        css: '',
-                        shutdown: false,
-                        restart_when_active: false,
-                        reroute_audio: true
-                    }
-                }).catch(() => {});
+                // Only update if URL or settings have changed to avoid unnecessary page reloads
+                const currentSettings = await this.obs.call('GetInputSettings', { inputName: sourceName }).catch(() => ({ inputSettings: {} }));
+                const currentUrl = currentSettings.inputSettings?.url || '';
+                if (!currentUrl.includes('/effect-player-overlay.html') || currentUrl !== sourceUrl) {
+                    await this.obs.call('SetInputSettings', {
+                        inputName: sourceName,
+                        inputSettings: {
+                            url: sourceUrl,
+                            width: 1080,
+                            height: 1920,
+                            fps: 30,
+                            css: '',
+                            shutdown: false,
+                            restart_when_active: false,
+                            reroute_audio: true
+                        }
+                    }).catch(() => {});
+                }
             }
 
-            // Ensure source is in the active scene so the streamer sees it
-            for (const targetScene of targetScenes) {
+            // Ensure source item exists in targetScene ONLY
+            try {
+                const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName: targetScene });
+                let item = sceneItems.find((x) => x.sourceName === sourceName);
+                if (!item) {
+                    await this.obs.call('CreateSceneItem', { sceneName: targetScene, sourceName }).catch(() => {});
+                    const updated = await this.obs.call('GetSceneItemList', { sceneName: targetScene }).catch(() => ({ sceneItems: [] }));
+                    item = updated.sceneItems?.find((x) => x.sourceName === sourceName);
+                }
+                if (item && typeof item.sceneItemId === 'number') {
+                    await this.obs.call('SetSceneItemEnabled', {
+                        sceneName: targetScene,
+                        sceneItemId: item.sceneItemId,
+                        sceneItemEnabled: true
+                    }).catch(() => {});
+                }
+            } catch (_e) {}
+
+            if (forceRefresh) {
                 try {
-                    const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName: targetScene });
-                    let item = sceneItems.find((x) => x.sourceName === sourceName);
-                    if (!item) {
-                        await this.obs.call('CreateSceneItem', { sceneName: targetScene, sourceName }).catch(() => {});
-                        const updated = await this.obs.call('GetSceneItemList', { sceneName: targetScene }).catch(() => ({ sceneItems: [] }));
-                        item = updated.sceneItems?.find((x) => x.sourceName === sourceName);
-                    }
-                    if (item && typeof item.sceneItemId === 'number') {
-                        await this.obs.call('SetSceneItemEnabled', {
-                            sceneName: targetScene,
-                            sceneItemId: item.sceneItemId,
-                            sceneItemEnabled: true
-                        }).catch(() => {});
-                    }
+                    await this.obs.call('PressInputPropertiesButton', {
+                        inputName: sourceName,
+                        propertyName: 'refreshnocache'
+                    });
                 } catch (_e) {}
             }
 
-            try {
-                await this.obs.call('PressInputPropertiesButton', {
-                    inputName: sourceName,
-                    propertyName: 'refreshnocache'
-                });
-            } catch (_e) {}
-
-            console.log('Prepared OBS browser source: effect_player');
+            console.log(`Prepared OBS browser source: effect_player on scene [${targetScene}]`);
             return true;
         } catch (err) {
             console.warn('ensureEffectPlayerSource error:', err.message);
@@ -231,7 +285,7 @@ class OBSService {
         }
     }
 
-    async ensureGiftMenuOverlaySourceUrl() {
+    async ensureGiftMenuOverlaySourceUrl(targetSceneName = '', userId = null, forceRefresh = false) {
         if (!this._isConnected) return false;
 
         const PORT = process.env.PORT || 9000;
@@ -240,23 +294,24 @@ class OBSService {
         const candidateSources = ['gift_menu_overlay', 'gift_menu'];
 
         try {
+            const targetScene = await this.resolveTargetScene(targetSceneName, userId);
+            if (!targetScene) {
+                console.warn('ensureGiftMenuOverlaySourceUrl: No valid OBS scene found.');
+                return false;
+            }
+
             const { inputs } = await this.obs.call('GetInputList');
             const names = new Set(inputs.map((input) => input.inputName));
             let sourceName = candidateSources.find((name) => names.has(name));
 
             if (!sourceName) {
-                const sceneName = 'EffectStore';
-                const { scenes } = await this.obs.call('GetSceneList');
-                if (!scenes.some((scene) => scene.sceneName === sceneName)) {
-                    await this.obs.call('CreateScene', { sceneName });
-                }
                 sourceName = 'gift_menu_overlay';
                 await this.obs.call('CreateInput', {
-                    sceneName,
+                    sceneName: targetScene,
                     inputName: sourceName,
                     inputKind: 'browser_source',
                     inputSettings: {
-                        url: `${sourceUrl}&t=${Date.now()}`,
+                        url: sourceUrl,
                         width: 1080,
                         height: 1920,
                         fps: 60,
@@ -266,28 +321,42 @@ class OBSService {
                         restart_when_active: false
                     }
                 });
-                console.log(`Created OBS browser source: ${sourceName} -> gift-menu-overlay.html`);
-                return true;
+                console.log(`Created OBS browser source: ${sourceName} on scene [${targetScene}] -> gift-menu-overlay.html`);
+            } else {
+                const currentSettings = await this.obs.call('GetInputSettings', { inputName: sourceName }).catch(() => ({ inputSettings: {} }));
+                const currentUrl = currentSettings.inputSettings?.url || '';
+                if (!currentUrl.includes('/gift-menu-overlay.html') || currentUrl !== sourceUrl) {
+                    await this.obs.call('SetInputSettings', {
+                        inputName: sourceName,
+                        inputSettings: {
+                            url: sourceUrl,
+                            shutdown: false,
+                            restart_when_active: true
+                        },
+                        overlay: true
+                    });
+                }
+
+                // Ensure item is placed in targetScene
+                try {
+                    const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName: targetScene });
+                    let item = sceneItems.find((x) => x.sourceName === sourceName);
+                    if (!item) {
+                        await this.obs.call('CreateSceneItem', { sceneName: targetScene, sourceName }).catch(() => {});
+                    }
+                } catch (_e) {}
+
+                if (forceRefresh) {
+                    try {
+                        await this.obs.call('PressInputPropertiesButton', {
+                            inputName: sourceName,
+                            propertyName: 'refreshnocache'
+                        });
+                    } catch (_e) {}
+                }
+
+                console.log(`Refreshed OBS browser source URL: ${sourceName} on scene [${targetScene}] -> gift-menu-overlay.html`);
             }
-
-            await this.obs.call('SetInputSettings', {
-                inputName: sourceName,
-                inputSettings: {
-                    url: `${sourceUrl}&t=${Date.now()}`,
-                    shutdown: false,
-                    restart_when_active: true
-                },
-                overlay: true
-            });
-
-            try {
-                await this.obs.call('PressInputPropertiesButton', {
-                    inputName: sourceName,
-                    propertyName: 'refreshnocache'
-                });
-            } catch (_e) {}
-
-            console.log(`Refreshed OBS browser source URL: ${sourceName} -> gift-menu-overlay.html`);
             return true;
         } catch (error) {
             console.warn('Unable to ensure gift menu overlay source URL:', error.message || error);
@@ -310,7 +379,7 @@ class OBSService {
         return status;
     }
 
-    async triggerOBSEffect(effectId, duration) {
+    async triggerOBSEffect(effectId, duration, targetSceneName = '') {
         if (!this._isConnected) {
             console.error('OBS not connected');
             return false;
@@ -323,15 +392,13 @@ class OBSService {
         }
 
         try {
-            // 1. Ensure 'EffectStore' scene exists
-            const { scenes } = await this.obs.call('GetSceneList');
-            const sceneExists = scenes.find(s => s.sceneName === 'EffectStore');
-            if (!sceneExists) {
-                await this.obs.call('CreateScene', { sceneName: 'EffectStore' });
-                console.log('✅ Created missing scene: EffectStore');
+            const targetScene = await this.resolveTargetScene(targetSceneName);
+            if (!targetScene) {
+                console.warn(`Skipping OBS effect ${effectId}: no valid scene found`);
+                return false;
             }
 
-            // 2. Prepare Source Info
+            // Prepare Source Info
             const sourceName = `effect_${effectId}`;
             const PORT = process.env.PORT || 9000;
             const finalDuration = durationValue < 100 ? durationValue * 1000 : durationValue;
@@ -340,7 +407,7 @@ class OBSService {
             const url = `http://localhost:${PORT}/api/obs/effect/${effectId}?t=${Date.now()}&duration=${encodeURIComponent(finalDuration)}&trigger=${encodeURIComponent(triggerToken)}`;
             const blankUrl = `http://localhost:${PORT}/api/obs/effect/${effectId}?idle=1&t=${Date.now()}`;
             
-            const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName: 'EffectStore' });
+            const { sceneItems } = await this.obs.call('GetSceneItemList', { sceneName: targetScene });
             let item = sceneItems.find(i => i.sourceName === sourceName);
             
             if (item) {
@@ -354,9 +421,9 @@ class OBSService {
                     }
                 });
             } else {
-                console.log(`🏗️ Setting up browser source: ${sourceName}`);
+                console.log(`🏗️ Setting up browser source: ${sourceName} on scene [${targetScene}]`);
                 await this.obs.call('CreateInput', {
-                    sceneName: 'EffectStore',
+                    sceneName: targetScene,
                     inputName: sourceName,
                     inputKind: 'browser_source',
                     inputSettings: { 
@@ -367,35 +434,32 @@ class OBSService {
                 });
                 
                 // Get the new item ID
-                const { sceneItems: newItems } = await this.obs.call('GetSceneItemList', { sceneName: 'EffectStore' });
+                const { sceneItems: newItems } = await this.obs.call('GetSceneItemList', { sceneName: targetScene });
                 item = newItems.find(i => i.sourceName === sourceName);
             }
 
             if (!item) return false;
 
             const sceneItemId = item.sceneItemId;
-            // 3. Trigger Visibility & Force Refresh
+            // Trigger Visibility & Force Refresh
             await this.obs.call('SetSceneItemEnabled', {
-                sceneName: 'EffectStore', sceneItemId, sceneItemEnabled: true
+                sceneName: targetScene, sceneItemId, sceneItemEnabled: true
             });
 
-            // Force Refresh (like clicking the Refresh button manually)
+            // Force Refresh
             try {
                 await this.obs.call('PressInputPropertiesButton', {
                     inputName: sourceName,
                     propertyName: 'refreshnocache'
                 });
-            } catch (e) {
-                // If the button name is different in some OBS versions, 
-                // SetInputSettings already did its job with the timestamp
-            }
+            } catch (e) {}
 
-            console.log(`🎬 Triggered & Refreshed: ${sourceName} (Duration: ${finalDuration}ms)`);
+            console.log(`🎬 Triggered & Refreshed: ${sourceName} (Duration: ${finalDuration}ms) on scene [${targetScene}]`);
 
             setTimeout(async () => {
                 try {
                     await this.obs.call('SetSceneItemEnabled', {
-                        sceneName: 'EffectStore', sceneItemId, sceneItemEnabled: false
+                        sceneName: targetScene, sceneItemId, sceneItemEnabled: false
                     });
                     await this.obs.call('SetInputSettings', {
                         inputName: sourceName,

@@ -1283,3 +1283,99 @@ ipcMain.handle('get-auto-start-status', async () => {
 });
 
 ipcMain.handle('get-obs-status', () => ({ connected: obsConnected }));
+
+ipcMain.handle('tiktok:fetch-profile', async (_event, username) => {
+    const clean = (username || '').trim().replace(/^@+/, '');
+    if (!clean) return { success: false, error: 'Thiếu username' };
+
+    return new Promise((resolve) => {
+        let isDone = false;
+        let win = null;
+
+        const finish = (result) => {
+            if (isDone) return;
+            isDone = true;
+            if (win) {
+                try { win.destroy(); } catch (_e) {}
+                win = null;
+            }
+            resolve(result);
+        };
+
+        const timer = setTimeout(() => {
+            finish({ success: false, error: 'Quá thời gian kết nối tới TikTok (Timeout)' });
+        }, 9000);
+
+        try {
+            win = new BrowserWindow({
+                width: 800,
+                height: 600,
+                show: false,
+                webPreferences: {
+                    offscreen: true,
+                    images: false,
+                    contextIsolation: false
+                }
+            });
+
+            win.webContents.on('did-finish-load', async () => {
+                try {
+                    await new Promise(r => setTimeout(r, 600));
+                    const extracted = await win.webContents.executeJavaScript(`
+                        (() => {
+                            try {
+                                const script = document.getElementById('__UNIVERSAL_DATA_FOR_REHYDRATION__');
+                                if (script) {
+                                    const data = JSON.parse(script.innerText);
+                                    const user = data?.['__DEFAULT_SCOPE__']?.['webapp.user-detail']?.userInfo?.user;
+                                    if (user) {
+                                        return {
+                                            username: user.uniqueId || '${clean}',
+                                            nickname: user.nickname || '${clean}',
+                                            avatar: user.avatarLarger || user.avatarMedium || user.avatarThumb || ''
+                                        };
+                                    }
+                                }
+                                const img = document.querySelector('img[class*="ImgAvatar"], img[data-e2e="user-avatar"]');
+                                const title = document.querySelector('h1[data-e2e="user-title"], h2[data-e2e="user-subtitle"]');
+                                if (img && img.src) {
+                                    return {
+                                        username: '${clean}',
+                                        nickname: title ? title.innerText.trim() : '${clean}',
+                                        avatar: img.src
+                                    };
+                                }
+                            } catch (e) {}
+                            return null;
+                        })()
+                    `);
+
+                    clearTimeout(timer);
+                    if (extracted && (extracted.avatar || extracted.nickname)) {
+                        finish({ success: true, user: extracted });
+                    } else {
+                        finish({ success: false, error: 'Không tìm thấy dữ liệu user trên TikTok' });
+                    }
+                } catch (err) {
+                    clearTimeout(timer);
+                    finish({ success: false, error: err.message });
+                }
+            });
+
+            win.webContents.on('did-fail-load', (_e, code, desc) => {
+                clearTimeout(timer);
+                finish({ success: false, error: desc || 'Không thể tải trang TikTok' });
+            });
+
+            win.loadURL(`https://www.tiktok.com/@${encodeURIComponent(clean)}`, {
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+            }).catch((err) => {
+                clearTimeout(timer);
+                finish({ success: false, error: err.message });
+            });
+        } catch (e) {
+            clearTimeout(timer);
+            finish({ success: false, error: e.message });
+        }
+    });
+});

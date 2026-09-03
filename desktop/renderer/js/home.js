@@ -8640,10 +8640,20 @@ class EffectStoreApp {
     handleWebSocketEvent(data) {
         switch (data.event) {
             case 'stats': this.updateStats(data.data); break;
-            case 'gift': this.handleGift(data.data); break;
+            case 'gift':
+                window.VipManager?.handleLiveEvent('gift', data.data);
+                this.handleGift(data.data); 
+                break;
+            case 'member':
+            case 'join':
+                window.VipManager?.handleLiveEvent('member', data.data);
+                break;
             case 'follow': this.handleFollow(data.data); break;
             case 'share': this.handleShare(data.data); break;
-            case 'chat': this.handleChat(data.data); break;
+            case 'chat':
+                window.VipManager?.handleLiveEvent('chat', data.data);
+                this.handleChat(data.data); 
+                break;
             case 'plan_limit_reached': this.handlePlanLimit(data.data, data.data?.feature); break;
             case 'ai_quota_exhausted':
                 this.showNotification('info', 'Trợ lý AI đã dùng hết hạn mức phản hồi tháng này. Bình luận vẫn được nhận bình thường; bạn có thể nạp thêm ký tự khi cần.');
@@ -8880,6 +8890,7 @@ class EffectStoreApp {
                 document.getElementById('settings-obs-host').value = data.host || 'localhost';
                 document.getElementById('settings-obs-port').value = data.port || 4455;
                 document.getElementById('settings-obs-password').value = data.password || '';
+                await this.loadObsScenes(data.selectedSceneName || '');
             }
         } catch (e) { console.error('Error loading OBS settings:', e); }
 
@@ -9177,10 +9188,38 @@ class EffectStoreApp {
         else this.showNotification('error', result?.error || 'Không thể tạo báo cáo chẩn đoán.');
     }
 
+    async loadObsScenes(savedSelectedScene = '') {
+        const selectEl = document.getElementById('settings-obs-selected-scene');
+        if (!selectEl) return;
+        try {
+            const res = await fetch(`${this.API_URL}/api/obs/scenes`, {
+                headers: { 'Authorization': `Bearer ${this.authToken}` }
+            });
+            const data = await res.json();
+            const currentValue = selectEl.value || savedSelectedScene;
+            selectEl.innerHTML = '<option value="">-- Tự động theo Scene đang live trên OBS --</option>';
+            if (data.success && Array.isArray(data.scenes)) {
+                data.scenes.forEach((s) => {
+                    const opt = document.createElement('option');
+                    opt.value = s.sceneName;
+                    const isLive = data.currentProgramSceneName === s.sceneName ? ' (Đang live)' : '';
+                    opt.textContent = `🎬 ${s.sceneName}${isLive}`;
+                    selectEl.appendChild(opt);
+                });
+            }
+            if (currentValue) {
+                selectEl.value = currentValue;
+            }
+        } catch (err) {
+            console.warn('loadObsScenes error:', err);
+        }
+    }
+
     async saveOBSSettings() {
         const host = document.getElementById('settings-obs-host').value.trim();
         const port = document.getElementById('settings-obs-port').value.trim();
         const password = document.getElementById('settings-obs-password').value;
+        const selectedSceneName = document.getElementById('settings-obs-selected-scene')?.value || '';
 
         if (!host || !port) return this.showNotification('error', 'Thiếu thông tin Host hoặc Port!');
 
@@ -9192,11 +9231,12 @@ class EffectStoreApp {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.authToken}`
                 },
-                body: JSON.stringify({ host, port, password })
+                body: JSON.stringify({ host, port, password, selectedSceneName })
             });
             const data = await res.json();
             if (data.success) {
                 this.showNotification('success', data.message);
+                await this.loadObsScenes(selectedSceneName);
             } else {
                 this.showNotification('error', data.message);
             }

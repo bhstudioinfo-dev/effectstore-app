@@ -60,6 +60,7 @@ const OBSSettingsSchema = new mongoose.Schema({
         set: (value) => (value === undefined || value === null ? value : encryptPassword(value)),
         get: (value) => (value === undefined || value === null ? value : decryptPassword(value))
     },
+    selectedSceneName: { type: String, default: '' },
     updatedAt: { type: Date, default: Date.now }
 });
 

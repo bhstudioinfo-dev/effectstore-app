@@ -795,6 +795,67 @@ router.put('/mappings/:id/toggle', authMiddleware, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
+// Test trigger for VIP Honor effect
+router.post('/test-vip-trigger', authMiddleware, async (req, res) => {
+    try {
+        const { vipInfo } = req.body;
+        if (!vipInfo || !vipInfo.effectId) {
+            return res.status(400).json({ success: false, message: 'Dữ liệu VIP không hợp lệ hoặc thiếu hiệu ứng.' });
+        }
+
+        const effectId = String(vipInfo.effectId || '');
+        const [resolvedEffect, duration] = await Promise.all([
+            resolveEffectForUser(req.userId, effectId),
+            resolveEffectDurationForUser(req.userId, effectId)
+        ]);
+
+        if (!resolvedEffect) {
+            return res.status(403).json({ success: false, message: 'Hiệu ứng vinh danh không khả dụng.' });
+        }
+
+        const finalDuration = duration || 5;
+        let effectUrl = resolvedEffect.fileUrl;
+        if (!resolvedEffect.isCustom) {
+            const PORT = process.env.PORT || 9000;
+            const streamToken = issueEffectAccessToken({
+                purpose: 'effect-player-vip-trigger',
+                effectId: effectId,
+                userId: String(req.userId)
+            });
+            effectUrl = `http://127.0.0.1:${PORT}/api/obs/effect-player-media/${encodeURIComponent(effectId)}?token=${encodeURIComponent(streamToken)}`;
+        }
+
+        const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
+        if (!isPlayerReady && obsService.isConnected()) {
+            await obsService.ensureEffectPlayerSource().catch(() => {});
+        }
+
+        const queued = await effectQueue.add({
+            effectId,
+            effectName: vipInfo.effectName || resolvedEffect.name || 'Hiệu Ứng Vinh Danh VIP',
+            effectUrl,
+            audioEnabled: true,
+            audioVolume: 1,
+            duration: Math.max(1, Math.round(finalDuration * 1000)),
+            playbackType: 'vip_vinh_danh',
+            sender: vipInfo.displayName || vipInfo.username,
+            giftName: `👑 Vinh Danh VIP (${vipInfo.displayName || vipInfo.username})`,
+            vipInfo
+        });
+
+        res.json({
+            success: true,
+            queued,
+            effectId,
+            effectName: resolvedEffect.name,
+            duration: finalDuration
+        });
+    } catch (error) {
+        console.error('Error testing VIP trigger:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Test trigger
 router.post('/test-trigger', authMiddleware, async (req, res) => {
     try {

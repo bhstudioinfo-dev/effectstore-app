@@ -1944,7 +1944,7 @@
 
     function shouldFadeForPlayback(data) {
       const type = data && (data.playbackType || data.currentPlaybackType);
-      const decision = type === 'live_mapping' || type === 'test_mapping' || type === 'preview_effect';
+      const decision = type === 'live_mapping' || type === 'test_mapping' || type === 'preview_effect' || type === 'vip_vinh_danh' || Boolean(data?.vipInfo) || Boolean(data?.isVipHonor);
       console.log('[DEBUG] shouldFadeForPlayback: type =', type, 'decision =', decision, 'data =', data);
       return decision;
     }
@@ -2244,13 +2244,16 @@
         try {
           const packet = JSON.parse(event.data || '{}');
           console.log('[DEBUG] socket packet:', packet);
-          if (packet.event === 'effect_playback_started' && shouldFadeForPlayback(packet.data)) {
+          if (packet.event === 'vip_honor_playback_request') {
+            setGiftMenuPlaybackVisibility(true);
+          } else if (packet.event === 'effect_playback_started' && shouldFadeForPlayback(packet.data)) {
             setGiftMenuPlaybackVisibility(true);
           } else if (packet.event === 'effect_player_play_request' && shouldFadeForPlayback(packet.data)) {
             setGiftMenuPlaybackVisibility(true);
           } else if (packet.event === 'effect_playback_finished' && shouldFadeForPlayback(packet.data) && !Number(packet.data?.queueLength || 0)) {
             setGiftMenuPlaybackVisibility(false);
           } else if (packet.event === 'effect_player_play_finished' || packet.event === 'effect_player_play_failed') {
+            setGiftMenuPlaybackVisibility(false);
             syncGiftMenuPlaybackVisibility();
           } else if (packet.event === 'challenge_wheel_spin') {
             showChallengeWheel(packet.data || {});

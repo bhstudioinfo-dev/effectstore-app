@@ -1,5 +1,5 @@
 # 📘 LIVEFLOW - SỔ TAY VẬN HÀNH TOÀN DIỆN TỪ A-Z (MASTER HANDBOOK)
-> **Phiên bản:** v1.0.1 Stable  
+> **Phiên bản:** v1.0.3 Stable  
 > **Cập nhật:** 27/08/2026  
 > **Tài liệu duy nhất & chuẩn mực cho toàn bộ hệ thống LiveFlow.**
 
@@ -242,11 +242,36 @@ npm test
 
 | Hiện tượng | Nguyên nhân | Cách xử lý |
 | :--- | :--- | :--- |
-| **OBS không hiện video** | Chưa bật Browser Source hoặc sai cổng WebSocket. | Kiểm tra mục OBS trên App báo xanh "ĐÃ KẾT NỐI", đảm bảo nguồn `effect_player` đang bật. |
+| **OBS không hiện video hiệu ứng** | 1. URL bị đổi làm OBS reload rớt gói tin.<br>2. Cache trình duyệt trong OBS giữ script cũ.<br>3. Video bị ẩn opacity = 0.<br>4. Lỗi JS ngầm trên trang overlay. | 1. Chuột phải `effect_player` trong OBS ➔ Properties ➔ **"Refresh cache of current page"**.<br>2. Mở link overlay trên Chrome + F12 kiểm tra Console.<br>3. Khởi động lại App LiveFlow. |
+| **Nút Test bên Gán quà chạy, Xem thử Cửa hàng không chạy** | Lệnh xem thử vô tình gọi SetInputSettings đổi URL làm OBS reload trang ngay lúc phát. | Đã cố định URL tĩnh chuẩn `http://127.0.0.1:9000/effect-player-overlay.html?wsToken=...` và chỉ làm mới khi người dùng bấm Sửa lỗi OBS. |
+| **OBS tự sinh Scene lạ `EffectStore`** | Code backend tự tạo scene cứng thay vì dùng scene của streamer. | Vào Cài đặt LiveFlow ➔ chọn đúng Scene live của bạn (ví dụ `hubg`) ➔ bấm Lưu. Hệ thống sẽ khóa nguồn duy nhất trên Scene đó. |
 | **Bấm thêm hiệu ứng bị đứng** | Tiến trình Server cũ trong RAM bị nghẽn cổng. | Tắt ứng dụng trong Task Manager và mở lại. |
 | **Mất kết nối MongoDB** | Đường truyền mạng hoặc cấu hình IP trên Atlas. | Đảm bảo MongoDB Atlas đã mở Network Access `0.0.0.0/0` (Allow access from anywhere). |
 | **Ảnh đại diện hiện nốt nhạc** | Chưa có ảnh thumbnail hoặc chưa chọn ảnh. | Dùng nút "🖼️ Đổi ảnh" trên thẻ hiệu ứng để chọn ảnh mới. |
 | **AI Cà Khịa không phản hồi** | Chưa bật tính năng hoặc chưa có bình luận mới. | Bật checkbox "Trợ lý AI Cà Khịa Live Chat" và kiểm tra cooldown (mặc định 20s). |
+
+---
+
+### D. Sổ Tay Chẩn Đoán & Khắc Phục Lỗi Nguồn Phát Hiệu Ứng (Effect Player Overlay):
+
+Khi gặp sự cố bấm phát hiệu ứng trên App báo "Đang phát" nhưng OBS không hiện video:
+
+1. **Kiểm tra Console Overlay độc lập qua Trình duyệt Chrome:**
+   - Lấy URL overlay chuẩn:
+     ```text
+     http://127.0.0.1:9000/effect-player-overlay.html?wsToken=[TOKEN]
+     ```
+   - Mở trên Chrome, nhấn **F12** ➔ chuyển qua tab **Console**.
+   - Bấm nút **"Test"** trên App:
+     - Nếu Console báo đỏ `ReferenceError` hoặc `TypeError`: Có biến chưa khai báo hoặc hàm xử lý DOM bị crash. Cần sửa trong `backend/public/effect-player-overlay.html`.
+     - Nếu Console báo `effect_player_play_started` mà video không thấy: Kiểm tra thuộc tính `video.style.opacity` và `video.style.display` phải là `'1'` và `'block'`.
+2. **Quy tắc Vàng về Quản lý Nguồn trong OBS (`obsService.js`):**
+   - **Tuyệt đối không đổi URL nguồn theo thời gian (`_t=Date.now()`):** Việc đổi URL trên OBS Browser Source làm OBS reload toàn bộ tiến trình Chromium, gây rớt các sự kiện WebSocket gửi đến trong 1-2 giây đầu.
+   - **Chỉ gọi `refreshnocache` khi người dùng bấm "Sửa lỗi OBS":** Không gọi lệnh làm mới cache tự động trong luồng phát preview để tránh ngắt quãng video đang chiếu.
+   - **Tôn trọng Scene của người dùng:** Luôn ưu tiên Scene do streamer chọn trong Cài đặt (`selectedSceneName`), không bao giờ tự động tạo thêm Scene lạ như `EffectStore`.
+3. **Nạp Code mới vào RAM:**
+   - Khi chỉnh sửa file code trong thư mục `backend/` hoặc `desktop/`: Cần tắt hẳn App LiveFlow và mở lại để tiến trình Node.js nạp lại code mới vào bộ nhớ RAM.
+
 
 ---
 

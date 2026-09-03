@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "cleanUrls": true,
+  "outputDirectory": "backend/public",
+  "rewrites": [
+    { "source": "/", "destination": "/landing.html" },
+    { "source": "/landing", "destination": "/landing.html" },
+    { "source": "/store", "destination": "/index.html" },
+    { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/uploads/(.*)", "destination": "/uploads/$1" },
+    { "source": "/utm-fonts.css", "destination": "/utm-fonts.css" }
+  ]
+}

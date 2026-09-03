@@ -156,6 +156,7 @@ class PlaybackManager {
             playbackType: item.playbackType,
             audioEnabled: item.audioEnabled !== false,
             audioVolume: Math.max(0, Math.min(1, Number.isFinite(Number(item.audioVolume)) ? Number(item.audioVolume) : 1)),
+            vipInfo: item.vipInfo || null,
             startedAt: Date.now()
         });
 
@@ -163,15 +164,16 @@ class PlaybackManager {
         this.triggerTimelineIfConfigured(item);
 
         // safety timeout
+        const extraVipMs = (item.vipInfo?.displayDurationSec || 0) * 1000;
         this.currentTimer = setTimeout(() => {
             if (this.pendingPlayerRequestId !== requestId) return;
             console.warn('[PLAYBACK] effect_player safety timeout; continuing queue');
             this.clearCurrentAndFinished(onFinishedCallback, 'safety_timeout');
-        }, item.duration + 3000);
+        }, item.duration + extraVipMs + 4000);
     }
 
     handleEffectPlayerEvent(event, data = {}, onFinishedCallback) {
-        if (!this.current || !['test_mapping', 'preview_effect', 'live_mapping'].includes(this.current.playbackType)) return false;
+        if (!this.current || !['test_mapping', 'preview_effect', 'live_mapping', 'vip_vinh_danh'].includes(this.current.playbackType)) return false;
         if (!this.pendingPlayerRequestId || data.requestId !== this.pendingPlayerRequestId) return false;
 
         if (event === 'effect_player_play_started') {

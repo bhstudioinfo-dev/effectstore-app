@@ -34,10 +34,136 @@
         }
         #effect-player-debug { display: none; }
     </style>
+    <style>
+        /* 1. Royal Pop & Elastic Bounce */
+        @keyframes vipPopIn {
+            0% { opacity:0; transform:scale(0.55); filter:blur(10px) brightness(1.3); }
+            65% { opacity:1; transform:scale(1.06); filter:blur(0px) brightness(1.08); }
+            100% { opacity:1; transform:scale(1.0); filter:blur(0px) brightness(1.0); }
+        }
+        @keyframes vipPopOut {
+            0% { opacity:1; transform:scale(1.0); filter:blur(0px); }
+            100% { opacity:0; transform:scale(0.78); filter:blur(14px); }
+        }
+
+        /* 2. Zoom In & Pulse Bloom */
+        @keyframes vipZoomIn {
+            0% { opacity:0; transform:scale(0.2); filter:blur(15px) brightness(1.6); }
+            70% { opacity:1; transform:scale(1.12); filter:blur(0px) brightness(1.1); }
+            100% { opacity:1; transform:scale(1.0); filter:blur(0px) brightness(1.0); }
+        }
+        @keyframes vipZoomOut {
+            0% { opacity:1; transform:scale(1.0); }
+            100% { opacity:0; transform:scale(1.35); filter:blur(16px); }
+        }
+
+        /* 3. Smooth Cinematic Fade In */
+        @keyframes vipFadeIn {
+            0% { opacity:0; }
+            100% { opacity:1; }
+        }
+        @keyframes vipFadeOut {
+            0% { opacity:1; }
+            100% { opacity:0; }
+        }
+
+        /* 4. Slide Up & Glow Float */
+        @keyframes vipSlideUpIn {
+            0% { opacity:0; transform:translateY(140px) scale(0.8); filter:blur(8px); }
+            70% { opacity:1; transform:translateY(-10px) scale(1.03); filter:blur(0px); }
+            100% { opacity:1; transform:translateY(0px) scale(1.0); filter:blur(0px); }
+        }
+        @keyframes vipSlideUpOut {
+            0% { opacity:1; transform:translateY(0px) scale(1.0); }
+            100% { opacity:0; transform:translateY(-120px) scale(0.85); filter:blur(10px); }
+        }
+
+        /* 5. Vortex Spin & Zoom */
+        @keyframes vipVortexIn {
+            0% { opacity:0; transform:scale(0.25) rotate(-180deg); filter:blur(12px) brightness(1.5); }
+            70% { opacity:1; transform:scale(1.08) rotate(10deg); filter:blur(0px); }
+            100% { opacity:1; transform:scale(1.0) rotate(0deg); filter:blur(0px) brightness(1.0); }
+        }
+        @keyframes vipVortexOut {
+            0% { opacity:1; transform:scale(1.0) rotate(0deg); }
+            100% { opacity:0; transform:scale(0.2) rotate(180deg); filter:blur(14px); }
+        }
+
+        /* 6. Flash Light & Stamp In */
+        @keyframes vipFlashStampIn {
+            0% { opacity:0; transform:scale(1.7); filter:blur(16px) brightness(2.8); }
+            40% { opacity:1; transform:scale(1.0); filter:blur(0px) brightness(1.6); }
+            100% { opacity:1; transform:scale(1.0); filter:blur(0px) brightness(1.0); }
+        }
+        @keyframes vipFlashStampOut {
+            0% { opacity:1; transform:scale(1.0); }
+            100% { opacity:0; transform:scale(0.8); filter:blur(12px) brightness(1.8); }
+        }
+
+        @keyframes vipAuraPulse {
+            0%, 100% { transform:scale(1.0); opacity:0.88; }
+            50% { transform:scale(1.14); opacity:1.0; }
+        }
+
+        .anim-royal_pop-in { animation: vipPopIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important; }
+        .anim-royal_pop-out { animation: vipPopOut 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards !important; }
+
+        .anim-zoom_pulse-in { animation: vipZoomIn 0.85s cubic-bezier(0.2, 0.9, 0.3, 1) forwards !important; }
+        .anim-zoom_pulse-out { animation: vipZoomOut 0.65s cubic-bezier(0.25, 1, 0.5, 1) forwards !important; }
+
+        .anim-smooth_fade-in { animation: vipFadeIn 0.75s ease-out forwards !important; }
+        .anim-smooth_fade-out { animation: vipFadeOut 0.7s ease-in forwards !important; }
+
+        .anim-slide_up-in { animation: vipSlideUpIn 0.85s cubic-bezier(0.2, 0.9, 0.3, 1) forwards !important; }
+        .anim-slide_up-out { animation: vipSlideUpOut 0.65s cubic-bezier(0.25, 1, 0.5, 1) forwards !important; }
+
+        .anim-vortex_spin-in { animation: vipVortexIn 0.9s cubic-bezier(0.34, 1.3, 0.64, 1) forwards !important; }
+        .anim-vortex_spin-out { animation: vipVortexOut 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards !important; }
+
+        .anim-flash_stamp-in { animation: vipFlashStampIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards !important; }
+        .anim-flash_stamp-out { animation: vipFlashStampOut 0.65s ease-in forwards !important; }
+
+        .vip-pulsing-aura {
+            animation: vipAuraPulse 2.2s ease-in-out infinite alternate;
+        }
+    </style>
 </head>
 <body>
     <main id="effect-player-root" aria-label="Effect Player Ready">
         <video id="active-effect-video" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent;opacity:0;" autoplay playsinline></video>
+        
+        <!-- VIP Avatar Frame & Honor Overlay Container -->
+        <div id="vip-overlay-container" style="position:absolute; inset:0; pointer-events:none; z-index:100000; opacity:0;">
+            <div id="vip-overlay-target" style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%) scale(2.8); display:flex; flex-direction:column; align-items:center; pointer-events:none;">
+                <div id="vip-overlay-motion-box" style="position:relative; display:flex; flex-direction:column; align-items:center; pointer-events:none;">
+                    <!-- 3D Soft Backdrop Aura Glow with Multi-Stop Depth -->
+                    <div id="vip-overlay-backdrop-aura" class="vip-pulsing-aura" style="position:absolute; inset:-36px; border-radius:50%; background:radial-gradient(circle, rgba(251,191,36,0.95) 0%, rgba(251,191,36,0.6) 35%, rgba(251,191,36,0.2) 60%, transparent 80%); filter:blur(32px); z-index:1;"></div>
+                    
+                    <!-- Frame & Avatar & In-Ribbon Name Wrapper (240px x 240px for OBS Full HD) -->
+                    <div style="position:relative; width:240px; height:240px; display:flex; align-items:center; justify-content:center; z-index:2;">
+                        <!-- Avatar Photo (100% Natural, Original Crisp Color - Placed BEHIND the decorative frame border) -->
+                        <img id="vip-overlay-img" src="https://ui-avatars.com/api/?name=VIP&background=1e293b&color=fbbf24&bold=true" 
+                            style="width:126px; height:126px; border-radius:50%; object-fit:cover; position:absolute; top:48.5%; left:50%; transform:translate(-50%, -50%); z-index:2; border:none; outline:none; filter:none; box-shadow:none; image-rendering:-webkit-optimize-contrast;">
+                        
+                        <!-- Frame Layer (Div with Background Image for static frames - Placed ON TOP of Avatar edge) -->
+                        <div id="vip-overlay-frame-layer" 
+                            style="width:240px; height:240px; position:absolute; inset:0; z-index:3; pointer-events:none; display:none; filter:drop-shadow(0 14px 34px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(251,191,36,0.55)); background-size:contain; background-position:center; background-repeat:no-repeat;">
+                        </div>
+
+                        <!-- WebM Video Layer (Animated Motion - Placed ON TOP of Avatar edge) -->
+                        <video id="vip-overlay-frame-video" src="assets/frames/khung_ho_trang.webm" autoplay loop muted playsinline
+                            style="width:240px; height:240px; object-fit:contain; position:absolute; inset:0; z-index:3; pointer-events:none; filter:drop-shadow(0 14px 36px rgba(0,0,0,0.92)) drop-shadow(0 0 20px rgba(251,191,36,0.65)); display:none;"></video>
+                        
+                        <!-- Name text placed neatly inside the bottom dark ribbon banner -->
+                        <div id="vip-overlay-name" 
+                            style="position:absolute; top:80%; left:50%; transform:translate(-50%, -50%); width:115px; text-align:center; font-family:'Be Vietnam Pro','Inter',-apple-system,sans-serif; font-size:18px; font-weight:800; color:#ffffff; letter-spacing:0.3px; text-shadow:0 1px 3px #000, 0 0 5px #000, 0 0 8px rgba(0,0,0,0.9); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; z-index:4; pointer-events:none; line-height:1;">
+                            VIP
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="ready-placeholder">Effect Player Ready</div>
         <pre id="effect-player-debug" hidden></pre>
     </main>
@@ -46,7 +172,10 @@
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             let socket;
             let safetyTimer = null;
+            let vipTimer = null;
             let activeRequest = null;
+            let pendingVipInfo = null;
+            let currentListeners = null;
             const video = document.getElementById('active-effect-video');
 
             function notify(event, data) {
@@ -55,16 +184,39 @@
                 }
             }
 
-            let currentListeners = null;
+            let vipLeadTimer = null;
+            let isVipFrameShown = false;
 
             function clearPlayback() {
                 if (safetyTimer) window.clearTimeout(safetyTimer);
                 safetyTimer = null;
+                if (vipTimer) window.clearTimeout(vipTimer);
+                vipTimer = null;
+                if (vipLeadTimer) window.clearTimeout(vipLeadTimer);
+                vipLeadTimer = null;
+                isVipFrameShown = false;
+
+                const vipContainer = document.getElementById('vip-overlay-container');
+                if (vipContainer) vipContainer.style.opacity = '0';
+
+                const motionBox = document.getElementById('vip-overlay-motion-box');
+                if (motionBox) motionBox.className = '';
+                const target = document.getElementById('vip-overlay-target');
+                if (target) target.className = '';
+
+                const frameVideo = document.getElementById('vip-overlay-frame-video');
+                if (frameVideo) {
+                    frameVideo.pause();
+                    frameVideo.style.display = 'none';
+                }
+
                 if (video) {
                     if (currentListeners) {
                         video.removeEventListener('ended', currentListeners.onEnded);
                         video.removeEventListener('error', currentListeners.onError);
                         video.removeEventListener('playing', currentListeners.onPlaying);
+                        if (currentListeners.onTimeUpdate) video.removeEventListener('timeupdate', currentListeners.onTimeUpdate);
+                        if (currentListeners.checkAndTriggerLead) video.removeEventListener('loadedmetadata', currentListeners.checkAndTriggerLead);
                         currentListeners = null;
                     }
                     video.onended = null;
@@ -104,10 +256,186 @@
                 });
             }
 
+            function showVipFrameIfPresent(request, isEndOfVideo = false) {
+                const isVip = request?.playbackType === 'vip_vinh_danh' || Boolean(request?.vipInfo) || Boolean(pendingVipInfo && request?.isVipHonor);
+                if (!isVip) {
+                    pendingVipInfo = null;
+                    return false;
+                }
+
+                const vip = request?.vipInfo || pendingVipInfo;
+                if (!vip) return false;
+
+                try {
+                    const container = document.getElementById('vip-overlay-container');
+                    const target = document.getElementById('vip-overlay-target');
+                    const motionBox = document.getElementById('vip-overlay-motion-box') || target;
+                    const img = document.getElementById('vip-overlay-img');
+                    const avatarRim = document.getElementById('vip-overlay-avatar-rim');
+                    const frameLayer = document.getElementById('vip-overlay-frame-layer');
+                    const frameVideo = document.getElementById('vip-overlay-frame-video');
+                    const name = document.getElementById('vip-overlay-name');
+                    const aura = document.getElementById('vip-overlay-backdrop-aura');
+
+                    if (!container) return false;
+
+                    const anim = vip.animationStyle || 'royal_pop';
+                    const inClass = `anim-${anim}-in`;
+                    const outClass = `anim-${anim}-out`;
+                    const durationSec = Math.max(1, vip.displayDurationSec || 4);
+
+                    // If already shown during video and now video ended
+                    if (isVipFrameShown && isEndOfVideo) {
+                        if (video) video.style.opacity = '0';
+                        if (vipTimer) window.clearTimeout(vipTimer);
+                        vipTimer = setTimeout(() => {
+                            if (motionBox) {
+                                motionBox.className = '';
+                                void motionBox.offsetWidth;
+                                motionBox.className = outClass;
+                            }
+                            setTimeout(() => {
+                                if (activeRequest === request) finishPlayback('ended');
+                            }, 720);
+                        }, durationSec * 1000);
+                        return true;
+                    }
+
+                    isVipFrameShown = true;
+
+                    const posX = vip.positionX !== undefined ? vip.positionX : 50;
+                    const posY = vip.positionY !== undefined ? vip.positionY : 50;
+                    const scale = (vip.scale !== undefined ? vip.scale : 139) / 100;
+                    
+                    const RATIO = 240 / 110;
+                    const avatarX = vip.avatarCustomX !== undefined ? vip.avatarCustomX : 50;
+                    const avatarY = vip.avatarCustomY !== undefined ? vip.avatarCustomY : 48.5;
+                    const avatarSize = (vip.avatarCustomSize !== undefined ? vip.avatarCustomSize : 58) * RATIO;
+                    const nameX = vip.nameCustomX !== undefined ? vip.nameCustomX : 50;
+                    const nameY = vip.nameCustomY !== undefined ? vip.nameCustomY : 80;
+                    const nameSize = (vip.nameCustomSize !== undefined ? vip.nameCustomSize : 8) * RATIO;
+                    const glowColor = vip.glowColor || '#fbbf24';
+                    const glowBlur = (vip.glowBlur !== undefined ? vip.glowBlur : 30) * RATIO;
+
+                    const finalScale = scale * 2.18;
+
+                    if (target) {
+                        target.style.left = `${posX}%`;
+                        target.style.top = `${posY}%`;
+                        target.style.transform = `translate(-50%, -50%) scale(${finalScale})`;
+                    }
+
+                    if (motionBox) {
+                        motionBox.className = '';
+                        void motionBox.offsetWidth;
+                        motionBox.className = inClass;
+                    }
+
+                    if (img) {
+                        const cleanUser = (vip.username || '').replace(/^@+/, '') || 'VIP';
+                        img.src = vip.customAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanUser)}&background=1e293b&color=fbbf24&bold=true&font-size=0.42`;
+                        img.style.left = `${avatarX}%`;
+                        img.style.top = `${avatarY}%`;
+                        img.style.width = `${Math.round(avatarSize)}px`;
+                        img.style.height = `${Math.round(avatarSize)}px`;
+                    }
+
+                    if (avatarRim) {
+                        avatarRim.style.left = `${avatarX}%`;
+                        avatarRim.style.top = `${avatarY}%`;
+                        avatarRim.style.width = `${Math.round(avatarSize + 4)}px`;
+                        avatarRim.style.height = `${Math.round(avatarSize + 4)}px`;
+                        avatarRim.style.background = `radial-gradient(circle, rgba(255,255,255,0.7) 0%, ${glowColor}99 65%, transparent 95%)`;
+                        avatarRim.style.boxShadow = `0 0 28px ${glowColor}dd, inset 0 0 16px ${glowColor}aa`;
+                    }
+
+                    let frameUrl = vip.frameUrl || 'assets/frames/khung_ho_trang.webm';
+                    const isHoTrang = frameUrl === 'frame_ho_trang' || frameUrl.includes('khung_ho_trang') || frameUrl.endsWith('.webm') || frameUrl.endsWith('.mp4');
+
+                    if (isHoTrang) {
+                        if (frameLayer) {
+                            frameLayer.style.display = 'none';
+                            frameLayer.style.backgroundImage = 'none';
+                        }
+                        if (frameVideo) {
+                            frameVideo.src = 'assets/frames/khung_ho_trang.webm';
+                            frameVideo.style.display = 'block';
+                            frameVideo.style.filter = 'drop-shadow(0 12px 28px rgba(0,0,0,0.85))';
+                            frameVideo.play().catch(() => {});
+                        }
+                    } else {
+                        if (frameVideo) {
+                            frameVideo.style.display = 'none';
+                            frameVideo.pause();
+                        }
+                        if (frameLayer) {
+                            if (frameUrl === 'frame_love' || frameUrl.includes('khung_love')) frameUrl = 'assets/frames/khung_love.png';
+                            else if (frameUrl === 'frame_rong_bang' || frameUrl.includes('khung_rong_bang')) frameUrl = 'assets/frames/khung_rong_bang.png';
+                            else if (frameUrl === 'frame_rong_lua' || frameUrl.includes('khung_rong_lua')) frameUrl = 'assets/frames/khung_rong_lua.png';
+                            frameLayer.style.backgroundImage = `url('${frameUrl}')`;
+                            frameLayer.style.display = 'block';
+                            frameLayer.style.filter = 'drop-shadow(0 12px 28px rgba(0,0,0,0.85))';
+                        }
+                    }
+
+                    if (name) {
+                        name.textContent = vip.displayName || vip.username || 'VIP';
+                        name.style.left = `${nameX}%`;
+                        name.style.top = `${nameY}%`;
+                        name.style.fontSize = `${Math.round(nameSize)}px`;
+                    }
+
+                    if (aura) {
+                        const blurPx = Math.max(16, Math.min(60, Math.round(glowBlur * 0.55)));
+                        aura.style.background = `radial-gradient(circle at 50% 50%, ${glowColor} 0%, ${glowColor}dd 30%, ${glowColor}66 54%, ${glowColor}22 72%, transparent 84%)`;
+                        aura.style.filter = `blur(${blurPx}px) drop-shadow(0 0 30px ${glowColor}aa)`;
+                        aura.style.opacity = '1';
+                    }
+
+                    if (isEndOfVideo && video) video.style.opacity = '0';
+                    container.style.opacity = '1';
+
+                    // If shown at end of video, start countdown now. If shown before end of video, countdown starts on onEnded!
+                    if (isEndOfVideo) {
+                        vipTimer = setTimeout(() => {
+                            if (motionBox) {
+                                motionBox.className = '';
+                                void motionBox.offsetWidth;
+                                motionBox.className = outClass;
+                            }
+                            setTimeout(() => {
+                                if (activeRequest === request) finishPlayback('ended');
+                            }, 720);
+                        }, durationSec * 1000);
+                    }
+
+                    return true;
+                } catch (err) {
+                    console.error('showVipFrameIfPresent error:', err);
+                    return false;
+                }
+            }
+
             async function playPreview(request) {
                 clearPlayback();
-                const supportedTypes = new Set(['preview_effect', 'test_mapping', 'live_mapping']);
+                const supportedTypes = new Set(['preview_effect', 'test_mapping', 'live_mapping', 'vip_vinh_danh']);
                 if (!supportedTypes.has(request?.playbackType) || !request.effectUrl) return;
+
+                // Reset pending VIP if this request is NOT a VIP honor request
+                if (request.playbackType !== 'vip_vinh_danh' && !request.vipInfo && !request.isVipHonor) {
+                    pendingVipInfo = null;
+                }
+
+                // Preload VIP avatar image immediately in background during video playback
+                const vipCandidate = request?.vipInfo || pendingVipInfo;
+                if (vipCandidate && (request.playbackType === 'vip_vinh_danh' || request.vipInfo || request.isVipHonor)) {
+                    const cleanUser = (vipCandidate.username || '').replace(/^@+/, '') || 'VIP';
+                    const avatarSrc = vipCandidate.customAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanUser)}&background=1e293b&color=fbbf24&bold=true&font-size=0.42`;
+                    const preImg = new Image();
+                    preImg.src = avatarSrc;
+                    const vipImg = document.getElementById('vip-overlay-img');
+                    if (vipImg) vipImg.src = avatarSrc;
+                }
 
                 const durationValue = Number(request.duration);
                 const durationMs = Number.isFinite(durationValue) && durationValue > 0
@@ -133,22 +461,75 @@
                 video.style.opacity = '1';
 
                 const onEnded = () => {
-                    if (activeRequest === request && hasStartedPlaying) finishPlayback('ended');
+                    if (activeRequest === request && hasStartedPlaying) {
+                        if (showVipFrameIfPresent(request, true)) {
+                            return;
+                        }
+                        finishPlayback('ended');
+                    }
                 };
                 const onError = () => {
                     if (activeRequest === request) failPlayback('Unable to load effect media');
                 };
+
+                const checkAndTriggerLead = () => {
+                    if (activeRequest !== request || isVipFrameShown) return;
+                    const vipEarly = request?.vipInfo || pendingVipInfo;
+                    if (!vipEarly || (request.playbackType !== 'vip_vinh_danh' && !request.vipInfo && !request.isVipHonor)) return;
+
+                    const leadSec = vipEarly.appearLeadTimeSec !== undefined ? Number(vipEarly.appearLeadTimeSec) : 2.0;
+                    if (leadSec <= 0) return;
+
+                    const vidDur = (video.duration && Number.isFinite(video.duration) && video.duration > 0)
+                        ? video.duration
+                        : (durationMs / 1000);
+
+                    const timeLeft = vidDur - video.currentTime;
+                    if (timeLeft <= leadSec || video.currentTime >= Math.max(0.05, vidDur - leadSec)) {
+                        showVipFrameIfPresent(request, false);
+                    }
+                };
+
+                const onTimeUpdate = () => {
+                    checkAndTriggerLead();
+                };
+
                 const onPlaying = () => {
                     if (activeRequest === request) {
                         hasStartedPlaying = true;
+                        video.style.opacity = '1';
+                        video.style.display = 'block';
                         notify('effect_player_play_started', {
                             requestId: request.requestId,
                             effectId: request.effectId,
                             playbackType: request.playbackType,
                             startedAt: Date.now()
                         });
+
+                        // Immediate check or timer based on actual video duration
+                        const vipEarly = request?.vipInfo || pendingVipInfo;
+                        if (vipEarly && (request.playbackType === 'vip_vinh_danh' || request.vipInfo || request.isVipHonor)) {
+                            const leadSec = vipEarly.appearLeadTimeSec !== undefined ? Number(vipEarly.appearLeadTimeSec) : 2.0;
+                            const vidDur = (video.duration && Number.isFinite(video.duration) && video.duration > 0)
+                                ? video.duration
+                                : (durationMs / 1000);
+
+                            const delayMs = Math.max(0, (vidDur - leadSec) * 1000);
+                            if (delayMs === 0) {
+                                showVipFrameIfPresent(request, false);
+                            } else {
+                                if (vipLeadTimer) window.clearTimeout(vipLeadTimer);
+                                vipLeadTimer = window.setTimeout(() => {
+                                    if (activeRequest === request && !isVipFrameShown) {
+                                        showVipFrameIfPresent(request, false);
+                                    }
+                                }, delayMs);
+                            }
+                        }
+
                         if (!safetyTimer) {
-                            const fallbackMs = Math.max((durationMs || 5000) + 5000, 15000);
+                            const extraVipTimeMs = ((request.vipInfo?.displayDurationSec || 4) + 4) * 1000;
+                            const fallbackMs = Math.max((durationMs || 5000) + extraVipTimeMs + 5000, 18000);
                             safetyTimer = window.setTimeout(() => {
                                 if (activeRequest === request) finishPlayback('duration_timeout');
                             }, fallbackMs);
@@ -156,16 +537,24 @@
                     }
                 };
 
-                currentListeners = { onEnded, onError, onPlaying };
+                currentListeners = { onEnded, onError, onPlaying, onTimeUpdate, checkAndTriggerLead };
                 video.addEventListener('ended', onEnded, { once: true });
                 video.addEventListener('error', onError, { once: true });
                 video.addEventListener('playing', onPlaying, { once: true });
+                video.addEventListener('timeupdate', onTimeUpdate);
+                video.addEventListener('loadedmetadata', checkAndTriggerLead, { once: true });
 
                 try {
-                    video.currentTime = 0;
                     await video.play();
                 } catch (error) {
-                    if (activeRequest === request) failPlayback(error.message || 'Autoplay failed');
+                    console.warn('Playback with audio blocked or failed, retrying muted:', error);
+                    try {
+                        video.muted = true;
+                        await video.play();
+                    } catch (mutedErr) {
+                        console.error('Playback failed completely:', mutedErr);
+                        if (activeRequest === request) failPlayback(mutedErr.message || 'Autoplay failed');
+                    }
                 }
             }
 
@@ -203,9 +592,16 @@
                 socket.addEventListener('message', (message) => {
                     try {
                         const packet = JSON.parse(message.data || '{}');
-                        if (packet.event === 'effect_player_play_request') {
-                            console.log('Future playback request received');
-                            playPreview(packet.data || {});
+                        if (packet.event === 'vip_honor_playback_request' || (packet.event === 'challenge_wheel_spin' && packet.data?.isVipHonor)) {
+                            console.log('VIP honor playback intent received:', packet.data);
+                            pendingVipInfo = packet.data?.vipInfo || packet.data || null;
+                        } else if (packet.event === 'effect_player_play_request') {
+                            console.log('Playback request received:', packet.data);
+                            const data = packet.data || {};
+                            if (pendingVipInfo && (!data.vipInfo || String(data.effectId) === String(pendingVipInfo.effectId))) {
+                                data.vipInfo = pendingVipInfo;
+                            }
+                            playPreview(data);
                         } else if (packet.event === 'ai_assistant_speech') {
                             speakAiReply(packet.data || {});
                         }

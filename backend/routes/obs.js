@@ -70,11 +70,29 @@ router.get('/overlay-urls', authMiddleware, (req, res) => {
     const PORT = process.env.PORT || 9000;
     const giftToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
     const goalToken = encodeURIComponent(getOverlayAccessToken('goal-board'));
+    const effectPlayerToken = encodeURIComponent(getOverlayAccessToken('effect-player'));
     return res.json({
         success: true,
         giftMenu: `http://127.0.0.1:${PORT}/gift-menu-overlay.html?wsToken=${giftToken}`,
-        goalBoard: `http://127.0.0.1:${PORT}/overlay/goal-board-overlay.html?wsToken=${goalToken}`
+        goalBoard: `http://127.0.0.1:${PORT}/overlay/goal-board-overlay.html?wsToken=${goalToken}`,
+        effectPlayer: `http://127.0.0.1:${PORT}/effect-player-overlay.html?wsToken=${effectPlayerToken}`
     });
+});
+
+router.get('/scenes', authMiddleware, async (req, res) => {
+    try {
+        if (!obsService.isConnected()) {
+            const config = await getObsConnectionConfig(req.userId);
+            await obsService.connect(config.host, config.port, config.password).catch(() => {});
+        }
+        if (!obsService.isConnected()) {
+            return res.json({ success: false, message: 'OBS chưa kết nối', scenes: [], currentProgramSceneName: '' });
+        }
+        const data = await obsService.getScenes();
+        return res.json({ success: true, ...data });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message || err, scenes: [], currentProgramSceneName: '' });
+    }
 });
 
 router.get('/effect-player-media/:effectId', async (req, res) => {
@@ -126,19 +144,12 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             return res.status(422).json({ success: false, message: 'Hiệu ứng chưa có thời lượng hợp lệ.' });
         }
 
-        const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
-        if (!isPlayerReady) {
-            if (!obsService.isConnected()) {
+        if (obsService.isConnected()) {
+            await obsService.ensureEffectPlayerSource('', req.userId).catch(() => {});
+        } else {
+            const isPlayerReady = typeof req.app.locals.isEffectPlayerReady === 'function' && req.app.locals.isEffectPlayerReady();
+            if (!isPlayerReady) {
                 return res.status(503).json({ success: false, message: 'OBS chưa kết nối.' });
-            }
-
-            await obsService.ensureEffectPlayerSource();
-            const sourceStatus = await obsService.getFoundationSourceStatus();
-            if (!sourceStatus.effect_player) {
-                return res.status(503).json({ success: false, message: 'Không thể chuẩn bị nguồn effect_player trên OBS.' });
-            }
-            if (!await waitForEffectPlayerReady(req, 3000)) {
-                return res.status(503).json({ success: false, message: 'Nguồn effect_player chưa kết nối, vui lòng thử lại.' });
             }
         }
 
@@ -164,6 +175,7 @@ router.post('/preview-effect-player', authMiddleware, async (req, res) => {
             customTimeline: Array.isArray(req.body?.timeline) ? req.body.timeline : null,
             audioEnabled: req.body?.audioEnabled !== false,
             audioVolume: Math.max(0, Math.min(1, Number.isFinite(Number(req.body?.audioVolume)) ? Number(req.body.audioVolume) : 1)),
+            vipInfo: req.body?.vipInfo || null,
             startedAt: Date.now()
         };
         const queued = await effectQueue.add({ ...payload, userId: String(req.userId) });
@@ -797,96 +809,36 @@ router.post('/repair-sources', authMiddleware, async (req, res) => {
             return res.status(503).json({ success: false, message: 'OBS chưa kết nối' });
         }
 
-        const sceneName = 'EffectStore';
-        
-        // 1. Ensure scene exists
-        const { scenes } = await obsService.obs.call('GetSceneList');
-        const sceneExists = scenes.find((s) => s.sceneName === sceneName);
-        if (!sceneExists) {
-            await obsService.obs.call('CreateScene', { sceneName });
-        }
-
-        const { sceneItems } = await obsService.obs.call('GetSceneItemList', { sceneName });
-        const existingSources = new Set(sceneItems.map(item => item.sourceName));
-
         const report = {
             effect_player: { status: 'ok', repaired: false },
             gift_menu_overlay: { status: 'ok', repaired: false }
         };
 
-        // 2. Check and repair effect_player
-        await obsService.ensureEffectPlayerSource();
-        const effectPlayerReady = await waitForEffectPlayerReady(req, 3000);
-        report.effect_player.status = effectPlayerReady ? 'ok' : 'pending';
-        report.effect_player.repaired = true;
-
-        // 3. Check and repair gift_menu_overlay / gift_menu
-        const giftMenuSourceNames = ['gift_menu_overlay', 'gift_menu'];
-        const existingGiftMenu = sceneItems.find((x) => giftMenuSourceNames.includes(x.sourceName));
-
-        const PORT = process.env.PORT || 9000;
-        const wsToken = encodeURIComponent(getOverlayAccessToken('gift-menu'));
-        const url = `http://127.0.0.1:${PORT}/gift-menu-overlay.html?wsToken=${wsToken}&t=${Date.now()}`;
-        let sourceWidth = 1080;
-        let sourceHeight = 1920;
+        // 1. Repair effect_player
         try {
-            const layoutPath = dataPaths.giftMenuLayoutPath;
-            const layout = JSON.parse(fs.readFileSync(layoutPath, 'utf8'));
-            const width = Number(layout?.exportSize?.width);
-            const height = Number(layout?.exportSize?.height);
-            if (width >= 320 && width <= 7680 && height >= 320 && height <= 7680) {
-                sourceWidth = Math.round(width);
-                sourceHeight = Math.round(height);
-            }
-        } catch (_e) {}
-
-        if (!existingGiftMenu) {
-            await obsService.obs.call('CreateInput', {
-                sceneName,
-                inputName: 'gift_menu_overlay',
-                inputKind: 'browser_source',
-                inputSettings: {
-                    url,
-                    width: sourceWidth,
-                    height: sourceHeight,
-                    fps: 60,
-                    fps_custom: true,
-                    css: '',
-                    shutdown: false,
-                    restart_when_active: true
-                }
-            });
-            report.gift_menu_overlay.status = 'repaired';
-            report.gift_menu_overlay.repaired = true;
-        } else {
-            const targetName = existingGiftMenu.sourceName;
-            try {
-                await obsService.obs.call('SetInputSettings', {
-                    inputName: targetName,
-                    inputSettings: {
-                        url,
-                        width: sourceWidth,
-                        height: sourceHeight,
-                        shutdown: false,
-                        restart_when_active: true
-                    },
-                    overlay: true
-                });
-                await obsService.obs.call('PressInputPropertiesButton', {
-                    inputName: targetName,
-                    propertyName: 'refreshnocache'
-                });
-                report.gift_menu_overlay.status = 'repaired';
-                report.gift_menu_overlay.repaired = true;
-            } catch (err) {
-                console.warn('Unable to refresh existing gift_menu source in repair:', err.message || err);
-            }
+            await obsService.ensureEffectPlayerSource('', req.userId, true);
+            const effectPlayerReady = await waitForEffectPlayerReady(req, 2000);
+            report.effect_player.status = effectPlayerReady ? 'ok' : 'ready';
+            report.effect_player.repaired = true;
+        } catch (e1) {
+            console.warn('repair-sources: effect_player preparation warning:', e1.message || e1);
         }
 
-        res.json({ success: true, report });
+        // 2. Repair gift_menu_overlay / gift_menu
+        try {
+            await obsService.ensureGiftMenuOverlaySourceUrl('', req.userId, true);
+            report.gift_menu_overlay.status = 'repaired';
+            report.gift_menu_overlay.repaired = true;
+        } catch (e2) {
+            console.warn('repair-sources: gift_menu preparation warning:', e2.message || e2);
+        }
+
+        return res.json({ success: true, report });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        console.error('Repair sources error:', error);
+        return res.status(500).json({ success: false, message: 'Không thể sửa nguồn OBS.' });
     }
 });
 
 module.exports = router;
+

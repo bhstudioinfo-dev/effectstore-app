@@ -31,20 +31,36 @@ router.get('/obs', authMiddleware, async (req, res) => {
 
 router.post('/obs', authMiddleware, async (req, res) => {
     try {
-        const { host, port, password } = req.body;
+        const { host, port, password, selectedSceneName } = req.body;
         let settings = await findOrAdoptSettings(req.userId);
         if (settings) {
             settings.host = host;
             settings.port = port;
             settings.password = password;
+            if (typeof selectedSceneName === 'string') {
+                settings.selectedSceneName = selectedSceneName;
+            }
             settings.updatedAt = Date.now();
             await settings.save();
         } else {
-            settings = await OBSSettings.create({ userId: req.userId, host, port, password });
+            settings = await OBSSettings.create({
+                userId: req.userId,
+                host,
+                port,
+                password,
+                selectedSceneName: selectedSceneName || ''
+            });
         }
 
         // Reconnect OBS with new settings
         await obsService.connect(host, port, password);
+
+        // If a scene is selected and OBS is connected, prepare sources on that scene
+        if (obsService.isConnected()) {
+            const targetScene = settings.selectedSceneName || '';
+            await obsService.ensureEffectPlayerSource(targetScene, req.userId).catch(() => {});
+            await obsService.ensureGiftMenuOverlaySourceUrl(targetScene, req.userId).catch(() => {});
+        }
 
         res.json({ success: true, message: 'Đã lưu cấu hình OBS' });
     } catch (error) {

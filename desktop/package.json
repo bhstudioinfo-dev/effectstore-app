@@ -1,6 +1,6 @@
 {
   "name": "effectstore-desktop",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "LiveFlow - Premium Livestream Effects",
   "main": "main.js",
   "scripts": {
