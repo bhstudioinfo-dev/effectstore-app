@@ -335,8 +335,7 @@
                     const glowColor = vip.glowColor || '#fbbf24';
                     const glowBlur = (vip.glowBlur !== undefined ? vip.glowBlur : 30) * RATIO;
 
-                    const isPreviewMode = window.self !== window.top || new URLSearchParams(window.location.search).get('preview') === '1';
-                    const finalScale = isPreviewMode ? (scale * 0.98) : (scale * 2.18);
+                    const finalScale = scale * 2.18;
 
                     if (target) {
                         target.style.left = `${posX}%`;
@@ -418,8 +417,8 @@
                     container.style.display = 'block';
                     container.style.opacity = '1';
 
-                    // If shown at end of video, start countdown now. If in live preview mode, keep displaying continuously!
-                    if (isEndOfVideo && !isPreviewMode) {
+                    // If shown at end of video, start countdown now. If shown before end of video, countdown starts on onEnded!
+                    if (isEndOfVideo) {
                         vipTimer = setTimeout(() => {
                             if (motionBox) {
                                 motionBox.className = '';
@@ -661,19 +660,6 @@
                 });
                 socket.addEventListener('close', () => window.setTimeout(connect, 3000));
             }
-
-            // Real-time bidirectional Live Preview handler for App Modal
-            window.addEventListener('message', (event) => {
-                const msg = event.data;
-                if (!msg || typeof msg !== 'object') return;
-
-                if (msg.type === 'LIVE_PREVIEW_UPDATE') {
-                    const vipData = msg.vip || {};
-                    showVipFrameIfPresent({ vipInfo: vipData }, false);
-                } else if (msg.type === 'LIVE_PREVIEW_PLAY') {
-                    playPreview(msg.data || {});
-                }
-            });
 
             connect();
         })();
