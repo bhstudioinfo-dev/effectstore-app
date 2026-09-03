@@ -635,7 +635,7 @@
             }
 
             if (previewFrameImg) {
-                let staticSrc = 'assets/frames/khung_ho_trang_animated.png';
+                let staticSrc = 'assets/frames/khung_ho_trang_animated.webp';
                 if (frameVal === 'frame_love' || frameVal.includes('love')) staticSrc = 'assets/frames/khung_love.png';
                 else if (frameVal === 'frame_rong_bang' || frameVal.includes('rong_bang') || frameVal.includes('rồng băng')) staticSrc = 'assets/frames/khung_rong_bang.png';
                 else if (frameVal === 'frame_rong_lua' || frameVal.includes('rong_lua') || frameVal.includes('rồng lửa')) staticSrc = 'assets/frames/khung_rong_lua.png';
