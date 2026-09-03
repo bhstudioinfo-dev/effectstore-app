@@ -197,16 +197,26 @@
                 isVipFrameShown = false;
 
                 const vipContainer = document.getElementById('vip-overlay-container');
-                if (vipContainer) vipContainer.style.opacity = '0';
+                if (vipContainer) {
+                    vipContainer.style.opacity = '0';
+                    vipContainer.style.display = 'none';
+                }
 
                 const motionBox = document.getElementById('vip-overlay-motion-box');
                 if (motionBox) motionBox.className = '';
                 const target = document.getElementById('vip-overlay-target');
                 if (target) target.className = '';
 
+                const frameLayer = document.getElementById('vip-overlay-frame-layer');
+                if (frameLayer) {
+                    frameLayer.style.display = 'none';
+                    frameLayer.style.backgroundImage = 'none';
+                }
+
                 const frameVideo = document.getElementById('vip-overlay-frame-video');
                 if (frameVideo) {
                     frameVideo.pause();
+                    frameVideo.removeAttribute('src');
                     frameVideo.style.display = 'none';
                 }
 
@@ -295,6 +305,14 @@
                                 motionBox.className = outClass;
                             }
                             setTimeout(() => {
+                                if (container) {
+                                    container.style.opacity = '0';
+                                    container.style.display = 'none';
+                                }
+                                if (frameVideo) {
+                                    frameVideo.pause();
+                                    frameVideo.style.display = 'none';
+                                }
                                 if (activeRequest === request) finishPlayback('ended');
                             }, 720);
                         }, durationSec * 1000);
@@ -618,8 +636,12 @@
                         } else if (packet.event === 'effect_player_play_request') {
                             console.log('Playback request received:', packet.data);
                             const data = packet.data || {};
-                            if (pendingVipInfo && (!data.vipInfo || String(data.effectId) === String(pendingVipInfo.effectId))) {
+                            if (pendingVipInfo && (data.isVipHonor || data.playbackType === 'vip_vinh_danh') && (!data.vipInfo || String(data.effectId) === String(pendingVipInfo.effectId))) {
                                 data.vipInfo = pendingVipInfo;
+                                pendingVipInfo = null;
+                            } else if (!data.vipInfo && data.playbackType !== 'vip_vinh_danh' && !data.isVipHonor) {
+                                pendingVipInfo = null;
+                                data.vipInfo = null;
                             }
                             playPreview(data);
                         } else if (packet.event === 'ai_assistant_speech') {
