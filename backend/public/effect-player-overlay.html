@@ -141,22 +141,22 @@
                     
                     <!-- Frame & Avatar & In-Ribbon Name Wrapper (240px x 240px for OBS Full HD) -->
                     <div style="position:relative; width:240px; height:240px; display:flex; align-items:center; justify-content:center; z-index:2;">
-                        <!-- Avatar Photo (100% Natural, Original Crisp Color - Placed BEHIND the decorative frame border) -->
-                        <img id="vip-overlay-img" src="https://ui-avatars.com/api/?name=VIP&background=1e293b&color=fbbf24&bold=true" 
-                            style="width:126px; height:126px; border-radius:50%; object-fit:cover; position:absolute; top:48.5%; left:50%; transform:translate(-50%, -50%); z-index:2; border:none; outline:none; filter:none; box-shadow:none; image-rendering:-webkit-optimize-contrast;">
-                        
-                        <!-- Frame Layer (Div with Background Image for static frames - Placed ON TOP of Avatar edge) -->
+                        <!-- WebM Video Layer (Animated Motion) -->
+                        <video id="vip-overlay-frame-video" src="assets/frames/khung_ho_trang.webm" autoplay loop muted playsinline
+                            style="width:240px; height:240px; object-fit:contain; position:absolute; inset:0; z-index:2; pointer-events:none; filter:drop-shadow(0 14px 36px rgba(0,0,0,0.92)) drop-shadow(0 0 20px rgba(251,191,36,0.65)); display:none;"></video>
+
+                        <!-- Frame Layer (Div with Background Image for static frames) -->
                         <div id="vip-overlay-frame-layer" 
-                            style="width:240px; height:240px; position:absolute; inset:0; z-index:3; pointer-events:none; display:none; filter:drop-shadow(0 14px 34px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(251,191,36,0.55)); background-size:contain; background-position:center; background-repeat:no-repeat;">
+                            style="width:240px; height:240px; position:absolute; inset:0; z-index:2; pointer-events:none; display:none; filter:drop-shadow(0 14px 34px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(251,191,36,0.55)); background-size:contain; background-position:center; background-repeat:no-repeat;">
                         </div>
 
-                        <!-- WebM Video Layer (Animated Motion - Placed ON TOP of Avatar edge) -->
-                        <video id="vip-overlay-frame-video" src="assets/frames/khung_ho_trang.webm" autoplay loop muted playsinline
-                            style="width:240px; height:240px; object-fit:contain; position:absolute; inset:0; z-index:3; pointer-events:none; filter:drop-shadow(0 14px 36px rgba(0,0,0,0.92)) drop-shadow(0 0 20px rgba(251,191,36,0.65)); display:none;"></video>
+                        <!-- Avatar Photo (Crisp, 100% Bright - Placed at z-index: 4 so no video or dark background can tint it) -->
+                        <img id="vip-overlay-img" src="https://ui-avatars.com/api/?name=VIP&background=1e293b&color=fbbf24&bold=true" 
+                            style="width:126px; height:126px; border-radius:50%; object-fit:cover; position:absolute; top:48.5%; left:50%; transform:translate(-50%, -50%); z-index:4; border:none; outline:none; filter:none; box-shadow:none; image-rendering:-webkit-optimize-contrast;">
                         
                         <!-- Name text placed neatly inside the bottom dark ribbon banner -->
                         <div id="vip-overlay-name" 
-                            style="position:absolute; top:80%; left:50%; transform:translate(-50%, -50%); width:115px; text-align:center; font-family:'Be Vietnam Pro','Inter',-apple-system,sans-serif; font-size:18px; font-weight:800; color:#ffffff; letter-spacing:0.3px; text-shadow:0 1px 3px #000, 0 0 5px #000, 0 0 8px rgba(0,0,0,0.9); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; z-index:4; pointer-events:none; line-height:1;">
+                            style="position:absolute; top:80%; left:50%; transform:translate(-50%, -50%); width:115px; text-align:center; font-family:'Be Vietnam Pro','Inter',-apple-system,sans-serif; font-size:18px; font-weight:800; color:#ffffff; letter-spacing:0.3px; text-shadow:0 1px 3px #000, 0 0 5px #000, 0 0 8px rgba(0,0,0,0.9); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; z-index:5; pointer-events:none; line-height:1;">
                             VIP
                         </div>
                     </div>
@@ -358,7 +358,7 @@
                         img.style.height = `${Math.round(avatarSize)}px`;
                         img.style.filter = 'brightness(1.22) contrast(1.1) saturate(1.15)';
                         img.style.backgroundColor = '#ffffff';
-                        img.style.zIndex = '2';
+                        img.style.zIndex = '4';
                     }
 
                     if (avatarRim) {
