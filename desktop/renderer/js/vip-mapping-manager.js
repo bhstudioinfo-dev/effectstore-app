@@ -623,16 +623,16 @@
             let targetUrl = foundPreset?.url || (frameVal === 'custom_svga' && this.tempSvgaData?.url) || '';
 
             if (targetUrl.endsWith('.webm') || targetUrl.includes('khung_ho_trang')) {
-                // In preview mockup, use crisp transparent PNG for pixel-perfect alignment
-                if (previewFrameImg) {
-                    previewFrameImg.src = 'assets/frames/khung_ho_trang.png';
-                    previewFrameImg.style.display = 'block';
-                    previewFrameImg.style.zIndex = '3';
-                }
                 if (frameVideo) {
-                    frameVideo.style.display = 'none';
-                    frameVideo.pause();
+                    if (!frameVideo.src.includes('khung_ho_trang.webm')) {
+                        frameVideo.src = 'assets/frames/khung_ho_trang.webm';
+                    }
+                    frameVideo.style.display = 'block';
+                    frameVideo.style.zIndex = '3';
+                    frameVideo.style.filter = 'none';
+                    frameVideo.play().catch(() => {});
                 }
+                if (previewFrameImg) previewFrameImg.style.display = 'none';
             } else if (targetUrl) {
                 if (previewFrameImg) {
                     previewFrameImg.src = targetUrl;
