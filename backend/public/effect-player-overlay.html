@@ -646,8 +646,9 @@
                             playPreview(data);
                         } else if (packet.event === 'ai_assistant_speech') {
                             speakAiReply(packet.data || {});
-                        } else if (packet.event === 'stop_tts') {
+                        } else if (packet.event === 'stop_tts' || packet.event === 'reset_overlay') {
                             stopAllTtsSpeech();
+                            clearPlayback();
                         }
                     } catch (error) {
                         console.warn('Ignored invalid effect player message:', error.message);
