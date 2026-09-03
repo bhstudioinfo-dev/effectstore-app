@@ -654,7 +654,7 @@
             // Vibrant, snug ambient backdrop halo & shadow (Rõ ràng, đẹp mắt, ôm sát khung)
             if (previewBackdropGlow) {
                 const blurPx = Math.max(6, Math.min(22, Math.round(glowBlur * 0.45)));
-                previewBackdropGlow.style.background = `radial-gradient(circle at 50% 50%, ${glowColor}ee 0%, ${glowColor}77 42%, ${glowColor}22 62%, transparent 74%)`;
+                previewBackdropGlow.style.background = `radial-gradient(circle at 50% 50%, transparent 0%, transparent 38%, ${glowColor}ee 58%, ${glowColor}66 75%, transparent 90%)`;
                 previewBackdropGlow.style.filter = `blur(${blurPx}px)`;
                 previewBackdropGlow.style.transform = `scale(1.02)`;
                 previewBackdropGlow.style.opacity = '0.95';

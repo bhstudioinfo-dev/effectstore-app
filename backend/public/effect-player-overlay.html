@@ -408,8 +408,8 @@
 
                     if (aura) {
                         const blurPx = Math.max(16, Math.min(60, Math.round(glowBlur * 0.55)));
-                        aura.style.background = `radial-gradient(circle at 50% 50%, ${glowColor} 0%, ${glowColor}dd 30%, ${glowColor}66 54%, ${glowColor}22 72%, transparent 84%)`;
-                        aura.style.filter = `blur(${blurPx}px) drop-shadow(0 0 30px ${glowColor}aa)`;
+                        aura.style.background = `radial-gradient(circle at 50% 50%, transparent 0%, transparent 38%, ${glowColor}ee 58%, ${glowColor}66 75%, transparent 90%)`;
+                        aura.style.filter = `blur(${blurPx}px)`;
                         aura.style.opacity = '1';
                     }
 
