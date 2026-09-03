@@ -79,17 +79,24 @@ class EffectStoreApp {
         this.controlDeckAudios = [];
         this.controlDeckSoundQueue = [];
 
-        // Cài đặt TTS (Text to Speech)
+        // Cài đặt TTS (Text to Speech) & Trung tâm Giọng Thoại Live
         this.isTTSGiftEnabled = localStorage.getItem('es_tts_gift_enabled') !== 'false';
         this.isTTSFollowEnabled = localStorage.getItem('es_tts_follow_enabled') !== 'false';
+        this.isTTSShareEnabled = localStorage.getItem('es_tts_share_enabled') !== 'false';
         this.ttsThreshold = parseInt(localStorage.getItem('es_tts_threshold') || '10');
         this.ttsVoice = localStorage.getItem('es_tts_voice') || 'default';
         this.ttsSpeed = parseFloat(localStorage.getItem('es_tts_speed') || '1.0');
         this.ttsPitch = parseFloat(localStorage.getItem('es_tts_pitch') || '1.0');
         this.ttsTemplate = localStorage.getItem('es_tts_template') || 'Cảm ơn {username} đã tặng {quantity} {giftName} ❤️';
         this.ttsFollowTemplate = localStorage.getItem('es_tts_follow_template') || 'Cảm ơn {username} đã follow kênh nhé! ❤️';
+        this.ttsShareTemplate = localStorage.getItem('es_tts_share_template') || 'Cảm ơn {username} đã chia sẻ livestream nhé! ❤️';
         this.pendingDonors = new Map(); // userId -> {nickname, giftName, timestamp}
-        this.ttsVolume = parseFloat(localStorage.getItem('es_tts_volume') || '1.0');
+        this.ttsVolume = parseFloat(localStorage.getItem('es_tts_volume') || '0.6');
+
+        // Anti-spam Cooldowns & Combo Trackers
+        this._giftComboTimers = new Map();
+        this._followCooldowns = new Map();
+        this._shareCooldowns = new Map();
 
         // Hàng đợi giọng nói (TTS Queue)
         this.ttsQueue = [];
@@ -2731,9 +2738,94 @@ class EffectStoreApp {
 
         const processedText = templateText.replace(/{username}/g, "Nguyễn Văn A");
 
+    onVolumeChange(value) {
+        const volNum = Math.max(0, Math.min(100, Number(value) || 0));
+        this.ttsVolume = volNum / 100;
+        localStorage.setItem('es_tts_volume', String(this.ttsVolume));
+        const label = document.getElementById('settings-tts-volume-label');
+        if (label) label.textContent = `${volNum}%`;
+        if (this.currentAudio) {
+            this.currentAudio.volume = this.ttsVolume;
+        }
+    },
+
+    stopAllTTS() {
+        this.ttsQueue = [];
+        this.isProcessingTTS = false;
+        if (this.currentAudio) {
+            try {
+                this.currentAudio.pause();
+                this.currentAudio.currentTime = 0;
+                this.currentAudio.src = '';
+            } catch (_e) {}
+            this.currentAudio = null;
+        }
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis) {
+            try {
+                window.speechSynthesis.cancel();
+            } catch (_e) {}
+        }
+        try {
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({ event: 'stop_tts', data: {} }));
+            }
+        } catch (_e) {}
+        this.showNotification('info', '🛑 Đã dừng toàn bộ giọng đọc và làm trống hàng đợi.');
+    },
+
+    onVoiceSettingToggle() {
+        this.savePreferences();
+        const giftEnabled = document.getElementById('settings-tts-gift')?.checked;
+        const followEnabled = document.getElementById('settings-tts-follow')?.checked;
+        const shareEnabled = document.getElementById('settings-tts-share')?.checked;
+        if (!giftEnabled && !followEnabled && !shareEnabled) {
+            this.stopAllTTS();
+        }
+    },
+
+    insertShareVariable(variable) {
+        const textarea = document.getElementById('settings-tts-share-template');
+        if (textarea) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            textarea.value = text.substring(0, start) + variable + text.substring(end);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+            this.savePreferences();
+        }
+    },
+
+    testShareVoicePreview() {
+        this.savePreferences();
+        const templateText = this.ttsShareTemplate || 'Cảm ơn {username} đã chia sẻ livestream nhé! ❤️';
+        if (!templateText.trim()) {
+            this.showNotification('error', 'Vui lòng kiểm tra lại nội dung mẫu thoại.');
+            return;
+        }
+        const processedText = templateText.replace(/{username}/g, "Nguyễn Văn A");
         this.clearLegacySystemPreviewVoiceCache(processedText);
         this.speakText(processedText, true);
-    }
+    },
+
+    testGiftSoundPing() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            gain.gain.setValueAtTime(this.ttsVolume || 0.6, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.35);
+            this.showNotification('info', '🔔 Đã phát thử âm thanh chuông báo.');
+        } catch (_e) {
+            this.showNotification('info', '🔔 Ping!');
+        }
+    },
 
     async processTTSQueue() {
         if (this.ttsQueue.length === 0) {
@@ -2751,7 +2843,7 @@ class EffectStoreApp {
             console.log('⚡ Phát ngay từ Persistent Audio Cache Local (0đ Credit, 0đ Token):', text);
             try {
                 this.currentAudio = new Audio(persistentAudio);
-                this.currentAudio.volume = this.ttsVolume;
+                this.currentAudio.volume = Math.max(0, Math.min(1, this.ttsVolume || 0.6));
                 this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
                 this.currentAudio.onended = () => { this.processTTSQueue(); };
                 this.currentAudio.onerror = () => { this.processTTSQueue(); };
@@ -2775,12 +2867,11 @@ class EffectStoreApp {
                         try {
                             localStorage.setItem('es_voice_cache_' + cacheKey, dataUrl);
                         } catch (_e) { }
-
                     };
                 }).catch(() => { });
 
             this.currentAudio = new Audio(googleTTSUrl);
-            this.currentAudio.volume = this.ttsVolume;
+            this.currentAudio.volume = Math.max(0, Math.min(1, this.ttsVolume || 0.6));
             this.currentAudio.playbackRate = this.ttsSpeed || 1.0;
 
             this.currentAudio.onended = () => {
@@ -2798,14 +2889,14 @@ class EffectStoreApp {
         } catch (error) {
             this.speakWebSpeech(text);
         }
-    }
+    },
 
     speakWebSpeech(text) {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'vi-VN';
-            utterance.volume = this.ttsVolume || 1.0;
+            utterance.volume = Math.max(0, Math.min(1, this.ttsVolume || 0.6));
             utterance.rate = this.ttsSpeed || 1.0;
             utterance.onend = () => { this.processTTSQueue(); };
             utterance.onerror = () => { this.processTTSQueue(); };
@@ -2814,7 +2905,7 @@ class EffectStoreApp {
         } else {
             this.processTTSQueue();
         }
-    }
+    },
 
     removeFromCart(effectId) { this.cart = this.cart.filter(e => (e.id || e._id) !== effectId); this.saveCart(); this.renderEffects(); this.showNotification('success', '✅ Đã xóa khỏi giỏ!'); }
     async checkout() {
@@ -8737,60 +8828,107 @@ class EffectStoreApp {
         console.log('🎁 Gift received:', giftData);
         this.showNotification('info', `🎁 ${giftData.userName} tặng ${giftData.giftName}!`);
 
-        // Phát giọng nói cảm ơn (nếu bật) - Đợi 800ms sau tiếng Ping cho rõ ràng
+        // Phát âm thanh Ping nếu bật
+        const soundEnabled = localStorage.getItem('sound_alert') !== 'false';
+        if (soundEnabled) {
+            this.testGiftSoundPing();
+        }
+
+        // Phát giọng nói cảm ơn (nếu bật) - Gom nhóm Combo thông minh
         if (this.isTTSGiftEnabled) {
-            setTimeout(() => {
+            const userId = String(giftData.userId || giftData.uniqueId || 'unknown').trim();
+            const giftName = String(giftData.giftName || 'quà').trim();
+            const comboKey = `${userId}_${giftName}`;
+            const count = Number(giftData.repeatCount || giftData.quantity || 1);
+            const isRepeatEnd = giftData.repeatEnd === true || giftData.repeatEnd === 1;
+
+            const existing = this._giftComboTimers.get(comboKey);
+            const totalCount = Math.max(count, existing ? existing.totalCount : count);
+            if (existing && existing.timer) {
+                clearTimeout(existing.timer);
+            }
+
+            const triggerGiftVoice = (finalQuantity) => {
+                this._giftComboTimers.delete(comboKey);
                 const nickname = giftData.nickname || giftData.uniqueId || 'bạn';
-                const giftName = giftData.giftName || 'quà';
-                const quantity = giftData.repeatCount || giftData.quantity || 1;
-                const coin = (giftData.diamondCount || 0) * quantity;
+                const coin = (giftData.diamondCount || 0) * finalQuantity;
 
                 let textToSpeak = this.ttsTemplate || 'Cảm ơn {username} đã tặng {quantity} {giftName} ❤️';
                 textToSpeak = textToSpeak
                     .replace(/{username}/g, nickname)
                     .replace(/{giftName}/g, giftName)
-                    .replace(/{quantity}/g, quantity)
+                    .replace(/{quantity}/g, finalQuantity)
                     .replace(/{coin}/g, coin);
 
                 this.speakText(textToSpeak);
 
-                // Nếu đủ ngưỡng xu, đưa vào danh sách chờ đọc comment
                 if ((giftData.diamondCount || 0) >= this.ttsThreshold) {
                     this.pendingDonors.set(giftData.userId, {
                         nickname: nickname,
                         timestamp: Date.now()
                     });
-                    // Xóa sau 60 giây nếu họ không comment
                     setTimeout(() => this.pendingDonors.delete(giftData.userId), 60000);
                 }
-            }, 800);
-        }
+            };
 
-        // OBS is triggered once by the backend queue for a real TikTok gift.
+            if (isRepeatEnd) {
+                triggerGiftVoice(totalCount);
+            } else {
+                const timer = setTimeout(() => {
+                    triggerGiftVoice(totalCount);
+                }, 1200);
+                this._giftComboTimers.set(comboKey, { timer, totalCount, giftData });
+            }
+        }
     }
 
     async handleFollow(data) {
+        const userId = String(data.userId || data.uniqueId || data.nickname || '').trim();
         const nickname = data.nickname || data.uniqueId || 'bạn mới';
         this.showNotification('success', `👤 ${nickname} vừa Follow!`);
-        if (this.isTTSFollowEnabled) {
-            let textToSpeak = this.ttsFollowTemplate || 'Cảm ơn {username} đã follow kênh nhé! ❤️';
-            textToSpeak = textToSpeak.replace(/{username}/g, nickname);
-            this.speakText(textToSpeak);
+
+        if (!this.isTTSFollowEnabled) return;
+
+        // Anti-spam Cooldown: 60s per user
+        const now = Date.now();
+        const lastTime = this._followCooldowns.get(userId) || 0;
+        if (now - lastTime < 60000) {
+            console.log(`[TTS] Ignored duplicate follow voice for ${nickname} (cooldown)`);
+            return;
         }
+        this._followCooldowns.set(userId, now);
+
+        let textToSpeak = this.ttsFollowTemplate || 'Cảm ơn {username} đã follow kênh nhé! ❤️';
+        textToSpeak = textToSpeak.replace(/{username}/g, nickname);
+        this.speakText(textToSpeak);
     }
 
     async handleShare(data) {
+        const userId = String(data.userId || data.uniqueId || data.nickname || '').trim();
         const nickname = data.nickname || data.uniqueId || 'bạn mới';
         this.showNotification('info', `📢 ${nickname} vừa Share!`);
-        this.speakText(`Cảm ơn ${nickname} đã chia sẻ livestream nhé!`);
+
+        if (!this.isTTSShareEnabled) return;
+
+        // Anti-spam Cooldown: 60s per user
+        const now = Date.now();
+        const lastTime = this._shareCooldowns.get(userId) || 0;
+        if (now - lastTime < 60000) {
+            console.log(`[TTS] Ignored duplicate share voice for ${nickname} (cooldown)`);
+            return;
+        }
+        this._shareCooldowns.set(userId, now);
+
+        let textToSpeak = this.ttsShareTemplate || 'Cảm ơn {username} đã chia sẻ livestream nhé! ❤️';
+        textToSpeak = textToSpeak.replace(/{username}/g, nickname);
+        this.speakText(textToSpeak);
     }
 
     handleChat(data) {
         const donor = this.pendingDonors.get(data.userId);
         if (donor) {
-            // Nếu là người vừa donate khủng, đọc comment của họ
             this.speakText(`${donor.nickname} nhắn là: ${data.comment}`, false, 'comment');
-            this.pendingDonors.delete(data.userId); // Chỉ đọc 1 lần duy nhất
+            this.pendingDonors.delete(data.userId);
         }
     }
 
@@ -8908,11 +9046,22 @@ class EffectStoreApp {
         const soundQuickEl = document.getElementById('settings-sound-alert-quick');
         if (soundQuickEl) soundQuickEl.checked = soundAlertValue;
 
+        const ttsVolEl = document.getElementById('settings-tts-volume');
+        const volVal = parseFloat(localStorage.getItem('es_tts_volume') || '0.6');
+        if (ttsVolEl) {
+            ttsVolEl.value = Math.round(volVal * 100);
+            const label = document.getElementById('settings-tts-volume-label');
+            if (label) label.textContent = `${Math.round(volVal * 100)}%`;
+        }
+
         const ttsGiftEl = document.getElementById('settings-tts-gift');
         if (ttsGiftEl) ttsGiftEl.checked = localStorage.getItem('es_tts_gift_enabled') !== 'false';
 
         const ttsFollowEl = document.getElementById('settings-tts-follow');
         if (ttsFollowEl) ttsFollowEl.checked = localStorage.getItem('es_tts_follow_enabled') !== 'false';
+
+        const ttsShareEl = document.getElementById('settings-tts-share');
+        if (ttsShareEl) ttsShareEl.checked = localStorage.getItem('es_tts_share_enabled') !== 'false';
 
         const ttsThresholdEl = document.getElementById('settings-tts-threshold');
         if (ttsThresholdEl) ttsThresholdEl.value = localStorage.getItem('es_tts_threshold') || '10';
@@ -8925,6 +9074,9 @@ class EffectStoreApp {
 
         const ttsFollowTemplateEl = document.getElementById('settings-tts-follow-template');
         if (ttsFollowTemplateEl) ttsFollowTemplateEl.value = localStorage.getItem('es_tts_follow_template') || 'Cảm ơn {username} đã follow kênh nhé! ❤️';
+
+        const ttsShareTemplateEl = document.getElementById('settings-tts-share-template');
+        if (ttsShareTemplateEl) ttsShareTemplateEl.value = localStorage.getItem('es_tts_share_template') || 'Cảm ơn {username} đã chia sẻ livestream nhé! ❤️';
 
         const startupEl = document.getElementById('settings-run-startup');
         if (startupEl) startupEl.checked = localStorage.getItem('run_startup') === 'true';
@@ -9260,42 +9412,54 @@ class EffectStoreApp {
 
     savePreferences() {
         const soundEl = document.getElementById('settings-sound-alert') || document.getElementById('settings-sound-alert-quick');
+        const ttsVolEl = document.getElementById('settings-tts-volume');
         const ttsGiftEl = document.getElementById('settings-tts-gift');
         const ttsFollowEl = document.getElementById('settings-tts-follow');
+        const ttsShareEl = document.getElementById('settings-tts-share');
         const ttsThresholdEl = document.getElementById('settings-tts-threshold');
         const ttsSpeedEl = document.getElementById('settings-tts-speed');
         const ttsTemplateEl = document.getElementById('settings-tts-template');
         const ttsFollowTemplateEl = document.getElementById('settings-tts-follow-template');
+        const ttsShareTemplateEl = document.getElementById('settings-tts-share-template');
         const startupEl = document.getElementById('settings-run-startup');
 
         const sound = soundEl ? soundEl.checked : (localStorage.getItem('sound_alert') !== 'false');
+        const ttsVol = ttsVolEl ? (Number(ttsVolEl.value) / 100) : parseFloat(localStorage.getItem('es_tts_volume') || '0.6');
         const ttsGift = ttsGiftEl ? ttsGiftEl.checked : (localStorage.getItem('es_tts_gift_enabled') !== 'false');
         const ttsFollow = ttsFollowEl ? ttsFollowEl.checked : (localStorage.getItem('es_tts_follow_enabled') !== 'false');
+        const ttsShare = ttsShareEl ? ttsShareEl.checked : (localStorage.getItem('es_tts_share_enabled') !== 'false');
         const ttsThreshold = ttsThresholdEl ? ttsThresholdEl.value : (localStorage.getItem('es_tts_threshold') || '10');
         const ttsSpeed = ttsSpeedEl ? ttsSpeedEl.value : (localStorage.getItem('es_tts_speed') || '1.0');
         const ttsTemplate = ttsTemplateEl ? ttsTemplateEl.value : (localStorage.getItem('es_tts_template') || 'Cảm ơn {username} đã tặng {quantity} {giftName} ❤️');
         const ttsFollowTemplate = ttsFollowTemplateEl ? ttsFollowTemplateEl.value : (localStorage.getItem('es_tts_follow_template') || 'Cảm ơn {username} đã follow kênh nhé! ❤️');
+        const ttsShareTemplate = ttsShareTemplateEl ? ttsShareTemplateEl.value : (localStorage.getItem('es_tts_share_template') || 'Cảm ơn {username} đã chia sẻ livestream nhé! ❤️');
         const startup = startupEl ? startupEl.checked : (localStorage.getItem('run_startup') === 'true');
 
         localStorage.setItem('sound_alert', sound);
+        localStorage.setItem('es_tts_volume', String(ttsVol));
         localStorage.setItem('es_tts_gift_enabled', ttsGift);
         localStorage.setItem('es_tts_follow_enabled', ttsFollow);
+        localStorage.setItem('es_tts_share_enabled', ttsShare);
         localStorage.setItem('es_tts_threshold', ttsThreshold);
         localStorage.setItem('es_tts_voice', 'default');
         localStorage.setItem('es_tts_speed', ttsSpeed);
         localStorage.setItem('es_tts_pitch', '1.0');
         localStorage.setItem('es_tts_template', ttsTemplate);
         localStorage.setItem('es_tts_follow_template', ttsFollowTemplate);
+        localStorage.setItem('es_tts_share_template', ttsShareTemplate);
         localStorage.setItem('run_startup', startup);
 
+        this.ttsVolume = ttsVol;
         this.isTTSGiftEnabled = ttsGift;
         this.isTTSFollowEnabled = ttsFollow;
+        this.isTTSShareEnabled = ttsShare;
         this.ttsThreshold = parseInt(ttsThreshold);
         this.ttsVoice = 'default';
         this.ttsSpeed = parseFloat(ttsSpeed);
         this.ttsPitch = 1.0;
         this.ttsTemplate = ttsTemplate;
         this.ttsFollowTemplate = ttsFollowTemplate;
+        this.ttsShareTemplate = ttsShareTemplate;
 
         this.showNotification('success', '✅ Lưu tùy chọn thành công!');
     }

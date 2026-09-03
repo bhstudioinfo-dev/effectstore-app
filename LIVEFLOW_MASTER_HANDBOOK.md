@@ -215,6 +215,12 @@ Hệ thống hỗ trợ thanh toán qua chuyển khoản QR Code với quy trìn
    - Kết nối trực tiếp qua User ID TikTok.
    - Lắng nghe tự động sự kiện: Tặng quà (Gift), Lượt thích (Like), Bình luận (Comment), Chia sẻ (Share).
    - Tự động kích hoạt hiệu ứng video hoặc quay vòng quay tương ứng với từng món quà.
+6. **Trung Tâm Giọng Đọc & Kịch Bản Thoại Live (Unified Live Voice & Sound Center):**
+   - **Thanh trượt Âm lượng tổng (Volume Slider 0% - 100%)**: Tùy chỉnh âm lượng giọng đọc vừa tai, đồng bộ cho cả TTS hệ thống và AI ElevenLabs.
+   - **Nút "Dừng nói ngay" (Instant Panic Mute)**: Xóa sạch hàng đợi `ttsQueue = []`, ngắt `speechSynthesis.cancel()` và hủy toàn bộ audio đang phát trong 0ms.
+   - **Gom nhóm Combo Quà Tặng (Smart Gift Combo Debounce)**: Tự động gom các đợt tặng combo quà (ví dụ 10-50 hoa hồng) và chỉ cảm ơn đúng 1 lần tổng kết với tổng số lượng khi dứt chuỗi combo.
+   - **Cơ chế Chống Spam Follow & Share Live (60s Cooldown per User)**: Giới hạn mỗi người xem chỉ được cảm ơn 1 lần trong vòng 60 giây, ngăn chặn triệt để tình trạng 1 người share/follow nhiều lần gây spam phòng live.
+   - **Công tắc độc lập từng module**: Bật/tắt riêng biệt cho Cảm ơn Quà, Chào mừng Follow, Cảm ơn Share và Chuông báo quà Ping.
 
 ---
 
