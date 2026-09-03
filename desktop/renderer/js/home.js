@@ -7707,9 +7707,265 @@ class EffectStoreApp {
         }
     }
 
+    // ==========================================
+    // MULTI-IDOL PROFILE & TIKTOK SESSION ENGINE
+    // ==========================================
+    getIdolProfiles() {
+        try {
+            return JSON.parse(localStorage.getItem('liveflow_idol_profiles') || '[]');
+        } catch (_e) {
+            return [];
+        }
+    }
+
+    saveIdolProfiles(profiles) {
+        try {
+            localStorage.setItem('liveflow_idol_profiles', JSON.stringify(profiles || []));
+            this.loadIdolProfiles();
+        } catch (e) {
+            console.error('Error saving idol profiles:', e);
+        }
+    }
+
+    loadIdolProfiles() {
+        const profiles = this.getIdolProfiles();
+        const select = document.getElementById('tiktok-idol-profile-select');
+        const list = document.getElementById('idol-profiles-list');
+        const countEl = document.getElementById('idol-list-count');
+
+        if (countEl) countEl.textContent = profiles.length;
+
+        // 1. Populate Dropdown
+        if (select) {
+            const currentSelected = select.value || localStorage.getItem('liveflow_active_idol_id') || '';
+            let html = '<option value="">-- Chọn Idol lên ca live --</option>';
+            profiles.forEach(p => {
+                const hasVip = Boolean(p.sessionId && p.sessionId.trim());
+                const vipIcon = hasVip ? '👑' : '👤';
+                html += `<option value="${p.id}">${vipIcon} ${p.name || p.username} (${p.username})</option>`;
+            });
+            select.innerHTML = html;
+
+            if (currentSelected && profiles.some(p => p.id === currentSelected)) {
+                select.value = currentSelected;
+                this.onIdolProfileSelect(currentSelected, false);
+            } else if (profiles.length === 1) {
+                select.value = profiles[0].id;
+                this.onIdolProfileSelect(profiles[0].id, false);
+            }
+        }
+
+        // 2. Populate Management List
+        if (list) {
+            if (profiles.length === 0) {
+                list.innerHTML = `
+                    <div style="text-align:center; padding:20px; color:#94a3b8; font-size:12px; background:rgba(0,0,0,0.25); border-radius:10px; border:1px dashed rgba(255,255,255,0.1);">
+                        Chưa có Idol nào được lưu. Hãy nhập thông tin ở khung trên để thêm Idol mới!
+                    </div>
+                `;
+            } else {
+                list.innerHTML = profiles.map(p => {
+                    const hasVip = Boolean(p.sessionId && p.sessionId.trim());
+                    return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px; gap:10px;">
+                            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                                <span style="font-size:20px;">${hasVip ? '👑' : '👤'}</span>
+                                <div style="min-width:0;">
+                                    <div style="font-weight:800; color:#fff; font-size:13px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">
+                                        ${p.name || p.username}
+                                    </div>
+                                    <div style="font-size:11px; color:#fbbf24; font-weight:700;">
+                                        ${p.username} 
+                                        ${hasVip ? '<span style="color:#34d399; margin-left:6px; font-weight:600;">(Session ID VIP)</span>' : '<span style="color:#94a3b8; margin-left:6px; font-weight:normal;">(Khách)</span>'}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:6px;">
+                                <button type="button" onclick="app.editIdolProfile('${p.id}')" title="Chỉnh sửa"
+                                    style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#cbd5e1; width:28px; height:28px; cursor:pointer; font-size:11px;">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button type="button" onclick="app.deleteIdolProfile('${p.id}')" title="Xóa"
+                                    style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.25); border-radius:6px; color:#f87171; width:28px; height:28px; cursor:pointer; font-size:11px;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+    }
+
+    onIdolProfileSelect(idolId, notify = true) {
+        if (!idolId) {
+            localStorage.removeItem('liveflow_active_idol_id');
+            this.updateSessionStatusBadge(false);
+            return;
+        }
+
+        const profiles = this.getIdolProfiles();
+        const idol = profiles.find(p => p.id === idolId);
+        if (!idol) return;
+
+        localStorage.setItem('liveflow_active_idol_id', idolId);
+
+        const roomInput = document.getElementById('room-id');
+        if (roomInput) {
+            roomInput.value = idol.username || '';
+        }
+
+        const hasSession = Boolean(idol.sessionId && idol.sessionId.trim());
+        this.updateSessionStatusBadge(hasSession);
+
+        if (notify) {
+            this.showNotification('info', `👑 Đã chuyển sang ca: ${idol.name || idol.username}`);
+        }
+    }
+
+    onRoomIdManualInput(val) {
+        const clean = (val || '').trim();
+        const profiles = this.getIdolProfiles();
+        const matched = profiles.find(p => (p.username || '').toLowerCase().replace(/^@+/, '') === clean.toLowerCase().replace(/^@+/, ''));
+        if (matched) {
+            const select = document.getElementById('tiktok-idol-profile-select');
+            if (select) select.value = matched.id;
+            localStorage.setItem('liveflow_active_idol_id', matched.id);
+            this.updateSessionStatusBadge(Boolean(matched.sessionId && matched.sessionId.trim()));
+        } else {
+            this.updateSessionStatusBadge(false);
+        }
+    }
+
+    updateSessionStatusBadge(hasVipSession) {
+        const badge = document.getElementById('tiktok-session-status-badge');
+        if (!badge) return;
+        if (hasVipSession) {
+            badge.innerHTML = '👑 Chế độ: <strong style="color:#fbbf24; margin-left:3px;">Chính chủ VIP (Session ID)</strong>';
+            badge.style.background = 'rgba(251,191,36,0.15)';
+            badge.style.border = '1px solid rgba(251,191,36,0.3)';
+            badge.style.color = '#fbbf24';
+        } else {
+            badge.innerHTML = '⚪ Chế độ: Khách tự do';
+            badge.style.background = 'rgba(255,255,255,0.06)';
+            badge.style.border = '1px solid rgba(255,255,255,0.1)';
+            badge.style.color = '#cbd5e1';
+        }
+    }
+
+    openIdolModal() {
+        this.resetIdolForm();
+        this.loadIdolProfiles();
+        const modal = document.getElementById('modal-manage-idols');
+        if (modal) modal.style.setProperty('display', 'flex', 'important');
+    }
+
+    closeIdolModal() {
+        const modal = document.getElementById('modal-manage-idols');
+        if (modal) modal.style.setProperty('display', 'none', 'important');
+        this.resetIdolForm();
+    }
+
+    resetIdolForm() {
+        const idInput = document.getElementById('idol-form-id');
+        const nameInput = document.getElementById('idol-form-name');
+        const userInput = document.getElementById('idol-form-username');
+        const sessionInput = document.getElementById('idol-form-session-id');
+        const titleEl = document.getElementById('idol-form-title');
+        const cancelBtn = document.getElementById('idol-form-cancel-btn');
+
+        if (idInput) idInput.value = '';
+        if (nameInput) nameInput.value = '';
+        if (userInput) userInput.value = '';
+        if (sessionInput) sessionInput.value = '';
+        if (titleEl) titleEl.textContent = 'Thêm Hồ Sơ Idol Mới';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    }
+
+    editIdolProfile(id) {
+        const profiles = this.getIdolProfiles();
+        const idol = profiles.find(p => p.id === id);
+        if (!idol) return;
+
+        const idInput = document.getElementById('idol-form-id');
+        const nameInput = document.getElementById('idol-form-name');
+        const userInput = document.getElementById('idol-form-username');
+        const sessionInput = document.getElementById('idol-form-session-id');
+        const titleEl = document.getElementById('idol-form-title');
+        const cancelBtn = document.getElementById('idol-form-cancel-btn');
+
+        if (idInput) idInput.value = idol.id;
+        if (nameInput) nameInput.value = idol.name || '';
+        if (userInput) userInput.value = idol.username || '';
+        if (sessionInput) sessionInput.value = idol.sessionId || '';
+        if (titleEl) titleEl.textContent = `✏️ Chỉnh Sửa Idol: ${idol.name || idol.username}`;
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    }
+
+    saveIdolFromForm() {
+        const idInput = document.getElementById('idol-form-id');
+        const nameInput = document.getElementById('idol-form-name');
+        const userInput = document.getElementById('idol-form-username');
+        const sessionInput = document.getElementById('idol-form-session-id');
+
+        const editId = idInput?.value.trim() || null;
+        let username = (userInput?.value || '').trim();
+        const name = (nameInput?.value || '').trim() || username;
+        const sessionId = (sessionInput?.value || '').trim();
+
+        if (!username) {
+            this.showNotification('warning', 'Vui lòng nhập TikTok @username hoặc ID!');
+            return;
+        }
+
+        if (!username.startsWith('@') && !/^\d+$/.test(username)) {
+            username = `@${username}`;
+        }
+
+        const profiles = this.getIdolProfiles();
+
+        if (editId) {
+            const idx = profiles.findIndex(p => p.id === editId);
+            if (idx >= 0) {
+                profiles[idx] = { id: editId, name, username, sessionId, updatedAt: Date.now() };
+            }
+        } else {
+            profiles.push({
+                id: `idol_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                name,
+                username,
+                sessionId,
+                createdAt: Date.now()
+            });
+        }
+
+        this.saveIdolProfiles(profiles);
+        this.resetIdolForm();
+        this.showNotification('success', `✅ Đã lưu hồ sơ Idol: ${name}`);
+    }
+
+    deleteIdolProfile(id) {
+        this.showConfirmDialog('Xác nhận xóa Idol', 'Bạn có chắc chắn muốn xóa hồ sơ Idol này khỏi danh sách không?', () => {
+            let profiles = this.getIdolProfiles();
+            profiles = profiles.filter(p => p.id !== id);
+            this.saveIdolProfiles(profiles);
+            this.showNotification('info', 'Đã xóa hồ sơ Idol.');
+        });
+    }
+
+    openTikTokGuideModal() {
+        const modal = document.getElementById('modal-tiktok-guide');
+        if (modal) modal.style.setProperty('display', 'flex', 'important');
+    }
+
+    closeTikTokGuideModal() {
+        const modal = document.getElementById('modal-tiktok-guide');
+        if (modal) modal.style.setProperty('display', 'none', 'important');
+    }
+
     async prepareTikTok() {
         const roomId = document.getElementById('room-id')?.value.trim();
-        if (!roomId) return this.showNotification('error', 'Vui lòng nhập Room ID!');
+        if (!roomId) return this.showNotification('error', 'Vui lòng nhập Room ID hoặc Tên tài khoản TikTok!');
         try {
             this.showNotification('info', '🎬 Đang ở chế độ chuẩn bị. Hệ thống sẽ tự động kết nối khi bạn bắt đầu Live.');
             const res = await fetch(`${this.API_URL}/api/tiktok/prepare`, {
@@ -7729,25 +7985,35 @@ class EffectStoreApp {
 
     async connectTikTok() {
         const roomId = document.getElementById('room-id')?.value.trim();
-        if (!roomId) return this.showNotification('error', 'Vui lòng nhập Room ID!');
+        if (!roomId) return this.showNotification('error', 'Vui lòng nhập Tên tài khoản TikTok hoặc Room ID!');
+
+        // Check if active profile has a Session ID
+        const activeId = localStorage.getItem('liveflow_active_idol_id');
+        const profiles = this.getIdolProfiles();
+        const activeIdol = profiles.find(p => p.id === activeId);
+        const sessionId = activeIdol?.sessionId || localStorage.getItem('tiktok_session_id') || null;
+
         try {
-            this.showNotification('info', 'Đang kết nối...');
+            this.showNotification('info', '🔄 Đang kết nối tới TikTok Live...');
             const res = await fetch(`${this.API_URL}/api/tiktok/connect`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.authToken}`
                 },
-                body: JSON.stringify({ roomId })
+                body: JSON.stringify({ roomId, sessionId })
             });
             const data = await res.json();
             if (data.success) {
-                this.showNotification('success', '✅ Đã kết nối TikTok Live!');
+                const vipMsg = sessionId ? ' (👑 Chế độ Chính Chủ VIP 100% Ổn Định)' : '';
+                this.showNotification('success', `✅ Đã kết nối TikTok Live: ${roomId}${vipMsg}`);
                 this.setConnectBtnState('connect');
                 this.connectWebSocket();
+            } else {
+                this.showNotification('error', data.message || 'Không thể kết nối. Có thể kênh chưa Live hoặc sai ID.');
             }
         } catch (e) {
-            this.showNotification('error', 'Không thể kết nối. Có thể bạn chưa Live hoặc sai ID.');
+            this.showNotification('error', 'Lỗi kết nối TikTok Live: ' + e.message);
         }
     }
 
@@ -7757,7 +8023,7 @@ class EffectStoreApp {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${this.authToken}` }
             });
-            this.showNotification('success', '✅ Đã ngắt kết nối!');
+            this.showNotification('success', '✅ Đã ngắt kết nối và làm sạch phiên!');
             this.setConnectBtnState('disconnect');
             this.updateStats({ isLive: false, gifts: 0, likes: 0, chats: 0, viewers: 0 });
             if (this.ws) this.ws.close();
@@ -7779,12 +8045,12 @@ class EffectStoreApp {
 
         if (state === 'prepare') {
             btnPrep.style.opacity = "1";
-            btnPrep.style.transform = "scale(1.05)";
+            btnPrep.style.transform = "scale(1.04)";
             btnPrep.style.boxShadow = "0 0 15px rgba(245, 158, 11, 0.4)";
         } else if (state === 'connect') {
             btnConn.style.opacity = "1";
-            btnConn.style.transform = "scale(1.05)";
-            btnConn.style.boxShadow = "0 0 15px rgba(16, 185, 129, 0.4)";
+            btnConn.style.transform = "scale(1.04)";
+            btnConn.style.boxShadow = "0 0 18px rgba(16, 185, 129, 0.5)";
         } else if (state === 'disconnect') {
             btnDisc.style.opacity = "1";
         }
@@ -9084,9 +9350,10 @@ class EffectStoreApp {
         const startupEl = document.getElementById('settings-run-startup');
         if (startupEl) startupEl.checked = localStorage.getItem('run_startup') === 'true';
 
-        // Load danh sách giọng đọc
+        // Load danh sách giọng đọc & Idol Profiles
         this.loadVoices();
         this.loadAiAssistantConfig();
+        this.loadIdolProfiles();
 
         // Populate the connection username input automatically if default exists
         const defaultUser = localStorage.getItem('tiktok_username');

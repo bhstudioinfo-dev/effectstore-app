@@ -1947,23 +1947,65 @@
                             <i class="fas fa-chevron-down es-accordion-chevron"></i>
                         </div>
                     </div>
-                    <div class="es-accordion-body">
-                        <!-- TikTok Connect Bar (NEW 3-BUTTON LAYOUT) -->
+                    <div class="es-accordion-body" style="padding:16px 20px; display:flex; flex-direction:column; gap:12px;">
+                        <!-- Multi-Idol Switcher Bar -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:8px 14px;">
+                            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                <span style="font-size:13px; font-weight:700; color:#fbbf24; display:flex; align-items:center; gap:6px;">
+                                    👑 Ca Idol Studio:
+                                </span>
+                                <select id="tiktok-idol-profile-select" onchange="app.onIdolProfileSelect(this.value)" 
+                                    style="background:#0f172a; color:#fff; font-weight:700; border:1px solid rgba(251,191,36,0.4); border-radius:8px; padding:6px 12px; font-size:13px; cursor:pointer; outline:none; min-width:210px;">
+                                    <option value="">-- Chọn Idol lên ca live --</option>
+                                </select>
+                                <button type="button" onclick="app.openIdolModal()" class="btn-sm"
+                                    style="background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.35); color:#fbbf24; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.15s;"
+                                    onmouseover="this.style.background='rgba(251,191,36,0.22)'" onmouseout="this.style.background='rgba(251,191,36,0.12)'">
+                                    <i class="fas fa-users-cog"></i> ➕ Quản lý Idol
+                                </button>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <button type="button" onclick="app.openTikTokGuideModal()" class="btn-sm"
+                                    style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:#38bdf8; border-radius:8px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.15s;"
+                                    onmouseover="this.style.background='rgba(56,189,248,0.22)'" onmouseout="this.style.background='rgba(56,189,248,0.12)'">
+                                    <i class="fas fa-book-open"></i> 📖 Hướng dẫn chống rớt mạng
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TikTok Connect Bar (3-BUTTON LAYOUT) -->
                         <div style="display:flex;gap:10px;align-items:center;">
-                            <input type="text" id="room-id" placeholder="Nhập tên tài khoản hoặc mã phòng TikTok"
-                                class="es-input" style="flex:1;">
+                            <input type="text" id="room-id" placeholder="Nhập tên tài khoản (ví dụ @linhnhi) hoặc mã phòng TikTok"
+                                class="es-input" style="flex:1; height:42px; font-size:13px; font-weight:600; padding:0 14px;"
+                                oninput="app.onRoomIdManualInput(this.value)">
 
                             <button id="btn-prepare" onclick="app.prepareTikTok()"
-                                style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:120px;justify-content:center;">🎬
+                                style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:120px;justify-content:center;height:42px;">🎬
                                 Chuẩn Bị</button>
 
                             <button id="btn-connect" onclick="app.connectTikTok()"
-                                style="background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:120px;justify-content:center;">🟢
+                                style="background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:120px;justify-content:center;height:42px;box-shadow:0 4px 14px rgba(16,185,129,0.3);">🟢
                                 Kết Nối</button>
 
                             <button id="btn-disconnect" onclick="app.disconnectTikTok()"
-                                style="background:linear-gradient(135deg,#ef4444,#dc2626);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:100px;justify-content:center;opacity:0.6;">🔴
+                                style="background:linear-gradient(135deg,#ef4444,#dc2626);border:none;border-radius:10px;color:#fff;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;min-width:100px;justify-content:center;height:42px;opacity:0.6;">🔴
                                 Ngắt</button>
+                        </div>
+
+                        <!-- Sub Info Badges -->
+                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:12px; color:#94a3b8; padding:0 4px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="display:inline-flex; align-items:center; gap:5px; background:rgba(16,185,129,0.12); color:#34d399; padding:3px 10px; border-radius:12px; font-weight:700; font-size:11px;">
+                                    <span style="width:6px; height:6px; background:#34d399; border-radius:50%; display:inline-block; box-shadow:0 0 8px #34d399;"></span>
+                                    ⚡ Tự động phục hồi tức thì 1.5s
+                                </span>
+                                <span id="tiktok-session-status-badge" style="display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,0.06); color:#cbd5e1; padding:3px 10px; border-radius:12px; font-weight:700; font-size:11px;">
+                                    ⚪ Chế độ kết nối: Khách tự do
+                                </span>
+                            </div>
+                            <span style="font-size:11px; color:#64748b;">
+                                💡 Chuyển ca: Bấm <strong>Ngắt</strong> ➔ Chọn Idol tiếp theo ➔ Bấm <strong>Kết Nối</strong>.
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -3870,6 +3912,167 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+
+        <!-- MODAL: QUẢN LÝ HỒ SƠ IDOL STUDIO (1-CLICK SWITCHER) -->
+        <div id="modal-manage-idols" class="modal-new-overlay" style="display:none; position:fixed; inset:0; background:rgba(2,6,23,0.92); z-index:999999 !important; align-items:center; justify-content:center; backdrop-filter:blur(16px); padding:20px;">
+            <div style="background:linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border:1px solid rgba(251,191,36,0.3); border-radius:20px; width:100%; max-width:720px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 25px 60px rgba(0,0,0,0.85); overflow:hidden; animation:vipPreviewFadeIn 0.25s ease;">
+                <!-- Header -->
+                <div style="padding:18px 24px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center; background:rgba(251,191,36,0.04);">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:24px;">👑</span>
+                        <div>
+                            <h3 style="margin:0; font-size:17px; font-weight:800; color:#fff;">Quản Lý Hồ Sơ Idol Studio</h3>
+                            <p style="margin:2px 0 0; font-size:12px; color:#94a3b8;">Lưu danh sách tài khoản TikTok của các Idol để đổi ca live chỉ bằng 1-Click</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="app.closeIdolModal()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#cbd5e1; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;">✕</button>
+                </div>
+
+                <!-- Body -->
+                <div style="padding:20px 24px; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
+                    <!-- Add / Edit Idol Form Card -->
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(251,191,36,0.25); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px;">
+                        <div style="font-size:13px; font-weight:800; color:#fbbf24; display:flex; align-items:center; gap:6px;">
+                            <i class="fas fa-user-plus"></i> <span id="idol-form-title">Thêm Hồ Sơ Idol Mới</span>
+                        </div>
+                        <input type="hidden" id="idol-form-id" value="">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#cbd5e1; margin-bottom:4px; display:block;">Tên gợi nhớ ca trực (vd: Ca Sáng - Linh Nhi):</label>
+                                <input type="text" id="idol-form-name" placeholder="Ví dụ: Idol Linh Nhi (Ca Sáng)" class="es-input" style="width:100%; height:38px; font-size:12px;">
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#cbd5e1; margin-bottom:4px; display:block;">TikTok @username hoặc ID:</label>
+                                <input type="text" id="idol-form-username" placeholder="@linhnhi_live" class="es-input" style="width:100%; height:38px; font-size:12px;">
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <label style="font-size:11px; font-weight:700; color:#cbd5e1; display:flex; align-items:center; gap:5px;">
+                                    🔑 TikTok Session ID <span style="color:#64748b; font-weight:normal;">(Tùy chọn - Chống ngắt kết nối Studio 100%)</span>:
+                                </label>
+                                <a href="javascript:void(0)" onclick="app.openTikTokGuideModal()" style="font-size:11px; color:#38bdf8; text-decoration:none; font-weight:700;">📖 Xem cách lấy Session ID</a>
+                            </div>
+                            <input type="text" id="idol-form-session-id" placeholder="Dán mã sessionid (32 ký tự) từ cookie tiktok.com của Idol..." class="es-input" style="width:100%; height:38px; font-size:12px; font-family:monospace;">
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+                            <button type="button" id="idol-form-cancel-btn" onclick="app.resetIdolForm()" style="display:none; background:rgba(255,255,255,0.06); color:#cbd5e1; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;">Hủy chỉnh sửa</button>
+                            <button type="button" onclick="app.saveIdolFromForm()" style="background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; border:none; border-radius:8px; padding:7px 18px; font-size:12px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                                <i class="fas fa-save"></i> Lưu Hồ Sơ Idol
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Saved Idols List -->
+                    <div>
+                        <div style="font-size:13px; font-weight:800; color:#fff; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+                            <span>📋 Danh Sách Idol Đã Lưu (<span id="idol-list-count">0</span>):</span>
+                        </div>
+                        <div id="idol-profiles-list" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; padding-right:4px;">
+                            <!-- Populated dynamically by home.js -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="padding:14px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; justify-content:flex-end; background:rgba(0,0,0,0.2);">
+                    <button type="button" onclick="app.closeIdolModal()" class="btn-sm" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:8px 20px; font-size:13px; font-weight:700; cursor:pointer;">Đóng</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: HƯỚNG DẪN KẾT NỐI TIKTOK LIVE & CHỐNG RỚT MẠNG STUDIO -->
+        <div id="modal-tiktok-guide" class="modal-new-overlay" style="display:none; position:fixed; inset:0; background:rgba(2,6,23,0.92); z-index:999999 !important; align-items:center; justify-content:center; backdrop-filter:blur(16px); padding:20px;">
+            <div style="background:linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border:1px solid rgba(56,189,248,0.35); border-radius:20px; width:100%; max-width:760px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 25px 60px rgba(0,0,0,0.85); overflow:hidden; animation:vipPreviewFadeIn 0.25s ease;">
+                <!-- Header -->
+                <div style="padding:18px 24px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center; background:rgba(56,189,248,0.05);">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:24px;">📖</span>
+                        <div>
+                            <h3 style="margin:0; font-size:17px; font-weight:800; color:#38bdf8;">Hướng Dẫn Kết Nối TikTok Live & Chống Rớt Mạng</h3>
+                            <p style="margin:2px 0 0; font-size:12px; color:#94a3b8;">Bí quyết giúp Idol Studio live mượt mà, không bao giờ bị ngắt kết nối</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="app.closeTikTokGuideModal()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#cbd5e1; width:34px; height:34px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;">✕</button>
+                </div>
+
+                <!-- Body -->
+                <div style="padding:22px 24px; overflow-y:auto; display:flex; flex-direction:column; gap:18px;">
+                    <!-- Step 1: Normal Connect -->
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px; display:flex; gap:14px;">
+                        <div style="background:rgba(16,185,129,0.15); color:#34d399; font-weight:900; font-size:16px; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">1</div>
+                        <div>
+                            <h4 style="margin:0 0 6px; font-size:14px; font-weight:800; color:#fff;">Cách kết nối thông thường (Nhanh nhất)</h4>
+                            <p style="margin:0 0 8px; font-size:12px; color:#cbd5e1; line-height:1.5;">
+                                Khi Idol bắt đầu bật Live trên điện thoại / TikTok Live Studio:
+                            </p>
+                            <div style="background:rgba(0,0,0,0.35); padding:8px 12px; border-radius:8px; font-size:12px; color:#94a3b8; display:flex; flex-direction:column; gap:4px;">
+                                <span>👉 <strong>Bước 1:</strong> Nhập tên kênh TikTok của Idol (Ví dụ: <code>@linhnhi_live</code>).</span>
+                                <span>👉 <strong>Bước 2:</strong> Bấm nút <strong>🟢 Kết Nối</strong>. Đèn trạng thái chuyển sang màu xanh là hoàn tất!</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Session ID (VIP Pro) -->
+                    <div style="background:linear-gradient(145deg, rgba(56,189,248,0.06) 0%, rgba(15,23,42,0.8) 100%); border:1px solid rgba(56,189,248,0.3); border-radius:14px; padding:16px; display:flex; gap:14px;">
+                        <div style="background:rgba(56,189,248,0.2); color:#38bdf8; font-weight:900; font-size:16px; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">2</div>
+                        <div style="flex:1;">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                                <h4 style="margin:0; font-size:14px; font-weight:800; color:#38bdf8;">Cách lấy Session ID (Chống ngắt kết nối Studio 100%)</h4>
+                                <span style="background:rgba(251,191,36,0.15); color:#fbbf24; font-size:10px; font-weight:800; padding:2px 8px; border-radius:12px;">Khuyên dùng cho Agency</span>
+                            </div>
+                            <p style="margin:0 0 10px; font-size:12px; color:#cbd5e1; line-height:1.5;">
+                                Giúp TikTok nhận diện tài khoản chính chủ đang đăng nhập, loại bỏ hoàn toàn việc bị quét bot hoặc chặn IP mạng công ty:
+                            </p>
+                            
+                            <div style="display:flex; flex-direction:column; gap:8px; font-size:12px; color:#cbd5e1;">
+                                <div style="display:flex; align-items:flex-start; gap:8px;">
+                                    <span style="background:#1e293b; color:#38bdf8; font-weight:800; border-radius:4px; padding:1px 6px; font-size:11px;">1</span>
+                                    <span>Mở trình duyệt <strong>Google Chrome</strong> hoặc <strong>Microsoft Edge</strong>, truy cập <code>tiktok.com</code> và đăng nhập nick TikTok của Idol.</span>
+                                </div>
+                                <div style="display:flex; align-items:flex-start; gap:8px;">
+                                    <span style="background:#1e293b; color:#38bdf8; font-weight:800; border-radius:4px; padding:1px 6px; font-size:11px;">2</span>
+                                    <span>Bấm phím <strong>F12</strong> (hoặc bấm chuột phải vào khoảng trống bất kỳ ➔ Chọn <strong>Kiểm tra / Inspect</strong>).</span>
+                                </div>
+                                <div style="display:flex; align-items:flex-start; gap:8px;">
+                                    <span style="background:#1e293b; color:#38bdf8; font-weight:800; border-radius:4px; padding:1px 6px; font-size:11px;">3</span>
+                                    <span>Nhìn thanh menu phía trên, chọn tab <strong>Application (Ứng dụng)</strong> ➔ Nhìn cột trái mục <strong>Cookies</strong> ➔ Bấm vào <code>https://www.tiktok.com</code>.</span>
+                                </div>
+                                <div style="display:flex; align-items:flex-start; gap:8px;">
+                                    <span style="background:#1e293b; color:#38bdf8; font-weight:800; border-radius:4px; padding:1px 6px; font-size:11px;">4</span>
+                                    <span>Tìm dòng có Name là <strong><code>sessionid</code></strong> ➔ Nhấp đúp vào ô Value và copy toàn bộ chuỗi mã đó (khoảng 32 ký tự).</span>
+                                </div>
+                                <div style="display:flex; align-items:flex-start; gap:8px;">
+                                    <span style="background:#1e293b; color:#38bdf8; font-weight:800; border-radius:4px; padding:1px 6px; font-size:11px;">5</span>
+                                    <span>Bấm vào nút <strong>"➕ Quản lý Idol"</strong> trên App ➔ Dán mã vào ô Session ID ➔ Bấm <strong>Lưu</strong>. (Chỉ cần làm 1 lần duy nhất)!</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Studio Multi-Idol Tips -->
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px; display:flex; gap:14px;">
+                        <div style="background:rgba(245,158,11,0.15); color:#fbbf24; font-weight:900; font-size:16px; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">3</div>
+                        <div>
+                            <h4 style="margin:0 0 6px; font-size:14px; font-weight:800; color:#fff;">Quy trình đổi ca Idol chuẩn Studio (1-Click)</h4>
+                            <p style="margin:0 0 8px; font-size:12px; color:#cbd5e1; line-height:1.5;">
+                                Khi một máy tính dùng chung cho nhiều ca livestream:
+                            </p>
+                            <div style="background:rgba(0,0,0,0.35); padding:8px 12px; border-radius:8px; font-size:12px; color:#94a3b8; display:flex; flex-direction:column; gap:4px;">
+                                <span>1️⃣ <strong>Kết thúc ca cũ:</strong> Bấm nút <strong>🔴 Ngắt</strong> để làm sạch bộ nhớ phiên cũ.</span>
+                                <span>2️⃣ <strong>Bắt đầu ca mới:</strong> Chọn tên Idol tiếp theo ở menu thả xuống <strong>"👑 Ca Idol Studio"</strong>.</span>
+                                <span>3️⃣ <strong>Bấm 🟢 Kết Nối:</strong> Toàn bộ thông tin tài khoản tự động kích hoạt ngay lập tức!</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="padding:14px 24px; border-top:1px solid rgba(255,255,255,0.08); display:flex; justify-content:flex-end; background:rgba(0,0,0,0.2);">
+                    <button type="button" onclick="app.closeTikTokGuideModal()" class="btn-sm" style="background:linear-gradient(135deg,#38bdf8,#0284c7); color:#fff; border:none; border-radius:10px; padding:8px 24px; font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(56,189,248,0.3);">Đã Hiểu</button>
+                </div>
             </div>
         </div>
 

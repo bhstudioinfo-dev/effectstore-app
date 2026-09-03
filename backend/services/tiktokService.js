@@ -215,19 +215,23 @@ class TikTokService {
         } catch (_err) {}
     }
 
-    async connect(roomId, userId = null, preserveSession = false) {
+    async connect(roomId, userId = null, preserveSession = false, sessionId = null) {
         try {
             if (this.reconnectTimer) {
+                clearTimeout(this.reconnectTimer);
                 this.reconnectTimer = null;
             }
             if (this.tiktokClient) {
                 this.lastRoomId = null;
+                this.lastSessionId = null;
                 try {
                     if (typeof this.tiktokClient.disconnect === 'function') await this.tiktokClient.disconnect();
                     else if (typeof this.tiktokClient.stop === 'function') await this.tiktokClient.stop();
                 } catch (_error) {}
+                this.tiktokClient = null;
             }
             this.lastRoomId = roomId;
+            this.lastSessionId = sessionId || null;
             this.currentLiveUserId = userId;
             const liveUser = userId ? await User.findById(userId).lean().catch(() => null) : null;
             this.liveEntitlements = getEntitlements(liveUser);
@@ -235,10 +239,24 @@ class TikTokService {
                 this.sessionUsage = { comments: 0, tts: 0, commentLimitNotified: false, ttsLimitNotified: false };
                 this.sessionDonatorCoins = new Map();
             }
-            this.tiktokClient = new TikTokLiveConnection(roomId, { enableExtendedGiftInfo: true });
+
+            const clientOptions = {
+                enableExtendedGiftInfo: true,
+                processInitialData: false,
+                fetchRoomInfoOnConnect: true,
+                clientParams: {
+                    app_language: 'vi-VN'
+                }
+            };
+            if (sessionId && typeof sessionId === 'string' && sessionId.trim()) {
+                clientOptions.sessionId = sessionId.trim();
+                console.log(`[TikTok Service] Connecting with Authorized Session ID for room: ${roomId}`);
+            }
+
+            this.tiktokClient = new TikTokLiveConnection(roomId, clientOptions);
 
             this.tiktokClient.on('connected', () => {
-                console.log(`Connected to TikTok Live: ${roomId}`);
+                console.log(`Connected to TikTok Live: ${roomId} (Session ID VIP: ${Boolean(clientOptions.sessionId)})`);
                 this.liveStats.isLive = true;
                 this.reconnectAttempts = 0;
                 this.broadcast('stats', this.liveStats);
@@ -246,7 +264,7 @@ class TikTokService {
             });
 
             this.tiktokClient.on('disconnected', () => {
-                console.log('Disconnected from TikTok Live');
+                console.log('Disconnected from TikTok Live (Will auto-reconnect instantly)');
                 this.liveStats.isLive = false;
                 this.broadcast('stats', this.liveStats);
                 if (this.lastRoomId) {
@@ -464,6 +482,7 @@ class TikTokService {
 
     async disconnect() {
         this.lastRoomId = null;
+        this.lastSessionId = null;
         this.currentLiveUserId = null;
         this.reconnectAttempts = 0;
         if (this.reconnectTimer) {
@@ -485,12 +504,17 @@ class TikTokService {
         if (!this.lastRoomId || this.reconnectTimer) return;
         const roomId = this.lastRoomId;
         const userId = this.currentLiveUserId;
-        const delay = Math.min(60000, 5000 * (2 ** Math.min(this.reconnectAttempts, 4)));
+        const sessionId = this.lastSessionId;
+        
+        // Fast instant reconnect for live streaming: 1.5s, 3s, 5s, max 10s
+        const delay = Math.min(10000, 1500 * (1.5 ** Math.min(this.reconnectAttempts, 4)));
         this.reconnectAttempts += 1;
+        console.log(`[TikTok Reconnect] Scheduling instant auto-reconnect #${this.reconnectAttempts} in ${Math.round(delay)}ms for ${roomId}...`);
+        
         this.reconnectTimer = setTimeout(async () => {
             this.reconnectTimer = null;
             if (!this.lastRoomId || this.lastRoomId !== roomId) return;
-            const connected = await this.connect(roomId, userId, true);
+            const connected = await this.connect(roomId, userId, true, sessionId);
             if (!connected && this.lastRoomId === roomId) this.scheduleReconnect();
         }, delay);
     }

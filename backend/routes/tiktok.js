@@ -237,10 +237,10 @@ async function optimizeGoalAsset(filePath, ext) {
 
 // Connect
 router.post('/connect', authMiddleware, async (req, res) => {
-    const { roomId } = req.body;
-    const success = await tiktokService.connect(roomId, req.userId);
+    const { roomId, sessionId } = req.body || {};
+    const success = await tiktokService.connect(roomId, req.userId, false, sessionId);
     if (success) res.json({ success: true });
-    else res.status(500).json({ success: false });
+    else res.status(500).json({ success: false, message: 'Không thể kết nối TikTok Live. Vui lòng kiểm tra lại tên kênh hoặc phòng Live.' });
 });
 
 // Prepare (compat endpoint for older frontends)
