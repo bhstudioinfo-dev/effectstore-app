@@ -614,47 +614,37 @@
                 previewImg.style.top = `${avatarY}%`;
                 previewImg.style.width = `${avatarSize}px`;
                 previewImg.style.height = `${avatarSize}px`;
+                previewImg.style.zIndex = '2';
+                previewImg.style.filter = 'none';
             }
 
-            // Real VIP Frame overlay in Preview Modal
+            // Real VIP Frame overlay in Preview Modal: ALWAYS use static crisp PNG
             const frameVal = document.getElementById('vip-form-frame-preset')?.value || 'frame_ho_trang';
-            const foundPreset = this.presetFrames.find(f => f.id === frameVal);
             const frameVideo = document.getElementById('vip-preview-frame-video');
-            let targetUrl = foundPreset?.url || (frameVal === 'custom_svga' && this.tempSvgaData?.url) || '';
 
-            if (targetUrl.endsWith('.webm') || targetUrl.includes('khung_ho_trang')) {
-                // In preview modal, use HD transparent PNG so Electron doesn't render a black video canvas box
-                if (previewFrameImg) {
-                    previewFrameImg.src = 'assets/frames/khung_ho_trang.png';
-                    previewFrameImg.style.display = 'block';
-                    previewFrameImg.style.zIndex = '3';
-                }
-                if (frameVideo) {
-                    frameVideo.style.display = 'none';
-                    frameVideo.pause();
-                }
-            } else if (targetUrl) {
-                if (previewFrameImg) {
-                    previewFrameImg.src = targetUrl;
-                    previewFrameImg.style.display = 'block';
-                    previewFrameImg.style.zIndex = '3';
-                }
-                if (frameVideo) {
-                    frameVideo.style.display = 'none';
-                    frameVideo.pause();
-                }
-            } else {
-                if (previewFrameImg) previewFrameImg.style.display = 'none';
-                if (frameVideo) {
-                    frameVideo.style.display = 'none';
-                    frameVideo.pause();
-                }
+            if (previewFrameImg) {
+                let staticSrc = 'assets/frames/khung_ho_trang.png';
+                if (frameVal === 'frame_love' || frameVal.includes('love')) staticSrc = 'assets/frames/khung_love.png';
+                else if (frameVal === 'frame_rong_bang' || frameVal.includes('rong_bang') || frameVal.includes('rồng băng')) staticSrc = 'assets/frames/khung_rong_bang.png';
+                else if (frameVal === 'frame_rong_lua' || frameVal.includes('rong_lua') || frameVal.includes('rồng lửa')) staticSrc = 'assets/frames/khung_rong_lua.png';
+                else if (frameVal === 'custom_svga' && this.tempSvgaData?.url) staticSrc = this.tempSvgaData.url;
+
+                previewFrameImg.src = staticSrc;
+                previewFrameImg.style.display = 'block';
+                previewFrameImg.style.zIndex = '5';
+                previewFrameImg.style.filter = 'drop-shadow(0 6px 14px rgba(0,0,0,0.85))';
             }
 
-            // Vibrant, snug ambient backdrop halo & shadow (Rõ ràng, đẹp mắt, ôm sát khung)
+            if (frameVideo) {
+                frameVideo.style.display = 'none';
+                frameVideo.pause();
+            }
+
+            // Vibrant, snug ambient backdrop halo & shadow (LỚP DƯỚI CÙNG z-index: 1)
             if (previewBackdropGlow) {
                 const blurPx = Math.max(6, Math.min(22, Math.round(glowBlur * 0.45)));
-                previewBackdropGlow.style.background = `radial-gradient(circle at 50% 50%, transparent 0%, transparent 38%, ${glowColor}ee 58%, ${glowColor}66 75%, transparent 90%)`;
+                previewBackdropGlow.style.zIndex = '1';
+                previewBackdropGlow.style.background = `radial-gradient(circle at 50% 50%, transparent 0%, transparent 40%, ${glowColor}ee 60%, ${glowColor}66 76%, transparent 92%)`;
                 previewBackdropGlow.style.filter = `blur(${blurPx}px)`;
                 previewBackdropGlow.style.transform = `scale(1.02)`;
                 previewBackdropGlow.style.opacity = '0.95';
