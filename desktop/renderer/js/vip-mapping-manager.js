@@ -581,6 +581,8 @@
             const username = document.getElementById('vip-form-username')?.value.trim() || '@dai_gia_vip';
             const cleanUser = username.replace(/^@+/, '') || 'VIP';
             const displayName = document.getElementById('vip-form-display-name')?.value.trim() || cleanUser;
+            const effectId = document.getElementById('vip-form-effect-select')?.value || '';
+            const frameVal = document.getElementById('vip-form-frame-preset')?.value || 'frame_ho_trang';
             const posX = parseInt(document.getElementById('vip-form-pos-x')?.value || 50);
             const posY = parseInt(document.getElementById('vip-form-pos-y')?.value || 50);
             const scale = parseInt(document.getElementById('vip-form-scale')?.value || 144) / 100;
@@ -592,89 +594,31 @@
             const nameSize = parseInt(document.getElementById('vip-form-name-size')?.value || 8);
             const glowColor = document.getElementById('vip-form-glow-color')?.value || '#fbbf24';
             const glowBlur = parseInt(document.getElementById('vip-form-glow-blur')?.value || 30);
+            const animation = document.getElementById('vip-form-animation')?.value || 'royal_pop';
 
-            const previewTarget = document.getElementById('vip-preview-avatar-target');
-            const previewName = document.getElementById('vip-preview-name');
-            const previewImg = document.getElementById('vip-preview-img');
-            const previewFrameImg = document.getElementById('vip-preview-frame-img');
-            const previewBackdropGlow = document.getElementById('vip-preview-backdrop-aura');
+            const vipPayload = {
+                username: cleanUser,
+                displayName: displayName,
+                customAvatar: this.tempAvatarData,
+                effectId: effectId,
+                frameUrl: frameVal === 'custom_svga' ? (this.tempSvgaData?.url || '') : frameVal,
+                frameCustomX: posX,
+                frameCustomY: posY,
+                frameCustomScale: scale,
+                avatarCustomX: avatarX,
+                avatarCustomY: avatarY,
+                avatarCustomSize: avatarSize,
+                nameCustomX: nameX,
+                nameCustomY: nameY,
+                nameCustomSize: nameSize,
+                glowColor: glowColor,
+                glowBlur: glowBlur,
+                animation: animation
+            };
 
-            // Name sits directly on the frame's ribbon banner (z-index: 10 TOP)
-            if (previewName) {
-                previewName.textContent = displayName;
-                previewName.style.left = `${nameX}%`;
-                previewName.style.top = `${nameY}%`;
-                previewName.style.fontSize = `${nameSize}px`;
-                previewName.style.zIndex = '10';
-                previewName.style.display = 'block';
-                previewName.style.visibility = 'visible';
-                previewName.style.bottom = 'auto';
-            }
-
-            if (previewImg) {
-                previewImg.src = this.tempAvatarData || `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanUser)}&background=1e293b&color=fbbf24&bold=true&font-size=0.42`;
-                previewImg.style.left = `${avatarX}%`;
-                previewImg.style.top = `${avatarY}%`;
-                previewImg.style.width = `${avatarSize}px`;
-                previewImg.style.height = `${avatarSize}px`;
-                previewImg.style.zIndex = '2';
-                previewImg.style.filter = 'none';
-            }
-
-            // Real VIP Frame overlay in Preview Modal: Use HD transparent frame so there is NO black box and avatar sits neatly underneath
-            const frameVal = document.getElementById('vip-form-frame-preset')?.value || 'frame_ho_trang';
-            const frameVideo = document.getElementById('vip-preview-frame-video');
-            const frameCanvas = document.getElementById('vip-preview-frame-canvas');
-
-            if (frameVideo) {
-                frameVideo.style.display = 'none';
-                frameVideo.pause();
-            }
-            if (frameCanvas) {
-                frameCanvas.style.display = 'none';
-            }
-
-            if (previewFrameImg) {
-                let staticSrc = 'assets/frames/khung_ho_trang.png';
-                if (frameVal === 'frame_love' || frameVal.includes('love')) staticSrc = 'assets/frames/khung_love.png';
-                else if (frameVal === 'frame_rong_bang' || frameVal.includes('rong_bang') || frameVal.includes('rồng băng')) staticSrc = 'assets/frames/khung_rong_bang.png';
-                else if (frameVal === 'frame_rong_lua' || frameVal.includes('rong_lua') || frameVal.includes('rồng lửa')) staticSrc = 'assets/frames/khung_rong_lua.png';
-                else if (frameVal === 'custom_svga' && this.tempSvgaData?.url) staticSrc = this.tempSvgaData.url;
-
-                previewFrameImg.src = staticSrc;
-                previewFrameImg.style.display = 'block';
-                previewFrameImg.style.zIndex = '5';
-                previewFrameImg.style.filter = 'none';
-            }
-
-            // Vibrant, snug ambient backdrop halo & shadow (LỚP DƯỚI CÙNG z-index: 1)
-            if (previewBackdropGlow) {
-                const blurPx = Math.max(6, Math.min(22, Math.round(glowBlur * 0.45)));
-                previewBackdropGlow.style.zIndex = '1';
-                previewBackdropGlow.style.background = `radial-gradient(circle at 50% 50%, transparent 0%, transparent 40%, ${glowColor}ee 60%, ${glowColor}66 76%, transparent 92%)`;
-                previewBackdropGlow.style.filter = `blur(${blurPx}px)`;
-                previewBackdropGlow.style.transform = `scale(1.02)`;
-                previewBackdropGlow.style.opacity = '0.95';
-            }
-
-            if (previewTarget) {
-                previewTarget.style.left = `${posX}%`;
-                previewTarget.style.top = `${posY}%`;
-                previewTarget.style.transform = `translate(-50%, -50%) scale(${scale})`;
-
-                const motionBox = document.getElementById('vip-preview-motion-box') || previewTarget;
-                const anim = document.getElementById('vip-form-animation')?.value || 'royal_pop';
-                const animClass = `preview-anim-${anim}`;
-
-                // Trigger or replay animation on preview
-                if (this._lastPreviewAnim !== anim) {
-                    this._lastPreviewAnim = anim;
-                    motionBox.className = '';
-                    void motionBox.offsetWidth;
-                    motionBox.className = animClass;
-                } else if (!motionBox.className) {
-                    motionBox.className = animClass;
-                }
+            const iframe = document.getElementById('vip-preview-iframe');
+            if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'LIVE_PREVIEW_UPDATE', vip: vipPayload }, '*');
             }
 
             // Update effect info badge in modal
@@ -687,13 +631,12 @@
         }
 
         replayPreviewAnimation() {
-            const motionBox = document.getElementById('vip-preview-motion-box') || document.getElementById('vip-preview-avatar-target');
-            if (motionBox) {
-                const anim = document.getElementById('vip-form-animation')?.value || 'royal_pop';
-                const animClass = `preview-anim-${anim}`;
-                motionBox.className = '';
-                void motionBox.offsetWidth;
-                motionBox.className = animClass;
+            const iframe = document.getElementById('vip-preview-iframe');
+            if (iframe) {
+                iframe.src = `http://127.0.0.1:9000/effect-player-overlay.html?preview=1&t=${Date.now()}`;
+                setTimeout(() => {
+                    this.updatePreview();
+                }, 400);
             }
         }
 
