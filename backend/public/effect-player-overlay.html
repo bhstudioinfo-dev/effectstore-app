@@ -528,21 +528,27 @@
                         // Immediate check or timer based on actual video duration
                         const vipEarly = request?.vipInfo || pendingVipInfo;
                         if (vipEarly && (request.playbackType === 'vip_vinh_danh' || request.vipInfo || request.isVipHonor)) {
+                            const isTest = Boolean(request.isVipTest || vipEarly.isVipTest);
                             const leadSec = vipEarly.appearLeadTimeSec !== undefined ? Number(vipEarly.appearLeadTimeSec) : 2.0;
                             const vidDur = (video.duration && Number.isFinite(video.duration) && video.duration > 0)
                                 ? video.duration
                                 : (durationMs / 1000);
 
-                            const delayMs = Math.max(0, (vidDur - leadSec) * 1000);
-                            if (delayMs === 0) {
+                            // When testing or lead is larger than video length, show VIP frame immediately from start
+                            if (isTest || leadSec >= vidDur) {
                                 showVipFrameIfPresent(request, false);
                             } else {
-                                if (vipLeadTimer) window.clearTimeout(vipLeadTimer);
-                                vipLeadTimer = window.setTimeout(() => {
-                                    if (activeRequest === request && !isVipFrameShown) {
-                                        showVipFrameIfPresent(request, false);
-                                    }
-                                }, delayMs);
+                                const delayMs = Math.max(0, (vidDur - leadSec) * 1000);
+                                if (delayMs === 0) {
+                                    showVipFrameIfPresent(request, false);
+                                } else {
+                                    if (vipLeadTimer) window.clearTimeout(vipLeadTimer);
+                                    vipLeadTimer = window.setTimeout(() => {
+                                        if (activeRequest === request && !isVipFrameShown) {
+                                            showVipFrameIfPresent(request, false);
+                                        }
+                                    }, delayMs);
+                                }
                             }
                         }
 

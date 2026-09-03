@@ -943,6 +943,17 @@
             if (!item) return;
 
             const btn = event?.currentTarget || document.querySelector(`button[data-vip-test-id="${id}"]`);
+            return this.testPlayItem(item, btn);
+        }
+
+        async testPlayItem(item, btn) {
+            if (!item || !item.effectId) {
+                if (window.app && typeof window.app.showNotification === 'function') {
+                    window.app.showNotification('Không tìm thấy hiệu ứng để phát thử!', 'warning');
+                }
+                return;
+            }
+
             if (btn) {
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang phát...';
@@ -952,19 +963,18 @@
                 const token = window.app?.authToken || localStorage.getItem('token');
                 const apiUrl = window.app?.API_URL || 'http://127.0.0.1:9000';
                 
+                const itemWithTest = { ...item, isVipTest: true };
+
                 // 1. Send VIP honor intent over WebSocket directly so overlay is primed
                 if (window.app?.ws && window.app.ws.readyState === WebSocket.OPEN) {
                     const vipPayload = {
                         isVipHonor: true,
-                        vipInfo: item,
+                        isVipTest: true,
+                        vipInfo: itemWithTest,
                         effectId: item.effectId
                     };
                     window.app.ws.send(JSON.stringify({
                         event: 'vip_honor_playback_request',
-                        data: vipPayload
-                    }));
-                    window.app.ws.send(JSON.stringify({
-                        event: 'challenge_wheel_spin',
                         data: vipPayload
                     }));
                 }
@@ -978,7 +988,9 @@
                     },
                     body: JSON.stringify({
                         effectId: item.effectId,
-                        vipInfo: item
+                        isVipHonor: true,
+                        isVipTest: true,
+                        vipInfo: itemWithTest
                     })
                 });
 
@@ -988,7 +1000,7 @@
                 }
 
                 if (window.app && typeof window.app.showNotification === 'function') {
-                    window.app.showNotification(`🎬 Đang phát vinh danh ${item.displayName}!`, 'success');
+                    window.app.showNotification(`🎬 Đang phát thử vinh danh ${item.displayName}!`, 'success');
                 }
             } catch (err) {
                 console.error('[VIP Test Play Error]', err);
@@ -1009,7 +1021,7 @@
         async testCurrentModalVip(btn) {
             const username = document.getElementById('vip-form-username')?.value.trim() || '@VIP';
             const displayName = document.getElementById('vip-form-display-name')?.value.trim() || username;
-            const effectId = document.getElementById('vip-form-effect')?.value;
+            const effectId = document.getElementById('vip-form-effect-select')?.value || document.getElementById('vip-form-effect')?.value;
             if (!effectId) {
                 if (window.app && typeof window.app.showNotification === 'function') {
                     window.app.showNotification('Vui lòng chọn hiệu ứng trước khi phát thử!', 'warning');
@@ -1052,7 +1064,7 @@
                 displayName,
                 customAvatar: this.tempAvatarData || '',
                 effectId,
-                effectName: document.getElementById('vip-form-effect')?.selectedOptions?.[0]?.text || 'Hiệu ứng VIP',
+                effectName: document.getElementById('vip-form-effect-select')?.selectedOptions?.[0]?.text || 'Hiệu ứng VIP',
                 frameSourceType,
                 frameUrl,
                 frameName,
@@ -1069,10 +1081,11 @@
                 avatarCustomSize,
                 nameCustomX,
                 nameCustomY,
-                nameCustomSize
+                nameCustomSize,
+                isVipTest: true
             };
 
-            await this.testVip(tempItem, btn);
+            await this.testPlayItem(tempItem, btn);
         }
 
         // Check and trigger VIP Honor sequence on live TikTok events
