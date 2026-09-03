@@ -621,26 +621,55 @@
                 previewImg.style.filter = 'none';
             }
 
-            // Real VIP Frame overlay in Preview Modal: Use HD transparent frame so there is NO black box and avatar sits neatly underneath
+            // Real VIP Frame overlay in Preview Modal (Supports WebM Animated Frame via Transparent Canvas)
             const frameVal = document.getElementById('vip-form-frame-preset')?.value || 'frame_ho_trang';
+            const foundPreset = this.presetFrames.find(f => f.id === frameVal);
             const frameVideo = document.getElementById('vip-preview-frame-video');
+            const frameCanvas = document.getElementById('vip-preview-frame-canvas');
+            const isWebm = frameVal === 'frame_ho_trang' || (foundPreset && foundPreset.isVideo);
 
-            if (frameVideo) {
-                frameVideo.style.display = 'none';
-                frameVideo.pause();
+            // Bind continuous 60fps canvas renderer loop for smooth WebM animation without black box
+            if (!this._previewCanvasLoopBound) {
+                this._previewCanvasLoopBound = true;
+                const canvasLoop = () => {
+                    const c = document.getElementById('vip-preview-frame-canvas');
+                    const v = document.getElementById('vip-preview-frame-video');
+                    if (c && v && v.readyState >= 2 && !v.paused && c.style.display !== 'none') {
+                        const ctx = c.getContext('2d');
+                        ctx.clearRect(0, 0, c.width, c.height);
+                        ctx.drawImage(v, 0, 0, c.width, c.height);
+                    }
+                    requestAnimationFrame(canvasLoop);
+                };
+                requestAnimationFrame(canvasLoop);
             }
 
-            if (previewFrameImg) {
-                let staticSrc = 'assets/frames/khung_ho_trang.png';
-                if (frameVal === 'frame_love' || frameVal.includes('love')) staticSrc = 'assets/frames/khung_love.png';
-                else if (frameVal === 'frame_rong_bang' || frameVal.includes('rong_bang') || frameVal.includes('rồng băng')) staticSrc = 'assets/frames/khung_rong_bang.png';
-                else if (frameVal === 'frame_rong_lua' || frameVal.includes('rong_lua') || frameVal.includes('rồng lửa')) staticSrc = 'assets/frames/khung_rong_lua.png';
-                else if (frameVal === 'custom_svga' && this.tempSvgaData?.url) staticSrc = this.tempSvgaData.url;
+            if (isWebm) {
+                if (frameVideo) {
+                    if (!frameVideo.src.includes('khung_ho_trang.webm')) {
+                        frameVideo.src = 'assets/frames/khung_ho_trang.webm';
+                    }
+                    frameVideo.play().catch(() => {});
+                }
+                if (frameCanvas) {
+                    frameCanvas.style.display = 'block';
+                    frameCanvas.style.zIndex = '5';
+                }
+                if (previewFrameImg) previewFrameImg.style.display = 'none';
+            } else {
+                if (frameVideo) frameVideo.pause();
+                if (frameCanvas) frameCanvas.style.display = 'none';
+                if (previewFrameImg) {
+                    let staticSrc = 'assets/frames/khung_love.png';
+                    if (frameVal === 'frame_rong_bang' || frameVal.includes('rong_bang')) staticSrc = 'assets/frames/khung_rong_bang.png';
+                    else if (frameVal === 'frame_rong_lua' || frameVal.includes('rong_lua')) staticSrc = 'assets/frames/khung_rong_lua.png';
+                    else if (frameVal === 'custom_svga' && this.tempSvgaData?.url) staticSrc = this.tempSvgaData.url;
 
-                previewFrameImg.src = staticSrc;
-                previewFrameImg.style.display = 'block';
-                previewFrameImg.style.zIndex = '5';
-                previewFrameImg.style.filter = 'none';
+                    previewFrameImg.src = staticSrc;
+                    previewFrameImg.style.display = 'block';
+                    previewFrameImg.style.zIndex = '5';
+                    previewFrameImg.style.filter = 'none';
+                }
             }
 
             // Vibrant, snug ambient backdrop halo & shadow (LỚP DƯỚI CÙNG z-index: 1)
