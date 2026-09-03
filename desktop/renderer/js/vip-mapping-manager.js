@@ -599,12 +599,15 @@
             const previewFrameImg = document.getElementById('vip-preview-frame-img');
             const previewBackdropGlow = document.getElementById('vip-preview-backdrop-aura');
 
-            // Name sits directly on the frame's ribbon banner
+            // Name sits directly on the frame's ribbon banner (z-index: 10 TOP)
             if (previewName) {
                 previewName.textContent = displayName;
                 previewName.style.left = `${nameX}%`;
                 previewName.style.top = `${nameY}%`;
                 previewName.style.fontSize = `${nameSize}px`;
+                previewName.style.zIndex = '10';
+                previewName.style.display = 'block';
+                previewName.style.visibility = 'visible';
                 previewName.style.bottom = 'auto';
             }
 
@@ -632,7 +635,7 @@
                 previewFrameImg.src = staticSrc;
                 previewFrameImg.style.display = 'block';
                 previewFrameImg.style.zIndex = '5';
-                previewFrameImg.style.filter = 'drop-shadow(0 6px 14px rgba(0,0,0,0.85))';
+                previewFrameImg.style.filter = 'none';
             }
 
             if (frameVideo) {

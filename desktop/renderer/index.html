@@ -3868,19 +3868,17 @@
                                     
                                     <!-- Frame & Avatar & In-Ribbon Name Wrapper -->
                                     <div style="position:relative; width:110px; height:110px; display:flex; align-items:center; justify-content:center; z-index:2;">
-                                        <!-- Avatar Photo (100% Natural, Original Crisp Color - Placed BEHIND the decorative frame border) -->
+                                        <!-- Avatar Photo (100% Natural, Original Crisp Color - Placed at z-index: 2 BEHIND the decorative frame border) -->
                                         <img id="vip-preview-img" src="https://ui-avatars.com/api/?name=VIP&background=1e293b&color=fbbf24&bold=true" 
                                             style="width:58px; height:58px; border-radius:50%; object-fit:cover; position:absolute; top:48.5%; left:50%; transform:translate(-50%, -50%); z-index:2; border:none; outline:none; filter:none; box-shadow:none; image-rendering:-webkit-optimize-contrast;">
                                         
-                                        <!-- Real PNG Frame Image / WebM Animated Video - Placed ON TOP of Avatar edge -->
+                                        <!-- Real PNG Frame Image - Placed at z-index: 5 ON TOP of Avatar edge -->
                                         <img id="vip-preview-frame-img" src="assets/frames/khung_ho_trang.png" 
-                                            style="width:110px; height:110px; object-fit:contain; position:absolute; inset:0; z-index:3; pointer-events:none; filter:drop-shadow(0 6px 14px rgba(0,0,0,0.85));">
-                                        <video id="vip-preview-frame-video" src="assets/frames/khung_ho_trang.webm" autoplay loop muted playsinline
-                                            style="width:110px; height:110px; object-fit:contain; position:absolute; inset:0; z-index:3; pointer-events:none; filter:drop-shadow(0 6px 14px rgba(0,0,0,0.85)); display:none;"></video>
+                                            style="width:110px; height:110px; object-fit:contain; position:absolute; inset:0; z-index:5; pointer-events:none; filter:none;">
                                         
-                                        <!-- Name text placed neatly inside the bottom dark ribbon banner -->
+                                        <!-- Name text placed neatly inside the bottom dark ribbon banner - Placed at z-index: 10 ON TOP of frame ribbon -->
                                         <div id="vip-preview-name" 
-                                            style="position:absolute; top:80%; left:50%; transform:translate(-50%, -50%); width:52px; text-align:center; font-family:'Be Vietnam Pro','Inter',-apple-system,sans-serif; font-size:8px; font-weight:800; color:#ffffff; letter-spacing:0.2px; text-shadow:0 1px 2px #000, 0 0 3px #000, 0 0 5px rgba(0,0,0,0.9); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; z-index:4; pointer-events:none; line-height:1;">
+                                            style="position:absolute; top:80%; left:50%; transform:translate(-50%, -50%); width:52px; text-align:center; font-family:'Be Vietnam Pro','Inter',-apple-system,sans-serif; font-size:8px; font-weight:800; color:#ffffff; letter-spacing:0.2px; text-shadow:0 1px 2px #000, 0 0 3px #000, 0 0 5px rgba(0,0,0,0.9); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; z-index:10; pointer-events:none; line-height:1;">
                                             VIP
                                         </div>
                                     </div>
