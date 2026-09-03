@@ -15,7 +15,7 @@
             this.tempAvatarData = null;
 
             this.presetFrames = [
-                { id: 'frame_ho_trang', name: '🐅 Khung Hổ Trắng Hoàng Kim (Chuyển Động WebM)', url: 'assets/frames/khung_ho_trang.webm', color: '#fbbf24', icon: '🐅', isVideo: true },
+                { id: 'frame_ho_trang', name: '🐅 Khung Hổ Trắng Hoàng Kim', url: 'assets/frames/khung_ho_trang.webm', color: '#fbbf24', icon: '🐅', isVideo: true },
                 { id: 'frame_rong_lua', name: '🔥 Khung Rồng Lửa Hỏa Long', url: 'assets/frames/khung_rong_lua.png', color: '#ef4444', icon: '🔥' },
                 { id: 'frame_rong_bang', name: '❄️ Khung Rồng Băng Hàn Khí', url: 'assets/frames/khung_rong_bang.png', color: '#38bdf8', icon: '❄️' },
                 { id: 'frame_love', name: '💖 Khung Love Cánh Thiên Thần', url: 'assets/frames/khung_love.png', color: '#f472b6', icon: '💖' }
