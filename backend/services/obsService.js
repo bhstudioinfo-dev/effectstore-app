@@ -277,6 +277,16 @@ class OBSService {
                 } catch (_e) {}
             }
 
+            // Clean up any obsolete legacy individual effect_<id> browser sources from OBS
+            try {
+                for (const inp of inputs) {
+                    if (inp.inputName && inp.inputName.startsWith('effect_') && inp.inputName !== 'effect_player' && !inp.inputName.startsWith('effect_player')) {
+                        console.log(`🧹 Removing obsolete legacy OBS input: ${inp.inputName}`);
+                        await this.obs.call('RemoveInput', { inputName: inp.inputName }).catch(() => {});
+                    }
+                }
+            } catch (_e) {}
+
             console.log(`Prepared OBS browser source: effect_player on scene [${targetScene}]`);
             return true;
         } catch (err) {

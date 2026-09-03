@@ -113,7 +113,7 @@ class PlaybackManager {
             }
         }
 
-        if (['test_mapping', 'preview_effect', 'live_mapping'].includes(item.playbackType) && !item.effectUrl) {
+        if (['test_mapping', 'preview_effect', 'live_mapping', 'vip_vinh_danh'].includes(item.playbackType) && !item.effectUrl) {
             throw new Error('Không tìm thấy địa chỉ phát hiệu ứng.');
         }
 
@@ -121,7 +121,7 @@ class PlaybackManager {
         eventBus.emit('effect_playback_started', item);
 
         // 2. Playback Mechanism
-        if (item.playbackType === 'test_mapping' || item.playbackType === 'preview_effect' || item.playbackType === 'live_mapping') {
+        if (['test_mapping', 'preview_effect', 'live_mapping', 'vip_vinh_danh'].includes(item.playbackType)) {
             this.startEffectPlayerPlayback(item, onFinishedCallback);
         } else {
             // Legacy OBS Trigger
