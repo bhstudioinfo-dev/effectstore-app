@@ -616,25 +616,28 @@
                 previewImg.style.height = `${avatarSize}px`;
             }
 
-            // Real VIP Frame overlay (Supports WebM animated frame video and PNG static frame)
+            // Real VIP Frame overlay in Preview Modal
             const frameVal = document.getElementById('vip-form-frame-preset')?.value || 'frame_ho_trang';
             const foundPreset = this.presetFrames.find(f => f.id === frameVal);
             const frameVideo = document.getElementById('vip-preview-frame-video');
-            const targetUrl = foundPreset?.url || (frameVal === 'custom_svga' && this.tempSvgaData?.url) || '';
+            let targetUrl = foundPreset?.url || (frameVal === 'custom_svga' && this.tempSvgaData?.url) || '';
 
-            if (targetUrl.endsWith('.webm') || targetUrl.endsWith('.mp4')) {
-                if (frameVideo) {
-                    if (!frameVideo.src.includes(targetUrl)) {
-                        frameVideo.src = targetUrl;
-                    }
-                    frameVideo.style.display = 'block';
-                    frameVideo.play().catch(() => {});
+            if (targetUrl.endsWith('.webm') || targetUrl.includes('khung_ho_trang')) {
+                // In preview mockup, use crisp transparent PNG for pixel-perfect alignment
+                if (previewFrameImg) {
+                    previewFrameImg.src = 'assets/frames/khung_ho_trang.png';
+                    previewFrameImg.style.display = 'block';
+                    previewFrameImg.style.zIndex = '3';
                 }
-                if (previewFrameImg) previewFrameImg.style.display = 'none';
+                if (frameVideo) {
+                    frameVideo.style.display = 'none';
+                    frameVideo.pause();
+                }
             } else if (targetUrl) {
                 if (previewFrameImg) {
                     previewFrameImg.src = targetUrl;
                     previewFrameImg.style.display = 'block';
+                    previewFrameImg.style.zIndex = '3';
                 }
                 if (frameVideo) {
                     frameVideo.style.display = 'none';
