@@ -2737,6 +2737,9 @@ class EffectStoreApp {
         }
 
         const processedText = templateText.replace(/{username}/g, "Nguyễn Văn A");
+        this.clearLegacySystemPreviewVoiceCache(processedText);
+        this.speakText(processedText, true);
+    }
 
     onVolumeChange(value) {
         const volNum = Math.max(0, Math.min(100, Number(value) || 0));
@@ -2747,7 +2750,7 @@ class EffectStoreApp {
         if (this.currentAudio) {
             this.currentAudio.volume = this.ttsVolume;
         }
-    },
+    }
 
     stopAllTTS() {
         this.ttsQueue = [];
@@ -2771,7 +2774,7 @@ class EffectStoreApp {
             }
         } catch (_e) {}
         this.showNotification('info', '🛑 Đã dừng toàn bộ giọng đọc và làm trống hàng đợi.');
-    },
+    }
 
     onVoiceSettingToggle() {
         this.savePreferences();
@@ -2781,7 +2784,7 @@ class EffectStoreApp {
         if (!giftEnabled && !followEnabled && !shareEnabled) {
             this.stopAllTTS();
         }
-    },
+    }
 
     insertShareVariable(variable) {
         const textarea = document.getElementById('settings-tts-share-template');
@@ -2794,7 +2797,7 @@ class EffectStoreApp {
             textarea.selectionStart = textarea.selectionEnd = start + variable.length;
             this.savePreferences();
         }
-    },
+    }
 
     testShareVoicePreview() {
         this.savePreferences();
@@ -2806,7 +2809,7 @@ class EffectStoreApp {
         const processedText = templateText.replace(/{username}/g, "Nguyễn Văn A");
         this.clearLegacySystemPreviewVoiceCache(processedText);
         this.speakText(processedText, true);
-    },
+    }
 
     testGiftSoundPing() {
         try {
@@ -2825,7 +2828,7 @@ class EffectStoreApp {
         } catch (_e) {
             this.showNotification('info', '🔔 Ping!');
         }
-    },
+    }
 
     async processTTSQueue() {
         if (this.ttsQueue.length === 0) {
@@ -2889,7 +2892,7 @@ class EffectStoreApp {
         } catch (error) {
             this.speakWebSpeech(text);
         }
-    },
+    }
 
     speakWebSpeech(text) {
         if ('speechSynthesis' in window) {
@@ -2905,7 +2908,7 @@ class EffectStoreApp {
         } else {
             this.processTTSQueue();
         }
-    },
+    }
 
     removeFromCart(effectId) { this.cart = this.cart.filter(e => (e.id || e._id) !== effectId); this.saveCart(); this.renderEffects(); this.showNotification('success', '✅ Đã xóa khỏi giỏ!'); }
     async checkout() {
