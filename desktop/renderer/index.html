@@ -1981,343 +1981,246 @@
                         </div>
                     </div>
                     <div class="es-accordion-body">
-                        <!-- AI Streamer Assistant Panel (Gán hiệu ứng) -->
-                        <div
-                            style="background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.2); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative; margin-bottom:18px;">
-                            <div style="display:flex; align-items:center; justify-content:space-between; width:100%; flex-wrap:wrap; gap:8px;">
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <input type="checkbox" id="ai-assistant-enabled-gm" class="ai-assistant-enabled-input"
-                                        style="width:16px; height:16px; cursor:pointer;"
-                                        onchange="app.saveAiAssistantConfig(this)">
-                                    <label for="ai-assistant-enabled-gm"
-                                        style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">🤖
-                                        Trợ lý AI Cà Khịa Live Chat</label>
-                                    <span
-                                        style="font-size:10px; background:rgba(139,92,246,0.2); color:#a78bfa; padding:2px 8px; border-radius:10px; font-weight:700;">PRO
-                                        AI</span>
-                                </div>
-
-                                <!-- Volume Slider & Panic Mute Controls inside Panel Header -->
-                                <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
-                                    <div style="display:flex; align-items:center; gap:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); padding:3px 10px; border-radius:8px;">
-                                        <span style="font-size:12px;">🔊</span>
-                                        <input type="range" id="settings-tts-volume" min="0" max="100" value="60"
-                                            style="width:70px; accent-color:#10b981; cursor:pointer;"
-                                            oninput="app.onVolumeChange(this.value)">
-                                        <span id="settings-tts-volume-label" style="font-size:10px; font-weight:800; color:#10b981; min-width:28px;">60%</span>
-                                    </div>
-                                    <button onclick="app.stopAllTTS()"
-                                        style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; padding:4px 10px; border-radius:6px; font-size:10px; font-weight:700; cursor:pointer; outline:none; display:flex; align-items:center; gap:4px;">
-                                        🛑 Dừng nói
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:8px;">
-                                <div>
-                                    <label
-                                        style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Tính
-                                        cách AI</label>
-                                    <select class="ai-assistant-persona-input"
-                                        style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;"
-                                        onchange="app.saveAiAssistantConfig(this)">
-                                        <option value="sassy" selected>🔥 Xéo sắc, Cà khịa</option>
-                                        <option value="funny">😂 Hài hước, Nhí nhảnh</option>
-                                        <option value="sweet">🌸 Ngọt ngào, Dịu dàng</option>
-                                        <option value="smart">🎓 Tinh tế, Thông thái</option>
-                                    </select>
+                        <!-- MASTER STUDIO TOPBAR -->
+                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:6px 4px 14px 4px; border-bottom:1px solid rgba(255,255,255,0.07); margin-bottom:16px;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="width:32px; height:32px; border-radius:10px; background:linear-gradient(135deg, #8b5cf6, #10b981); display:flex; align-items:center; justify-content:center; font-size:16px; box-shadow:0 0 12px rgba(139,92,246,0.3);">
+                                    🎙️
                                 </div>
                                 <div>
-                                    <label
-                                        style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Giọng
-                                        nói AI</label>
-                                    <select class="ai-assistant-eleven-voice-input"
-                                        style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;"
-                                        onchange="app.onElevenVoiceSelectChange(this)">
-                                        <option value="pNInz6obpgDQGcFmaJgB" selected>👨 Adam (Nam trầm ấm - v3 Mặc định)
-                                        </option>
-                                        <option value="N2lVS1w4EtoT3dr4eOWO">👦 Callum (Nam trẻ sôi nổi - v3 Hào hứng)</option>
-                                        <option value="google_female_vi">👩 Google TTS (Nữ Tiếng Việt)</option>
-                                        <option value="custom">✏️ Dán Voice ID Tùy Chỉnh (Dành cho Giọng Thư viện / Voice Lab)
-                                        </option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label
-                                        style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Thời
-                                        gian chờ (Cooldown)</label>
-                                    <select class="ai-assistant-cooldown-input"
-                                        style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;"
-                                        onchange="app.saveAiAssistantConfig(this)">
-                                        <option value="15">15 giây</option>
-                                        <option value="20" selected>20 giây</option>
-                                        <option value="30">30 giây</option>
-                                        <option value="60">60 giây</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label
-                                        style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Chế
-                                        độ phản hồi</label>
-                                    <select class="ai-assistant-donator-only-input"
-                                        style="width:100%; font-size:10px; padding:3px; height:24px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;"
-                                        onchange="app.saveAiAssistantConfig(this)">
-                                        <option value="false" selected>🌐 Tất cả Viewer</option>
-                                        <option value="true">👑 Chỉ Viewer đã Tặng quà (VIP)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label
-                                        style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Ngưỡng
-                                        quà VIP trong phiên</label>
-                                    <div style="display:flex;align-items:center;gap:5px;">
-                                        <input type="number" class="ai-assistant-min-donator-coins-input" value="10" min="1"
-                                            step="1" inputmode="numeric"
-                                            style="width:100%;font-size:10px;padding:3px 7px;height:24px;box-sizing:border-box;background:#181d2a;border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;outline:none;"
-                                            onchange="app.saveAiAssistantConfig(this)">
-                                        <span style="font-size:10px;color:#fbbf24;white-space:nowrap;">xu+</span>
+                                    <div style="font-size:14px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
+                                        Studio Tương Tác Giọng Nói & Trợ Lý AI Live
+                                        <span style="font-size:9px; background:linear-gradient(135deg, rgba(139,92,246,0.2), rgba(16,185,129,0.2)); color:#a7f3d0; border:1px solid rgba(16,185,129,0.3); padding:2px 7px; border-radius:6px; font-weight:800;">DUAL STUDIO</span>
                                     </div>
                                 </div>
                             </div>
-                            <input type="text" class="ai-assistant-custom-voice-input upload-form-input"
-                                placeholder="👉 Dán mã Voice ID tại đây (Ví dụ: AZnzlk1XvdvUeBnXmlld)..."
-                                style="display:none; width:100%; font-size:11px; padding:6px 10px; margin-top:6px; border-color:#8b5cf6; box-sizing:border-box;"
-                                oninput="app.saveAiAssistantConfig(this)" onchange="app.saveAiAssistantConfig(this)">
 
-                            <!-- AI Character Usage & Top-Up Bar -->
-                            <div
-                                style="display:flex; align-items:center; justify-content:space-between; background:rgba(15,23,42,0.6); border:1px solid rgba(139,92,246,0.3); border-radius:10px; padding:10px 14px; margin-top:8px;">
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <span style="color:#c4b5fd; font-weight:700; font-size:12px;">📊 Dung lượng AI tháng
-                                        này:</span>
-                                    <span id="ai-usage-meter-text" style="color:#fff; font-weight:800; font-size:12px;">0 /
-                                        1,000 ký tự giọng tùy chỉnh</span>
-                                    <span id="ai-system-gift-meter-text"
-                                        style="color:#86efac; font-weight:800; font-size:11px;">🎁 Quà tặng kèm: 0 / 5.000 ký tự
-                                        giọng hệ thống</span>
-                                    <span id="ai-usage-plan-badge"
-                                        style="background:rgba(139,92,246,0.25); color:#ddd6fe; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800; border:1px solid rgba(139,92,246,0.4);">Gói
-                                        Free</span>
+                            <!-- Master Audio Volume & Killswitch -->
+                            <div style="display:flex; align-items:center; gap:12px; margin-left:auto;">
+                                <div style="display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.1); padding:4px 12px; border-radius:8px;">
+                                    <span style="font-size:12px;">🔊</span>
+                                    <label for="settings-tts-volume" style="font-size:11px; font-weight:700; color:#cbd5e1; white-space:nowrap;">Âm lượng:</label>
+                                    <input type="range" id="settings-tts-volume" min="0" max="100" value="60" 
+                                        style="width:75px; accent-color:#10b981; cursor:pointer;"
+                                        oninput="app.onVolumeChange(this.value)">
+                                    <span id="settings-tts-volume-label" style="font-size:11px; font-weight:800; color:#10b981; min-width:30px;">60%</span>
                                 </div>
-                                <button onclick="app.showBuyAiAddonModal()"
-                                    style="background:linear-gradient(135deg, #f59e0b, #ec4899); border:none; color:#fff; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:800; cursor:pointer; outline:none; box-shadow:0 4px 12px rgba(245,158,11,0.35); transition:transform 0.15s;"
-                                    onmouseover="this.style.transform='scale(1.04)'"
-                                    onmouseout="this.style.transform='scale(1)'">
-                                    ⚡ Nạp lẻ ký tự (Chỉ từ 10k)
+
+                                <button onclick="app.stopAllTTS()" 
+                                    style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; padding:5px 12px; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; outline:none; display:flex; align-items:center; gap:5px; transition:all 0.2s;"
+                                    onmouseover="this.style.background='rgba(239,68,68,0.3)'"
+                                    onmouseout="this.style.background='rgba(239,68,68,0.15)'">
+                                    🛑 Dừng nói
                                 </button>
-                            </div>
-
-                            <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
-                                <span style="font-size:10px; color:#a78bfa;">✨ Hết ký tự giọng tùy chỉnh sẽ dùng Quà tặng kèm
-                                    5.000 ký tự giọng hệ thống. Hết cả hai, bình luận vẫn hiển thị nhưng Trợ lý sẽ tạm ngừng
-                                    phản hồi.</span>
-                                <button onclick="app.testAiAssistantSpeech()"
-                                    style="background:rgba(139,92,246,0.25); border:1px solid rgba(139,92,246,0.4); color:#c4b5fd; padding:4px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;"
-                                    onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe thử AI Cà
-                                    Khịa</button>
                             </div>
                         </div>
 
-                        <!-- TTS & Quick Settings Bar (UPGRADED 3-COLUMN VOICE SCRIPT) -->
-                        <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 0.8fr; gap: 12px; margin-bottom: 18px;">
-                            <!-- Gift Voice Script Panel -->
-                            <div
-                                style="background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.1); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative;">
-                                <!-- Title and Checkbox -->
-                                <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                        <!-- 50/50 DUAL STUDIO GRID -->
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px;">
+                            
+                            <!-- LEFT PANE: AI STREAMER ASSISTANT -->
+                            <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.2); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+                                
+                                <div style="display:flex; align-items:center; justify-content:space-between;">
                                     <div style="display:flex; align-items:center; gap:8px;">
-                                        <input type="checkbox" id="settings-tts-gift" checked
-                                            style="width:16px; height:16px; cursor:pointer; accent-color:#10b981;" onchange="app.onVoiceSettingToggle()">
-                                        <label for="settings-tts-gift"
-                                            style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">🎁
-                                            Kịch bản thoại quà</label>
+                                        <input type="checkbox" id="ai-assistant-enabled-gm" class="ai-assistant-enabled-input"
+                                            style="width:16px; height:16px; cursor:pointer; accent-color:#8b5cf6;"
+                                            onchange="app.saveAiAssistantConfig(this)">
+                                        <label for="ai-assistant-enabled-gm"
+                                            style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px;">
+                                            🤖 Trợ lý AI Cà Khịa Live Chat
+                                        </label>
                                     </div>
-                                    <div style="display:flex; align-items:center; gap:6px;">
-                                        <label style="font-size:10px; color:var(--text-muted); white-space:nowrap;">Ngưỡng
-                                            đọc:</label>
-                                        <input type="number" id="settings-tts-threshold" value="10" min="0"
-                                            style="width:40px; padding:2px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; font-size:10px; outline:none; text-align:center;">
-                                        <span style="font-size:10px; color:var(--text-muted);">xu</span>
-                                    </div>
+                                    <span style="font-size:10px; background:rgba(139,92,246,0.25); color:#c4b5fd; border:1px solid rgba(139,92,246,0.4); padding:2px 8px; border-radius:8px; font-weight:800;">PRO AI</span>
                                 </div>
 
-                                <!-- Voice Settings Row -->
-                                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                                    <span style="font-size:10px; color:#6ee7b7; background:rgba(16,185,129,0.1); padding:2px 6px; border-radius:4px;">⚡ Tự gom combo</span>
-                                    <div style="display:flex; align-items:center; gap:4px;">
-                                        <label
-                                            style="font-size:10px; color:var(--text-muted); white-space:nowrap;">Tốc
-                                            độ:</label>
-                                        <select id="settings-tts-speed"
-                                            style="font-size:10px; padding:2px 4px; height:22px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;">
-                                            <option value="0.8">0.8x</option>
-                                            <option value="1.0" selected>1.0x</option>
-                                            <option value="1.2">1.2x</option>
-                                            <option value="1.5">1.5x</option>
+                                <!-- AI Parameters in 2x2 Clean Layout -->
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div>
+                                        <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">🎭 Tính cách AI</label>
+                                        <select class="ai-assistant-persona-input"
+                                            style="width:100%; font-size:11px; padding:5px 8px; background:#181d2a; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; outline:none; cursor:pointer;"
+                                            onchange="app.saveAiAssistantConfig(this)">
+                                            <option value="sassy" selected>🔥 Xéo sắc, Cà khịa</option>
+                                            <option value="funny">😂 Hài hước, Nhí nhảnh</option>
+                                            <option value="sweet">🌸 Ngọt ngào, Dịu dàng</option>
+                                            <option value="smart">🎓 Tinh tế, Thông thái</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">🎙️ Giọng nói AI</label>
+                                        <select class="ai-assistant-eleven-voice-input"
+                                            style="width:100%; font-size:11px; padding:5px 8px; background:#181d2a; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; outline:none; cursor:pointer;"
+                                            onchange="app.onElevenVoiceSelectChange(this)">
+                                            <option value="pNInz6obpgDQGcFmaJgB" selected>👨 Adam (Nam trầm ấm)</option>
+                                            <option value="N2lVS1w4EtoT3dr4eOWO">👦 Callum (Nam trẻ sôi nổi)</option>
+                                            <option value="google_female_vi">👩 Google TTS (Nữ Tiếng Việt)</option>
+                                            <option value="custom">✏️ Dán Voice ID Tùy Chỉnh</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">⏱️ Thời gian chờ (Cooldown)</label>
+                                        <select class="ai-assistant-cooldown-input"
+                                            style="width:100%; font-size:11px; padding:5px 8px; background:#181d2a; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; outline:none; cursor:pointer;"
+                                            onchange="app.saveAiAssistantConfig(this)">
+                                            <option value="15">15 giây</option>
+                                            <option value="20" selected>20 giây</option>
+                                            <option value="30">30 giây</option>
+                                            <option value="60">60 giây</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">👑 Đối tượng tương tác</label>
+                                        <select class="ai-assistant-donator-only-input"
+                                            style="width:100%; font-size:11px; padding:5px 8px; background:#181d2a; border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; outline:none; cursor:pointer;"
+                                            onchange="app.saveAiAssistantConfig(this)">
+                                            <option value="false" selected>🌐 Tất cả Viewer</option>
+                                            <option value="true">👑 Chỉ VIP Tặng quà</option>
                                         </select>
                                     </div>
                                 </div>
 
-                                <!-- Script Template Textarea -->
-                                <div>
-                                    <textarea id="settings-tts-template" rows="2"
-                                        style="width:100%; font-size:11px; padding:6px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; resize:none; outline:none; font-family:inherit; line-height:1.4; box-sizing:border-box;"
-                                        placeholder="Ví dụ: Cảm ơn {username} đã tặng {quantity} {giftName} ❤️"></textarea>
+                                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <label style="font-size:10px; color:var(--text-muted);">Ngưỡng quà VIP:</label>
+                                        <input type="number" class="ai-assistant-min-donator-coins-input" value="10" min="1" step="1" inputmode="numeric"
+                                            style="width:48px; font-size:11px; padding:3px 6px; background:#181d2a; border:1px solid rgba(255,255,255,0.12); border-radius:4px; color:#fff; outline:none; text-align:center;"
+                                            onchange="app.saveAiAssistantConfig(this)">
+                                        <span style="font-size:10px; color:#fbbf24;">xu+</span>
+                                    </div>
+
+                                    <button onclick="app.testAiAssistantSpeech()"
+                                        style="background:rgba(139,92,246,0.2); border:1px solid rgba(139,92,246,0.35); color:#c4b5fd; padding:4px 10px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none;"
+                                        onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                                        🔊 Nghe thử AI
+                                    </button>
                                 </div>
 
-                                <!-- Insert variables & Templates Actions -->
-                                <div style="display:flex; align-items:center; gap:8px; position:relative;">
-                                    <!-- Insert variables dropdown -->
-                                    <div style="position:relative;">
+                                <input type="text" class="ai-assistant-custom-voice-input upload-form-input"
+                                    placeholder="👉 Dán mã Voice ID tại đây (Ví dụ: AZnzlk1XvdvUeBnXmlld)..."
+                                    style="display:none; width:100%; font-size:11px; padding:6px 10px; border-color:#8b5cf6; box-sizing:border-box;"
+                                    oninput="app.saveAiAssistantConfig(this)" onchange="app.saveAiAssistantConfig(this)">
+
+                                <!-- AI Usage Bar & Top-Up -->
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.35); border:1px solid rgba(139,92,246,0.2); border-radius:8px; padding:8px 10px; margin-top:auto;">
+                                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                        <span style="color:#c4b5fd; font-weight:700; font-size:11px;">📊 Dung lượng:</span>
+                                        <span id="ai-usage-meter-text" style="color:#fff; font-weight:800; font-size:11px;">0 / 1,000 ký tự</span>
+                                        <span id="ai-usage-plan-badge" style="background:rgba(139,92,246,0.25); color:#ddd6fe; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:800;">Gói Free</span>
+                                    </div>
+
+                                    <button onclick="app.showBuyAiAddonModal()"
+                                        style="background:linear-gradient(135deg, #f59e0b, #ec4899); border:none; color:#fff; padding:4px 10px; border-radius:6px; font-size:10px; font-weight:800; cursor:pointer; outline:none;">
+                                        ⚡ Nạp thêm (từ 10k)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- RIGHT PANE: 3 CORE VOICE & SOUND SCRIPTS -->
+                            <div style="display:flex; flex-direction:column; gap:10px;">
+                                
+                                <!-- Card 1: Gift Voice Script -->
+                                <div style="background:rgba(16,185,129,0.04); border:1px solid rgba(16,185,129,0.18); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:8px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <input type="checkbox" id="settings-tts-gift" checked style="width:15px; height:15px; cursor:pointer; accent-color:#10b981;" onchange="app.onVoiceSettingToggle()">
+                                            <label for="settings-tts-gift" style="font-size:12px; color:#fff; font-weight:700; cursor:pointer;">🎁 Kịch bản cảm ơn Quà</label>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <span style="font-size:9px; color:#6ee7b7; background:rgba(16,185,129,0.12); padding:1px 5px; border-radius:4px;">⚡ Gom combo</span>
+                                            <div style="display:flex; align-items:center; gap:4px;">
+                                                <label style="font-size:9px; color:var(--text-muted);">≥ </label>
+                                                <input type="number" id="settings-tts-threshold" value="10" min="0"
+                                                    style="width:36px; padding:1px 3px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.15); border-radius:4px; color:#fff; font-size:10px; outline:none; text-align:center;">
+                                                <span style="font-size:9px; color:var(--text-muted);">xu</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <textarea id="settings-tts-template" rows="1"
+                                            style="width:100%; font-size:11px; padding:5px 8px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; resize:none; outline:none; font-family:inherit; line-height:1.3; box-sizing:border-box;"
+                                            placeholder="Cảm ơn {username} đã tặng {quantity} {giftName} ❤️"></textarea>
+                                    </div>
+
+                                    <div style="display:flex; align-items:center; gap:6px; position:relative;">
                                         <button onclick="app.toggleVariableMenu(event)"
-                                            style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">➕
-                                            Chèn biến</button>
+                                            style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:3px 7px; border-radius:5px; font-size:9px; cursor:pointer; font-weight:700;">➕ Chèn biến</button>
                                         <div id="variable-menu-dropdown"
-                                            style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:145px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-                                            <div onclick="app.insertVariable('{username}')"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                👤 Tên người tặng</div>
-                                            <div onclick="app.insertVariable('{giftName}')"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                🎁 Tên quà</div>
-                                            <div onclick="app.insertVariable('{quantity}')"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                🔢 Số lượng</div>
-                                            <div onclick="app.insertVariable('{coin}')"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                💰 Tổng xu</div>
+                                            style="display:none; position:absolute; bottom:26px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:4px; z-index:100; min-width:140px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                                            <div onclick="app.insertVariable('{username}')" style="padding:4px 8px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px;">👤 {username}</div>
+                                            <div onclick="app.insertVariable('{giftName}')" style="padding:4px 8px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px;">🎁 {giftName}</div>
+                                            <div onclick="app.insertVariable('{quantity}')" style="padding:4px 8px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px;">🔢 {quantity}</div>
+                                            <div onclick="app.insertVariable('{coin}')" style="padding:4px 8px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px;">💰 {coin}</div>
                                         </div>
-                                    </div>
 
-                                    <!-- Templates Dropdown -->
-                                    <div style="position:relative;">
                                         <button onclick="app.toggleTemplateMenu(event)"
-                                            style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">📋
-                                            Mẫu thoại</button>
+                                            style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:3px 7px; border-radius:5px; font-size:9px; cursor:pointer; font-weight:700;">📋 Mẫu thoại</button>
                                         <div id="template-menu-dropdown"
-                                            style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-                                            <div onclick="app.applyVoiceTemplate(1)"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                1. Cảm ơn cơ bản</div>
-                                            <div onclick="app.applyVoiceTemplate(2)"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                2. Nhiệt tình</div>
-                                            <div onclick="app.applyVoiceTemplate(3)"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                3. Bán hàng</div>
-                                            <div onclick="app.applyVoiceTemplate(4)"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                4. Ngọt ngào</div>
+                                            style="display:none; position:absolute; bottom:26px; left:60px; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:4px; z-index:100; min-width:150px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                                            <div onclick="app.applyVoiceTemplate(1)" style="padding:5px 8px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px;">1. Cảm ơn cơ bản</div>
+                                            <div onclick="app.applyVoiceTemplate(2)" style="padding:5px 8px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px;">2. Nhiệt tình</div>
+                                            <div onclick="app.applyVoiceTemplate(3)" style="padding:5px 8px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px;">3. Bán hàng</div>
                                         </div>
+
+                                        <select id="settings-tts-speed" style="font-size:9px; padding:2px 4px; height:20px; background:#181d2a; border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; outline:none; cursor:pointer;">
+                                            <option value="0.8">0.8x</option>
+                                            <option value="1.0" selected>1.0x</option>
+                                            <option value="1.2">1.2x</option>
+                                        </select>
+
+                                        <button onclick="app.testVoicePreview()"
+                                            style="margin-left:auto; background:rgba(16,185,129,0.15); border:none; color:#10b981; padding:3px 8px; border-radius:5px; font-size:9px; cursor:pointer; font-weight:700;">🔊 Nghe thử</button>
+                                    </div>
+                                </div>
+
+                                <!-- Card 2: Follow Voice Script -->
+                                <div style="background:rgba(245,158,11,0.04); border:1px solid rgba(245,158,11,0.18); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:8px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <input type="checkbox" id="settings-tts-follow" checked style="width:15px; height:15px; cursor:pointer; accent-color:#f59e0b;" onchange="app.onVoiceSettingToggle()">
+                                            <label for="settings-tts-follow" style="font-size:12px; color:#fff; font-weight:700; cursor:pointer;">👤 Chào mừng Follow</label>
+                                        </div>
+                                        <span style="font-size:9px; color:#fbbf24; background:rgba(245,158,11,0.12); padding:1px 5px; border-radius:4px;">🛡️ Cooldown 60s</span>
                                     </div>
 
-                                    <!-- Test Voice Button -->
-                                    <button onclick="app.testVoicePreview()"
-                                        style="margin-left:auto; background:rgba(16,185,129,0.2); border:none; color:#10b981; padding:5px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;"
-                                        onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe
-                                        thử</button>
-                                </div>
-                            </div>
-
-                            <!-- Follow Voice Script Panel -->
-                            <div
-                                style="background:rgba(245,158,11,0.05); border:1px solid rgba(245,158,11,0.1); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px; position:relative;">
-                                <!-- Title and Checkbox -->
-                                <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-                                    <div style="display:flex; align-items:center; gap:8px;">
-                                        <input type="checkbox" id="settings-tts-follow" checked
-                                            style="width:16px; height:16px; cursor:pointer; accent-color:#f59e0b;" onchange="app.onVoiceSettingToggle()">
-                                        <label for="settings-tts-follow"
-                                            style="font-size:13px; color:#fff; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px;">👤
-                                            Chào mừng Follow</label>
+                                    <div>
+                                        <textarea id="settings-tts-follow-template" rows="1"
+                                            style="width:100%; font-size:11px; padding:5px 8px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.12); border-radius:6px; color:#fff; resize:none; outline:none; font-family:inherit; line-height:1.3; box-sizing:border-box;"
+                                            placeholder="Cảm ơn {username} đã follow kênh nhé! ❤️"></textarea>
                                     </div>
-                                    <span style="font-size:10px; color:#fbbf24; background:rgba(245,158,11,0.1); padding:2px 6px; border-radius:4px;">🛡️ Cooldown 60s</span>
-                                </div>
 
-                                <!-- Script Template Textarea -->
-                                <div>
-                                    <textarea id="settings-tts-follow-template" rows="2"
-                                        style="width:100%; font-size:11px; padding:6px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; resize:none; outline:none; font-family:inherit; line-height:1.4; box-sizing:border-box;"
-                                        placeholder="Ví dụ: Cảm ơn {username} đã follow kênh nhé! ❤️"></textarea>
-                                </div>
-
-                                <!-- Insert variables & Templates Actions -->
-                                <div style="display:flex; align-items:center; gap:8px; position:relative; margin-top:auto;">
-                                    <!-- Insert variables dropdown -->
-                                    <div style="position:relative;">
+                                    <div style="display:flex; align-items:center; gap:6px;">
                                         <button onclick="app.insertFollowVariable('{username}')"
-                                            style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">➕
-                                            {username}</button>
-                                    </div>
+                                            style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:3px 7px; border-radius:5px; font-size:9px; cursor:pointer; font-weight:700;">➕ {username}</button>
 
-                                    <!-- Templates Dropdown -->
-                                    <div style="position:relative;">
                                         <button onclick="app.toggleFollowTemplateMenu(event)"
-                                            style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; display:flex; align-items:center; gap:2px; outline:none;">📋
-                                            Mẫu thoại</button>
+                                            style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; padding:3px 7px; border-radius:5px; font-size:9px; cursor:pointer; font-weight:700;">📋 Mẫu thoại</button>
                                         <div id="follow-template-menu-dropdown"
-                                            style="display:none; position:absolute; bottom:28px; left:0; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:4px; z-index:100; min-width:150px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-                                            <div onclick="app.applyFollowVoiceTemplate(1)"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                1. Cảm ơn cơ bản</div>
-                                            <div onclick="app.applyFollowVoiceTemplate(2)"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                2. Thân thiện</div>
-                                            <div onclick="app.applyFollowVoiceTemplate(3)"
-                                                onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-                                                onmouseout="this.style.background='transparent'"
-                                                style="padding:6px 10px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px; transition:background 0.15s;">
-                                                3. Chào mừng</div>
+                                            style="display:none; position:absolute; bottom:26px; left:60px; background:#181d2a; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:4px; z-index:100; min-width:140px; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                                            <div onclick="app.applyFollowVoiceTemplate(1)" style="padding:5px 8px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px;">1. Cảm ơn cơ bản</div>
+                                            <div onclick="app.applyFollowVoiceTemplate(2)" style="padding:5px 8px; font-size:10px; color:#fff; cursor:pointer; border-radius:4px;">2. Thân thiện</div>
                                         </div>
+
+                                        <button onclick="app.testFollowVoicePreview()"
+                                            style="margin-left:auto; background:rgba(245,158,11,0.15); border:none; color:#f59e0b; padding:3px 8px; border-radius:5px; font-size:9px; cursor:pointer; font-weight:700;">🔊 Nghe thử</button>
+                                    </div>
+                                </div>
+
+                                <!-- Card 3: Sound Alert (Ping) -->
+                                <div style="background:rgba(59,130,246,0.04); border:1px solid rgba(59,130,246,0.18); border-radius:12px; padding:8px 12px; display:flex; align-items:center; justify-content:space-between;">
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <input type="checkbox" id="settings-sound-alert-quick" checked style="width:15px; height:15px; cursor:pointer; accent-color:#3b82f6;">
+                                        <label for="settings-sound-alert-quick" style="font-size:12px; color:#fff; font-weight:700; cursor:pointer;">🔔 Âm thanh Ping báo quà</label>
                                     </div>
 
-                                    <!-- Test Voice Button -->
-                                    <button onclick="app.testFollowVoicePreview()"
-                                        style="margin-left:auto; background:rgba(245,158,11,0.2); border:none; color:#f59e0b; padding:5px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none; transition:opacity 0.2s;"
-                                        onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔊 Nghe
-                                        thử</button>
-                                </div>
-                            </div>
-
-                            <!-- Sound Alert -->
-                            <div
-                                style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.1); border-radius:14px; padding: 14px; display:flex; flex-direction:column; gap:10px;">
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <input type="checkbox" id="settings-sound-alert-quick" checked
-                                        style="width:16px; height:16px; cursor:pointer; accent-color:#3b82f6;">
-                                    <label for="settings-sound-alert-quick"
-                                        style="font-size:13px; color:#fff; font-weight:700; cursor:pointer;">🔔 Chuông báo quà</label>
-                                </div>
-
-                                <div style="font-size:11px; color:#a3aed0; line-height:1.5; margin-top:4px;">
-                                    Phát âm thanh thông báo ngắn ("Ping") khi nhận được quà tặng bất kỳ để thu hút sự chú ý.
-                                </div>
-
-                                <div style="margin-top:auto; display:flex; justify-content:flex-end;">
                                     <button onclick="app.testGiftSoundPing()"
-                                        style="background:rgba(59,130,246,0.2); border:none; color:#60a5fa; padding:5px 12px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700; outline:none;"
-                                        onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">🔔 Thử chuông</button>
+                                        style="background:rgba(59,130,246,0.15); border:none; color:#60a5fa; padding:3px 8px; border-radius:5px; font-size:9px; cursor:pointer; font-weight:700;">🔔 Thử chuông</button>
                                 </div>
+
                             </div>
                         </div>
 
