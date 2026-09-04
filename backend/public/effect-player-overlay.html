@@ -145,17 +145,14 @@
                         <img id="vip-overlay-img" src="https://ui-avatars.com/api/?name=VIP&background=1e293b&color=fbbf24&bold=true" 
                             style="width:126px; height:126px; border-radius:50%; object-fit:cover; position:absolute; top:48.5%; left:50%; transform:translate(-50%, -50%); z-index:2; border:none; outline:none; filter:none; box-shadow:none; image-rendering:-webkit-optimize-contrast;">
                         
-                        <!-- Frame Layer (High-Quality Animated WebP / Static Image - Placed at z-index: 3 ON TOP of Avatar edge) -->
-                        <img id="vip-overlay-frame-img" src="assets/frames/khung_ho_trang_animated.webp"
-                            style="width:240px; height:240px; position:absolute; inset:0; z-index:3; pointer-events:none; display:none; object-fit:contain; filter:none;">
-                        
+                        <!-- Frame Layer (Div with Background Image for static frames - Placed at z-index: 3 ON TOP of Avatar edge) -->
                         <div id="vip-overlay-frame-layer" 
-                            style="width:240px; height:240px; position:absolute; inset:0; z-index:3; pointer-events:none; display:none; background-size:contain; background-position:center; background-repeat:no-repeat;">
+                            style="width:240px; height:240px; position:absolute; inset:0; z-index:3; pointer-events:none; display:none; filter:drop-shadow(0 14px 34px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(251,191,36,0.55)); background-size:contain; background-position:center; background-repeat:no-repeat;">
                         </div>
 
-                        <!-- WebM Video Layer (Animated Motion fallback - Placed at z-index: 3 ON TOP of Avatar edge) -->
+                        <!-- WebM Video Layer (Animated Motion - Placed at z-index: 3 ON TOP of Avatar edge) -->
                         <video id="vip-overlay-frame-video" src="assets/frames/khung_ho_trang.webm" autoplay loop muted playsinline
-                            style="width:240px; height:240px; object-fit:contain; position:absolute; inset:0; z-index:3; pointer-events:none; display:none;"></video>
+                            style="width:240px; height:240px; object-fit:contain; position:absolute; inset:0; z-index:3; pointer-events:none; filter:drop-shadow(0 14px 36px rgba(0,0,0,0.92)) drop-shadow(0 0 20px rgba(251,191,36,0.65)); display:none;"></video>
                         
                         <!-- Name text placed neatly inside the bottom dark ribbon banner -->
                         <div id="vip-overlay-name" 
@@ -210,12 +207,6 @@
                 const target = document.getElementById('vip-overlay-target');
                 if (target) target.className = '';
 
-                const frameImg = document.getElementById('vip-overlay-frame-img');
-                if (frameImg) {
-                    frameImg.style.display = 'none';
-                    frameImg.removeAttribute('src');
-                }
-
                 const frameLayer = document.getElementById('vip-overlay-frame-layer');
                 if (frameLayer) {
                     frameLayer.style.display = 'none';
@@ -225,7 +216,6 @@
                 const frameVideo = document.getElementById('vip-overlay-frame-video');
                 if (frameVideo) {
                     frameVideo.pause();
-                    frameVideo.removeAttribute('src');
                     frameVideo.style.display = 'none';
                 }
 
@@ -374,45 +364,44 @@
                         avatarRim.style.display = 'none';
                     }
 
-                    const frameImg = document.getElementById('vip-overlay-frame-img');
                     let frameUrl = vip.frameUrl || 'frame_ho_trang';
+                    const isWebm = frameUrl === 'frame_ho_trang' || frameUrl.includes('khung_ho_trang') || frameUrl === 'frame_love' || frameUrl.includes('khung_love') || frameUrl.includes('love') || frameUrl.endsWith('.webm') || frameUrl.endsWith('.mp4');
 
-                    if (frameUrl.endsWith('.webm') || frameUrl.endsWith('.mp4')) {
-                        if (frameImg) frameImg.style.display = 'none';
-                        if (frameLayer) frameLayer.style.display = 'none';
+                    if (isWebm) {
+                        // Use animated WebM frame (remove filter to prevent compositor black rect)
+                        if (frameLayer) {
+                            frameLayer.style.display = 'none';
+                            frameLayer.style.backgroundImage = 'none';
+                        }
                         if (frameVideo) {
-                            frameVideo.src = frameUrl;
-                            frameVideo.currentTime = 0;
-                            frameVideo.load();
+                            let webmSrc = 'assets/frames/khung_ho_trang.webm';
+                            if (frameUrl === 'frame_love' || frameUrl.includes('khung_love') || frameUrl.includes('love')) {
+                                webmSrc = 'assets/frames/khung_love.webm';
+                            } else if (frameUrl.endsWith('.webm') || frameUrl.endsWith('.mp4')) {
+                                webmSrc = frameUrl;
+                            }
+                            if (frameVideo.getAttribute('src') !== webmSrc) {
+                                frameVideo.src = webmSrc;
+                            }
                             frameVideo.style.display = 'block';
                             frameVideo.style.zIndex = '3';
                             frameVideo.style.filter = 'none';
                             frameVideo.play().catch(() => {});
                         }
                     } else {
+                        // Static PNG frames (rong_bang, rong_lua)
                         if (frameVideo) {
                             frameVideo.style.display = 'none';
                             frameVideo.pause();
-                            frameVideo.removeAttribute('src');
                         }
-                        if (frameLayer) frameLayer.style.display = 'none';
-
-                        if (frameImg) {
-                            let frameSrc = 'assets/frames/khung_ho_trang_animated.webp?t=' + Date.now();
-                            if (frameUrl === 'frame_love' || frameUrl.includes('khung_love') || frameUrl.includes('love')) {
-                                frameSrc = 'assets/frames/khung_love_animated.webp?t=' + Date.now();
-                            } else if (frameUrl === 'frame_rong_bang' || frameUrl.includes('rong_bang') || frameUrl.includes('rồng băng')) {
-                                frameSrc = 'assets/frames/khung_rong_bang.png?t=' + Date.now();
-                            } else if (frameUrl === 'frame_rong_lua' || frameUrl.includes('rong_lua') || frameUrl.includes('rồng lửa')) {
-                                frameSrc = 'assets/frames/khung_rong_lua.png?t=' + Date.now();
-                            } else if (frameUrl === 'custom_svga' && vip.frameUrl) {
-                                frameSrc = vip.frameUrl;
-                            }
-
-                            frameImg.src = frameSrc;
-                            frameImg.style.display = 'block';
-                            frameImg.style.zIndex = '3';
-                            frameImg.style.filter = 'none';
+                        if (frameLayer) {
+                            let staticPng = 'assets/frames/khung_love.png';
+                            if (frameUrl === 'frame_rong_bang' || frameUrl.includes('rong_bang') || frameUrl.includes('rồng băng')) staticPng = 'assets/frames/khung_rong_bang.png';
+                            else if (frameUrl === 'frame_rong_lua' || frameUrl.includes('rong_lua') || frameUrl.includes('rồng lửa')) staticPng = 'assets/frames/khung_rong_lua.png';
+                            frameLayer.style.backgroundImage = `url('${staticPng}')`;
+                            frameLayer.style.display = 'block';
+                            frameLayer.style.zIndex = '3';
+                            frameLayer.style.filter = `drop-shadow(0 14px 34px rgba(0,0,0,0.9)) drop-shadow(0 0 18px ${glowColor}88)`;
                         }
                     }
 
