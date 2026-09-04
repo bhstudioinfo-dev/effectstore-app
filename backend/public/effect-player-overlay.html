@@ -398,13 +398,13 @@
                         if (frameLayer) frameLayer.style.display = 'none';
 
                         if (frameImg) {
-                            let frameSrc = 'assets/frames/khung_ho_trang_animated.webp';
+                            let frameSrc = 'assets/frames/khung_ho_trang_animated.webp?t=' + Date.now();
                             if (frameUrl === 'frame_love' || frameUrl.includes('khung_love') || frameUrl.includes('love')) {
-                                frameSrc = 'assets/frames/khung_love_animated.webp';
+                                frameSrc = 'assets/frames/khung_love_animated.webp?t=' + Date.now();
                             } else if (frameUrl === 'frame_rong_bang' || frameUrl.includes('rong_bang') || frameUrl.includes('rồng băng')) {
-                                frameSrc = 'assets/frames/khung_rong_bang.png';
+                                frameSrc = 'assets/frames/khung_rong_bang.png?t=' + Date.now();
                             } else if (frameUrl === 'frame_rong_lua' || frameUrl.includes('rong_lua') || frameUrl.includes('rồng lửa')) {
-                                frameSrc = 'assets/frames/khung_rong_lua.png';
+                                frameSrc = 'assets/frames/khung_rong_lua.png?t=' + Date.now();
                             } else if (frameUrl === 'custom_svga' && vip.frameUrl) {
                                 frameSrc = vip.frameUrl;
                             }
