@@ -8,7 +8,6 @@
 
     class VipMappingManager {
         constructor() {
-            this.storageKey = 'liveflow_vip_mappings';
             this.mappings = [];
             this.editingId = null;
             this.tempSvgaData = null;
@@ -16,10 +15,21 @@
 
             this.presetFrames = [
                 { id: 'frame_ho_trang', name: '🐅 Khung Hổ Trắng Hoàng Kim', url: 'assets/frames/khung_ho_trang.webm', color: '#fbbf24', icon: '🐅', isVideo: true },
+                { id: 'frame_love', name: '💖 Khung Love Cánh Thiên Thần', url: 'assets/frames/khung_love.webm', color: '#f472b6', icon: '💖', isVideo: true },
                 { id: 'frame_rong_lua', name: '🔥 Khung Rồng Lửa Hỏa Long', url: 'assets/frames/khung_rong_lua.png', color: '#ef4444', icon: '🔥' },
-                { id: 'frame_rong_bang', name: '❄️ Khung Rồng Băng Hàn Khí', url: 'assets/frames/khung_rong_bang.png', color: '#38bdf8', icon: '❄️' },
-                { id: 'frame_love', name: '💖 Khung Love Cánh Thiên Thần', url: 'assets/frames/khung_love.png', color: '#f472b6', icon: '💖' }
+                { id: 'frame_rong_bang', name: '❄️ Khung Rồng Băng Hàn Khí', url: 'assets/frames/khung_rong_bang.png', color: '#38bdf8', icon: '❄️' }
             ];
+        }
+
+        getStorageKey() {
+            let userId = window.app?.currentUser?._id || window.app?.currentUser?.id;
+            if (!userId) {
+                try {
+                    const u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || '{}');
+                    userId = u._id || u.id || (u.email ? u.email.replace(/[^a-zA-Z0-9]/g, '_') : null);
+                } catch (_) {}
+            }
+            return userId ? `liveflow_vip_mappings_${userId}` : 'liveflow_vip_mappings_guest';
         }
 
         init() {
@@ -30,7 +40,18 @@
 
         load() {
             try {
-                const data = localStorage.getItem(this.storageKey);
+                const key = this.getStorageKey();
+                let data = localStorage.getItem(key);
+
+                // If legacy shared key exists and user is admin, migrate to admin key
+                const isAdmin = window.app?.currentUser?.isAdmin === true;
+                const legacyData = localStorage.getItem('liveflow_vip_mappings');
+                if (!data && legacyData && isAdmin) {
+                    data = legacyData;
+                    localStorage.setItem(key, legacyData);
+                    localStorage.removeItem('liveflow_vip_mappings');
+                }
+
                 this.mappings = data ? JSON.parse(data) : [];
             } catch (e) {
                 console.error('[VIP Manager] Failed to load mappings:', e);
@@ -41,20 +62,97 @@
 
         save() {
             try {
-                localStorage.setItem(this.storageKey, JSON.stringify(this.mappings));
+                const key = this.getStorageKey();
+                localStorage.setItem(key, JSON.stringify(this.mappings));
             } catch (e) {
                 console.error('[VIP Manager] Failed to save mappings:', e);
             }
             this.updateBadge();
             this.renderList();
+            try {
+                window.app?.syncControlDeckToRemote?.();
+            } catch (_e) { }
+        }
+
+        isProUser() {
+            if (!window.app) return false;
+            const u = window.app.currentUser;
+            if (u?.isAdmin === true) return true;
+            if (typeof resolvePlanKey === 'function') {
+                const plan = resolvePlanKey(u);
+                return ['pro', 'studio', 'business', 'admin'].includes(plan);
+            }
+            const plan = (u?.subscription || u?.plan || '').toLowerCase();
+            return ['pro', 'studio', 'business', 'admin'].includes(plan);
+        }
+
+        showProRequiredModal(customTitle = 'Thiết lập User VIP đã sẵn sàng ✨', customMsg = null) {
+            if (window.app && typeof window.app.showModal === 'function') {
+                window.app.showModal('Thiết lập User VIP đã sẵn sàng ✨', `
+                    <div style="color:#cbd5e1;font-size:13.5px;line-height:1.6;">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg, rgba(245,158,11,0.12), rgba(236,72,153,0.12));border:1px solid rgba(245,158,11,0.25);">
+                            <span style="font-size:26px;flex-shrink:0;">👑</span>
+                            <div>
+                                <div style="font-weight:800;color:#fbbf24;font-size:14px;">Tính Năng Cao Cấp: Vinh Danh Đại Gia / Top Fan</div>
+                                <div style="font-size:12px;color:#e2e8f0;margin-top:2px;">
+                                    ${customMsg || 'Bạn có thể tiếp tục cài đặt, tùy chỉnh vị trí avatar và xem thử mô phỏng (Preview) miễn phí ngay trên ứng dụng.'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="padding:10px 12px;margin-bottom:14px;border-radius:10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);color:#a7f3d0;font-size:12px;">
+                            💡 Khi nâng cấp lên gói <strong>Pro</strong>, hiệu ứng vinh danh biến hình & lồng avatar sẽ được kích hoạt tự động phát trực tiếp lên livestream OBS!
+                        </div>
+
+                        <div style="color:#fff;font-weight:800;margin-bottom:8px;font-size:13px;">Với gói Pro, bạn sẽ được mở khóa:</div>
+                        <div style="display:grid;gap:6px;margin-bottom:18px;font-size:12px;color:#cbd5e1;">
+                            <div>✓ Tự động phát video biến hình & avatar khi khách VIP vào phòng live hoặc tặng quà</div>
+                            <div>✓ Kho khung viền SVGA & Animation chuyển động hoàng gia độc quyền</div>
+                            <div>✓ Căn chỉnh vị trí, tỉ lệ khung hình & hào quang ánh sáng linh hoạt</div>
+                            <div>✓ Không giới hạn số lượng User VIP được gán trong phòng livestream</div>
+                            <div>✓ Mở khóa 100% kho hiệu ứng tương tác cao cấp</div>
+                        </div>
+
+                        <button onclick="app.closeModal();if(typeof app.showPricing==='function'){app.showPricing();}else if(typeof app.openPricing==='function'){app.openPricing();}" style="width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 8px 24px rgba(168,85,247,0.35);margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            <i class="fas fa-crown"></i> NÂNG CẤP GÓI PRO ĐỂ PHÁT OBS
+                        </button>
+                        <button onclick="app.closeModal();" style="width:100%;padding:10px;border:1px solid rgba(255,255,255,0.12);border-radius:12px;background:transparent;color:#94a3b8;font-weight:700;font-size:12px;cursor:pointer;">
+                            Tiếp tục chỉnh sửa & xem Preview
+                        </button>
+                    </div>
+                `);
+            } else {
+                alert('Tính năng phát lên livestream OBS dành riêng cho gói Pro. Vui lòng nâng cấp gói để sử dụng!');
+            }
         }
 
         updateBadge() {
+            const isPro = this.isProUser();
             const badge = document.getElementById('summary-vip-mapping-status');
             if (badge) {
                 const count = this.mappings.length;
-                badge.textContent = `👑 ${count} VIP đã gán`;
-                badge.style.color = count > 0 ? '#fbbf24' : '#9ca3af';
+                if (!isPro) {
+                    badge.innerHTML = `👑 ${count} VIP đã gán <span style="color:#c084fc;font-size:10px;font-weight:800;margin-left:4px;background:rgba(168,85,247,0.25);padding:1px 6px;border-radius:10px;">PREVIEW</span>`;
+                    badge.style.color = '#fbbf24';
+                    badge.style.background = 'rgba(251,191,36,0.12)';
+                    badge.style.borderColor = 'rgba(251,191,36,0.25)';
+                    badge.onclick = null;
+                } else {
+                    badge.textContent = `👑 ${count} VIP đã gán`;
+                    badge.style.color = count > 0 ? '#fbbf24' : '#9ca3af';
+                    badge.style.background = 'rgba(251,191,36,0.15)';
+                    badge.style.borderColor = 'rgba(251,191,36,0.25)';
+                    badge.onclick = null;
+                }
+            }
+
+            const addBtn = document.getElementById('btn-add-vip-mapping');
+            if (addBtn) {
+                addBtn.innerHTML = `➕ Thêm User Vinh Danh`;
+                addBtn.style.background = 'linear-gradient(135deg,#f59e0b,#ec4899)';
+                addBtn.style.color = '#fff';
+                addBtn.style.border = 'none';
+                addBtn.style.boxShadow = '0 4px 14px rgba(245,158,11,0.3)';
             }
         }
 
@@ -106,19 +204,38 @@
         renderList() {
             const container = document.getElementById('vip-mappings-list');
             if (!container) return;
+            const isPro = this.isProUser();
+
+            const proBannerHtml = !isPro ? `
+                <div style="grid-column:1/-1; background:linear-gradient(135deg, rgba(168,85,247,0.15), rgba(236,72,153,0.15)); border:1px solid rgba(168,85,247,0.35); border-radius:14px; padding:12px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px; flex-wrap:wrap;">
+                    <div style="font-size:12px; color:#f3e8ff; font-weight:600; display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:20px;">👑</span>
+                        <div>
+                            <div><strong>Chế độ Xem Trước (Preview Mode):</strong> Bạn có thể gán User VIP, lồng Avatar & xem trước mô phỏng trong phần cài đặt.</div>
+                            <div style="font-size:11px; color:#cbd5e1; margin-top:2px;">Nâng cấp lên gói <strong>Pro</strong> để kích hoạt tự động phát video biến hình & khung avatar lên livestream OBS!</div>
+                        </div>
+                    </div>
+                    <button onclick="app.openPricing()" style="padding:7px 16px; background:linear-gradient(135deg,#a855f7,#ec4899); border:none; border-radius:8px; color:#fff; font-size:11.5px; font-weight:800; cursor:pointer; white-space:nowrap; box-shadow:0 3px 12px rgba(168,85,247,0.4);">
+                        <i class="fas fa-crown"></i> Lên Pro
+                    </button>
+                </div>
+            ` : '';
 
             if (this.mappings.length === 0) {
-                container.innerHTML = `
-                    <div style="grid-column:1/-1; text-align:center; padding:36px 16px; background:rgba(255,255,255,0.02); border:1px dashed rgba(251,191,36,0.25); border-radius:16px; color:var(--text-muted); font-size:13px; backdrop-filter:blur(6px);">
+                container.innerHTML = proBannerHtml + `
+                    <div style="grid-column:1/-1; text-align:center; padding:32px 16px; background:rgba(255,255,255,0.02); border:1px dashed rgba(251,191,36,0.25); border-radius:16px; color:var(--text-muted); font-size:13px; backdrop-filter:blur(6px);">
                         <div style="font-size:36px; margin-bottom:8px; filter:drop-shadow(0 4px 10px rgba(251,191,36,0.3));">👑</div>
                         <div style="font-weight:800; color:#fff; font-size:15px; margin-bottom:4px;">Chưa có User VIP nào được gán</div>
-                        <p style="margin:0; font-size:12px; color:#9ca3af;">Bấm nút <strong>"+ Thêm User Vinh Danh"</strong> ở trên để tạo hiệu ứng biến hình riêng cho Đại gia / Top Fan!</p>
+                        <p style="margin:0 0 12px; font-size:12px; color:#9ca3af;">Bấm nút <strong>"+ Thêm User Vinh Danh"</strong> ở trên để tạo hiệu ứng biến hình riêng và xem thử Preview!</p>
+                        <button onclick="VipManager.openModal()" style="padding:8px 18px; background:linear-gradient(135deg,#f59e0b,#ec4899); border:none; border-radius:10px; color:#fff; font-weight:800; font-size:12px; cursor:pointer; box-shadow:0 4px 14px rgba(245,158,11,0.35);">
+                            ➕ Thêm User & Xem Thử Preview
+                        </button>
                     </div>
                 `;
                 return;
             }
 
-            container.innerHTML = this.mappings.map(vip => {
+            container.innerHTML = proBannerHtml + this.mappings.map(vip => {
                 const avatar = vip.customAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(vip.username || 'VIP')}&background=f59e0b&color=fff`;
                 const effectName = vip.effectName || 'Hiệu Ứng Vinh Danh';
                 const frameName = vip.frameName || 'Viền Neon';
@@ -133,7 +250,7 @@
                             <div style="position:relative; width:48px; height:48px; flex-shrink:0;">
                                 <img src="${avatar}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(vip.username || 'VIP')}&background=f59e0b&color=fff'" 
                                     style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #fbbf24; box-shadow:0 0 14px rgba(251,191,36,0.45);">
-                                <span style="position:absolute; -top:6px; right:-4px; font-size:14px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">👑</span>
+                                <span style="position:absolute; top:-6px; right:-4px; font-size:14px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">👑</span>
                             </div>
                             <div style="flex:1; min-width:0;">
                                 <div style="font-weight:800; color:#fff; font-size:14px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; display:flex; align-items:center; gap:6px;">
@@ -144,7 +261,7 @@
                                 </div>
                             </div>
                             <div style="display:flex; gap:5px;">
-                                <button onclick="VipManager.openModal('${vip.id}')" title="Chỉnh sửa"
+                                <button onclick="VipManager.openModal('${vip.id}')" title="Chỉnh sửa & Xem Preview"
                                     style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#cbd5e1; width:30px; height:30px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:12px; transition:background 0.15s;"
                                     onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">
                                     <i class="fas fa-pen"></i>
@@ -175,11 +292,16 @@
                                 ${vip.triggerOnJoin ? '<span style="background:rgba(59,130,246,0.15); color:#60a5fa; padding:2px 6px; border-radius:4px; font-weight:600;">🚪 Vào live</span>' : ''}
                                 ${vip.triggerOnGift ? '<span style="background:rgba(236,72,153,0.15); color:#f472b6; padding:2px 6px; border-radius:4px; font-weight:600;">🎁 Tặng quà</span>' : ''}
                             </div>
-                            <button onclick="VipManager.testPlay('${vip.id}', event)" class="btn-sm"
-                                style="background:linear-gradient(135deg,#f59e0b,#ec4899); border:none; color:#fff; border-radius:8px; padding:6px 14px; font-size:11px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:5px; box-shadow:0 3px 10px rgba(245,158,11,0.3); transition:transform 0.15s;"
-                                onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
-                                <i class="fas fa-play"></i> Phát thử
-                            </button>
+                            <div style="display:flex; gap:6px;">
+                                <button onclick="VipManager.openModal('${vip.id}')" class="btn-sm"
+                                    style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#e2e8f0; border-radius:8px; padding:6px 10px; font-size:11px; font-weight:700; cursor:pointer;" title="Xem mô phỏng Preview">
+                                    👁️ Preview
+                                </button>
+                                <button onclick="VipManager.testPlay('${vip.id}', event)" class="btn-sm"
+                                    style="background:${isPro ? 'linear-gradient(135deg,#f59e0b,#ec4899)' : 'rgba(168,85,247,0.2)'}; border:${isPro ? 'none' : '1px solid rgba(168,85,247,0.4)'}; color:${isPro ? '#fff' : '#d8b4fe'}; border-radius:8px; padding:6px 12px; font-size:11px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:5px; box-shadow:${isPro ? '0 3px 10px rgba(245,158,11,0.3)' : 'none'};" title="${isPro ? 'Phát thử lên OBS' : 'Phát thử lên OBS (Cần gói Pro)'}">
+                                    ${isPro ? '<i class="fas fa-play"></i> Phát thử' : '🔒 OBS'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -240,6 +362,23 @@
             const searchInput = document.getElementById('vip-user-search-input');
             if (searchInput) searchInput.value = '';
             this.searchTikTokUsers('');
+
+            const testBtn = document.getElementById('vip-modal-test-btn');
+            if (testBtn) {
+                if (!this.isProUser()) {
+                    testBtn.innerHTML = `<i class="fas fa-crown" style="color:#c084fc;"></i> ▶ Phát Thử OBS (Gói Pro)`;
+                    testBtn.style.background = 'rgba(168,85,247,0.15)';
+                    testBtn.style.borderColor = 'rgba(168,85,247,0.35)';
+                    testBtn.style.color = '#e9d5ff';
+                    testBtn.title = 'Phát thử video & khung vinh danh lên OBS (Cần gói Pro)';
+                } else {
+                    testBtn.innerHTML = `<i class="fas fa-play"></i> ▶ Phát Thử Lên OBS`;
+                    testBtn.style.background = 'rgba(56,189,248,0.15)';
+                    testBtn.style.borderColor = 'rgba(56,189,248,0.4)';
+                    testBtn.style.color = '#38bdf8';
+                    testBtn.title = 'Phát thử video & khung vinh danh lên OBS';
+                }
+            }
 
             this.updatePreview();
             modal.style.setProperty('display', 'flex', 'important');
@@ -636,7 +775,7 @@
 
             if (previewFrameImg) {
                 let staticSrc = 'assets/frames/khung_ho_trang_animated.webp';
-                if (frameVal === 'frame_love' || frameVal.includes('love')) staticSrc = 'assets/frames/khung_love.png';
+                if (frameVal === 'frame_love' || frameVal.includes('love')) staticSrc = 'assets/frames/khung_love_animated.webp';
                 else if (frameVal === 'frame_rong_bang' || frameVal.includes('rong_bang') || frameVal.includes('rồng băng')) staticSrc = 'assets/frames/khung_rong_bang.png';
                 else if (frameVal === 'frame_rong_lua' || frameVal.includes('rong_lua') || frameVal.includes('rồng lửa')) staticSrc = 'assets/frames/khung_rong_lua.png';
                 else if (frameVal === 'custom_svga' && this.tempSvgaData?.url) staticSrc = this.tempSvgaData.url;
@@ -798,6 +937,10 @@
         }
 
         deleteVip(id) {
+            if (!this.isProUser()) {
+                this.showProRequiredModal();
+                return;
+            }
             const item = this.mappings.find(m => m.id === id);
             const name = item ? item.displayName || item.username : 'User này';
             if (!confirm(`Bạn có chắc chắn muốn xóa cấu hình vinh danh của ${name}?`)) {
@@ -939,6 +1082,10 @@
         }
 
         async testPlay(id, event) {
+            if (!this.isProUser()) {
+                this.showProRequiredModal();
+                return;
+            }
             const item = this.mappings.find(m => m.id === id);
             if (!item) return;
 
@@ -1019,6 +1166,10 @@
 
         // Test VIP using current unsaved modal inputs
         async testCurrentModalVip(btn) {
+            if (!this.isProUser()) {
+                this.showProRequiredModal();
+                return;
+            }
             const username = document.getElementById('vip-form-username')?.value.trim() || '@VIP';
             const displayName = document.getElementById('vip-form-display-name')?.value.trim() || username;
             const effectId = document.getElementById('vip-form-effect-select')?.value || document.getElementById('vip-form-effect')?.value;
@@ -1090,6 +1241,7 @@
 
         // Check and trigger VIP Honor sequence on live TikTok events
         async handleLiveEvent(eventType, eventData) {
+            if (!this.isProUser()) return; // VIP Honor is exclusive to Pro accounts
             if (!this.mappings || this.mappings.length === 0) return;
             if (!eventData) return;
 

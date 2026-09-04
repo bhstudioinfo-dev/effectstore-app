@@ -366,7 +366,7 @@
                     }
 
                     let frameUrl = vip.frameUrl || 'frame_ho_trang';
-                    const isWebm = frameUrl === 'frame_ho_trang' || frameUrl.includes('khung_ho_trang') || frameUrl.endsWith('.webm') || frameUrl.endsWith('.mp4');
+                    const isWebm = frameUrl === 'frame_ho_trang' || frameUrl.includes('khung_ho_trang') || frameUrl === 'frame_love' || frameUrl.includes('khung_love') || frameUrl.includes('love') || frameUrl.endsWith('.webm') || frameUrl.endsWith('.mp4');
 
                     if (isWebm) {
                         // Use animated WebM frame (remove filter to prevent compositor black rect)
@@ -375,14 +375,22 @@
                             frameLayer.style.backgroundImage = 'none';
                         }
                         if (frameVideo) {
-                            frameVideo.src = 'assets/frames/khung_ho_trang.webm';
+                            let webmSrc = 'assets/frames/khung_ho_trang.webm';
+                            if (frameUrl === 'frame_love' || frameUrl.includes('khung_love') || frameUrl.includes('love')) {
+                                webmSrc = 'assets/frames/khung_love.webm';
+                            } else if (frameUrl.endsWith('.webm') || frameUrl.endsWith('.mp4')) {
+                                webmSrc = frameUrl;
+                            }
+                            if (frameVideo.getAttribute('src') !== webmSrc) {
+                                frameVideo.src = webmSrc;
+                            }
                             frameVideo.style.display = 'block';
                             frameVideo.style.zIndex = '3';
                             frameVideo.style.filter = 'none';
                             frameVideo.play().catch(() => {});
                         }
                     } else {
-                        // Static PNG frames (love, rong_bang, rong_lua)
+                        // Static PNG frames (rong_bang, rong_lua)
                         if (frameVideo) {
                             frameVideo.style.display = 'none';
                             frameVideo.pause();
@@ -581,37 +589,89 @@
             }
 
             let activeAiAudio = null;
+            const aiSpeechQueue = [];
+            let isProcessingAiQueue = false;
 
-            async function speakAiReply(data) {
+            function speakAiReply(data) {
                 if (!data || !data.replyText) return;
+                aiSpeechQueue.push(data);
+                processAiSpeechQueue();
+            }
+
+            async function processAiSpeechQueue() {
+                if (isProcessingAiQueue || aiSpeechQueue.length === 0) return;
+                
+                // If a video effect is currently playing, wait until it finishes so audio doesn't overlap
+                if (activeRequest) {
+                    setTimeout(processAiSpeechQueue, 500);
+                    return;
+                }
+
+                isProcessingAiQueue = true;
+                const data = aiSpeechQueue.shift();
+
                 try {
-                    if (data.responseMode === 'custom' && data.audioDataUrl) {
-                        window.speechSynthesis?.cancel();
+                    await playSingleAiSpeech(data);
+                } catch (_err) {
+                } finally {
+                    isProcessingAiQueue = false;
+                    if (aiSpeechQueue.length > 0) {
+                        setTimeout(processAiSpeechQueue, 350);
+                    }
+                }
+            }
+
+            function playSingleAiSpeech(data) {
+                return new Promise((resolve) => {
+                    let hasFinished = false;
+                    const onFinish = () => {
+                        if (hasFinished) return;
+                        hasFinished = true;
                         if (activeAiAudio) {
-                            activeAiAudio.pause();
                             activeAiAudio = null;
                         }
-                        activeAiAudio = new Audio(data.audioDataUrl);
-                        activeAiAudio.volume = Number(data.volume) || 1.0;
-                        activeAiAudio.playbackRate = Number(data.readSpeed) || 1.0;
-                        activeAiAudio.onended = () => { activeAiAudio = null; };
-                        activeAiAudio.onerror = () => { activeAiAudio = null; };
-                        await activeAiAudio.play();
-                        return;
+                        resolve();
+                    };
+
+                    try {
+                        if (data.responseMode === 'custom' && data.audioDataUrl) {
+                            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+                            if (activeAiAudio) {
+                                activeAiAudio.pause();
+                                activeAiAudio = null;
+                            }
+                            activeAiAudio = new Audio(data.audioDataUrl);
+                            activeAiAudio.volume = Number(data.volume) || 1.0;
+                            activeAiAudio.playbackRate = Number(data.readSpeed) || 1.0;
+                            activeAiAudio.onended = onFinish;
+                            activeAiAudio.onerror = onFinish;
+                            activeAiAudio.play().catch(onFinish);
+                            setTimeout(onFinish, 15000);
+                            return;
+                        }
+                        if ('speechSynthesis' in window) {
+                            window.speechSynthesis.cancel();
+                            const utterance = new SpeechSynthesisUtterance(data.replyText);
+                            utterance.lang = 'vi-VN';
+                            utterance.rate = Number(data.readSpeed) || 1.0;
+                            utterance.volume = Number(data.volume) || 1.0;
+                            utterance.onend = onFinish;
+                            utterance.onerror = onFinish;
+                            window.speechSynthesis.speak(utterance);
+                            setTimeout(onFinish, 12000);
+                            return;
+                        }
+                        onFinish();
+                    } catch (_e) {
+                        onFinish();
                     }
-                    if ('speechSynthesis' in window) {
-                        window.speechSynthesis.cancel();
-                        const utterance = new SpeechSynthesisUtterance(data.replyText);
-                        utterance.lang = 'vi-VN';
-                        utterance.rate = Number(data.readSpeed) || 1.0;
-                        utterance.volume = Number(data.volume) || 1.0;
-                        window.speechSynthesis.speak(utterance);
-                    }
-                } catch (_e) {}
+                });
             }
 
             function stopAllTtsSpeech() {
                 try {
+                    aiSpeechQueue.length = 0;
+                    isProcessingAiQueue = false;
                     if ('speechSynthesis' in window) {
                         window.speechSynthesis.cancel();
                     }
