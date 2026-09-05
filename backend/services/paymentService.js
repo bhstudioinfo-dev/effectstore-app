@@ -1,6 +1,8 @@
 const Effect = require('../models/Effect');
 const User = require('../models/User');
+const PromoCode = require('../models/PromoCode');
 const mongoose = require('mongoose');
+const { normalizePlan } = require('../config/planEntitlements');
 
 const SUBSCRIPTION_PRODUCTS = Object.freeze({
     SUBSCRIPTION_BASIC: Object.freeze({ plan: 'basic', amount: 199000 }),
@@ -15,48 +17,109 @@ function normalizeEffectIds(value) {
     return [...new Set(value.map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 50);
 }
 
-function effectiveEffectPrice(effect, now = Date.now()) {
-    const regularPrice = Math.max(0, Number(effect?.price) || 0);
+function effectiveEffectPrice(effect, userPlan = 'free', now = Date.now()) {
     const salePrice = Number(effect?.flashSalePrice);
     const saleEndsAt = effect?.flashSaleEndsAt ? new Date(effect.flashSaleEndsAt).getTime() : null;
     const saleIsActive = effect?.isFlashSale === true && Number.isFinite(salePrice) && salePrice >= 0 &&
         (!saleEndsAt || saleEndsAt > now);
-    return saleIsActive ? salePrice : regularPrice;
+
+    // Free effects remain 0
+    if (Number(effect?.price) === 0) return 0;
+
+    let basePrice;
+    if (effect?.isExclusive) {
+        basePrice = Math.max(0, Number(effect?.price) || 69000);
+        if (userPlan === 'basic') basePrice = Math.round(basePrice * 0.7); // 30% off for Basic
+        else if (['pro', 'business', 'studio', 'admin'].includes(userPlan)) basePrice = Math.round(basePrice * 0.5); // 50% off for Pro
+    } else {
+        // Standard trending effects: 30k for Free, 20k for Basic, 0 for Pro
+        if (userPlan === 'basic') {
+            basePrice = 20000;
+        } else if (['pro', 'business', 'studio', 'admin'].includes(userPlan)) {
+            basePrice = 0;
+        } else {
+            basePrice = 30000;
+        }
+    }
+
+    if (saleIsActive && salePrice < basePrice) {
+        return salePrice;
+    }
+    return basePrice;
 }
 
-async function calculateOrder(effectIds, user) {
+async function calculateOrder(effectIds, user, promoCodeInput = null) {
     const ids = normalizeEffectIds(effectIds);
     if (ids.length === 0) throw Object.assign(new Error('Order must contain at least one item.'), { status: 400 });
 
     const subscriptionIds = ids.filter((id) => SUBSCRIPTION_PRODUCTS[id]);
+    let baseAmount = 0;
+    const userPlan = normalizePlan(user);
+
     if (subscriptionIds.length > 0) {
         if (ids.length !== 1) throw Object.assign(new Error('Subscription cannot be combined with effects.'), { status: 400 });
         const subscription = SUBSCRIPTION_PRODUCTS[subscriptionIds[0]];
         if (subscription.purchasable === false) {
             throw Object.assign(new Error('This legacy subscription is no longer available for purchase.'), { status: 410 });
         }
-        return { effectIds: ids, amount: subscription.amount };
+        baseAmount = subscription.amount;
+    } else {
+        if (ids.some((id) => !mongoose.isObjectIdOrHexString(id))) {
+            throw Object.assign(new Error('Order contains an invalid effect ID.'), { status: 400 });
+        }
+
+        const effects = await Effect.find({ _id: { $in: ids }, isActive: true }).lean();
+        if (effects.length !== ids.length) {
+            throw Object.assign(new Error('One or more effects are unavailable.'), { status: 400 });
+        }
+
+        const ownedIds = new Set((user?.purchasedEffects || []).map((item) => String(item.effectId?._id || item.effectId || '')));
+        if (effects.some((effect) => ownedIds.has(String(effect._id)))) {
+            throw Object.assign(new Error('Order contains an effect already owned by this account.'), { status: 409 });
+        }
+
+        baseAmount = effects.reduce((sum, effect) => sum + effectiveEffectPrice(effect, userPlan), 0);
     }
 
-    if (ids.some((id) => !mongoose.isObjectIdOrHexString(id))) {
-        throw Object.assign(new Error('Order contains an invalid effect ID.'), { status: 400 });
-    }
-
-    const effects = await Effect.find({ _id: { $in: ids }, isActive: true }).lean();
-    if (effects.length !== ids.length) {
-        throw Object.assign(new Error('One or more effects are unavailable.'), { status: 400 });
-    }
-
-    const ownedIds = new Set((user.purchasedEffects || []).map((item) => String(item.effectId?._id || item.effectId || '')));
-    if (effects.some((effect) => ownedIds.has(String(effect._id)))) {
-        throw Object.assign(new Error('Order contains an effect already owned by this account.'), { status: 409 });
-    }
-
-    const amount = effects.reduce((sum, effect) => sum + effectiveEffectPrice(effect), 0);
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(baseAmount) || baseAmount <= 0) {
         throw Object.assign(new Error('Order amount is invalid.'), { status: 400 });
     }
-    return { effectIds: ids, amount };
+
+    let discountAmount = 0;
+    let validPromo = null;
+
+    if (promoCodeInput) {
+        const cleanCode = String(promoCodeInput).trim().toUpperCase();
+        const promo = await PromoCode.findOne({ code: cleanCode, isActive: true });
+        if (promo) {
+            const now = new Date();
+            const notExpired = !promo.expiresAt || new Date(promo.expiresAt) > now;
+            const notExhausted = promo.maxUses === null || (promo.usedCount || 0) < promo.maxUses;
+            const isSub = subscriptionIds.length > 0;
+            const appliesCorrectly = promo.appliesTo === 'all' ||
+                (promo.appliesTo === 'subscription' && isSub) ||
+                (promo.appliesTo === 'effect' && !isSub);
+            const meetsMinOrder = !promo.minOrderValue || baseAmount >= promo.minOrderValue;
+
+            if (notExpired && notExhausted && appliesCorrectly && meetsMinOrder) {
+                if (promo.discountType === 'percent') {
+                    discountAmount = Math.round(baseAmount * (promo.discountValue / 100));
+                } else {
+                    discountAmount = Math.min(baseAmount, promo.discountValue);
+                }
+                validPromo = promo;
+            }
+        }
+    }
+
+    const finalAmount = Math.max(0, baseAmount - discountAmount);
+    return {
+        effectIds: ids,
+        amount: finalAmount,
+        originalAmount: baseAmount,
+        discountAmount,
+        promoCode: validPromo ? validPromo.code : null
+    };
 }
 
 async function claimFreeEffects(effectIds, user) {
@@ -156,6 +219,8 @@ async function grantPayment(payment) {
                 ? user.subscriptionExpiresAt.getTime()
                 : Date.now();
             user.subscriptionExpiresAt = new Date(baseTime + 30 * 24 * 60 * 60 * 1000);
+
+
             continue;
         }
 
@@ -183,7 +248,7 @@ async function approvePayment(paymentId, allowedStatuses = ['pending'], options 
     const Payment = require('../models/Payment');
     const now = new Date();
     const staleBefore = new Date(now.getTime() - Math.max(30_000, Number(options.processingTimeoutMs) || 120_000));
-    const payment = await require('../models/Payment').findOneAndUpdate(
+    const payment = await Payment.findOneAndUpdate(
         {
             _id: paymentId,
             $or: [
@@ -216,6 +281,11 @@ async function approvePayment(paymentId, allowedStatuses = ['pending'], options 
             { _id: payment._id, status: 'processing' },
             { $set: reviewFields, $unset: { processingStartedAt: 1, rejectionReason: 1 } }
         );
+        if (payment.promoCode) {
+            try {
+                await PromoCode.updateOne({ code: payment.promoCode }, { $inc: { usedCount: 1 } });
+            } catch (_e) { }
+        }
         payment.status = 'approved';
         return { outcome: 'approved', duplicate: grant.duplicate === true, payment };
     } catch (error) {

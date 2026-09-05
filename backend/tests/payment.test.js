@@ -12,19 +12,24 @@ const paymentRoutes = require('../routes/payment');
 
 assert.deepStrictEqual(normalizeEffectIds([' a ', 'a', '', null, 'b']), ['a', 'b']);
 assert.deepStrictEqual(normalizeEffectIds('not-an-array'), []);
-assert.strictEqual(effectiveEffectPrice({ price: 100000 }), 100000);
+assert.strictEqual(effectiveEffectPrice({ isExclusive: true, price: 100000 }), 100000);
 assert.strictEqual(effectiveEffectPrice({
+    isExclusive: true,
     price: 100000,
     isFlashSale: true,
     flashSalePrice: 75000,
     flashSaleEndsAt: new Date(Date.now() + 60000)
 }), 75000);
 assert.strictEqual(effectiveEffectPrice({
+    isExclusive: true,
     price: 100000,
     isFlashSale: true,
     flashSalePrice: 75000,
     flashSaleEndsAt: new Date(Date.now() - 60000)
 }), 100000);
+assert.strictEqual(effectiveEffectPrice({ price: 30000 }, 'free'), 30000);
+assert.strictEqual(effectiveEffectPrice({ price: 30000 }, 'basic'), 20000);
+assert.strictEqual(effectiveEffectPrice({ price: 30000 }, 'pro'), 0);
 assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_BASIC.amount, 199000);
 assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_PRO.amount, 399000);
 assert.strictEqual(SUBSCRIPTION_PRODUCTS.SUBSCRIPTION_BUSINESS.amount, 399000);

@@ -277,6 +277,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
                 hasAdminUI: isAdmin,
                 subscription: isAdmin ? 'admin' : (user.subscription || 'free'),
                 subscriptionExpiresAt: user.subscriptionExpiresAt,
+                basicActiveEffectIds: user.basicActiveEffectIds || [],
                 purchasedEffects: user.purchasedEffects || [],
                 customEffects: user.customEffects || []
             }
@@ -311,6 +312,7 @@ router.get('/me', authMiddleware, async (req, res) => {
                 hasAdminUI: isAdmin,
                 subscription: isAdmin ? 'admin' : user.subscription,
                 subscriptionExpiresAt: user.subscriptionExpiresAt,
+                basicActiveEffectIds: user.basicActiveEffectIds || [],
                 purchasedEffects: user.purchasedEffects || [],
                 customEffects: user.customEffects || []
             }

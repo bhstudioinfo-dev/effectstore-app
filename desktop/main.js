@@ -9,6 +9,10 @@ const AutoLaunch = require('auto-launch');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
 const { startManagedBackend, stopManagedBackend, updateMongoUri, backendStatus, ensureBackendConfig, startBundledMongo, stopBundledMongo } = require('./backend-manager');
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
 const { sanitizeDiagnosticText } = require('./diagnostics');
 
 // Soundboard hotkeys are intentional user actions even when the renderer is not focused.
@@ -281,7 +285,13 @@ function setupAutoUpdater() {
 
     autoUpdater.on('error', (error) => {
         log.error('Auto-updater error:', error);
-        sendUpdateEvent('app-update:error', String(error?.message || error));
+        const errStr = String(error?.message || error);
+        if (errStr.includes('404') || errStr.includes('latest.yml')) {
+            log.info('No update channel published yet or channel 404, treating as up-to-date.');
+            sendUpdateEvent('app-update:not-available');
+            return;
+        }
+        sendUpdateEvent('app-update:error', errStr);
     });
 }
 
@@ -653,7 +663,11 @@ ipcMain.handle('app-update:check', async () => {
         await autoUpdater.checkForUpdates();
         return { success: true, version: currentVersion };
     } catch (error) {
-        return { success: false, message: String(error?.message || error), version: currentVersion };
+        const errStr = String(error?.message || error);
+        if (errStr.includes('404') || errStr.includes('latest.yml')) {
+            return { success: true, version: currentVersion, upToDate: true };
+        }
+        return { success: false, message: errStr, version: currentVersion };
     }
 });
 

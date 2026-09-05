@@ -167,28 +167,59 @@ class OBSController {
                 const eff = await this.findEffectSource(sceneName, 'preview');
                 if (eff) effectId = eff.sceneItemId;
             }
-            if (!effectId) {
-                console.warn('⚠️ Không tìm thấy effect source để so sánh layer');
-                return false;
-            }
-            const effectInfo = await this.obs.call('GetSceneItemIndex', { sceneName, sceneItemId: effectId });
-            const webcamInfo = await this.obs.call('GetSceneItemIndex', { sceneName, sceneItemId: webcamId });
             
-            // Trong OBS: index lớn hơn = nằm TRÊN, index nhỏ hơn = nằm DƯỚI
-            let newIndex = effectInfo.sceneItemIndex;
-            if (position === 'above') {
-                newIndex = Math.max(effectInfo.sceneItemIndex, webcamInfo.sceneItemIndex) + 1;
-            } else {
-                newIndex = Math.max(0, Math.min(effectInfo.sceneItemIndex, webcamInfo.sceneItemIndex) - 1);
+            const sceneItemList = await this.obs.call('GetSceneItemList', { sceneName }).catch(() => ({ sceneItems: [] }));
+            const items = sceneItemList.sceneItems || [];
+            const totalItems = items.length;
+
+            const webcamInfo = await this.obs.call('GetSceneItemIndex', { sceneName, sceneItemId: webcamId }).catch(() => null);
+            if (!webcamInfo) return false;
+
+            let newIndex = webcamInfo.sceneItemIndex;
+
+            if (position === 'top' || position === 'topmost') {
+                // Lên TRÊN CÙNG của Scene
+                newIndex = Math.max(0, totalItems - 1);
+            } else if (position === 'bottom' || position === 'bottommost') {
+                // Xuống DƯỚI CÙNG của Scene
+                newIndex = 0;
+            } else if (position === 'above_effect' || position === 'above') {
+                // Nằm ngay TRÊN Effect
+                if (effectId) {
+                    const effectInfo = await this.obs.call('GetSceneItemIndex', { sceneName, sceneItemId: effectId }).catch(() => null);
+                    if (effectInfo) {
+                        newIndex = effectInfo.sceneItemIndex + 1;
+                    }
+                }
+            } else if (position === 'below_effect' || position === 'below') {
+                // Nằm ngay DƯỚI Effect
+                if (effectId) {
+                    const effectInfo = await this.obs.call('GetSceneItemIndex', { sceneName, sceneItemId: effectId }).catch(() => null);
+                    if (effectInfo) {
+                        newIndex = Math.max(0, effectInfo.sceneItemIndex - 1);
+                    }
+                }
+            } else if (typeof position === 'string' && (position.startsWith('above_source:') || position.startsWith('below_source:'))) {
+                const isAbove = position.startsWith('above_source:');
+                const targetName = position.replace(/^(above_source:|below_source:)/, '');
+                const targetItem = items.find(it => it.sourceName === targetName);
+                if (targetItem) {
+                    const refInfo = await this.obs.call('GetSceneItemIndex', { sceneName, sceneItemId: targetItem.sceneItemId }).catch(() => null);
+                    if (refInfo) {
+                        newIndex = isAbove ? (refInfo.sceneItemIndex + 1) : Math.max(0, refInfo.sceneItemIndex - 1);
+                    }
+                }
+            } else if (!isNaN(parseInt(position))) {
+                newIndex = Math.max(0, Math.min(totalItems - 1, parseInt(position)));
             }
-            
+
             await this.obs.call('SetSceneItemIndex', {
                 sceneName,
                 sceneItemId: webcamId,
                 sceneItemIndex: newIndex
             });
             
-            console.log(`✅ Đã set webcam ${position === 'above' ? 'TRÊN' : 'DƯỚI'} effect (Index mới: ${newIndex})`);
+            console.log(`✅ Đã set layer cho item #${webcamId} tới Index: ${newIndex} (Vị trí: ${position})`);
             return true;
         } catch (err) {
             console.error('❌ Lỗi set layer:', err);

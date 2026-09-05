@@ -2,21 +2,25 @@ const PLAN_ENTITLEMENTS = Object.freeze({
     free: Object.freeze({
         key: 'free', label: 'Free', devices: 1, mappings: 5, customEffects: 5,
         layouts: 1, menuAssets: 0, goalTrackers: 1, commentsPerSession: 20,
-        ttsPerSession: 10, designerLevel: 'lite', mappingAutomation: 'standard'
+        ttsPerSession: 10, designerLevel: 'lite', mappingAutomation: 'standard',
+        storeEffectSlots: 0, defaultStoreEffectPrice: 30000, unlimitedStoreEffects: false,
+        vipMapping: false
     }),
     basic: Object.freeze({
         key: 'basic', label: 'Basic', devices: 1, mappings: 30, customEffects: 100,
-        // Basic gets full designer feature access (same as Pro) — the only
-        // thing that distinguishes it from Pro in the designer is how many
-        // saved menu designs it can keep in the library at once.
+        // Basic gets 10 active store effect slots + 20k extra purchases
         layouts: 2, menuAssets: 20, goalTrackers: 10, commentsPerSession: Infinity,
-        ttsPerSession: Infinity, designerLevel: 'basic', mappingAutomation: 'standard'
+        ttsPerSession: Infinity, designerLevel: 'basic', mappingAutomation: 'standard',
+        storeEffectSlots: 10, defaultStoreEffectPrice: 20000, unlimitedStoreEffects: false,
+        vipMapping: false
     }),
     pro: Object.freeze({
         key: 'pro', label: 'Pro', devices: 1, mappings: Infinity, customEffects: Infinity,
         layouts: Infinity, menuAssets: Infinity, goalTrackers: Infinity,
         commentsPerSession: Infinity, ttsPerSession: Infinity, designerLevel: 'advanced',
-        mappingAutomation: 'advanced'
+        mappingAutomation: 'advanced',
+        storeEffectSlots: Infinity, defaultStoreEffectPrice: 0, unlimitedStoreEffects: true,
+        vipMapping: true
     }),
     // Legacy account value retained only for existing customers/data migration.
     // It is NOT the current Pro product and must not be used to infer that Pro
@@ -25,21 +29,27 @@ const PLAN_ENTITLEMENTS = Object.freeze({
         key: 'business', label: 'Business (legacy)', devices: 1, mappings: Infinity, customEffects: Infinity,
         layouts: Infinity, menuAssets: Infinity, goalTrackers: Infinity,
         commentsPerSession: Infinity, ttsPerSession: Infinity, designerLevel: 'advanced',
-        mappingAutomation: 'advanced'
+        mappingAutomation: 'advanced',
+        storeEffectSlots: Infinity, defaultStoreEffectPrice: 0, unlimitedStoreEffects: true,
+        vipMapping: true
     }),
     studio: Object.freeze({
         key: 'studio', label: 'Studio', devices: Infinity, mappings: Infinity,
         customEffects: Infinity, layouts: Infinity, menuAssets: Infinity,
         goalTrackers: Infinity, commentsPerSession: Infinity,
         ttsPerSession: Infinity, designerLevel: 'studio',
-        mappingAutomation: 'advanced'
+        mappingAutomation: 'advanced',
+        storeEffectSlots: Infinity, defaultStoreEffectPrice: 0, unlimitedStoreEffects: true,
+        vipMapping: true
     }),
     admin: Object.freeze({
         key: 'admin', label: 'Admin', devices: Infinity, mappings: Infinity,
         customEffects: Infinity, layouts: Infinity, menuAssets: Infinity,
         goalTrackers: Infinity, commentsPerSession: Infinity,
         ttsPerSession: Infinity, designerLevel: 'studio',
-        mappingAutomation: 'advanced'
+        mappingAutomation: 'advanced',
+        storeEffectSlots: Infinity, defaultStoreEffectPrice: 0, unlimitedStoreEffects: true,
+        vipMapping: true
     })
 });
 

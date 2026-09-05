@@ -51,6 +51,11 @@
           "**/*",
           "!.env",
           "!uploads/**/*",
+          "!public/uploads/**/*",
+          "!effects/encrypted/**/*",
+          "!public/assets/videos/**/*",
+          "!public/assets/frames/**/*",
+          "!assets/videos/**/*",
           "!tests/**/*",
           "!scripts/**/*",
           "!node_modules/**/*"

@@ -13,6 +13,11 @@ process.on('unhandledRejection', (reason) => {
 });
 
 try { require('dotenv').config({ override: true }); } catch (_e) { }
+
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
 const startupTrace = (label) => {
     if (process.env.EFFECTSTORE_STARTUP_TRACE === 'true') console.log(`[startup] ${label}`);
 };
@@ -239,6 +244,50 @@ app.get('/assets/audio/voice-samples/:filename', async (req, res, next) => {
     }
 });
 app.use('/assets/audio/voice-samples', express.static(voiceSamplesDir, {
+    maxAge: '1y',
+    immutable: true
+}));
+app.get(['/assets/frames/:filename', '/frames/:filename'], async (req, res, next) => {
+    try {
+        const filename = String(req.params.filename || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+        if (!filename) return res.status(400).end();
+        
+        const localPath = path.join(dataPaths.framesDir, filename);
+        if (fs.existsSync(localPath)) {
+            return res.sendFile(localPath);
+        }
+        
+        const legacyPath = path.join(__dirname, 'public', 'assets', 'frames', filename);
+        if (fs.existsSync(legacyPath)) {
+            try {
+                fs.mkdirSync(dataPaths.framesDir, { recursive: true });
+                fs.copyFileSync(legacyPath, localPath);
+            } catch (_e) {}
+            return res.sendFile(localPath);
+        }
+
+        const { isAssetStoreConfigured, downloadVipFrame } = require('./services/effectAssetStore');
+        if (!isAssetStoreConfigured()) return next();
+
+        const remoteStream = await downloadVipFrame(filename);
+        if (!remoteStream) return next();
+
+        fs.mkdirSync(dataPaths.framesDir, { recursive: true });
+        const tempPath = `${localPath}.downloading-${process.pid}-${Date.now()}`;
+        await new Promise((resolve, reject) => {
+            const fileStream = fs.createWriteStream(tempPath);
+            remoteStream.on('error', reject);
+            fileStream.on('error', reject);
+            fileStream.on('finish', resolve);
+            remoteStream.pipe(fileStream);
+        });
+        fs.renameSync(tempPath, localPath);
+        return res.sendFile(localPath);
+    } catch (_error) {
+        return next();
+    }
+});
+app.use('/assets/frames', express.static(dataPaths.framesDir, {
     maxAge: '1y',
     immutable: true
 }));

@@ -6,6 +6,7 @@ const Payment = require('../models/Payment');
 const EffectRequest = require('../models/EffectRequest');
 const GiftConfig = require('../models/GiftConfig');
 const Banner = require('../models/Banner');
+const PromoCode = require('../models/PromoCode');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/rateLimit');
 const multer = require('multer');
@@ -431,6 +432,78 @@ router.get('/payments/:id', authMiddleware, adminMiddleware, async (req, res) =>
             ? `/api/payment/admin/proof/${encodeURIComponent(path.basename(payment.proofImage))}`
             : null;
         res.json({ success: true, payment: value });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Promo Codes Management
+router.get('/promos', authMiddleware, adminMiddleware, async (_req, res) => {
+    try {
+        const promos = await PromoCode.find().sort({ createdAt: -1 });
+        res.json({ success: true, promos });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/promos', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const { code, discountType, discountValue, appliesTo, maxUses, minOrderValue, expiresAt, description } = req.body;
+        if (!code || !discountValue) {
+            return res.status(400).json({ success: false, message: 'Vui lòng nhập mã và giá trị giảm.' });
+        }
+        const cleanCode = String(code).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+        if (!cleanCode) {
+            return res.status(400).json({ success: false, message: 'Mã không hợp lệ.' });
+        }
+        const existing = await PromoCode.findOne({ code: cleanCode });
+        if (existing) {
+            return res.status(400).json({ success: false, message: `Mã "${cleanCode}" đã tồn tại.` });
+        }
+        const numVal = parseFloat(discountValue);
+        if (isNaN(numVal) || numVal <= 0) {
+            return res.status(400).json({ success: false, message: 'Giá trị giảm không hợp lệ.' });
+        }
+        if (discountType === 'percent' && (numVal < 1 || numVal > 100)) {
+            return res.status(400).json({ success: false, message: 'Phần trăm giảm phải từ 1 đến 100.' });
+        }
+
+        const promo = await PromoCode.create({
+            code: cleanCode,
+            discountType: discountType === 'percent' ? 'percent' : 'fixed',
+            discountValue: numVal,
+            appliesTo: ['subscription', 'effect'].includes(appliesTo) ? appliesTo : 'all',
+            maxUses: maxUses ? parseInt(maxUses) : null,
+            minOrderValue: minOrderValue ? parseFloat(minOrderValue) : 0,
+            expiresAt: expiresAt ? new Date(expiresAt) : null,
+            description: description ? String(description).trim() : '',
+            isActive: true
+        });
+
+        res.json({ success: true, promo });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.put('/promos/:id/toggle', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const promo = await PromoCode.findById(req.params.id);
+        if (!promo) return res.status(404).json({ success: false, message: 'Không tìm thấy mã.' });
+        promo.isActive = !promo.isActive;
+        await promo.save();
+        res.json({ success: true, promo });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.delete('/promos/:id', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const promo = await PromoCode.findByIdAndDelete(req.params.id);
+        if (!promo) return res.status(404).json({ success: false, message: 'Không tìm thấy mã.' });
+        res.json({ success: true, message: 'Đã xóa mã khuyến mãi.' });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

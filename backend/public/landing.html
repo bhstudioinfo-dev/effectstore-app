@@ -1197,133 +1197,136 @@
             scroll-margin-top: 80px;
         }
 
-        /* 5 Thẻ Tính Năng 3D Showcase (1 Hàng 5 Icon + Khung Text Chi Tiết) */
+        /* 5 Thẻ Tính Năng 3D Showcase: High-End Bento Grid */
         .gm-features-showcase-box {
-            max-width: 960px;
+            max-width: 1280px;
             margin: 0 auto 55px;
-            padding: 0 10px;
+            padding: 0 16px;
         }
 
-        .gm-feat-tabs-row {
+        .gm-feat-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 16px;
-            margin-bottom: 22px;
-            align-items: center;
+            align-items: stretch;
         }
 
-        .gm-feat-tab-item {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1.5px solid rgba(255, 255, 255, 0.08);
-            border-radius: 18px;
-            padding: 10px 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-            backdrop-filter: blur(10px);
-            opacity: 0.65;
+        .gm-feat-card {
             position: relative;
+            background: linear-gradient(180deg, rgba(16, 22, 46, 0.5) 0%, rgba(8, 12, 26, 0.75) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 22px 14px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+            cursor: pointer;
             user-select: none;
         }
 
-        .gm-feat-tab-item:hover {
-            opacity: 0.9;
-            transform: translateY(-4px);
-            border-color: rgba(255, 255, 255, 0.2);
+        .gm-feat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+            transition: background 0.35s ease;
         }
 
-        .gm-feat-tab-item.active {
+        .gm-feat-card-glow {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 130px;
+            height: 130px;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.35) 0%, transparent 70%);
+            filter: blur(25px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+
+        .gm-feat-card:hover,
+        .gm-feat-card.active {
+            transform: translateY(-8px);
+            border-color: rgba(168, 85, 247, 0.45);
+            background: linear-gradient(180deg, rgba(26, 34, 70, 0.6) 0%, rgba(10, 15, 32, 0.85) 100%);
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65), 0 0 30px rgba(168, 85, 247, 0.2);
+        }
+
+        .gm-feat-card:hover .gm-feat-card-glow,
+        .gm-feat-card.active .gm-feat-card-glow {
             opacity: 1;
-            transform: translateY(-6px) scale(1.06);
-            background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(236, 72, 153, 0.25));
-            border-color: rgba(236, 72, 153, 0.85);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 25px rgba(236, 72, 153, 0.45);
         }
 
-        .gm-feat-tab-item img {
+        .gm-feat-card:hover::before,
+        .gm-feat-card.active::before {
+            background: linear-gradient(90deg, transparent, rgba(236, 72, 153, 0.9), transparent);
+        }
+
+        .gm-feat-icon-box {
             width: 100%;
-            height: auto;
-            max-height: 110px;
-            object-fit: contain;
-            display: block;
-            filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
-            transition: transform 0.35s ease;
-        }
-
-        .gm-feat-tab-item.active img {
-            filter: drop-shadow(0 8px 20px rgba(236, 72, 153, 0.6));
-        }
-
-        .gm-feat-detail-card {
-            background: linear-gradient(145deg, rgba(15, 23, 42, 0.85) 0%, rgba(8, 12, 24, 0.92) 100%);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 20px;
-            padding: 22px 24px 18px;
-            text-align: center;
-            backdrop-filter: blur(16px);
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            transition: opacity 0.25s ease, transform 0.25s ease;
-            position: relative;
-            max-width: 650px;
-            margin: 0 auto;
-        }
-
-        .gm-feat-detail-badge {
-            display: inline-flex;
+            height: 125px;
+            display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            border-radius: 999px;
-            background: rgba(236, 72, 153, 0.15);
-            border: 1px solid rgba(236, 72, 153, 0.4);
-            color: #f472b6;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
+            justify-content: center;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
         }
 
-        .gm-feat-detail-title {
-            font-size: 19px;
-            font-weight: 850;
+        .gm-feat-icon-box img {
+            max-height: 115px;
+            max-width: 100%;
+            width: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), filter 0.35s ease;
+        }
+
+        .gm-feat-card:hover .gm-feat-icon-box img,
+        .gm-feat-card.active .gm-feat-icon-box img {
+            transform: scale(1.08) translateY(-4px);
+            filter: drop-shadow(0 14px 26px rgba(168, 85, 247, 0.7)) drop-shadow(0 0 18px rgba(236, 72, 153, 0.45));
+        }
+
+        .gm-feat-body {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            justify-content: flex-start;
+        }
+
+        .gm-feat-title {
+            font-size: 15px;
+            font-weight: 750;
             color: #ffffff;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
             letter-spacing: -0.015em;
+            line-height: 1.3;
+        }
+
+        .gm-feat-card.active .gm-feat-title {
             background: linear-gradient(135deg, #ffffff 40%, #fbcfe8 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .gm-feat-detail-desc {
-            font-size: 13.5px;
-            color: #cbd5e1;
-            line-height: 1.55;
-            margin: 0 auto 12px;
-            max-width: 520px;
-        }
-
-        .gm-feat-dots {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .gm-feat-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.2);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .gm-feat-dot.active {
-            width: 18px;
-            background: linear-gradient(90deg, #ec4899, #c084fc);
-            box-shadow: 0 0 10px rgba(236, 72, 153, 0.6);
+        .gm-feat-desc {
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.5;
+            font-weight: 450;
         }
 
         /* 7-Column Synchronized Grid for Steps & Stage */
@@ -3660,6 +3663,10 @@
             border-right: 1px solid rgba(236, 72, 153, 0.2);
         }
 
+        .comparison-scroll-hint-mobile {
+            display: none;
+        }
+
         /* SECTION 5: BẢNG GIÁ 4 GÓI CHUẨN XÁC 100% */
         .pricing-section {
             padding: 90px 0 30px;
@@ -3669,121 +3676,210 @@
         .pricing-grid-4 {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 22px;
+            gap: 20px;
             align-items: stretch;
-            margin-top: 30px;
+            margin-top: 35px;
         }
 
         .pricing-plan-card {
-            background: rgba(15, 23, 42, 0.75);
+            background: rgba(15, 23, 42, 0.85);
             border: 1px solid var(--border-glass);
             border-radius: 24px;
-            padding: 32px 24px;
+            padding: 30px 22px 24px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            backdrop-filter: blur(16px);
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(20px);
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
         }
 
         .pricing-plan-card:hover {
             transform: translateY(-8px);
-            border-color: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.25);
             box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
         }
 
         .pricing-plan-card.featured-basic {
             border: 2px solid #f59e0b;
-            box-shadow: 0 20px 50px rgba(245, 158, 11, 0.25);
-            background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.95) 100%);
-            transform: scale(1.03);
+            box-shadow: 0 18px 50px rgba(245, 158, 11, 0.22), 0 0 0 1px rgba(251, 191, 36, 0.2);
+            background: linear-gradient(180deg, rgba(245, 158, 11, 0.10) 0%, rgba(15, 23, 42, 0.96) 100%);
+            transform: scale(1.02);
+            z-index: 2;
         }
 
         .pricing-plan-card.featured-basic:hover {
-            transform: scale(1.05) translateY(-6px);
+            transform: scale(1.04) translateY(-6px);
+            box-shadow: 0 24px 60px rgba(245, 158, 11, 0.35);
         }
 
         .pricing-plan-card.featured-pro {
             border: 2px solid #a855f7;
-            box-shadow: 0 20px 50px rgba(168, 85, 247, 0.2);
+            box-shadow: 0 18px 50px rgba(168, 85, 247, 0.22), 0 0 0 1px rgba(192, 132, 252, 0.2);
+            background: linear-gradient(180deg, rgba(168, 85, 247, 0.10) 0%, rgba(15, 23, 42, 0.96) 100%);
         }
 
-        .card-popular-pill {
+        .pricing-plan-card.featured-pro:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 24px 60px rgba(168, 85, 247, 0.35);
+        }
+
+        .pricing-plan-card.featured-studio {
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.12);
+            background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.96) 100%);
+        }
+
+        .card-badge-pill {
             position: absolute;
             top: -13px;
             left: 50%;
             transform: translateX(-50%);
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: #fff;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 900;
             padding: 4px 14px;
             border-radius: 999px;
-            box-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
             white-space: nowrap;
+            z-index: 10;
+            letter-spacing: 0.4px;
+        }
+
+        .badge-amber {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.6);
+        }
+
+        .badge-purple {
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(168, 85, 247, 0.6);
+        }
+
+        .badge-emerald {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.6);
         }
 
         .plan-header-top {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
+            text-align: center;
         }
 
         .plan-level-tag {
             font-size: 11px;
             font-weight: 800;
             text-transform: uppercase;
-            padding: 3px 10px;
-            border-radius: 6px;
+            padding: 4px 12px;
+            border-radius: 8px;
             display: inline-block;
             margin-bottom: 10px;
+            letter-spacing: 0.5px;
         }
+
+        .tag-free { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35); }
+        .tag-basic { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+        .tag-pro { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+        .tag-studio { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
 
         .plan-name-title {
             font-size: 24px;
             font-weight: 900;
             color: #fff;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
+        }
+
+        .plan-old-price {
+            font-size: 13px;
+            color: #94a3b8;
+            opacity: 0.6;
+            margin-bottom: -4px;
+            margin-top: 4px;
         }
 
         .plan-cost-number {
             font-size: 32px;
             font-weight: 900;
             color: #fff;
-            margin: 12px 0 4px;
+            margin: 8px 0 4px;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 4px;
         }
 
         .plan-cost-number span {
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 500;
             color: var(--text-muted);
         }
 
         .plan-sub-cost-text {
-            font-size: 12px;
-            color: #f59e0b;
+            font-size: 11.5px;
             font-weight: 700;
+            line-height: 1.4;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+
+        .text-free { color: #86efac; }
+        .text-amber { color: #fbbf24; }
+        .text-purple { color: #c084fc; }
+        .text-emerald { color: #34d399; }
+        .text-cyan { color: #06b6d4; }
 
         ul.plan-perks-list {
             list-style: none;
-            margin: 24px 0 30px;
+            margin: 18px 0 24px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         ul.plan-perks-list li {
-            font-size: 13.5px;
+            font-size: 13px;
             color: #cbd5e1;
-            margin-bottom: 12px;
             display: flex;
             align-items: flex-start;
-            gap: 10px;
-            line-height: 1.45;
+            gap: 9px;
+            line-height: 1.42;
         }
 
         ul.plan-perks-list li i {
-            color: #10b981;
             margin-top: 3px;
-            font-size: 14px;
+            font-size: 13px;
             flex-shrink: 0;
+        }
+
+        .perk-badge-gold {
+            background: rgba(245, 158, 11, 0.12);
+            color: #fef08a !important;
+            padding: 6px 9px;
+            border-radius: 8px;
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            font-weight: 600;
+        }
+
+        .perk-badge-purple {
+            background: rgba(168, 85, 247, 0.14);
+            color: #e9d5ff !important;
+            padding: 6px 9px;
+            border-radius: 8px;
+            border: 1px solid rgba(168, 85, 247, 0.25);
+            font-weight: 600;
+        }
+
+        .perk-badge-cyan {
+            background: rgba(6, 182, 212, 0.12);
+            color: #a5f3fc !important;
+            padding: 6px 9px;
+            border-radius: 8px;
+            border: 1px solid rgba(6, 182, 212, 0.25);
+            font-weight: 600;
         }
 
         .btn-plan-select {
@@ -3791,10 +3887,10 @@
             padding: 13px 0;
             border-radius: 999px;
             border: none;
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 800;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.25s ease;
             text-decoration: none;
             display: flex;
             align-items: center;
@@ -3809,7 +3905,9 @@
         }
 
         .btn-free:hover {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.16);
+            transform: translateY(-2px);
+            color: #fff;
         }
 
         .btn-basic {
@@ -3819,24 +3917,41 @@
         }
 
         .btn-basic:hover {
-            transform: scale(1.02);
-            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(245, 158, 11, 0.6);
+            color: #fff;
         }
 
         .btn-pro {
-            background: var(--primary-gradient);
+            background: linear-gradient(135deg, #a855f7, #ec4899);
             color: #fff;
-            box-shadow: 0 6px 20px var(--primary-glow);
+            box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
         }
 
         .btn-pro:hover {
-            transform: scale(1.02);
-            box-shadow: 0 8px 25px rgba(236, 72, 153, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(168, 85, 247, 0.6);
+            color: #fff;
         }
 
         .btn-studio {
-            background: linear-gradient(135deg, #06b6d4, #0284c7);
+            background: linear-gradient(135deg, #10b981, #0284c7);
             color: #fff;
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-studio:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(16, 185, 129, 0.5);
+            color: #fff;
+        }
+
+        .plan-trust-sub {
+            font-size: 11px;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 10px;
+            line-height: 1.35;
         }
 
         /* SECTION 6: FAQ */
@@ -4519,42 +4634,47 @@
                 padding: 45px 0;
             }
 
-            /* 5 Thẻ Tính Năng 3D Showcase: 1 Hàng 5 Icon + Khung Text */
+            /* 5 Thẻ Tính Năng 3D Bento Grid Responsive */
             .gm-features-showcase-box {
-                margin: 0 auto 32px !important;
+                margin: 0 auto 36px !important;
                 padding: 0 !important;
             }
 
-            .gm-feat-tabs-row {
+            .gm-feat-grid {
                 display: grid !important;
-                grid-template-columns: repeat(5, 1fr) !important;
-                gap: 6px !important;
-                margin-bottom: 12px !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px !important;
             }
 
-            .gm-feat-tab-item {
-                border-radius: 14px !important;
-                padding: 6px 3px !important;
+            .gm-feat-card:last-child {
+                grid-column: span 2;
+                max-width: 280px;
+                margin: 0 auto;
+                width: 100%;
             }
 
-            .gm-feat-tab-item img {
-                max-height: 58px !important;
-            }
-
-            .gm-feat-detail-card {
-                padding: 16px 14px 14px !important;
+            .gm-feat-card {
+                padding: 16px 12px 14px !important;
                 border-radius: 16px !important;
             }
 
-            .gm-feat-detail-title {
-                font-size: 16.5px !important;
+            .gm-feat-icon-box {
+                height: 90px !important;
+                margin-bottom: 8px !important;
+            }
+
+            .gm-feat-icon-box img {
+                max-height: 80px !important;
+            }
+
+            .gm-feat-title {
+                font-size: 13.5px !important;
                 margin-bottom: 4px !important;
             }
 
-            .gm-feat-detail-desc {
-                font-size: 12px !important;
-                line-height: 1.5 !important;
-                margin-bottom: 10px !important;
+            .gm-feat-desc {
+                font-size: 11px !important;
+                line-height: 1.45 !important;
             }
 
             .gm-steps-row {
@@ -4649,14 +4769,47 @@
                 box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(236, 72, 153, 0.5) !important;
             }
 
-            /* Typography & Designer Showcase */
+            /* Typography & Designer Showcase Mobile Horizontal Carousel */
             .typography-showcase-section {
                 padding: 45px 0;
             }
 
             .showcase-grid-presets {
-                grid-template-columns: 1fr;
-                gap: 12px;
+                display: flex !important;
+                overflow-x: auto !important;
+                scroll-snap-type: x mandatory !important;
+                gap: 12px !important;
+                padding: 10px 4px 16px !important;
+                margin-bottom: 20px !important;
+                -webkit-overflow-scrolling: touch !important;
+                scrollbar-width: none !important;
+            }
+
+            .showcase-grid-presets::-webkit-scrollbar {
+                display: none !important;
+            }
+
+            .preset-card-item {
+                flex: 0 0 250px !important;
+                max-width: 250px !important;
+                scroll-snap-align: center !important;
+                padding: 18px 14px !important;
+                border-radius: 18px !important;
+            }
+
+            .preset-font-badge {
+                margin-bottom: 10px !important;
+                font-size: 10px !important;
+                padding: 3px 8px !important;
+            }
+
+            .preset-name-label {
+                font-size: 13.5px !important;
+                margin-bottom: 12px !important;
+            }
+
+            .preset-render-box {
+                height: 75px !important;
             }
 
             /* 3 Bước Thiết Kế Bảng Quà: 1 Hàng 3 Nút Mini */
@@ -4730,8 +4883,8 @@
             .gmd-obs-preview-card-v2 {
                 display: none !important;
                 width: 100% !important;
-                max-width: 285px !important;
-                height: 485px !important;
+                max-width: 350px !important;
+                height: 560px !important;
                 margin: 0 auto !important;
                 box-sizing: border-box !important;
                 animation: gmdFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
@@ -4757,13 +4910,13 @@
             }
 
             .gmd-catalog-card-v2 .gmd-gift-2col-grid {
-                height: 295px !important;
-                max-height: 295px !important;
+                height: 350px !important;
+                max-height: 350px !important;
             }
 
             /* BẢNG 2: CANVAS EDITOR PANEL MOBILE (Căn Giữa Chuẩn Xác 100%) */
             .gmd-canvas-editor-panel {
-                padding: 10px 10px 8px !important;
+                padding: 12px 10px 10px !important;
                 border-radius: 24px !important;
                 border: 2px solid rgba(255, 255, 255, 0.15) !important;
                 box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85) !important;
@@ -4773,7 +4926,7 @@
             .gmd-app-canvas-header {
                 flex-wrap: nowrap !important;
                 gap: 4px !important;
-                margin-bottom: 6px !important;
+                margin-bottom: 8px !important;
                 justify-content: space-between !important;
             }
 
@@ -4783,16 +4936,17 @@
 
             .gmd-app-canvas-viewport {
                 min-height: 0 !important;
-                height: 380px !important;
+                height: 450px !important;
                 flex: 1 !important;
                 width: 100% !important;
                 max-width: 100% !important;
-                padding: 4px !important;
+                padding: 0 !important;
                 box-sizing: border-box !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 overflow: hidden !important;
+                border-radius: 14px !important;
             }
 
             .gmd-916-canvas-frame {
@@ -4801,24 +4955,26 @@
                 height: 100% !important;
                 max-height: 100% !important;
                 margin: 0 auto !important;
-                border-radius: 10px !important;
+                border-radius: 12px !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
+                transform: scale(1.7) !important;
+                transform-origin: center center !important;
             }
 
             .gmd-916-canvas-frame video {
                 width: 100% !important;
                 height: 100% !important;
                 object-fit: contain !important;
-                border-radius: 10px !important;
+                border-radius: 12px !important;
                 display: block !important;
                 margin: 0 auto !important;
             }
 
             .gmd-app-canvas-footer {
-                margin-top: 6px !important;
-                padding-top: 4px !important;
+                margin-top: 8px !important;
+                padding-top: 6px !important;
             }
 
             .gmd-app-canvas-footer span {
@@ -4848,9 +5004,143 @@
                 position: relative !important;
             }
 
-            /* Special Features & AI Assistant */
+            /* Special Features & AI Assistant Mobile */
             .special-features-section {
-                padding: 45px 0;
+                padding: 50px 0;
+            }
+
+            .sf-grid-3 {
+                grid-template-columns: 1fr !important;
+                gap: 28px !important;
+                max-width: 360px !important;
+                margin: 0 auto !important;
+            }
+
+            .sf-card-glass {
+                padding: 24px 16px 20px !important;
+                border-radius: 24px !important;
+                margin-top: 14px !important;
+            }
+
+            .sf-badge-pill {
+                top: -12px !important;
+                padding: 4px 14px !important;
+                font-size: 10px !important;
+            }
+
+            .sf-visual-stage {
+                height: 215px !important;
+                margin-top: 4px !important;
+                margin-bottom: 12px !important;
+            }
+
+            .sf-jar-img {
+                max-height: 205px !important;
+            }
+
+            .sf-wheel-stage-wrap {
+                gap: 8px !important;
+            }
+
+            .sf-wheel-img {
+                height: 190px !important;
+            }
+
+            .sf-challenge-selected-box {
+                width: 90px !important;
+                height: 135px !important;
+                padding: 8px 6px !important;
+                border-radius: 12px !important;
+            }
+
+            .sf-challenge-selected-box .cs-header {
+                font-size: 7.5px !important;
+            }
+
+            .sf-challenge-selected-box .cs-action {
+                font-size: 11px !important;
+            }
+
+            .sf-challenge-selected-box .cs-dancer-glow svg {
+                width: 26px !important;
+                height: 32px !important;
+            }
+
+            .sf-ai-robot-img {
+                height: 165px !important;
+            }
+
+            .sf-ai-bubble-left {
+                width: 105px !important;
+                padding: 6px 8px !important;
+                top: 28px !important;
+                left: -2px !important;
+                border-radius: 12px !important;
+            }
+
+            .sf-card-glass.ai:hover .sf-ai-bubble-left {
+                top: 24px !important;
+                left: -8px !important;
+                width: 110px !important;
+            }
+
+            .sf-ai-bubble-right {
+                width: 115px !important;
+                padding: 6px 8px !important;
+                top: 18px !important;
+                right: -2px !important;
+                border-radius: 12px !important;
+            }
+
+            .sf-card-glass.ai:hover .sf-ai-bubble-right {
+                top: 14px !important;
+                right: -8px !important;
+                width: 120px !important;
+            }
+
+            .sf-ai-bubble-left .b-msg,
+            .sf-ai-bubble-right .b-msg {
+                font-size: 9.5px !important;
+                line-height: 1.25 !important;
+            }
+
+            .sf-ai-full-soundwave {
+                bottom: 30px !important;
+                width: 95% !important;
+                height: 12px !important;
+            }
+
+            .sf-ai-actions-row {
+                bottom: 0 !important;
+                gap: 6px !important;
+            }
+
+            .sf-ai-action-btn {
+                padding: 3px 8px !important;
+                font-size: 9px !important;
+            }
+
+            .sf-title {
+                font-size: 19px !important;
+                margin-bottom: 6px !important;
+            }
+
+            .sf-desc {
+                font-size: 12px !important;
+                line-height: 1.5 !important;
+                margin-bottom: 14px !important;
+                min-height: auto !important;
+                padding: 0 !important;
+            }
+
+            .sf-tags-row {
+                gap: 5px !important;
+            }
+
+            .sf-tag-pill {
+                padding: 4px 10px !important;
+                font-size: 10.5px !important;
+                gap: 4px !important;
             }
 
             .widgets-grid-4 {
@@ -4858,21 +5148,93 @@
                 gap: 12px;
             }
 
-            /* Pricing Section */
+            /* Comparison Table Mobile */
+            .comparison-section {
+                padding: 45px 0;
+            }
+
+            .comparison-scroll-hint-mobile {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                font-size: 11px;
+                font-weight: 600;
+                color: #f472b6;
+                margin-bottom: 14px;
+                background: rgba(236, 72, 153, 0.1);
+                border: 1px solid rgba(236, 72, 153, 0.3);
+                padding: 6px 14px;
+                border-radius: 999px;
+                width: fit-content;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .comparison-table-wrap {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                border-radius: 16px !important;
+                margin: 0 -8px !important;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+                scrollbar-width: thin;
+            }
+
+            table.comparison-table {
+                min-width: 520px !important;
+                width: 520px !important;
+            }
+
+            table.comparison-table th,
+            table.comparison-table td {
+                padding: 12px 14px !important;
+                font-size: 12px !important;
+            }
+
+            table.comparison-table th {
+                font-size: 12.5px !important;
+            }
+
+            /* Pricing Section Mobile */
             .pricing-section {
                 padding: 45px 0;
             }
 
             .pricing-grid-4 {
                 grid-template-columns: 1fr;
-                gap: 16px;
+                gap: 20px;
                 max-width: 360px;
                 margin: 0 auto;
             }
 
-            .pricing-card {
-                padding: 20px 16px;
-                border-radius: 16px;
+            .pricing-plan-card {
+                padding: 26px 18px 20px !important;
+                border-radius: 20px !important;
+            }
+
+            .pricing-plan-card.featured-basic {
+                transform: none !important;
+            }
+
+            .pricing-plan-card.featured-basic:hover {
+                transform: translateY(-4px) !important;
+            }
+
+            .plan-cost-number {
+                font-size: 28px !important;
+            }
+
+            .plan-name-title {
+                font-size: 22px !important;
+            }
+
+            ul.plan-perks-list li {
+                font-size: 12.5px !important;
+            }
+
+            .btn-plan-select {
+                padding: 12px 0 !important;
+                font-size: 13px !important;
             }
 
             /* FAQ & Footer */
@@ -5266,37 +5628,58 @@
     <!-- SECTION: GÁN HIỆU ỨNG TỰ ĐỘNG (GIFT MAPPING & EFFECTS AUTOMATION WORKFLOW) -->
     <section class="gift-mapping-workflow-section" id="gift-mapping-flow">
         <div class="container">
-            <!-- 5 Thẻ Tính Năng 3D: 1 Hàng 5 Icon + Khung Text Chi Tiết Thay Đổi Linh Hoạt -->
+            <!-- 5 Thẻ Tính Năng 3D: High-End Bento Grid Showcase -->
             <div class="gm-features-showcase-box" id="gmFeaturesShowcase">
-                <div class="gm-feat-tabs-row" id="gmFeatTabsRow">
-                    <div class="gm-feat-tab-item active" data-index="0" title="Nhận tín hiệu real-time">
-                        <img src="assets/images/features/real time.png" alt="Nhận tín hiệu real-time">
+                <div class="gm-feat-grid" id="gmFeatGrid">
+                    <div class="gm-feat-card active" data-index="0">
+                        <div class="gm-feat-card-glow"></div>
+                        <div class="gm-feat-icon-box">
+                            <img src="assets/images/features/real time.png" alt="Nhận tín hiệu real-time">
+                        </div>
+                        <div class="gm-feat-body">
+                            <h4 class="gm-feat-title">Tín Hiệu Real-Time</h4>
+                            <p class="gm-feat-desc">Kết nối TikTok LIVE siêu tốc, bắt trọn quà tặng dưới 1 giây</p>
+                        </div>
                     </div>
-                    <div class="gm-feat-tab-item" data-index="1" title="Mapping linh hoạt">
-                        <img src="assets/images/features/mapping.png" alt="Mapping linh hoạt">
+                    <div class="gm-feat-card" data-index="1">
+                        <div class="gm-feat-card-glow"></div>
+                        <div class="gm-feat-icon-box">
+                            <img src="assets/images/features/mapping.png" alt="Mapping linh hoạt">
+                        </div>
+                        <div class="gm-feat-body">
+                            <h4 class="gm-feat-title">Mapping Linh Hoạt</h4>
+                            <p class="gm-feat-desc">Tự do gán video, ảnh & hoạt cảnh cho từng món quà</p>
+                        </div>
                     </div>
-                    <div class="gm-feat-tab-item" data-index="2" title="Hiệu ứng sống động">
-                        <img src="assets/images/features/hieu ung song dong.png" alt="Hiệu ứng sống động">
+                    <div class="gm-feat-card" data-index="2">
+                        <div class="gm-feat-card-glow"></div>
+                        <div class="gm-feat-icon-box">
+                            <img src="assets/images/features/hieu ung song dong.png" alt="Hiệu ứng sống động">
+                        </div>
+                        <div class="gm-feat-body">
+                            <h4 class="gm-feat-title">Hiệu Ứng WebM 4K</h4>
+                            <p class="gm-feat-desc">Chuẩn Alpha trong suốt, nổ hiệu ứng mãn nhãn trên OBS</p>
+                        </div>
                     </div>
-                    <div class="gm-feat-tab-item" data-index="3" title="Tùy chỉnh âm thanh">
-                        <img src="assets/images/features/tuy chinh am thanh.png" alt="Tùy chỉnh âm thanh">
+                    <div class="gm-feat-card" data-index="3">
+                        <div class="gm-feat-card-glow"></div>
+                        <div class="gm-feat-icon-box">
+                            <img src="assets/images/features/tuy chinh am thanh.png" alt="Tùy chỉnh âm thanh">
+                        </div>
+                        <div class="gm-feat-body">
+                            <h4 class="gm-feat-title">Âm Thanh & SFX</h4>
+                            <p class="gm-feat-desc">Âm thanh độc quyền, tùy biến âm lượng riêng cho từng gift</p>
+                        </div>
                     </div>
-                    <div class="gm-feat-tab-item" data-index="4" title="Kiểm soát dễ dàng">
-                        <img src="assets/images/features/kiem soat.png" alt="Kiểm soát dễ dàng">
-                    </div>
-                </div>
-
-                <!-- Khung Text Chi Tiết Sắc Nét -->
-                <div class="gm-feat-detail-card" id="gmFeatDetailCard">
-                    <div class="gm-feat-detail-badge" id="gmFeatBadge"><i class="fas fa-bolt"></i> TÍNH NĂNG 01/05</div>
-                    <h3 class="gm-feat-detail-title" id="gmFeatTitle">Nhận Tín Hiệu Real-Time</h3>
-                    <p class="gm-feat-detail-desc" id="gmFeatDesc">Kết nối trực tiếp TikTok LIVE qua giao thức độ trễ thấp, bắt trọn từng quà tặng tức thì dưới 1 giây.</p>
-                    <div class="gm-feat-dots" id="gmFeatDots">
-                        <span class="gm-feat-dot active" data-index="0"></span>
-                        <span class="gm-feat-dot" data-index="1"></span>
-                        <span class="gm-feat-dot" data-index="2"></span>
-                        <span class="gm-feat-dot" data-index="3"></span>
-                        <span class="gm-feat-dot" data-index="4"></span>
+                    <div class="gm-feat-card" data-index="4">
+                        <div class="gm-feat-card-glow"></div>
+                        <div class="gm-feat-icon-box">
+                            <img src="assets/images/features/kiem soat.png" alt="Kiểm soát dễ dàng">
+                        </div>
+                        <div class="gm-feat-body">
+                            <h4 class="gm-feat-title">Kiểm Soát Tức Thì</h4>
+                            <p class="gm-feat-desc">Theo dõi bảng xếp hạng, lịch sử và bật/tắt mọi hiệu ứng</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5945,11 +6328,15 @@
     <!-- SECTION 2: TRÌNH THIẾT KẾ BẢNG QUÀ & 6 PHONG CÁCH CHỮ 3D ĐỘC BẢN -->
     <section class="typography-showcase-section" id="typography-showcase">
         <div class="container">
-            <div class="section-header-wrap">
-                <span class="section-tag">ĐỒ HỌA CHUYÊN NGHIỆP 1080P</span>
-                <h2 class="section-title">Trình Thiết Kế Bảng Quà & Hệ Thống Chữ 3D</h2>
-                <p class="section-desc">Tích hợp trọn bộ hơn 195 Font chữ UTM Việt hóa chuẩn đẹp. Dưới đây là 6 mẫu chữ
-                    3D 1-Click độc bản được thiết kế riêng từng font chữ chuẩn xác.</p>
+            <div class="how-it-works-header-wrap" style="margin-bottom: 40px;">
+                <span class="hiw-tag-badge"><i class="fas fa-layer-group"></i> ĐỒ HỌA CHUYÊN NGHIỆP 1080P</span>
+                <h2 class="how-it-works-heading" style="line-height: 1.35; font-size: clamp(26px, 3.2vw, 36px);">
+                    Trình Thiết Kế Bảng Quà.<br>
+                    & <span class="text-highlight-brand">Hệ Thống Chữ 3D</span> Độc Bản.
+                </h2>
+                <p style="font-size: 15px; color: #94a3b8; max-width: 720px; margin: 14px auto 0; line-height: 1.6; text-align: center;">
+                    Tích hợp trọn bộ hơn 195 Font chữ UTM Việt hóa chuẩn đẹp. Dưới đây là 6 mẫu chữ 3D 1-Click độc bản được thiết kế riêng từng font chữ chuẩn xác.
+                </p>
             </div>
 
             <!-- 6 Presets Grid -->
@@ -6044,11 +6431,19 @@
     <!-- SECTION 4: BẢNG SO SÁNH LIVEFLOW VS TIKFINITY -->
     <section class="comparison-section" id="comparison">
         <div class="container">
-            <div class="section-header-wrap">
-                <span class="section-tag">TỐI ƯU VƯỢT TRỘI</span>
-                <h2 class="section-title">Tại Sao Streamer Chọn LiveFlow?</h2>
-                <p class="section-desc">So sánh trực quan giữa LiveFlow và các công cụ nước ngoài đắt đỏ, phức tạp trên
-                    thị trường.</p>
+            <div class="how-it-works-header-wrap" style="margin-bottom: 36px;">
+                <span class="hiw-tag-badge"><i class="fas fa-bolt"></i> TỐI ƯU VƯỢT TRỘI</span>
+                <h2 class="how-it-works-heading" style="line-height: 1.35; font-size: clamp(26px, 3.2vw, 36px);">
+                    Tại Sao Streamer<br>
+                    Lại Chọn <span class="text-highlight-brand">LiveFlow</span>?
+                </h2>
+                <p style="font-size: 15px; color: #94a3b8; max-width: 720px; margin: 14px auto 0; line-height: 1.6; text-align: center;">
+                    So sánh trực quan giữa LiveFlow và các công cụ nước ngoài đắt đỏ, phức tạp trên thị trường.
+                </p>
+            </div>
+
+            <div class="comparison-scroll-hint-mobile">
+                <i class="fas fa-arrows-left-right"></i> Vuốt sang phải để xem so sánh LiveFlow <i class="fas fa-arrow-right"></i>
             </div>
 
             <div class="comparison-table-wrap">
@@ -6070,38 +6465,32 @@
                         <tr>
                             <td><strong>Hỗ trợ Font chữ Tiếng Việt</strong></td>
                             <td style="color:#94a3b8;">Bị lỗi font, nhảy dấu, thiếu font đẹp</td>
-                            <td class="highlight-col"><i class="fas fa-check" style="color:#10b981;"></i> Trọn bộ 195+
-                                Font UTM Việt hóa chuẩn</td>
+                            <td class="highlight-col"><i class="fas fa-check" style="color:#10b981;"></i> Trọn bộ 195+ Font UTM Việt hóa chuẩn</td>
                         </tr>
                         <tr>
                             <td><strong>Chất lượng video hiệu ứng</strong></td>
                             <td style="color:#94a3b8;">MP4 nền đen, che hết mặt streamer</td>
-                            <td class="highlight-col"><i class="fas fa-check" style="color:#10b981;"></i> WebM 3D trong
-                                suốt 4K nổ trực tiếp</td>
+                            <td class="highlight-col"><i class="fas fa-check" style="color:#10b981;"></i> WebM 3D trong suốt 4K nổ trực tiếp</td>
                         </tr>
                         <tr>
                             <td><strong>Điều khiển Webcam / Nguồn OBS</strong></td>
                             <td style="color:#94a3b8;">Không hỗ trợ, chỉ phát video rời</td>
-                            <td class="highlight-col"><i class="fas fa-check" style="color:#10b981;"></i> Timeline
-                                Keyframe rung lắc, đổi góc Webcam</td>
+                            <td class="highlight-col"><i class="fas fa-check" style="color:#10b981;"></i> Timeline Keyframe rung lắc, đổi góc Webcam</td>
                         </tr>
                         <tr>
                             <td><strong>Mức tiêu hao tài nguyên máy</strong></td>
                             <td style="color:#94a3b8;">Nặng máy, ngốn CPU &gt; 15-20%</td>
-                            <td class="highlight-col"><i class="fas fa-check" style="color:#10b981;"></i> Tối ưu GPU,
-                                CPU &lt; 3% không tụt FPS</td>
+                            <td class="highlight-col"><i class="fas fa-check" style="color:#10b981;"></i> Tối ưu GPU, CPU &lt; 3% không tụt FPS</td>
                         </tr>
                         <tr>
                             <td><strong>Hỗ trợ kỹ thuật</strong></td>
                             <td style="color:#94a3b8;">Tự đọc tiếng Anh, không ai kèm</td>
-                            <td class="highlight-col"><i class="fas fa-check" style="color:#10b981;"></i> Kỹ thuật viên
-                                kèm UltraViewer 24/7</td>
+                            <td class="highlight-col"><i class="fas fa-check" style="color:#10b981;"></i> Kỹ thuật viên kèm UltraViewer 24/7</td>
                         </tr>
                         <tr>
                             <td><strong>Mức phí sử dụng</strong></td>
                             <td style="color:#ef4444; font-weight:700;">$15 - $25 / tháng (~400k - 600k)</td>
-                            <td class="highlight-col" style="color:#fbbf24; font-size:17px; font-weight:900;">Chỉ từ
-                                6.600đ / ngày (199k / tháng)</td>
+                            <td class="highlight-col" style="color:#fbbf24; font-size:17px; font-weight:900;">Chỉ từ 6.600đ / ngày (199k / tháng)</td>
                         </tr>
                     </tbody>
                 </table>
@@ -6112,113 +6501,129 @@
     <!-- SECTION 5: BẢNG GIÁ 4 GÓI CHUẨN XÁC 100% -->
     <section class="pricing-section" id="pricing">
         <div class="container">
-            <div class="section-header-wrap">
-                <span class="section-tag">BẢNG GIÁ DỊCH VỤ</span>
-                <h2 class="section-title">Đầu Tư Nhỏ - Bùng Nổ Doanh Thu</h2>
-                <p class="section-desc">Không ép buộc nâng cấp. Bạn luôn có thể bắt đầu dùng thử miễn phí và nâng cấp
-                    khi cần mở rộng quy mô.</p>
+            <div class="how-it-works-header-wrap" style="margin-bottom: 40px;">
+                <span class="hiw-tag-badge"><i class="fas fa-gem"></i> BẢNG GIÁ DỊCH VỤ</span>
+                <h2 class="how-it-works-heading" style="line-height: 1.35; font-size: clamp(26px, 3.2vw, 36px);">
+                    Đầu Tư Nhỏ.<br>
+                    <span class="text-highlight-brand">Bùng Nổ Doanh Thu</span> Livestream.
+                </h2>
+                <p style="font-size: 15px; color: #94a3b8; max-width: 720px; margin: 14px auto 0; line-height: 1.6; text-align: center;">
+                    Không ép buộc nâng cấp. Bạn luôn có thể bắt đầu dùng thử miễn phí và nâng cấp khi cần mở rộng quy mô.
+                </p>
             </div>
 
             <div class="pricing-grid-4">
                 <!-- 1. GÓI MIỄN PHÍ -->
-                <div class="pricing-plan-card">
+                <div class="pricing-plan-card" id="plan-card-free">
                     <div>
                         <div class="plan-header-top">
-                            <span class="plan-level-tag" style="background:#3b82f6; color:#fff;">FREE</span>
+                            <span class="plan-level-tag tag-free">FREE</span>
                             <h3 class="plan-name-title">Miễn Phí</h3>
                             <div class="plan-cost-number">0₫ <span>/tháng</span></div>
-                            <div class="plan-sub-cost-text" style="color:#94a3b8;">Dùng lâu dài, không giới hạn thời
-                                gian</div>
+                            <div class="plan-sub-cost-text text-free">Dùng lâu dài, không giới hạn thời gian</div>
                         </div>
                         <ul class="plan-perks-list">
-                            <li><i class="fas fa-check-circle"></i> 1 thiết bị sử dụng</li>
-                            <li><i class="fas fa-check-circle"></i> Dùng thử toàn bộ trình thiết kế</li>
-                            <li><i class="fas fa-check-circle"></i> 5 hiệu ứng gắn quà TikTok</li>
-                            <li><i class="fas fa-check-circle"></i> 5 hiệu ứng cá nhân tải lên</li>
-                            <li><i class="fas fa-check-circle"></i> 1 bảng mục tiêu livestream</li>
-                            <li><i class="fas fa-check-circle"></i> Trợ lý AI Cà khịa: 1.000 ký tự</li>
-                            <li><i class="fas fa-check-circle"></i> Lưu & xuất OBS: 1 thiết kế</li>
+                            <li><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>1 thiết bị sử dụng</span></li>
+                            <li><i class="fas fa-check-circle" style="color:#60a5fa;"></i> <span style="color:#93c5fd; font-weight:600;">Dùng thử toàn bộ trình thiết kế — mọi hiệu ứng & bảng nâng cao</span></li>
+                            <li class="perk-badge-cyan"><i class="fas fa-gem" style="color:#06b6d4;"></i> <span>Mua hiệu ứng thịnh hành: 30.000₫/cái (sở hữu vĩnh viễn) & săn Flash Sale</span></li>
+                            <li><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>5 hiệu ứng gắn quà TikTok</span></li>
+                            <li><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>5 hiệu ứng cá nhân tải lên</span></li>
+                            <li><i class="fas fa-robot" style="color:#a855f7;"></i> <span>🤖 Trợ lý AI Cà khịa trả lời bình luận: 1.000 ký tự/tháng</span></li>
+                            <li><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>1 bảng mục tiêu livestream</span></li>
+                            <li><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>Lưu & xuất OBS: 1 thiết kế (tính năng cơ bản)</span></li>
                         </ul>
                     </div>
-                    <div class="btn-plan-select btn-free" style="pointer-events:none; cursor:default; opacity:0.85; text-align:center;">Tích Hợp Sẵn Trong App</div>
+                    <div>
+                        <a href="https://github.com/bhstudioinfo-dev/effectstore-app/releases/download/v1.0.3/LiveFlow-Setup-1.0.3.exe" class="btn-plan-select btn-free"><i class="fab fa-windows" style="margin-right:6px;"></i> Tiếp Tục Dùng Miễn Phí</a>
+                        <div class="plan-trust-sub">Không cần thanh toán • Nâng cấp khi cần</div>
+                    </div>
                 </div>
 
                 <!-- 2. GÓI BASIC (BÁN CHẠY NHẤT) -->
-                <div class="pricing-plan-card featured-basic">
-                    <span class="card-popular-pill">⭐ ĐƯỢC CHỌN NHIỀU NHẤT</span>
+                <div class="pricing-plan-card featured-basic" id="plan-card-basic">
+                    <span class="card-badge-pill badge-amber">⭐ ĐƯỢC CHỌN NHIỀU NHẤT</span>
                     <div>
                         <div class="plan-header-top">
-                            <span class="plan-level-tag"
-                                style="background:rgba(245,158,11,0.2); color:#fbbf24; border:1px solid rgba(245,158,11,0.4);">BASIC</span>
+                            <span class="plan-level-tag tag-basic">BASIC</span>
                             <h3 class="plan-name-title">Basic</h3>
-                            <div style="font-size:13px; text-decoration:line-through; color:#94a3b8; opacity:0.6;">
-                                250.000₫</div>
+                            <div class="plan-old-price"><del>250.000₫</del></div>
                             <div class="plan-cost-number" style="color:#fbbf24;">199.000₫ <span>/tháng</span></div>
-                            <div class="plan-sub-cost-text">Chỉ khoảng 6.600đ / ngày</div>
+                            <div class="plan-sub-cost-text" style="color:#fbbf24;">Dành cho streamer đang phát triển</div>
                         </div>
                         <ul class="plan-perks-list">
-                            <li><i class="fas fa-check-circle"></i> <strong>Bao gồm mọi tính năng Free</strong></li>
-                            <li><i class="fas fa-check-circle"></i> <strong>Mở khóa thiết kế nâng cao</strong> (khóa
-                                lớp, hào quang, màu gradient)</li>
-                            <li><i class="fas fa-check-circle"></i> <strong>30 hiệu ứng gắn quà</strong> (thay vì 5)
-                            </li>
-                            <li><i class="fas fa-check-circle"></i> <strong>100 hiệu ứng cá nhân</strong> tải lên</li>
-                            <li><i class="fas fa-check-circle"></i> 20 ảnh/video tải lên menu</li>
-                            <li><i class="fas fa-check-circle"></i> <strong>Không giới hạn bình luận live</strong></li>
-                            <li><i class="fas fa-check-circle"></i> Trợ lý AI Cà khịa: 3.000 ký tự</li>
-                            <li><i class="fas fa-check-circle"></i> Lưu 2 thiết kế + 10 bảng mục tiêu</li>
+                            <li style="color:#fef3c7; font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>Bao gồm mọi tính năng Free</span></li>
+                            <li class="perk-badge-gold"><i class="fas fa-gift" style="color:#fbbf24;"></i> <span>🎁 <strong>Tặng 10 Slot hiệu ứng tự chọn</strong> trong kho thịnh hành chạy OBS (chu kỳ đổi sau 1 tuần)</span></li>
+                            <li style="color:#a7f3d0; font-weight:700;"><i class="fas fa-tag" style="color:#10b981;"></i> <span>Mua thêm hiệu ứng vĩnh viễn chỉ <strong>20.000₫</strong> (giảm 33%)</span></li>
+                            <li><i class="fas fa-crown" style="color:#f59e0b;"></i> <span>Hiệu ứng Độc Quyền VIP giảm 30%</span></li>
+                            <li style="color:#fbbf24; font-weight:800;"><i class="fas fa-palette" style="color:#f59e0b;"></i> <span>🎨 <strong>Toàn bộ tính năng thiết kế nâng cao</strong> (khoá lớp, hoạt ảnh, hào quang, màu tùy chỉnh)</span></li>
+                            <li style="color:#38bdf8; font-weight:700;"><i class="fas fa-check-circle" style="color:#10b981;"></i> <span><strong>30 hiệu ứng gắn quà</strong> (thay vì 5)</span></li>
+                            <li style="color:#38bdf8; font-weight:700;"><i class="fas fa-check-circle" style="color:#10b981;"></i> <span><strong>100 hiệu ứng cá nhân</strong> tải lên</span></li>
+                            <li><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>20 ảnh/video tải lên menu</span></li>
+                            <li style="color:#38bdf8; font-weight:700;"><i class="fas fa-check-circle" style="color:#10b981;"></i> <span><strong>Không giới hạn bình luận live</strong></span></li>
+                            <li><i class="fas fa-robot" style="color:#a855f7;"></i> <span>🤖 Trợ lý AI Cà khịa: 3.000 ký tự/tháng</span></li>
+                            <li><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>Lưu tối đa 2 thiết kế trong thư viện + 10 bảng mục tiêu</span></li>
                         </ul>
                     </div>
-                    <div class="btn-plan-select btn-basic" style="pointer-events:none; cursor:default; opacity:0.95; text-align:center;">Nâng Cấp Trong App</div>
+                    <div>
+                        <a href="https://github.com/bhstudioinfo-dev/effectstore-app/releases/download/v1.0.3/LiveFlow-Setup-1.0.3.exe" class="btn-plan-select btn-basic"><i class="fas fa-bolt" style="margin-right:6px;"></i> Nâng Cấp Basic Trong App</a>
+                        <div class="plan-trust-sub">Chỉ khoảng 6.600đ/ngày • Không mất effect đã mua</div>
+                    </div>
                 </div>
 
                 <!-- 3. GÓI PRO -->
-                <div class="pricing-plan-card featured-pro">
+                <div class="pricing-plan-card featured-pro" id="plan-card-pro">
+                    <span class="card-badge-pill badge-purple">🔥 CHO STREAMER CHUYÊN NGHIỆP</span>
                     <div>
                         <div class="plan-header-top">
-                            <span class="plan-level-tag"
-                                style="background:rgba(236,72,153,0.2); color:#f472b6; border:1px solid rgba(236,72,153,0.4);">PRO</span>
+                            <span class="plan-level-tag tag-pro">PRO</span>
                             <h3 class="plan-name-title">Pro</h3>
-                            <div style="font-size:13px; text-decoration:line-through; color:#94a3b8; opacity:0.6;">
-                                450.000₫</div>
+                            <div class="plan-old-price"><del>450.000₫</del></div>
                             <div class="plan-cost-number" style="color:#c084fc;">399.000₫ <span>/tháng</span></div>
-                            <div class="plan-sub-cost-text" style="color:#c084fc;">Cho Streamer chuyên nghiệp</div>
+                            <div class="plan-sub-cost-text" style="color:#c084fc;">Tự động hóa toàn diện & không giới hạn</div>
                         </div>
                         <ul class="plan-perks-list">
-                            <li><i class="fas fa-check-circle"></i> <strong>Bao gồm mọi tính năng Basic</strong></li>
-                            <li><i class="fas fa-check-circle"></i> <strong>KHÔNG GIỚI HẠN</strong> hiệu ứng gắn quà
-                            </li>
-                            <li><i class="fas fa-check-circle"></i> <strong>KHÔNG GIỚI HẠN</strong> thiết kế đã lưu</li>
-                            <li><i class="fas fa-check-circle"></i> <strong>KHÔNG GIỚI HẠN</strong> bảng mục tiêu</li>
-                            <li><i class="fas fa-check-circle"></i> Tự động hóa gộp hiệu ứng, cooldown chống spam</li>
-                            <li><i class="fas fa-check-circle"></i> Trợ lý AI Cà khịa: 10.000 – 15.000 ký tự</li>
-                            <li><i class="fas fa-check-circle"></i> Hỗ trợ kỹ thuật ưu tiên 24/7</li>
+                            <li style="color:#ddd6fe; font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>Bao gồm mọi tính năng Basic</span></li>
+                            <li class="perk-badge-purple"><i class="fas fa-infinity" style="color:#c084fc;"></i> <span>👑 <strong>Miễn phí 100% kho thịnh hành</strong> (All-Access không giới hạn)</span></li>
+                            <li class="perk-badge-gold"><i class="fas fa-crown" style="color:#fbbf24;"></i> <span>👑 <strong>Đặc quyền Gán User VIP / Vinh Danh</strong> (Biến hình & Khung avatar SVGA)</span></li>
+                            <li><i class="fas fa-crown" style="color:#f59e0b;"></i> <span>Hiệu ứng Độc Quyền VIP giảm sâu 50%</span></li>
+                            <li><i class="fas fa-check-circle" style="color:#10b981;"></i> <span><strong>KHÔNG GIỚI HẠN</strong> hiệu ứng gắn quà</span></li>
+                            <li style="color:#a78bfa; font-weight:800;"><i class="fas fa-layer-group" style="color:#a855f7;"></i> <span>♾️ <strong>KHÔNG GIỚI HẠN</strong> thiết kế đã lưu (Basic chỉ 2)</span></li>
+                            <li><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>Không giới hạn bảng mục tiêu & ảnh/video tải lên</span></li>
+                            <li><i class="fas fa-cogs" style="color:#a855f7;"></i> <span>Gộp nhiều hiệu ứng/1 quà, chạy tuần tự, cooldown thông minh</span></li>
+                            <li style="color:#a78bfa; font-weight:800;"><i class="fas fa-robot" style="color:#a855f7;"></i> <span>🤖 Trợ lý AI Cà khịa: 10.000 ký tự/tháng</span></li>
+                            <li><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>Sử dụng trên 1 thiết bị</span></li>
+                            <li><i class="fas fa-headset" style="color:#10b981;"></i> <span>Hỗ trợ kỹ thuật ưu tiên 24/7</span></li>
                         </ul>
                     </div>
-                    <div class="btn-plan-select btn-pro" style="pointer-events:none; cursor:default; opacity:0.95; text-align:center;">Nâng Cấp Trong App</div>
+                    <div>
+                        <a href="https://github.com/bhstudioinfo-dev/effectstore-app/releases/download/v1.0.3/LiveFlow-Setup-1.0.3.exe" class="btn-plan-select btn-pro"><i class="fas fa-crown" style="margin-right:6px;"></i> Nâng Cấp Pro Trong App</a>
+                        <div class="plan-trust-sub">Cho streamer livestream thường xuyên & cần tự động hóa</div>
+                    </div>
                 </div>
 
                 <!-- 4. GÓI STUDIO -->
-                <div class="pricing-plan-card">
+                <div class="pricing-plan-card featured-studio" id="plan-card-studio">
+                    <span class="card-badge-pill badge-emerald">🏢 GIẢI PHÁP DOANH NGHIỆP</span>
                     <div>
                         <div class="plan-header-top">
-                            <span class="plan-level-tag"
-                                style="background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(16,185,129,0.4);">STUDIO</span>
+                            <span class="plan-level-tag tag-studio">STUDIO</span>
                             <h3 class="plan-name-title">Studio / Agency</h3>
-                            <div class="plan-cost-number" style="color:#34d399; font-size:26px;">Liên Hệ <span>/quy
-                                    mô</span></div>
+                            <div class="plan-cost-number" style="color:#34d399; font-size:28px;">Liên Hệ <span>/tùy chỉnh</span></div>
                             <div class="plan-sub-cost-text" style="color:#34d399;">Giải pháp doanh nghiệp & MCN</div>
                         </div>
                         <ul class="plan-perks-list">
-                            <li><i class="fas fa-check-circle"></i> <strong>Bao gồm mọi tính năng Pro</strong></li>
-                            <li><i class="fas fa-check-circle"></i> Triển khai nhiều tài khoản & thiết bị</li>
-                            <li><i class="fas fa-check-circle"></i> Phân quyền vận hành cho cả team</li>
-                            <li><i class="fas fa-check-circle"></i> Thiết kế hiệu ứng riêng theo logo thương hiệu</li>
-                            <li><i class="fas fa-check-circle"></i> Kỹ thuật viên trực live sự kiện</li>
-                            <li><i class="fas fa-check-circle"></i> Tích hợp API theo thỏa thuận</li>
+                            <li style="color:#a7f3d0; font-weight:800;"><i class="fas fa-check-circle" style="color:#10b981;"></i> <span>Bao gồm mọi tính năng Pro</span></li>
+                            <li><i class="fas fa-network-wired" style="color:#34d399;"></i> <span>Triển khai nhiều tài khoản và thiết bị</span></li>
+                            <li><i class="fas fa-users-cog" style="color:#34d399;"></i> <span>Thiết lập phân quyền vận hành cho cả team</span></li>
+                            <li><i class="fas fa-magic" style="color:#34d399;"></i> <span>Tư vấn & thiết kế hiệu ứng riêng theo thương hiệu</span></li>
+                            <li><i class="fas fa-code" style="color:#34d399;"></i> <span>Tích hợp API theo thỏa thuận</span></li>
+                            <li><i class="fas fa-user-shield" style="color:#34d399;"></i> <span>Hỗ trợ triển khai & kèm UltraViewer trực tiếp 1-1</span></li>
                         </ul>
                     </div>
-                    <a href="https://zalo.me/0879040246" target="_blank" rel="noopener" class="btn-plan-select btn-studio" style="text-align:center;"><i class="fas fa-comment-dots"></i> Liên Hệ Zalo Tư Vấn</a>
+                    <div>
+                        <a href="https://zalo.me/0879040246" target="_blank" rel="noopener" class="btn-plan-select btn-studio"><i class="fas fa-comment-dots" style="margin-right:6px;"></i> Nhận Tư Vấn Qua Zalo</a>
+                        <div class="plan-trust-sub">Tư vấn trực tiếp 1-1 theo quy mô dự án</div>
+                    </div>
                 </div>
             </div>
 
@@ -6710,97 +7115,44 @@
         })();
 
         /* ========================================================
-           CONTROLLER: 5 3D FEATURE TABS + DYNAMIC DETAIL CARD
-           (Tự động đổi tính năng và hỗ trợ người dùng bấm chọn)
+           CONTROLLER: 5 3D FEATURE CARDS SHOWCASE (BENTO PILLARS)
+           (Tự động luân chuyển & tương tác di chuột trực quan)
            ======================================================== */
         (function initFeaturesShowcase() {
-            const tabs = document.querySelectorAll('#gmFeatTabsRow .gm-feat-tab-item');
-            const dots = document.querySelectorAll('#gmFeatDots .gm-feat-dot');
-            const badgeEl = document.getElementById('gmFeatBadge');
-            const titleEl = document.getElementById('gmFeatTitle');
-            const descEl = document.getElementById('gmFeatDesc');
-            const cardEl = document.getElementById('gmFeatDetailCard');
-            if (!tabs.length || !titleEl) return;
+            const cards = document.querySelectorAll('#gmFeatGrid .gm-feat-card');
+            if (!cards.length) return;
 
-            const featData = [
-                {
-                    badge: '<i class="fas fa-bolt"></i> TÍNH NĂNG 01/05',
-                    title: 'Nhận Tín Hiệu Real-Time',
-                    desc: 'Kết nối trực tiếp TikTok LIVE qua giao thức độ trễ thấp, bắt trọn từng quà tặng tức thì dưới 1 giây.'
-                },
-                {
-                    badge: '<i class="fas fa-link"></i> TÍNH NĂNG 02/05',
-                    title: 'Mapping Hiệu Ứng Linh Hoạt',
-                    desc: 'Gán bất kỳ video, hình ảnh hay hoạt cảnh nào cho từng món quà TikTok riêng biệt không giới hạn.'
-                },
-                {
-                    badge: '<i class="fas fa-wand-magic-sparkles"></i> TÍNH NĂNG 03/05',
-                    title: 'Hiệu Ứng Sống Động Trong Suốt 4K',
-                    desc: 'Tích hợp video WebM Alpha trong suốt, nổ trực tiếp trên màn hình livestream của OBS cực kỳ mãn nhãn.'
-                },
-                {
-                    badge: '<i class="fas fa-volume-high"></i> TÍNH NĂNG 04/05',
-                    title: 'Tùy Chỉnh Âm Thanh & SFX',
-                    desc: 'Tự do gắn âm thanh độc quyền, điều chỉnh âm lượng riêng biệt cho từng loại quà tặng và combo.'
-                },
-                {
-                    badge: '<i class="fas fa-sliders"></i> TÍNH NĂNG 05/05',
-                    title: 'Kiểm Soát & Thống Kê Dễ Dàng',
-                    desc: 'Theo dõi bảng xếp hạng người tặng quà, xem lịch sử kích hoạt và bật/tắt mọi hiệu ứng tức thì.'
-                }
-            ];
+            let currentIdx = 0;
+            let loopTimer = null;
 
-            let currentFeatIdx = 0;
-            let autoInterval = null;
-
-            function showFeature(idx) {
-                currentFeatIdx = idx;
-                tabs.forEach((tab, i) => {
-                    if (i === idx) tab.classList.add('active');
-                    else tab.classList.remove('active');
+            function setActiveCard(idx) {
+                currentIdx = idx;
+                cards.forEach((card, i) => {
+                    card.classList.toggle('active', i === idx);
                 });
-                dots.forEach((dot, i) => {
-                    if (i === idx) dot.classList.add('active');
-                    else dot.classList.remove('active');
-                });
-
-                if (cardEl) {
-                    cardEl.style.opacity = '0.35';
-                    cardEl.style.transform = 'translateY(4px)';
-                    setTimeout(() => {
-                        const data = featData[idx];
-                        if (data) {
-                            if (badgeEl) badgeEl.innerHTML = data.badge;
-                            if (titleEl) titleEl.textContent = data.title;
-                            if (descEl) descEl.textContent = data.desc;
-                        }
-                        cardEl.style.opacity = '1';
-                        cardEl.style.transform = 'translateY(0)';
-                    }, 140);
-                }
             }
 
-            tabs.forEach((tab, idx) => {
-                tab.addEventListener('click', () => {
-                    clearInterval(autoInterval);
-                    showFeature(idx);
+            cards.forEach((card, idx) => {
+                card.addEventListener('mouseenter', () => {
+                    clearInterval(loopTimer);
+                    setActiveCard(idx);
+                });
+                card.addEventListener('mouseleave', () => {
                     startAutoLoop();
                 });
-            });
-
-            dots.forEach((dot, idx) => {
-                dot.addEventListener('click', () => {
-                    clearInterval(autoInterval);
-                    showFeature(idx);
+                card.addEventListener('click', () => {
+                    clearInterval(loopTimer);
+                    setActiveCard(idx);
                     startAutoLoop();
                 });
             });
 
             function startAutoLoop() {
-                autoInterval = setInterval(() => {
-                    currentFeatIdx = (currentFeatIdx + 1) % featData.length;
-                    showFeature(currentFeatIdx);
-                }, 3800);
+                clearInterval(loopTimer);
+                loopTimer = setInterval(() => {
+                    currentIdx = (currentIdx + 1) % cards.length;
+                    setActiveCard(currentIdx);
+                }, 3500);
             }
 
             startAutoLoop();

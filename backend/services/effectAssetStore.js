@@ -6,6 +6,11 @@
 // ever handles a decrypted file — that only ever happens locally at
 // playback time via utils/encrypt-video.js, unchanged.
 
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
+
 const { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
 function isAssetStoreConfigured() {
@@ -31,6 +36,22 @@ function getClient() {
     return client;
 }
 
+async function uploadWithRetry(operation, description = 'asset', retries = 3) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            return await operation();
+        } catch (error) {
+            lastError = error;
+            console.warn(`⚠️ [AssetStore] Attempt ${attempt}/${retries} failed for ${description}:`, error.message);
+            if (attempt < retries) {
+                await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+            }
+        }
+    }
+    throw lastError;
+}
+
 // One object key per effect id — a re-upload (effect update) simply
 // overwrites it, always serving the current version.
 function keyForEffect(effectId) {
@@ -40,12 +61,12 @@ function keyForEffect(effectId) {
 async function uploadEncryptedEffect(effectId, localFilePath) {
     const fs = require('fs');
     const body = fs.readFileSync(localFilePath);
-    await getClient().send(new PutObjectCommand({
+    await uploadWithRetry(() => getClient().send(new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME,
         Key: keyForEffect(effectId),
         Body: body,
         ContentType: 'application/octet-stream'
-    }));
+    })), `effect ${effectId}`);
 }
 
 async function deleteEncryptedEffect(effectId) {
@@ -111,13 +132,13 @@ function keyForRelease(channel, filename) {
 async function uploadReleaseArtifact(channel, filename, localFilePath, contentType = 'application/octet-stream') {
     const fs = require('fs');
     const body = fs.readFileSync(localFilePath);
-    await getClient().send(new PutObjectCommand({
+    await uploadWithRetry(() => getClient().send(new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME,
         Key: keyForRelease(channel, filename),
         Body: body,
         ContentType: contentType,
         CacheControl: filename.endsWith('.yml') ? 'no-cache, no-store' : 'public, max-age=31536000, immutable'
-    }));
+    })), `release ${channel}/${filename}`);
 }
 
 async function downloadReleaseArtifact(channel, filename, range) {
@@ -135,12 +156,12 @@ async function downloadReleaseArtifact(channel, filename, range) {
 async function uploadThumbnail(effectId, localFilePath) {
     const fs = require('fs');
     const body = fs.readFileSync(localFilePath);
-    await getClient().send(new PutObjectCommand({
+    await uploadWithRetry(() => getClient().send(new PutObjectCommand({
         Bucket: process.env.R2_BUCKET_NAME,
         Key: keyForThumbnail(effectId),
         Body: body,
         ContentType: 'image/png'
-    }));
+    })), `thumbnail ${effectId}`);
 }
 
 async function downloadThumbnail(effectId) {
@@ -227,6 +248,52 @@ async function deleteBanner(filename) {
     } catch (_error) {}
 }
 
+function keyForVipFrame(filename) {
+    const safeFilename = String(filename || '').trim().replace(/[^a-zA-Z0-9_.-]/g, '');
+    return `frames/${safeFilename}`;
+}
+
+async function uploadVipFrame(filename, localFilePathOrBuffer, contentType = 'application/octet-stream') {
+    if (!isAssetStoreConfigured()) return;
+    const fs = require('fs');
+    const body = Buffer.isBuffer(localFilePathOrBuffer) ? localFilePathOrBuffer : fs.readFileSync(localFilePathOrBuffer);
+    if (filename.endsWith('.webm')) contentType = 'video/webm';
+    else if (filename.endsWith('.webp')) contentType = 'image/webp';
+    else if (filename.endsWith('.png')) contentType = 'image/png';
+    else if (filename.endsWith('.svga')) contentType = 'application/octet-stream';
+
+    await getClient().send(new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: keyForVipFrame(filename),
+        Body: body,
+        ContentType: contentType,
+        CacheControl: 'public, max-age=31536000, immutable'
+    }));
+}
+
+async function downloadVipFrame(filename) {
+    if (!isAssetStoreConfigured()) return null;
+    try {
+        const result = await getClient().send(new GetObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: keyForVipFrame(filename)
+        }));
+        return result.Body;
+    } catch (_error) {
+        return null;
+    }
+}
+
+async function deleteVipFrame(filename) {
+    if (!isAssetStoreConfigured()) return;
+    try {
+        await getClient().send(new DeleteObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: keyForVipFrame(filename)
+        }));
+    } catch (_error) {}
+}
+
 module.exports = {
     isAssetStoreConfigured,
     uploadEncryptedEffect,
@@ -243,5 +310,9 @@ module.exports = {
     downloadVoiceSample,
     uploadBanner,
     downloadBanner,
-    deleteBanner
+    deleteBanner,
+    keyForVipFrame,
+    uploadVipFrame,
+    downloadVipFrame,
+    deleteVipFrame
 };

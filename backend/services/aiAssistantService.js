@@ -431,11 +431,16 @@ async function generateReply(username, comment, config = getRuntimeConfig(), use
     return getRandomFallback(persona);
 }
 
+const activeProcessingAccounts = new Set();
+
 async function processChatMessage({ username, comment, isDonator = false, donatedCoins = null, userPlan = 'free', user = null, isTest = false }) {
-    const config = getRuntimeConfig(user);
+    let config = getRuntimeConfig(user);
     if (!config.enabled) return null;
     if (!qualifiesForDonatorMode(config, { isDonator, donatedCoins })) return null;
     if (!moderateText(comment).allowed) return null;
+
+    const accountKey = String(user?._id || userPlan || 'local');
+    if (activeProcessingAccounts.has(accountKey)) return null;
 
     const usage = getCharacterUsage(user || userPlan);
     if (!isTest && usage.responseMode === 'exhausted') {
@@ -453,53 +458,74 @@ async function processChatMessage({ username, comment, isDonator = false, donate
     const cooldownMs = effectiveCooldownSec * 1000;
 
     const now = Date.now();
-    const accountKey = String(user?._id || userPlan || 'local');
     const lastSpeakTime = Number(lastSpeakTimeByAccount.get(accountKey) || 0);
     if (now - lastSpeakTime < cooldownMs) return null;
 
     const cleanComment = sanitizeText(comment);
     if (!cleanComment || cleanComment.length < 3) return null;
 
-    lastSpeakTimeByAccount.set(accountKey, now);
-    const replyText = await generateReply(username, cleanComment, config, user);
-    if (!replyText || replyText === '[SKIP]' || !moderateText(replyText, { output: true }).allowed) return null;
-
-    // Track character usage
-    const charLength = replyText ? replyText.length : 0;
-    let responseMode = isTest ? 'custom' : usage.responseMode;
-    let elevenAudio = null;
-    if (responseMode === 'custom') {
-        elevenAudio = await synthesizeElevenLabs(replyText, config, user);
-        if (!elevenAudio) {
-            if (usage.hasSystemVoiceGift || isTest) responseMode = 'system_gift';
-            else return null;
-        }
-    }
-    if (!isTest) await recordCharacterUsage(charLength, user, responseMode);
-    const updatedUsage = getCharacterUsage(user || userPlan);
-
-    const eventData = {
-        type: 'ai_assistant_speech',
-        username,
-        comment: cleanComment,
-        replyText,
-        persona: config.persona,
-        ttsEngine: responseMode === 'custom' ? config.ttsEngine : 'google_free',
-        responseMode,
-        elevenLabsVoiceId: elevenAudio?.voiceId || '',
-        audioDataUrl: elevenAudio?.audioDataUrl || '',
-        readSpeed: Number(config.readSpeed) || 1.0,
-        volume: Number(config.volume) || 1.0,
-        usage: updatedUsage,
-        timestamp: Date.now()
-    };
-
+    activeProcessingAccounts.add(accountKey);
     try {
-        const obsService = require('./obsService');
-        obsService.broadcastWebSocketMessage(eventData);
-    } catch (_err) {}
+        const replyText = await generateReply(username, cleanComment, config, user);
+        if (!replyText || replyText === '[SKIP]' || !moderateText(replyText, { output: true }).allowed) return null;
 
-    return replyText;
+        // Re-verify that user didn't disable AI Assistant while reply was generating
+        if (user?._id) {
+            try {
+                const freshUser = await User.findById(user._id).select('aiAssistantConfig').lean();
+                if (freshUser) config = getRuntimeConfig(freshUser);
+            } catch (_e) {}
+        } else {
+            config = getRuntimeConfig();
+        }
+        if (!config.enabled) return null;
+
+        // Track character usage
+        const charLength = replyText ? replyText.length : 0;
+        let responseMode = isTest ? 'custom' : usage.responseMode;
+        let elevenAudio = null;
+        if (responseMode === 'custom') {
+            elevenAudio = await synthesizeElevenLabs(replyText, config, user);
+            if (!elevenAudio) {
+                if (usage.hasSystemVoiceGift || isTest) responseMode = 'system_gift';
+                else return null;
+            }
+        }
+        if (!isTest) await recordCharacterUsage(charLength, user, responseMode);
+        const updatedUsage = getCharacterUsage(user || userPlan);
+
+        // Final check before sending to OBS
+        if (!config.enabled) return null;
+
+        const eventData = {
+            type: 'ai_assistant_speech',
+            username,
+            comment: cleanComment,
+            replyText,
+            persona: config.persona,
+            ttsEngine: responseMode === 'custom' ? config.ttsEngine : 'google_free',
+            responseMode,
+            elevenLabsVoiceId: elevenAudio?.voiceId || '',
+            audioDataUrl: elevenAudio?.audioDataUrl || '',
+            readSpeed: Number(config.readSpeed) || 1.0,
+            volume: Number(config.volume) || 1.0,
+            usage: updatedUsage,
+            timestamp: Date.now()
+        };
+
+        // Estimate speech duration (approx 60-80ms per char) + extra buffer to avoid back-to-back speech overlap
+        const speechDurationMs = Math.max(3500, Math.min(15000, charLength * 85));
+        lastSpeakTimeByAccount.set(accountKey, Date.now() + speechDurationMs);
+
+        try {
+            const obsService = require('./obsService');
+            obsService.broadcastWebSocketMessage(eventData);
+        } catch (_err) {}
+
+        return replyText;
+    } finally {
+        activeProcessingAccounts.delete(accountKey);
+    }
 }
 
 module.exports = {

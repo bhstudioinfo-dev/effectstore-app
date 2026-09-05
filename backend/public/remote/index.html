@@ -220,7 +220,7 @@
 
     <script>
         let currentTab = 'all';
-        let deckState = { effect: { slots: [], visible: 10 }, sound: { slots: [], visible: 10 }, availableEffects: [], availableSounds: [] };
+        let deckState = { effect: { slots: [], visible: 10 }, sound: { slots: [], visible: 10 }, availableEffects: [], availableSounds: [], availableVips: [] };
         let pendingAssignIndex = 0;
         let pendingAssignType = 'effect';
         let effectTriggerPending = false;
@@ -245,6 +245,7 @@
 
         function fixThumbUrl(url) {
             if (!url) return '';
+            if (url.startsWith('data:')) return url;
             let clean = url.replace(/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?/i, '');
             if (clean.startsWith('/')) {
                 return window.location.origin + clean;
@@ -384,18 +385,21 @@
 
                 if (slot) {
                     const name = slot.name || 'Hiệu ứng';
-                    const thumb = fixThumbUrl(slot.thumbUrl);
-                    const iconHTML = thumb 
-                        ? `<img src="${thumb}" class="card-img" onerror="this.outerHTML='<div class=\\'card-icon\\'>${slot.icon || '🎬'}</div>'">`
-                        : `<div class="card-icon">${slot.icon || '🎬'}</div>`;
+                    const isVip = slot.type === 'vip_honor' || slot.isVip || Boolean(slot.vipId);
+                    const thumb = fixThumbUrl(slot.customAvatar || slot.thumbUrl);
+                    const iconHTML = isVip
+                        ? `<div style="position:relative;width:68px;height:68px;margin:0 auto 4px auto;"><img src="${thumb || 'https://ui-avatars.com/api/?name=VIP&background=f59e0b&color=fff'}" class="card-img" style="border:2px solid #fbbf24;box-shadow:0 0 12px rgba(251,191,36,0.6);" alt=""><span style="position:absolute;top:-6px;right:-4px;font-size:14px;">👑</span></div>`
+                        : (thumb 
+                            ? `<img src="${thumb}" class="card-img" onerror="this.outerHTML='<div class=\\'card-icon\\'>${slot.icon || '🎬'}</div>'">`
+                            : `<div class="card-icon">${slot.icon || '🎬'}</div>`);
                     const slotId = slot.id || `slot-${i}`;
 
                     cardsHTML += `
-                        <div class="deck-card active-slot${effectLocked() ? ' effect-locked' : ''}" data-deck-type="effect" onclick="triggerSlot('${slotId}', '${type}', this)">
+                        <div class="deck-card active-slot${effectLocked() ? ' effect-locked' : ''}" data-deck-type="effect" onclick="triggerSlot('${slotId}', '${type}', this)" style="${isVip ? 'border-color:rgba(251,191,36,0.5);' : ''}">
                             <button class="card-remove" aria-label="Xóa nút" onclick="event.stopPropagation();removeSlot('${escapeHtml(slotId)}','${type}')">×</button>
-                            <span class="card-badge">#${i + 1}</span>
+                            <span class="card-badge" style="${isVip ? 'color:#fbbf24;font-weight:900;' : ''}">#${i + 1}</span>
                             ${iconHTML}
-                            <div class="card-name">${name}</div>
+                            <div class="card-name" style="${isVip ? 'color:#fbbf24;font-weight:800;' : ''}">${name}</div>
                         </div>
                     `;
                 } else {
@@ -448,26 +452,55 @@
             const uploadStatus = document.getElementById('upload-status');
             uploadStatus.style.display = 'none';
 
+            let vipSectionHTML = '';
+            if (type === 'effect' && deckState.availableVips && deckState.availableVips.length > 0) {
+                const vipItems = deckState.availableVips.map(vip => {
+                    const thumb = fixThumbUrl(vip.customAvatar || vip.thumbUrl);
+                    return `
+                        <div class="picker-option" onclick="assignSlotFromRemote('${vip.id}', 'effect', true)" style="border: 1px solid rgba(251,191,36,0.4); background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(236,72,153,0.12));">
+                            <div style="position:relative;width:44px;height:44px;">
+                                <img src="${thumb || 'https://ui-avatars.com/api/?name=VIP&background=f59e0b&color=fff'}" class="picker-option-img" style="border:2px solid #fbbf24;border-radius:50%;" alt="">
+                                <span style="position:absolute;top:-5px;right:-3px;font-size:12px;">👑</span>
+                            </div>
+                            <div class="picker-option-name" style="color:#fbbf24;font-weight:800;">${escapeHtml(vip.name)}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                vipSectionHTML = `
+                    <div style="grid-column:1/-1;margin-bottom:4px;">
+                        <div style="font-size:11px;font-weight:800;color:#fbbf24;margin-bottom:8px;text-transform:uppercase;">👑 User VIP Vinh Danh (Gói PRO)</div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                            ${vipItems}
+                        </div>
+                        <div style="border-bottom:1px solid rgba(255,255,255,0.08);margin:14px 0 10px 0;"></div>
+                        <div style="font-size:11px;font-weight:800;color:#cbd5e1;margin-bottom:8px;text-transform:uppercase;">🎬 Hiệu Ứng Quà Tặng & Video</div>
+                    </div>
+                `;
+            }
+
             const items = type === 'effect'
                 ? (deckState.availableEffects || []).filter(isVideoEffect)
                 : (deckState.availableSounds || []);
 
-            if (items.length === 0) {
+            if (items.length === 0 && !vipSectionHTML) {
                 grid.innerHTML = `<div style="grid-column:1/-1; padding:24px; text-align:center; color:#94a3b8; font-size:13px;">Chưa có ${type === 'effect' ? 'hiệu ứng' : 'âm thanh'} khả dụng.<br>Hãy thêm hoặc mua hiệu ứng trên PC trước!</div>`;
             } else {
-                grid.innerHTML = items.map(item => {
+                const effectItemsHTML = items.map(item => {
                     const thumb = fixThumbUrl(item.thumbUrl);
                     const iconHTML = thumb 
                         ? `<img src="${thumb}" class="picker-option-img" onerror="this.outerHTML='<div class=\\'card-icon\\'>${item.icon || (type === 'effect' ? '🎬' : '🎵')}</div>'">`
                         : `<div class="card-icon">${item.icon || (type === 'effect' ? '🎬' : '🎵')}</div>`;
                     
                     return `
-                        <div class="picker-option" onclick="assignSlotFromRemote('${item.id}', '${type}')">
+                        <div class="picker-option" onclick="assignSlotFromRemote('${item.id}', '${type}', false)">
                             ${iconHTML}
                             <div class="picker-option-name">${escapeHtml(item.name)}</div>
                         </div>
                     `;
                 }).join('');
+
+                grid.innerHTML = `${vipSectionHTML}${effectItemsHTML}`;
             }
 
             document.getElementById('picker-overlay')?.classList.add('show');
@@ -477,12 +510,24 @@
             document.getElementById('picker-overlay')?.classList.remove('show');
         }
 
-        async function assignSlotFromRemote(itemId, type) {
+        async function assignSlotFromRemote(itemId, type, isVip = false) {
             if (navigator.vibrate) navigator.vibrate(50);
             closePickerModal();
 
-            const items = type === 'effect' ? (deckState.availableEffects || []) : (deckState.availableSounds || []);
-            const item = items.find(i => String(i.id) === String(itemId));
+            let item = null;
+            if (isVip || type === 'vip_honor') {
+                const found = (deckState.availableVips || []).find(i => String(i.id || i.vipId) === String(itemId));
+                if (found) {
+                    item = { ...found, isVip: true, type: 'vip_honor' };
+                }
+            }
+            if (!item) {
+                const items = type === 'effect' ? (deckState.availableEffects || []) : (deckState.availableSounds || []);
+                const found = items.find(i => String(i.id || i._id) === String(itemId));
+                if (found) {
+                    item = { ...found };
+                }
+            }
             if (!item) return;
 
             try {
@@ -499,8 +544,6 @@
                         deckState[type] = state;
                         renderDeck();
                     } else {
-                        // Compatibility with a backend process that was
-                        // already running before this UI update.
                         await new Promise(resolve => setTimeout(resolve, 350));
                         await fetchDeckState();
                     }

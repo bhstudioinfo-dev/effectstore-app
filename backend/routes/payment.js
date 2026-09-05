@@ -70,24 +70,59 @@ router.post('/create-qr', authMiddleware, async (req, res) => {
         // authMiddleware intentionally selects a lightweight profile. Orders
         // must read the complete, current ownership list from the database or
         // an already-owned item can be ordered again.
-        const user = await User.findById(req.userId).select('purchasedEffects isActive name email');
+        const user = await User.findById(req.userId).select('purchasedEffects isActive name email subscription subscriptionExpiresAt');
         if (!user || user.isActive === false) return res.status(404).json({ success: false, error: 'User not found' });
-        const order = await calculateOrder(req.body?.effectIds, user);
+        const promoCode = req.body?.promoCode;
+        const order = await calculateOrder(req.body?.effectIds, user, promoCode);
         const orderId = createOrderId();
         const payment = await Payment.create({
             userId: String(req.userId),
             orderId,
             effectIds: order.effectIds,
             amount: order.amount,
+            originalAmount: order.originalAmount,
+            discountAmount: order.discountAmount,
+            promoCode: order.promoCode,
             hasProof: false,
             proofImage: null,
             status: 'created'
         });
         const bankInfo = bankConfiguration(payment.amount, orderId, user);
         const qrCode = `https://img.vietqr.io/image/${bankInfo.bankCode}-${bankInfo.accountNumber}-qr_only.png?amount=${payment.amount}&addInfo=${encodeURIComponent(bankInfo.description)}`;
-        return res.status(201).json({ success: true, qrCode, orderId, amount: payment.amount, bankInfo });
+        return res.status(201).json({
+            success: true,
+            qrCode,
+            orderId,
+            amount: payment.amount,
+            originalAmount: order.originalAmount,
+            discountAmount: order.discountAmount,
+            promoCode: order.promoCode,
+            bankInfo
+        });
     } catch (error) {
         return res.status(error.status || 500).json({ success: false, error: error.status ? error.message : 'Unable to create payment order.' });
+    }
+});
+
+router.post('/check-promo', authMiddleware, async (req, res) => {
+    try {
+        const { code, effectIds } = req.body;
+        if (!code) return res.status(400).json({ success: false, message: 'Vui lòng nhập mã khuyến mãi.' });
+        const user = await User.findById(req.userId).select('purchasedEffects isActive name email subscription subscriptionExpiresAt');
+        if (!user || user.isActive === false) return res.status(404).json({ success: false, error: 'User not found' });
+        const order = await calculateOrder(effectIds, user, code);
+        if (!order.promoCode || !order.discountAmount) {
+            return res.status(400).json({ success: false, message: 'Mã khuyến mãi không hợp lệ, đã hết hạn hoặc không áp dụng cho đơn này.' });
+        }
+        return res.json({
+            success: true,
+            promoCode: order.promoCode,
+            originalAmount: order.originalAmount,
+            discountAmount: order.discountAmount,
+            amount: order.amount
+        });
+    } catch (error) {
+        return res.status(error.status || 500).json({ success: false, message: error.message || 'Lỗi kiểm tra mã.' });
     }
 });
 

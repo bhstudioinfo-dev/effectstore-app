@@ -112,7 +112,8 @@ function sanitizeRemoteDeck(deck) {
     const value = deck && typeof deck === 'object' ? deck : {};
     return {
         ...value,
-        availableEffects: (value.availableEffects || []).filter(isRemoteVideoEffect)
+        availableEffects: (value.availableEffects || []).filter(isRemoteVideoEffect),
+        availableVips: Array.isArray(value.availableVips) ? value.availableVips : []
     };
 }
 
@@ -120,9 +121,37 @@ function assignDeckItem(indexValue, deckType, requestedItem) {
     const index = Number(indexValue);
     const type = safeDeckType(deckType);
     if (!type || !Number.isInteger(index) || index < 0 || index >= 20) throw new Error('Vị trí nút không hợp lệ.');
+
+    // Support VIP honor items
+    const isVip = Boolean(requestedItem?.isVip || requestedItem?.type === 'vip_honor' || requestedItem?.vipId);
+    if (type === 'effect' && isVip) {
+        const availableVips = currentControlDeckState.availableVips || [];
+        const item = availableVips.find((candidate) => String(candidate.id || candidate.vipId) === String(requestedItem?.id || requestedItem?.vipId)) || requestedItem;
+        const slots = (currentControlDeckState[type]?.slots || []).filter(Boolean);
+        const slot = {
+            id: `deck-vip-${crypto.randomUUID()}`,
+            vipId: String(item.id || item.vipId || requestedItem?.id || requestedItem?.vipId || ''),
+            effectId: String(item.effectId || requestedItem?.effectId || ''),
+            index,
+            type: 'vip_honor',
+            name: item.name || `👑 ${item.displayName || item.username || 'VIP'}`,
+            customAvatar: item.customAvatar || item.thumbUrl || '',
+            thumbUrl: item.thumbUrl || item.customAvatar || '',
+            hotkey: '',
+            volume: 1,
+            duration: 5
+        };
+        currentControlDeckState[type] = {
+            ...(currentControlDeckState[type] || {}),
+            slots: [...slots.filter((candidate) => Number(candidate?.index) !== index), slot]
+        };
+        deckRevision += 1;
+        return { item, slot, index, type };
+    }
+
     const availableKey = type === 'effect' ? 'availableEffects' : 'availableSounds';
     const available = currentControlDeckState[availableKey] || [];
-    const item = available.find((candidate) => String(candidate.id || candidate._id) === String(requestedItem?.id || requestedItem?._id));
+    const item = available.find((candidate) => String(candidate.id || candidate._id) === String(requestedItem?.id || requestedItem?._id)) || (requestedItem?.id || requestedItem?._id ? requestedItem : null);
     if (!item) throw new Error('Media không còn trong thư viện PC.');
     if (type === 'effect' && !isRemoteVideoEffect(item)) throw new Error('LiveControl chỉ cho phép thêm hiệu ứng video.');
     const slots = (currentControlDeckState[type]?.slots || []).filter(Boolean);
@@ -132,7 +161,7 @@ function assignDeckItem(indexValue, deckType, requestedItem) {
             effectId: String(item.id || item._id),
             index,
             type,
-            name: item.name || 'Hiệu ứng',
+            name: item.name || item.effectName || 'Hiệu ứng',
             thumbUrl: (item.thumbUrl || (String(item.id || item._id).startsWith('custom-') ? `/custom-effects/${item.id || item._id}/thumbnail.png` : `/uploads/thumbs/${item.id || item._id}.png`)).replace(/^http:\/\/(127\.0\.0\.1|localhost):8080/i, ''),
             hotkey: '',
             volume: 1,

@@ -39,6 +39,8 @@ const UserSchema = new mongoose.Schema({
     }],
     totalSpent: { type: Number, default: 0 },
     processedPaymentIds: { type: [String], default: [] },
+    basicActiveEffectIds: { type: [String], default: [] },
+    basicSlotSelectedDates: { type: Map, of: Date, default: {} },
     totalUses: { type: Number, default: 0 },
     usedCharactersThisMonth: { type: Number, default: 0 },
     usedSystemVoiceCharactersThisMonth: { type: Number, default: 0 },

@@ -156,20 +156,31 @@
             }
         }
 
-        // Retrieve all available owned and custom effects from LiveFlow
+        // Retrieve all available video/gift effects from LiveFlow (consistent with LiveControl)
         getAvailableEffects() {
+            const isVideoEffect = (effect) => {
+                if (!effect) return false;
+                if (effect.isWheel || effect.isWidget || effect.isTemplate) return false;
+                if (['wheel', 'widget', 'template'].includes(effect.type) || ['wheel', 'widget', 'template'].includes(effect.category)) return false;
+                const id = String(effect._id || effect.id || '').toLowerCase();
+                if (id.startsWith('wheel-') || id.startsWith('challenge-') || id.includes('wheel')) return false;
+                const name = String(effect.name || effect.effectName || '').toLowerCase();
+                if (name.includes('vòng quay') || name.includes('wheel') || name.includes('thử thách')) return false;
+                return true;
+            };
+
             let effects = [];
             
             // 1. From window.app memory
             if (window.app) {
-                if (Array.isArray(window.app.mappingEffects) && window.app.mappingEffects.length > 0) {
-                    effects = window.app.mappingEffects;
-                } else if (Array.isArray(window.app.ownedEffects) && window.app.ownedEffects.length > 0) {
-                    effects = window.app.ownedEffects;
-                }
+                effects = [
+                    ...(window.app.ownedEffects || []),
+                    ...(window.app.mappingEffects || []),
+                    ...(window.app.personalEffects || [])
+                ];
             }
 
-            // 2. From localStorage cache
+            // 2. From localStorage cache fallback
             if (effects.length === 0) {
                 try {
                     for (let i = 0; i < localStorage.length; i++) {
@@ -185,8 +196,10 @@
                 } catch(e) {}
             }
 
-            // Filter out wheels & templates
-            const filtered = (effects || []).filter(e => e && e.category !== 'menu_template' && e.isChallengeWheel !== true);
+            // Filter & deduplicate
+            let filtered = (effects || [])
+                .filter(isVideoEffect)
+                .filter((effect, index, items) => items.findIndex((c) => String(c._id || c.id) === String(effect._id || effect.id)) === index);
             
             // Fallback default list if app is initializing or offline
             if (filtered.length === 0) {
@@ -199,6 +212,116 @@
             }
 
             return filtered;
+        }
+
+        // ===== POPUP EFFECT PICKER (GIAO DIỆN GIỐNG LIVECONTROL) =====
+        openEffectPicker() {
+            const modal = document.getElementById('vip-effect-picker-modal');
+            const searchInput = document.getElementById('vip-effect-search-input');
+            if (!modal) return;
+
+            if (searchInput) searchInput.value = '';
+            const currentSelectedId = document.getElementById('vip-form-effect-select')?.value || '';
+            this.renderEffectPickerList(currentSelectedId, '');
+            modal.classList.add('open');
+        }
+
+        closeEffectPicker() {
+            const modal = document.getElementById('vip-effect-picker-modal');
+            if (modal) modal.classList.remove('open');
+        }
+
+        filterEffectPicker(query) {
+            const currentSelectedId = document.getElementById('vip-form-effect-select')?.value || '';
+            this.renderEffectPickerList(currentSelectedId, query || '');
+        }
+
+        renderEffectPickerList(selectedId, query = '') {
+            const list = document.getElementById('vip-effect-picker-list');
+            if (!list) return;
+
+            const effects = this.getAvailableEffects();
+            const cleanQuery = (query || '').toLowerCase().trim();
+            const filtered = cleanQuery 
+                ? effects.filter(e => String(e.name || e.effectName || '').toLowerCase().includes(cleanQuery))
+                : effects;
+
+            const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<div style="color:#94a3b8; padding:30px; text-align:center; grid-column:1/-1;">Không tìm thấy hiệu ứng phù hợp.</div>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(effect => {
+                const id = String(effect._id || effect.id || '');
+                const name = effect.name || effect.effectName || 'Hiệu ứng';
+                const isSelected = String(id) === String(selectedId);
+                
+                let thumb = '';
+                if (effect.thumbUrl) {
+                    thumb = /^https?:/i.test(effect.thumbUrl) ? effect.thumbUrl : `${window.app?.API_URL || ''}${effect.thumbUrl}`;
+                }
+
+                const activeStyle = isSelected 
+                    ? 'border-color: #a855f7 !important; background: rgba(168,85,247,0.22) !important; box-shadow: 0 0 16px rgba(168,85,247,0.6) !important;' 
+                    : '';
+
+                return `
+                    <button type="button" class="lcd-effect-option ${isSelected ? 'selected' : ''}" 
+                        style="${activeStyle}" 
+                        onclick="VipManager.selectEffect('${escapeHtml(id)}')">
+                        ${thumb 
+                            ? `<img src="${escapeHtml(thumb)}" alt="">` 
+                            : '<div class="lcd-slot-icon" style="height:72px; display:grid; place-items:center; background:#080d17; border-radius:7px; font-size:24px; color:#a78bfa;"><i class="fas fa-wand-magic-sparkles"></i></div>'
+                        }
+                        <strong title="${escapeHtml(name)}">${escapeHtml(name)}</strong>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        selectEffect(effectId) {
+            this.setVal('vip-form-effect-select', effectId);
+            this.updateSelectedEffectCard(effectId);
+            this.updatePreview();
+            this.closeEffectPicker();
+        }
+
+        updateSelectedEffectCard(effectOrId) {
+            let effect = effectOrId;
+            if (typeof effectOrId === 'string' || !effectOrId) {
+                const id = effectOrId || document.getElementById('vip-form-effect-select')?.value;
+                const effects = this.getAvailableEffects();
+                effect = effects.find(e => String(e._id || e.id) === String(id));
+            }
+
+            const badge = document.getElementById('vip-selected-effect-badge');
+            const thumbImg = document.getElementById('vip-form-effect-thumb-img');
+            const thumbIcon = document.getElementById('vip-form-effect-thumb-icon');
+
+            if (effect) {
+                const name = effect.name || effect.effectName || 'Hiệu ứng';
+                if (badge) badge.textContent = name;
+
+                let thumb = '';
+                if (effect.thumbUrl) {
+                    thumb = /^https?:/i.test(effect.thumbUrl) ? effect.thumbUrl : `${window.app?.API_URL || ''}${effect.thumbUrl}`;
+                }
+
+                if (thumb && thumbImg && thumbIcon) {
+                    thumbImg.src = thumb;
+                    thumbImg.style.display = 'block';
+                    thumbIcon.style.display = 'none';
+                } else if (thumbImg && thumbIcon) {
+                    thumbImg.style.display = 'none';
+                    thumbIcon.style.display = 'block';
+                }
+            } else {
+                if (badge) badge.textContent = 'Chưa chọn hiệu ứng';
+                if (thumbImg) thumbImg.style.display = 'none';
+                if (thumbIcon) thumbIcon.style.display = 'block';
+            }
         }
 
         renderList() {
@@ -330,17 +453,6 @@
                     : '👑 Thêm User VIP Vinh Danh Mới';
             }
 
-            // Populate Owned / Custom Effects Selector
-            const effectSelect = document.getElementById('vip-form-effect-select');
-            if (effectSelect) {
-                const effects = this.getAvailableEffects();
-                effectSelect.innerHTML = effects.map(e => {
-                    const id = e._id || e.id;
-                    const icon = e.icon || '🎬';
-                    return `<option value="${id}">${icon} ${e.name}</option>`;
-                }).join('');
-            }
-
             // Populate Frame Selector
             const frameSelect = document.getElementById('vip-form-frame-preset');
             if (frameSelect) {
@@ -441,6 +553,7 @@
             this.setVal('vip-form-username', item.username || '');
             this.setVal('vip-form-display-name', item.displayName || '');
             this.setVal('vip-form-effect-select', item.effectId || '');
+            this.updateSelectedEffectCard(item.effectId || '');
             this.setVal('vip-form-pos-x', item.positionX !== undefined ? item.positionX : 50);
             this.setVal('vip-form-pos-y', item.positionY !== undefined ? item.positionY : 50);
             this.setVal('vip-form-scale', item.scale !== undefined ? item.scale : 144);
@@ -483,6 +596,10 @@
         resetForm() {
             this.setVal('vip-form-username', '');
             this.setVal('vip-form-display-name', '');
+            const availableEffects = this.getAvailableEffects();
+            const defaultEffId = availableEffects.length > 0 ? (availableEffects[0]._id || availableEffects[0].id) : '';
+            this.setVal('vip-form-effect-select', defaultEffId);
+            this.updateSelectedEffectCard(defaultEffId);
             this.setVal('vip-form-pos-x', 50);
             this.setVal('vip-form-pos-y', 50);
             this.setVal('vip-form-scale', 144);
@@ -775,7 +892,7 @@
 
             if (previewFrameImg) {
                 let staticSrc = 'assets/frames/khung_ho_trang_animated.webp?t=' + Date.now();
-                if (frameVal === 'frame_love' || frameVal.includes('love')) staticSrc = 'assets/frames/khung_love_animated.png?t=' + Date.now();
+                if (frameVal === 'frame_love' || frameVal.includes('love')) staticSrc = 'assets/frames/khung_love_animated.webp?t=' + Date.now();
                 else if (frameVal === 'frame_rong_bang' || frameVal.includes('rong_bang') || frameVal.includes('rồng băng')) staticSrc = 'assets/frames/khung_rong_bang.png?t=' + Date.now();
                 else if (frameVal === 'frame_rong_lua' || frameVal.includes('rong_lua') || frameVal.includes('rồng lửa')) staticSrc = 'assets/frames/khung_rong_lua.png?t=' + Date.now();
                 else if (frameVal === 'custom_svga' && this.tempSvgaData?.url) staticSrc = this.tempSvgaData.url;
@@ -816,13 +933,8 @@
                 }
             }
 
-            // Update effect info badge in modal
-            const effectSelect = document.getElementById('vip-form-effect-select');
-            const effectBadge = document.getElementById('vip-selected-effect-badge');
-            if (effectSelect && effectBadge) {
-                const opt = effectSelect.options[effectSelect.selectedIndex];
-                effectBadge.textContent = opt ? opt.text : 'Chưa chọn hiệu ứng';
-            }
+            // Update selected effect card UI (thumbnail, badge, etc.)
+            this.updateSelectedEffectCard();
         }
 
         replayPreviewAnimation() {
@@ -846,10 +958,10 @@
             const displayName = document.getElementById('vip-form-display-name')?.value.trim() || username;
             
             // Get selected Effect
-            const effectSelect = document.getElementById('vip-form-effect-select');
-            const effectId = effectSelect ? effectSelect.value : '';
-            const effectOpt = effectSelect && effectSelect.selectedIndex >= 0 ? effectSelect.options[effectSelect.selectedIndex] : null;
-            const effectName = effectOpt ? effectOpt.text : 'Hiệu Ứng Vinh Danh';
+            const effectId = document.getElementById('vip-form-effect-select')?.value || '';
+            const effects = this.getAvailableEffects();
+            const currentEffect = effects.find(e => String(e._id || e.id) === String(effectId));
+            const effectName = currentEffect ? (currentEffect.name || currentEffect.effectName) : 'Hiệu Ứng Vinh Danh';
 
             if (!effectId) {
                 alert('Vui lòng chọn 1 hiệu ứng vinh danh từ danh sách đã sở hữu / tự upload!');
@@ -1215,7 +1327,10 @@
                 displayName,
                 customAvatar: this.tempAvatarData || '',
                 effectId,
-                effectName: document.getElementById('vip-form-effect-select')?.selectedOptions?.[0]?.text || 'Hiệu ứng VIP',
+                effectName: (() => {
+                    const eff = this.getAvailableEffects().find(e => String(e._id || e.id) === String(effectId));
+                    return eff ? (eff.name || eff.effectName) : 'Hiệu ứng VIP';
+                })(),
                 frameSourceType,
                 frameUrl,
                 frameName,

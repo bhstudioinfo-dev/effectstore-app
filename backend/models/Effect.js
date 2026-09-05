@@ -25,7 +25,8 @@ const EffectSchema = new mongoose.Schema({
     flashSaleEndsAt: { type: Date },
     createdAt: { type: Date, default: Date.now },
     timeline: { type: Object, default: {} },
-    isComposite: { type: Boolean, default: false }
+    isComposite: { type: Boolean, default: false },
+    isExclusive: { type: Boolean, default: false }
 });
 
 EffectSchema.index({ isActive: 1, category: 1, uses: -1 });

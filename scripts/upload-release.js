@@ -10,7 +10,11 @@ const distDirectory = path.join(root, 'desktop', 'dist');
 const channel = String(process.env.LIVEFLOW_RELEASE_CHANNEL || 'stable').trim();
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'desktop', 'package.json'), 'utf8'));
 const installerName = `LiveFlow-Setup-${packageJson.version}.exe`;
-const requiredFiles = ['latest.yml', installerName, `${installerName}.blockmap`];
+const requiredFiles = ['latest.yml', installerName];
+const optionalBlockmap = `${installerName}.blockmap`;
+if (fs.existsSync(path.join(distDirectory, optionalBlockmap))) {
+    requiredFiles.push(optionalBlockmap);
+}
 
 function contentTypeFor(filename) {
     if (filename.endsWith('.yml')) return 'text/yaml; charset=utf-8';

@@ -5,7 +5,7 @@ const User = require('../models/User');
 const { issueEffectAccessToken, buildEffectStreamUrl } = require('./effectAccessToken');
 const { paths: dataPaths } = require('../config/dataPaths');
 const { mirrorUserLocally } = require('./localUserMirror');
-const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
+const { getEntitlements, upgradePayload, normalizePlan } = require('../config/planEntitlements');
 
 // The OBS/TikTok Live trigger path checks effect ownership against THIS
 // machine's own local Effect model (it must stay local-only for stream
@@ -299,8 +299,9 @@ async function getUserAvailableEffects(userId) {
     let user = await getUserRecord(userId, { forceRefresh: false });
     if (!user) return [];
 
+    const userPlan = normalizePlan(user);
     const purchased = [];
-    if (isAdminUser(user)) {
+    if (isAdminUser(user) || ['pro', 'business', 'studio'].includes(userPlan)) {
         const allEffects = await Effect.find({ isActive: true }).sort({ uses: -1 }).lean().catch(() => []);
         purchased.push(...allEffects.map((effect) => normalizePurchasedEffect(effect, user._id, true)).filter(Boolean));
     } else {
@@ -315,12 +316,18 @@ async function getUserAvailableEffects(userId) {
                 : toEffectId(raw);
         }).filter(Boolean);
 
-        const localEffects = rawIds.length > 0
-            ? await Effect.find({ _id: { $in: rawIds } }).lean().catch(() => [])
+        // Include Basic Plan active slots (up to 10)
+        if (userPlan === 'basic' && Array.isArray(user?.basicActiveEffectIds)) {
+            rawIds.push(...user.basicActiveEffectIds.slice(0, 10).map(toEffectId).filter(Boolean));
+        }
+
+        const uniqueRawIds = [...new Set(rawIds)];
+        const localEffects = uniqueRawIds.length > 0
+            ? await Effect.find({ _id: { $in: uniqueRawIds } }).lean().catch(() => [])
             : [];
         const localMap = new Map(localEffects.map((e) => [String(e._id), e]));
 
-        for (const effectIdStr of rawIds) {
+        for (const effectIdStr of uniqueRawIds) {
             let rawEffect = localMap.get(effectIdStr);
             if (!rawEffect || !rawEffect.name) {
                 rawEffect = await mirrorEffectFromCentral(effectIdStr);
@@ -342,13 +349,18 @@ async function getUserAvailableEffects(userId) {
 async function getUserOwnedProductIds(userId) {
     const user = await getUserRecord(userId);
     if (!user) return [];
-    if (isAdminUser(user)) {
+    const userPlan = normalizePlan(user);
+    if (isAdminUser(user) || ['pro', 'business', 'studio'].includes(userPlan)) {
         const all = await Effect.find({ isActive: true }).select('_id').lean().catch(() => []);
         return all.map(e => toEffectId(e._id));
     }
-    return [...new Set((user.purchasedEffects || [])
+    const ids = (user.purchasedEffects || [])
         .map((item) => toEffectId(item?.effectId?._id || item?.effectId))
-        .filter(Boolean))];
+        .filter(Boolean);
+    if (userPlan === 'basic' && Array.isArray(user.basicActiveEffectIds)) {
+        ids.push(...user.basicActiveEffectIds.slice(0, 10).map(toEffectId).filter(Boolean));
+    }
+    return [...new Set(ids)];
 }
 
 async function resolveEffectForUser(userId, effectId) {
@@ -391,8 +403,10 @@ async function resolveEffectForUser(userId, effectId) {
         return normalizeCustomEffect(customEffect, user);
     }
 
-    const isBusiness = user && ['pro', 'studio', 'business'].includes(String(user.subscription || '').toLowerCase());
-    if (isAdminUser(user) || isBusiness) {
+    const userPlan = normalizePlan(user);
+    const isProOrStudio = ['pro', 'studio', 'business'].includes(userPlan);
+    const isBasicSlot = userPlan === 'basic' && Array.isArray(user.basicActiveEffectIds) && user.basicActiveEffectIds.map(toEffectId).includes(id);
+    if (isAdminUser(user) || isProOrStudio || isBasicSlot) {
         let effect = await Effect.findById(id).lean().catch(() => null);
         if (!effect) effect = await mirrorEffectFromCentral(id);
         if (effect && effect.category === 'menu_template') return null;

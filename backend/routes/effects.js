@@ -11,7 +11,7 @@ const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
 const { encryptVideo, streamDecryptedVideo } = require('../utils/encrypt-video');
-const { getEntitlements, upgradePayload } = require('../config/planEntitlements');
+const { getEntitlements, upgradePayload, normalizePlan } = require('../config/planEntitlements');
 const { planQuotaLock } = require('../middleware/planQuotaLock');
 const { isValidResourceId } = require('../utils/accessControl');
 const { getUserAvailableEffects, getUserOwnedProductIds, resolveEffectForUser, registerCustomEffectOwnership } = require('../services/effectLibraryService');
@@ -28,11 +28,19 @@ const thumbsDir = dataPaths.thumbsDir;
 
 function sanitizeEffectForCatalog(effect, userId = null) {
     const value = effect?.toObject ? effect.toObject() : { ...(effect || {}) };
+    const hasTimeline = Boolean(
+        value.hasTimeline ||
+        value.isInteractive ||
+        value.isComposite ||
+        (value.timeline && (Array.isArray(value.timeline) ? value.timeline.length > 0 : Object.keys(value.timeline).length > 0))
+    );
     delete value.previewFilePath;
     delete value.encryptedFilePath;
     delete value.thumbFilePath;
     delete value.fileSize;
     delete value.timeline;
+    value.hasTimeline = hasTimeline;
+    value.isInteractive = hasTimeline || value.category === 'interactive' || Boolean(value.isComposite);
     value.previewUrl = null;
     if (value.category !== 'menu_template') value.fileUrl = null;
     if (userId && value.category !== 'menu_template') {
@@ -55,9 +63,13 @@ router.get('/effects', optionalAuthMiddleware, async (req, res) => {
         
         const [effects, user] = await Promise.all([
             Effect.find(query).sort({ uses: -1 }),
-            User.findById(req.userId).select('isAdmin purchasedEffects.effectId').lean()
+            User.findById(req.userId).select('isAdmin subscription subscriptionExpiresAt basicActiveEffectIds basicSlotSelectedDates purchasedEffects.effectId').lean()
         ]);
+        const userPlan = normalizePlan(user);
         const ownedIds = new Set((user?.purchasedEffects || []).map((entry) => String(entry?.effectId?._id || entry?.effectId || '')));
+        const basicActiveIds = new Set((user?.basicActiveEffectIds || []).map(String));
+        const isAdmin = user?.isAdmin === true;
+        const isProOrAbove = ['pro', 'business', 'studio'].includes(userPlan);
 
         // menu_template products can be a full ready-to-use layout, or a smaller
         // packaged widget (e.g. a goal board) meant to be added into an existing
@@ -73,18 +85,151 @@ router.get('/effects', optionalAuthMiddleware, async (req, res) => {
             widgetTemplateIds = new Set(widgetLayouts.map((layout) => String(layout._id)));
         }
 
-        const isAdmin = user?.isAdmin === true;
         res.json({
             success: true,
+            userPlan,
+            basicActiveEffectIds: user?.basicActiveEffectIds || [],
+            basicSlotsMax: 10,
             effects: effects.map((effect) => {
-                const isOwned = isAdmin || ownedIds.has(String(effect._id));
+                const effectIdStr = String(effect._id);
+                const isDirectlyPurchased = ownedIds.has(effectIdStr);
+                const isBasicSlotActive = userPlan === 'basic' && basicActiveIds.has(effectIdStr);
+                const isProAllAccess = isProOrAbove && !effect.isExclusive;
+                const isOwned = isAdmin || isDirectlyPurchased || isBasicSlotActive || isProAllAccess;
+
+                let canSwapSlot = true;
+                let slotLockedUntil = null;
+                let remainingDays = 0;
+                let remainingHours = 0;
+                if (isBasicSlotActive) {
+                    const selectedAt = user?.basicSlotSelectedDates?.[effectIdStr] || (user?.basicSlotSelectedDates?.get ? user.basicSlotSelectedDates.get(effectIdStr) : null);
+                    if (selectedAt) {
+                        const elapsed = Date.now() - new Date(selectedAt).getTime();
+                        const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+                        if (elapsed < WEEK_MS) {
+                            canSwapSlot = false;
+                            const remainingMs = WEEK_MS - elapsed;
+                            slotLockedUntil = new Date(new Date(selectedAt).getTime() + WEEK_MS);
+                            remainingDays = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+                            remainingHours = Math.ceil((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+                        }
+                    }
+                }
+
                 return {
                     ...sanitizeEffectForCatalog(effect, isOwned ? req.userId : null),
                     isOwned,
+                    isDirectlyPurchased,
+                    isBasicSlotActive,
+                    isProAllAccess,
+                    canSwapSlot,
+                    slotLockedUntil,
+                    remainingDays,
+                    remainingHours,
+                    isExclusive: effect.isExclusive === true,
                     isWidgetTemplate: effect.category === 'menu_template' && widgetTemplateIds.has(String(effect.fileUrl))
                 };
             })
         });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Toggle an effect in Basic Plan 10 active slots (with 7-day cooldown per selection)
+router.post('/effects/toggle-basic-slot', authMiddleware, async (req, res) => {
+    try {
+        const { effectId } = req.body;
+        if (!effectId) return res.status(400).json({ success: false, message: 'Thiếu mã hiệu ứng.' });
+
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ success: false, message: 'Tài khoản không tồn tại.' });
+
+        const userPlan = normalizePlan(user);
+        if (userPlan !== 'basic' && !user.isAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: 'Tính năng 10 Slot hiệu ứng đang hoạt động dành riêng cho gói Basic.'
+            });
+        }
+
+        const effect = await Effect.findById(effectId);
+        if (!effect || !effect.isActive) {
+            return res.status(404).json({ success: false, message: 'Hiệu ứng không khả dụng.' });
+        }
+        if (effect.isExclusive) {
+            return res.status(400).json({
+                success: false,
+                message: 'Hiệu ứng Độc Quyền không áp dụng cho slot Basic. Vui lòng mua trực tiếp để sở hữu vĩnh viễn.'
+            });
+        }
+
+        user.basicActiveEffectIds = Array.isArray(user.basicActiveEffectIds) ? user.basicActiveEffectIds : [];
+        const effectIdStr = String(effect._id);
+        const index = user.basicActiveEffectIds.indexOf(effectIdStr);
+
+        if (index > -1) {
+            // Check 7-day cooldown before removing from active slots
+            const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+            const selectedAt = user.basicSlotSelectedDates?.get
+                ? user.basicSlotSelectedDates.get(effectIdStr)
+                : user.basicSlotSelectedDates?.[effectIdStr];
+            if (selectedAt && !user.isAdmin) {
+                const elapsed = Date.now() - new Date(selectedAt).getTime();
+                if (elapsed < WEEK_MS) {
+                    const remainingMs = WEEK_MS - elapsed;
+                    const remainingDays = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+                    const remainingHours = Math.ceil((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+                    const timeDesc = remainingDays > 0 ? `${remainingDays} ngày ${remainingHours} giờ` : `${remainingHours} giờ`;
+                    return res.status(400).json({
+                        success: false,
+                        isLockedWeekly: true,
+                        lockedUntil: new Date(new Date(selectedAt).getTime() + WEEK_MS),
+                        remainingDays,
+                        remainingHours,
+                        message: `Hiệu ứng "${effect.name}" đang trong chu kỳ 7 ngày sử dụng (còn ${timeDesc} nữa mới được đổi sang hiệu ứng khác). Bạn có thể mua đứt vĩnh viễn với giá ưu đãi 20.000đ hoặc nâng cấp lên gói Pro để mở khóa toàn bộ kho!`
+                    });
+                }
+            }
+
+            // Allowed to remove after 7 days
+            user.basicActiveEffectIds.splice(index, 1);
+            if (user.basicSlotSelectedDates?.delete) {
+                user.basicSlotSelectedDates.delete(effectIdStr);
+            } else if (user.basicSlotSelectedDates) {
+                delete user.basicSlotSelectedDates[effectIdStr];
+            }
+            await user.save();
+            return res.json({
+                success: true,
+                active: false,
+                basicActiveEffectIds: user.basicActiveEffectIds,
+                message: `Đã đổi và gỡ "${effect.name}" khỏi danh sách 10 hiệu ứng hoạt động thành công.`
+            });
+        } else {
+            // Add to active slots
+            if (user.basicActiveEffectIds.length >= 10) {
+                return res.status(400).json({
+                    success: false,
+                    slotLimitReached: true,
+                    message: 'Bạn đã chọn đủ 10/10 hiệu ứng hoạt động của gói Basic! Hãy gỡ bớt 1 hiệu ứng đã hết chu kỳ 7 ngày, hoặc mua thêm chỉ 20.000đ/hiệu ứng để sở hữu vĩnh viễn, hoặc nâng cấp lên gói Pro để mở khóa toàn bộ kho!'
+                });
+            }
+            user.basicActiveEffectIds.push(effectIdStr);
+            if (!user.basicSlotSelectedDates) user.basicSlotSelectedDates = new Map();
+            if (user.basicSlotSelectedDates.set) {
+                user.basicSlotSelectedDates.set(effectIdStr, new Date());
+            } else {
+                user.basicSlotSelectedDates[effectIdStr] = new Date();
+            }
+            await user.save();
+            return res.json({
+                success: true,
+                active: true,
+                basicActiveEffectIds: user.basicActiveEffectIds,
+                message: `Đã kích hoạt "${effect.name}" vào Slot Basic (sẽ được đổi lại sau 7 ngày)!`
+            });
+        }
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -122,16 +267,14 @@ router.get('/effects/item/:id', async (req, res) => {
 // Get user effects
 router.get('/user/effects', authMiddleware, async (req, res) => {
     try {
-        // authMiddleware may have verified a central account whose local
-        // mirror has not been created yet. getUserAvailableEffects performs
-        // the authoritative /auth/me refresh and mirror, so do not block that
-        // recovery with a second local-only User lookup.
         const effects = await getUserAvailableEffects(req.userId);
         const ownedProductIds = await getUserOwnedProductIds(req.userId);
+        const user = await User.findById(req.userId).select('basicActiveEffectIds').lean().catch(() => null);
         return res.json({
             success: true,
             effects,
             ownedProductIds,
+            basicActiveEffectIds: user?.basicActiveEffectIds || [],
             libraryType: req.isAdmin === true ? 'admin_all' : 'purchased'
         });
     } catch (error) {
@@ -592,6 +735,7 @@ router.post('/effects', handleUpload, authMiddleware, adminMiddleware, async (re
             description, icon,
             isActive: true,
             isComposite,
+            isExclusive: req.body.isExclusive === 'true' || req.body.isExclusive === true,
             isFlashSale,
             flashSalePrice,
             flashSaleEndsAt,
@@ -705,6 +849,7 @@ router.post('/effects/:id/update', handleUpload, authMiddleware, adminMiddleware
 
         effect.isTrending = isTrending === 'true' || isTrending === true;
         effect.isFlashSale = isFlashSale === 'true' || isFlashSale === true;
+        if (req.body.isExclusive !== undefined) effect.isExclusive = req.body.isExclusive === 'true' || req.body.isExclusive === true;
         if (flashSalePrice) effect.flashSalePrice = parseFloat(flashSalePrice);
         if (flashSaleEndsAt) effect.flashSaleEndsAt = new Date(flashSaleEndsAt);
 

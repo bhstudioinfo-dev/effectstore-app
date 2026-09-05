@@ -2138,7 +2138,7 @@ input:checked + .slider:before { transform: translateX(18px); }
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 99997;
+    z-index: 10000005;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;

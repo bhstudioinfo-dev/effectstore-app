@@ -807,6 +807,9 @@ class EffectStoreApp {
             if (data.success && data.user) {
                 this.currentUser = data.user;
                 this.authToken = token;
+                if (Array.isArray(data.user.basicActiveEffectIds)) {
+                    this.basicActiveEffectIds = data.user.basicActiveEffectIds;
+                }
                 this.updateUserUI();
                 return;
             }
@@ -966,16 +969,31 @@ class EffectStoreApp {
                 this._manualUpdateCheck = false;
                 return;
             }
+            if (result?.upToDate) {
+                this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Phiên bản hiện tại: <strong>v${result.version || '1.0.3'}</strong></p><p>Bạn đang sử dụng phiên bản mới nhất.</p></div>`);
+                this._manualUpdateCheck = false;
+                return;
+            }
             if (!result?.success) {
-                this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Lỗi khi kiểm tra phiên bản:</p><p>${result.message || 'Không thể kiểm tra cập nhật.'}</p></div>`);
+                const msg = String(result?.message || '');
+                if (msg.includes('404') || msg.includes('latest.yml')) {
+                    this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Phiên bản hiện tại: <strong>v${result.version || '1.0.3'}</strong></p><p>Bạn đang sử dụng phiên bản mới nhất.</p></div>`);
+                } else {
+                    this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Lỗi khi kiểm tra phiên bản:</p><p>${result.message || 'Không thể kiểm tra cập nhật.'}</p></div>`);
+                }
                 this._manualUpdateCheck = false;
                 return;
             }
             if (result.version) {
-                this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Đang kiểm tra phiên bản mới cho phiên bản hiện tại: <strong>${result.version}</strong>.</p><p>Nếu không có bản mới, bạn sẽ nhận thông báo ngay sau.</p></div>`);
+                this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Đang kiểm tra phiên bản mới cho phiên bản hiện tại: <strong>v${result.version}</strong>.</p><p>Nếu không có bản mới, bạn sẽ nhận thông báo ngay sau.</p></div>`);
             }
         } catch (err) {
-            this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Lỗi khi kiểm tra phiên bản:</p><p>${err?.message || err}</p></div>`);
+            const errStr = String(err?.message || err);
+            if (errStr.includes('404') || errStr.includes('latest.yml')) {
+                this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Bạn đang sử dụng phiên bản mới nhất.</p></div>`);
+            } else {
+                this.showModal('Phiên bản', `<div style="display:flex;flex-direction:column;gap:14px;color:var(--text-secondary);line-height:1.6;"><p>Lỗi khi kiểm tra phiên bản:</p><p>${errStr}</p></div>`);
+            }
             this._manualUpdateCheck = false;
         }
     }
@@ -1324,6 +1342,10 @@ class EffectStoreApp {
             adminNavItem.style.display = u.isAdmin ? '' : 'none';
         }
 
+        if (window.VipManager && typeof window.VipManager.load === 'function') {
+            window.VipManager.load();
+            window.VipManager.renderList();
+        }
         this.controlDeck = this.loadControlDeckState();
         this.renderControlDeck();
         this.syncControlDeckToRemote();
@@ -1862,6 +1884,9 @@ class EffectStoreApp {
             if (data.success !== false && Array.isArray(data.effects)) {
                 this.storeEffects = data.effects;
                 this.effects = this.storeEffects;
+                if (Array.isArray(data.basicActiveEffectIds)) {
+                    this.basicActiveEffectIds = data.basicActiveEffectIds;
+                }
                 try {
                     localStorage.setItem('es_cache_store_effects', JSON.stringify(this.storeEffects));
                 } catch (_e) { }
@@ -2001,6 +2026,9 @@ class EffectStoreApp {
                     this.ownedEffects = data.effects || [];
                 }
                 this.ownedProductIds = new Set((data.ownedProductIds || this.ownedEffects.map(e => e.id || e._id)).map(String));
+                if (Array.isArray(data.basicActiveEffectIds)) {
+                    this.basicActiveEffectIds = data.basicActiveEffectIds;
+                }
                 try {
                     const ownedKey = this.accountStorageKey('es_cache_owned_effects');
                     if (ownedKey) localStorage.setItem(ownedKey, JSON.stringify(this.ownedEffects));
@@ -3024,13 +3052,25 @@ class EffectStoreApp {
                                     </div>
                                     <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">
                                         <span style="color:#6b7280;font-size:13px;">Số tiền</span>
-                                        <span style="color:#d4af37;font-weight:800;font-size:18px;">${formattedTotal}</span>
+                                        <span id="modal-order-price" style="color:#d4af37;font-weight:800;font-size:18px;">${formattedTotal}</span>
                                     </div>
                                     <div style="display:flex;justify-content:space-between;align-items:center;">
                                         <span style="color:#6b7280;font-size:13px;">Nội dung CK</span>
-                                        <span style="color:#10b981;font-weight:700;font-size:13px;background:rgba(16,185,129,0.1);padding:3px 10px;border-radius:6px;border:1px solid rgba(16,185,129,0.2);">${bank.description || orderId}</span>
+                                        <span id="modal-order-desc" style="color:#10b981;font-weight:700;font-size:13px;background:rgba(16,185,129,0.1);padding:3px 10px;border-radius:6px;border:1px solid rgba(16,185,129,0.2);">${bank.description || orderId}</span>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- Voucher Promo Code Box -->
+                            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px;margin-bottom:14px;">
+                                <div style="font-size:12px;color:#cbd5e1;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                                    <i class="fas fa-tags" style="color:#c084fc;"></i> Bạn có mã ưu đãi / giới thiệu?
+                                </div>
+                                <div style="display:flex;gap:8px;">
+                                    <input type="text" id="payment-voucher-code" placeholder="Nhập mã ưu đãi..." style="flex:1;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;font-size:12px;text-transform:uppercase;font-weight:700;">
+                                    <button type="button" onclick="app.applyOrderVoucher('${orderId}', ${JSON.stringify(effectIds).replace(/"/g, '&quot;')})" style="padding:8px 14px;background:linear-gradient(135deg,#a855f7,#6366f1);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;">Áp dụng</button>
+                                </div>
+                                <div id="payment-voucher-result" style="margin-top:6px;font-size:12px;display:none;"></div>
                             </div>
 
                             <!-- Hướng dẫn -->
@@ -3273,6 +3313,15 @@ class EffectStoreApp {
             button.textContent = 'Đang chuẩn bị...';
         }
 
+        if (!playbackOptions.timeline) {
+            try {
+                const customTl = localStorage.getItem(`liveflow_custom_timeline_${effectId}`);
+                if (customTl) {
+                    playbackOptions.timeline = JSON.parse(customTl);
+                }
+            } catch (_e) {}
+        }
+
         try {
             const response = await this.request(this.API_URL + '/api/obs/preview-effect-player', {
                 method: 'POST',
@@ -3406,9 +3455,12 @@ class EffectStoreApp {
         const parent = imgEl.parentElement;
         if (parent) {
             const video = parent.querySelector('.effect-video');
-            if (video) {
+            if (video && !video.getAttribute('data-error')) {
                 video.style.opacity = '1';
                 video.currentTime = 0;
+            } else {
+                parent.style.background = 'radial-gradient(circle at center, rgba(139, 92, 246, 0.25), rgba(15, 23, 42, 0.95))';
+                parent.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:38px;opacity:0.8;">🎬</div>';
             }
         }
     }
@@ -3420,9 +3472,25 @@ class EffectStoreApp {
         if (parent) {
             parent.classList.remove('is-previewing');
             const img = parent.querySelector('.effect-thumb-img');
-            if (img && img.style.display !== 'none') img.style.opacity = '1';
+            if (img && img.style.display !== 'none') {
+                img.style.opacity = '1';
+            } else {
+                parent.style.background = 'radial-gradient(circle at center, rgba(139, 92, 246, 0.25), rgba(15, 23, 42, 0.95))';
+                parent.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:38px;opacity:0.8;">🎬</div>';
+            }
         }
     }
+
+    escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    }
+
     renderEffects(filter = null, search = '') {
         if (!filter) {
             if (this.currentView === 'library') {
@@ -3503,6 +3571,12 @@ class EffectStoreApp {
         const counts = {
             all: visibleEffects.length,
             free: visibleEffects.filter(e => Number(e.price) === 0).length,
+            interactive: visibleEffects.filter(e => {
+                const name = String(e.name || e.effectName || '').toLowerCase();
+                const isKnown = name.includes('chảo') || name.includes('chao') || name.includes('tương tác') || name.includes('interactive') || name.includes('rung') || name.includes('zoom');
+                return Boolean(e.hasTimeline || e.isInteractive || e.isComposite || isKnown || (e.timeline && Object.keys(e.timeline).length > 0) || e.category === 'interactive');
+            }).length,
+            exclusive: visibleEffects.filter(e => e.isExclusive === true).length,
             transformation: visibleEffects.filter(e => e.category === 'transformation').length,
             gift: visibleEffects.filter(e => e.category === 'gift').length,
             background: visibleEffects.filter(e => e.category === 'background').length,
@@ -3648,7 +3722,8 @@ class EffectStoreApp {
             .sort()
             .join('|');
         const sortSignature = this.currentSortType || 'newest';
-        const cacheKey = `_hasRendered_${viewName}_${sortSignature}_${contentSignature}_${templateSignature}_${usageSignature}_${ownershipSignature}_${ownedProductSignature}_${cartSignature}_${pendingSignature}`;
+        const basicSlotSig = (this.basicActiveEffectIds || []).sort().join(',');
+        const cacheKey = `_hasRendered_${viewName}_${sortSignature}_${contentSignature}_${templateSignature}_${usageSignature}_${ownershipSignature}_${ownedProductSignature}_${cartSignature}_${pendingSignature}_${basicSlotSig}`;
 
         if (!grid[cacheKey]) {
             grid[cacheKey] = true;
@@ -3684,7 +3759,37 @@ class EffectStoreApp {
                 }
             }
 
-            grid.innerHTML = (effects || []).map(effect => {
+            const userPlan = resolvePlanKey(this.currentUser);
+            const isAdmin = this.currentUser?.isAdmin === true;
+            const isProOrStudio = ['pro', 'studio', 'business'].includes(userPlan);
+            const isBasicPlan = userPlan === 'basic';
+            const activeSlotCount = (this.basicActiveEffectIds || []).length;
+
+            const slotBannerHtml = (viewName === 'store' && isBasicPlan) ? `
+                <div style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(124,58,237,0.12)); border: 1px solid rgba(59,130,246,0.25); border-radius: 14px; padding: 14px 18px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                            🎁
+                        </div>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px;">
+                                10 Slot Hiệu Ứng Gói Basic (Chu kỳ 1 tuần)
+                                <span style="font-size: 11px; font-weight: 700; background: ${activeSlotCount >= 10 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'}; color: ${activeSlotCount >= 10 ? '#fca5a5' : '#6ee7b7'}; border: 1px solid ${activeSlotCount >= 10 ? '#ef4444' : '#10b981'}; padding: 2px 8px; border-radius: 20px;">
+                                    Đã chọn: ${activeSlotCount} / 10 hiệu ứng
+                                </span>
+                            </div>
+                            <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                                Chọn 10 hiệu ứng chạy trên OBS. Mỗi hiệu ứng sau khi chọn sẽ được đổi sang hiệu ứng mới sau 1 tuần (7 ngày)!
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="app.openPricing()" style="padding: 7px 14px; background: linear-gradient(135deg, #a855f7, #6366f1); border: none; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">
+                        <i class="fas fa-crown"></i> Lên Pro (Free 100%)
+                    </button>
+                </div>
+            ` : '';
+
+            const cardsHtml = (effects || []).map(effect => {
                 if (!effect) return '';
                 const effectId = effect._id || effect.id || effect;
                 if (typeof effect !== 'object') {
@@ -3695,16 +3800,14 @@ class EffectStoreApp {
                             </div>`;
                 }
 
-                const isAdmin = this.currentUser?.isAdmin === true;
-                const isBusiness = this.currentUser && ['pro', 'studio'].includes(resolvePlanKey(this.currentUser));
-                // Template cards are synthesized from the authenticated
-                // template endpoint, so their explicit isOwned flag is an
-                // entitlement (unlike a generic Store catalog effect).
                 const templateEntitlement = effect.category === 'menu_template' && effect.isOwned === true;
                 const hasPurchased = templateEntitlement || this.ownedProductIds.has(String(effectId)) ||
                     this.ownedEffects.some(e => String(e.id || e._id) === String(effectId));
 
-                const isOwned = isAdmin || isBusiness || hasPurchased;
+                // Basic 10-slot active check
+                const isBasicSlotActive = isBasicPlan && Array.isArray(this.basicActiveEffectIds) && this.basicActiveEffectIds.includes(String(effectId));
+                const isProAllAccess = isProOrStudio && !effect.isExclusive;
+                const isOwned = isAdmin || isProAllAccess || hasPurchased || isBasicSlotActive;
                 const isPending = this.pendingPaymentEffects.includes(effectId);
 
                 let previewHTML = '';
@@ -3786,89 +3889,106 @@ class EffectStoreApp {
                     btnText = '▶ Xem thử trên OBS';
                 }
 
-                let originalPriceHTML = '';
-                let currentPrice = effect.price;
-                let origPrice = effect.originalPrice || effect.price;
+                // Price calculation based on tiers
+                let currentPrice;
+                let origPrice;
+
+                if (effect.isExclusive) {
+                    const exclusiveBase = Math.max(0, Number(effect.price) || 69000);
+                    origPrice = effect.originalPrice || exclusiveBase;
+                    if (isBasicPlan) {
+                        currentPrice = Math.round(exclusiveBase * 0.7);
+                    } else if (isProOrStudio) {
+                        currentPrice = Math.round(exclusiveBase * 0.5);
+                    } else {
+                        currentPrice = exclusiveBase;
+                    }
+                } else if (Number(effect.price) === 0) {
+                    currentPrice = 0;
+                    origPrice = 0;
+                } else {
+                    if (isBasicPlan) {
+                        currentPrice = 20000;
+                        origPrice = 30000;
+                    } else if (isProOrStudio) {
+                        currentPrice = 0;
+                        origPrice = 30000;
+                    } else {
+                        currentPrice = 30000;
+                        origPrice = effect.originalPrice || 49000;
+                    }
+                }
 
                 if (isFlashSaleActive) {
                     if (Number.isFinite(Number(effect.flashSalePrice)) && Number(effect.flashSalePrice) >= 0) {
-                        currentPrice = effect.flashSalePrice;
-                        origPrice = effect.price;
+                        if (Number(effect.flashSalePrice) < currentPrice) {
+                            currentPrice = effect.flashSalePrice;
+                        }
                     }
-                    const discount = Number(origPrice) > 0 ? Math.round((1 - currentPrice / origPrice) * 100) : 0;
-                    const endsAt = effect.flashSaleEndsAt;
-
-                    let countdownHTML = '';
-                    if (endsAt) {
-                        countdownHTML = `<div class="fs-card-timer fs-mini-timer" data-ends="${endsAt}">
-                                    <span class="fs-time-block time-h">00</span>
-                                    <span class="fs-time-sep">:</span>
-                                    <span class="fs-time-block time-m">00</span>
-                                    <span class="fs-time-sep">:</span>
-                                    <span class="fs-time-block time-s">00</span>
-                                    <span class="fs-time-text" style="display: none;">--:--:--</span>
-                                </div>`;
-                    }
-
-                    let activeBtnClass = 'btn-fs-buy';
-                    let activeBtnAction = `app.addToCart('${effectId}')`;
-                    let activeBtnText = '<i class="fas fa-shopping-cart"></i> MUA NGAY';
-
-                    if (isInCart) {
-                        activeBtnClass = 'btn-add-cart btn-in-cart';
-                        activeBtnAction = 'app.openCart()';
-                        activeBtnText = '🛒 Đã thêm vào giỏ';
-                    } else if (isOwned) {
-                        activeBtnClass = 'btn-add-cart btn-owned';
-                        activeBtnAction = `app.triggerEffect('${effectId}')`;
-                        activeBtnText = '▶ Xem thử trên OBS';
-                    } else if (isPending) {
-                        activeBtnClass = 'btn-add-cart btn-pending';
-                        activeBtnAction = 'void(0)';
-                        activeBtnText = '⏳ Đang chờ duyệt';
-                    }
-
-                    return `<div class="effect-card flash-sale-card" style="position: relative; border: 2px solid #ff3e3e; box-shadow: 0 0 20px rgba(255,62,62,0.35); animation: borderPulse 2s infinite;" data-cat="${effect.category}" data-price="${currentPrice}" data-name="${effect.name}">
-                                <div style="position: absolute; top: -12px; left: 0; right: 0; display: flex; justify-content: center; z-index: 11;">
-                                    <div style="background: linear-gradient(90deg, #ff3e3e, #ff8c00); box-shadow: 0 4px 12px rgba(255,62,62,0.5); border-radius: 8px; padding: 4px 12px; color: white; font-weight: 900; font-size: 11px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.2);">
-                                        <i class="fas fa-bolt"></i> FLASH SALE <span style="background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 4px; margin-left: 4px;">-${discount}%</span>
-                                    </div>
-                                </div>
-                                ${effect.isTrending ? `<div class="hot-badge" style="position:absolute; top:10px; right:10px; background:linear-gradient(45deg, #f093fb 0%, #f5576c 100%); color:white; padding:4px 8px; border-radius:8px; font-size:10px; font-weight:bold; z-index:10; box-shadow:0 4px 15px rgba(245,87,108,0.4);"><i class="fas fa-fire"></i> HOT</div>` : ''}
-                                
-                                <div class="effect-thumbnail">
-                                    ${previewHTML}
-                                </div>
-
-                                <div class="effect-info">
-                                    <div class="effect-name" style="font-weight: 700; color: white;">${effect.name}</div>
-                                    <div class="effect-price-row" style="margin-bottom: 5px;">
-                                        <div style="display: flex; align-items: baseline; gap: 8px;">
-                                            <span class="price-current" style="color: #ffcc00; font-weight: 900; font-size: 26px; text-shadow: 0 0 20px rgba(255,204,0,0.6); letter-spacing: -0.5px;">${this.formatPrice(currentPrice)}</span>
-                                            <span class="price-original" style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 13px; font-weight: 500;">${this.formatPrice(origPrice)}</span>
-                                        </div>
-                                        ${effect.category === 'menu_template' ? '' : `<span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>`}
-                                    </div>
-                                    ${countdownHTML}
-                                    <button class="${activeBtnClass}" onclick="${activeBtnAction}">${activeBtnText}</button>
-                                </div>
-                            </div>`;
                 }
 
-                if (effect.originalPrice && effect.originalPrice > effect.price) {
-                    originalPriceHTML = `<span class="price-original" style="text-decoration: line-through; color: #9ca3af; font-size: 11px; margin-left: 6px; font-weight: 500; opacity: 0.6;">${this.formatPrice(effect.originalPrice)}</span>`;
+                let originalPriceHTML = '';
+                if (origPrice && origPrice > currentPrice) {
+                    originalPriceHTML = `<span class="price-original" style="text-decoration: line-through; color: #9ca3af; font-size: 11px; margin-left: 6px; font-weight: 500; opacity: 0.6;">${this.formatPrice(origPrice)}</span>`;
                 }
 
-                const cardClass = `effect-card ${isOwned ? 'owned' : ''} ${isPending ? 'pending' : ''}`;
-                const priceColor = 'var(--accent)';
+                const exclusiveBadge = effect.isExclusive
+                    ? `<div class="exclusive-badge" style="position:absolute; top:10px; left:10px; background:linear-gradient(135deg, #f59e0b, #d97706); color:white; padding:3px 8px; border-radius:6px; font-size:10px; font-weight:800; z-index:10; box-shadow:0 2px 8px rgba(245,158,11,0.5);"><i class="fas fa-crown"></i> ĐỘC QUYỀN</div>`
+                    : '';
+
                 const templateKindBadge = effect.category === 'menu_template'
                     ? (effect.isWidgetTemplate
                         ? `<div class="template-kind-badge" title="Chỉ thêm vào thiết kế hiện tại, không thay cả bảng" style="position:absolute; top:10px; left:10px; background:rgba(8,145,178,0.85); color:white; padding:3px 7px; border-radius:6px; font-size:9px; font-weight:800; z-index:10;">🧩 Mảnh ghép</div>`
                         : `<div class="template-kind-badge" title="Thay thế toàn bộ bảng đang thiết kế" style="position:absolute; top:10px; left:10px; background:rgba(124,58,237,0.85); color:white; padding:3px 7px; border-radius:6px; font-size:9px; font-weight:800; z-index:10;">📦 Mẫu đầy đủ</div>`)
                     : '';
 
-                return `<div class="${cardClass}" style="position: relative;" data-cat="${effect.category}" data-price="${currentPrice}" data-name="${effect.name}">
-                            ${templateKindBadge}
+                let basicSlotButtonsHtml = '';
+                if (viewName === 'store' && isBasicPlan && !effect.isExclusive && effect.category !== 'menu_template') {
+                    if (isBasicSlotActive) {
+                        const canSwap = effect.canSwapSlot !== false;
+                        const remainingText = effect.remainingDays > 0 ? `${effect.remainingDays} ngày` : (effect.remainingHours ? `${effect.remainingHours}h` : '1 tuần');
+                        basicSlotButtonsHtml = `
+                            <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">
+                                <div style="display:flex;gap:4px;">
+                                    <button type="button" onclick="app.toggleBasicSlot('${effectId}')" style="flex:1.1;background:${canSwap ? 'rgba(239,68,68,0.15)' : 'rgba(234,179,8,0.15)'};border:1px solid ${canSwap ? 'rgba(239,68,68,0.35)' : 'rgba(234,179,8,0.35)'};color:${canSwap ? '#fca5a5' : '#fde047'};padding:6px 4px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" title="${canSwap ? 'Đã đủ 1 tuần, bấm để đổi sang hiệu ứng khác' : `Đang chạy chu kỳ 1 tuần (còn ${remainingText} nữa mới được đổi)`}">
+                                        ${canSwap ? '<i class="fas fa-undo"></i> Đổi hiệu ứng' : `<i class="fas fa-lock"></i> Đổi sau ${remainingText}`}
+                                    </button>
+                                    ${!hasPurchased ? `<button type="button" onclick="app.addToCart('${effectId}')" style="flex:0.9;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.35);color:#6ee7b7;padding:6px 4px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" title="Mua vĩnh viễn với giá 20.000đ để sở hữu mãi mãi"><i class="fas fa-gem"></i> Mua 20k</button>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    } else if (!hasPurchased) {
+                        basicSlotButtonsHtml = `
+                            <div style="display:flex;gap:4px;margin-top:6px;">
+                                <button type="button" onclick="app.toggleBasicSlot('${effectId}')" style="flex:1.2;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;color:#fff;padding:6px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" title="Kích hoạt vào 1 trong 10 slot của gói Basic (khóa 1 tuần)"><i class="fas fa-bolt"></i> Dùng 10 Slot</button>
+                                <button type="button" onclick="app.addToCart('${effectId}')" style="flex:0.8;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;padding:6px 6px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;" title="Mua vĩnh viễn với giá 20.000đ">Mua 20k</button>
+                            </div>
+                        `;
+                    }
+                }
+
+                const effectNameLower = String(effect.name || effect.effectName || '').toLowerCase();
+                const isKnownInteractive = effectNameLower.includes('chảo') || effectNameLower.includes('chao') || effectNameLower.includes('tương tác') || effectNameLower.includes('interactive') || effectNameLower.includes('rung') || effectNameLower.includes('zoom');
+                const hasCustomTimeline = Boolean(localStorage.getItem(`liveflow_custom_timeline_${effectId}`));
+                const isInteractive = Boolean(
+                    effect.hasTimeline ||
+                    effect.isInteractive ||
+                    effect.isComposite ||
+                    isKnownInteractive ||
+                    hasCustomTimeline ||
+                    (effect.timeline && (Array.isArray(effect.timeline) ? effect.timeline.length > 0 : Object.keys(effect.timeline).length > 0)) ||
+                    effect.category === 'interactive'
+                );
+                const interactiveBadge = isInteractive
+                    ? `<div class="interactive-badge" style="position:absolute; top:10px; right:${effect.isTrending ? '64px' : '10px'}; background:linear-gradient(135deg, #06b6d4, #3b82f6); color:white; padding:3px 7px; border-radius:6px; font-size:9px; font-weight:800; z-index:10; box-shadow:0 2px 8px rgba(6,182,212,0.4);"><i class="fas fa-sliders-h"></i> TƯƠNG TÁC</div>`
+                    : '';
+
+                const cardClass = `effect-card ${isOwned ? 'owned' : ''} ${isPending ? 'pending' : ''}`;
+                const priceColor = isOwned ? 'var(--success)' : 'var(--accent)';
+
+                return `<div class="${cardClass}" style="position: relative;" data-cat="${effect.category}" data-price="${currentPrice}" data-name="${effect.name}" data-exclusive="${effect.isExclusive ? 'true' : 'false'}" data-interactive="${isInteractive ? 'true' : 'false'}">
+                            ${exclusiveBadge || templateKindBadge}
+                            ${interactiveBadge}
                             ${effect.isTrending ? `<div class="hot-badge" style="position:absolute; top:10px; right:10px; background:linear-gradient(45deg, #f093fb 0%, #f5576c 100%); color:white; padding:4px 8px; border-radius:8px; font-size:10px; font-weight:bold; z-index:10; box-shadow:0 4px 15px rgba(245,87,108,0.4);"><i class="fas fa-fire"></i> HOT</div>` : ''}
                             <div class="effect-thumbnail">
                                 ${previewHTML}
@@ -3881,7 +4001,7 @@ class EffectStoreApp {
                                         <span class="price-current" style="color: var(--success); font-weight: 600; font-size: 13px;"><i class="fas fa-check-circle" style="margin-right: 4px;"></i> Đã sở hữu</span>
                                         ${effect.isCustom
                             ? '<span style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">💻 Cá nhân</span>'
-                            : '<span style="background:rgba(124,58,237,0.15);color:#c4b5fd;border:1px solid rgba(124,58,237,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">🏬 Cửa hàng</span>'
+                            : (isBasicSlotActive ? '<span style="background:rgba(59,130,246,0.15);color:#93c5fd;border:1px solid rgba(59,130,246,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">🎁 Slot Basic</span>' : '<span style="background:rgba(124,58,237,0.15);color:#c4b5fd;border:1px solid rgba(124,58,237,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">🏬 Cửa hàng</span>')
                         }
                                     </div>
                                     ${effect.category === 'menu_template' ? '' : `<span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>`}
@@ -3889,13 +4009,20 @@ class EffectStoreApp {
                                 ` : `
                                 <div class="effect-price-row" style="margin-bottom: 5px;">
                                     <div style="display: flex; align-items: baseline;">
-                                        <span class="price-current" style="color: ${priceColor}; font-weight: 800; font-size: 15px;">${this.formatPrice(currentPrice)}</span>
+                                        <span class="price-current" style="color: ${priceColor}; font-weight: 800; font-size: 15px;">${isOwned ? (isProAllAccess ? 'FREE (Gói Pro)' : (isBasicSlotActive ? 'Đang kích hoạt' : 'Đã sở hữu')) : (currentPrice === 0 ? '0₫ (Miễn phí)' : this.formatPrice(currentPrice))}</span>
                                         ${originalPriceHTML}
                                     </div>
                                     ${effect.category === 'menu_template' ? '' : `<span class="duration-badge">${Number(effect.duration || 0).toFixed(1)}s</span>`}
                                 </div>
                                 `}
-                                <button class="${btnClass}" onclick="${btnAction}">${btnText}</button>
+                                ${(!basicSlotButtonsHtml || isOwned) ? `<button class="${btnClass}" onclick="${btnAction}">${btnText}</button>` : ''}
+                                ${basicSlotButtonsHtml}
+                                ${viewName === 'library' && isInteractive && effect.category !== 'menu_template' ? `
+                                <button type="button" onclick="openTimelineEditor('${effectId}', '${String(effect.name || '').replace(/['"\\]/g, ' ')}')" style="width:100%;margin-top:6px;padding:6px 8px;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.35);color:#38bdf8;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;" title="Căn chỉnh kịch bản camera/rung đập trên máy này"><i class="fas fa-sliders-h"></i> Chỉnh Timeline OBS</button>
+                                ` : ''}
+                                ${viewName === 'store' && isOwned && isInteractive && effect.category !== 'menu_template' ? `
+                                <button type="button" onclick="openTimelineEditor('${effectId}', '${String(effect.name || '').replace(/['"\\]/g, ' ')}')" style="width:100%;margin-top:6px;padding:5px 8px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);color:#38bdf8;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;" title="Căn chỉnh kịch bản camera/rung đập trên máy này"><i class="fas fa-sliders-h"></i> Chỉnh Timeline</button>
+                                ` : ''}
                                 ${effect.isCustom && viewName === 'library' ? `
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px;">
                                     <button onclick="app.changePersonalEffectThumbnail('${effectId}')" title="Đổi ảnh đại diện Thumbnail cho hiệu ứng này" style="padding:7px 4px;border-radius:8px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.1);color:#7dd3fc;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:4px;"><i class="fas fa-image"></i> Đổi ảnh</button>
@@ -3904,6 +4031,8 @@ class EffectStoreApp {
                             </div>
                         </div>`;
             }).join('');
+
+            grid.innerHTML = slotBannerHtml + cardsHtml;
 
             // Hover handles
             const containers = grid.querySelectorAll('.effect-thumb-container');
@@ -3947,6 +4076,10 @@ class EffectStoreApp {
             if (filter && filter !== 'all') {
                 if (filter === 'free') {
                     match = (price === 0);
+                } else if (filter === 'exclusive') {
+                    match = (card.getAttribute('data-exclusive') === 'true');
+                } else if (filter === 'interactive') {
+                    match = (card.getAttribute('data-interactive') === 'true' || cat === 'interactive');
                 } else {
                     match = (cat === filter);
                 }
@@ -4080,7 +4213,11 @@ class EffectStoreApp {
         document.getElementById('modal-title').textContent = title;
         document.getElementById('modal-body').innerHTML = content;
         document.getElementById('modal-actions').innerHTML = '';
-        document.getElementById('modal-overlay').classList.add('show');
+        const modalOverlay = document.getElementById('modal-overlay');
+        if (modalOverlay) {
+            modalOverlay.style.zIndex = '10000005';
+            modalOverlay.classList.add('show');
+        }
     }
     closeModal() {
         document.getElementById('modal-overlay').classList.remove('show');
@@ -4175,6 +4312,31 @@ class EffectStoreApp {
             btnAddCart.innerHTML = '🛒 Thêm Vào Giỏ Hàng';
             btnAddCart.className = 'btn-add-cart';
             btnAddCart.onclick = () => { this.closeEffectDetailModal(); this.addToCart(effectId); };
+        }
+
+        const btnEditTimeline = document.getElementById('btn-detail-edit-timeline');
+        if (btnEditTimeline) {
+            const effectNameLower = String(effect.name || effect.effectName || '').toLowerCase();
+            const isKnownInteractive = effectNameLower.includes('chảo') || effectNameLower.includes('chao') || effectNameLower.includes('tương tác') || effectNameLower.includes('interactive') || effectNameLower.includes('rung') || effectNameLower.includes('zoom');
+            const hasCustomTimeline = Boolean(localStorage.getItem(`liveflow_custom_timeline_${effectId}`));
+            const isInteractive = Boolean(
+                effect.hasTimeline ||
+                effect.isInteractive ||
+                effect.isComposite ||
+                isKnownInteractive ||
+                hasCustomTimeline ||
+                (effect.timeline && (Array.isArray(effect.timeline) ? effect.timeline.length > 0 : Object.keys(effect.timeline).length > 0)) ||
+                effect.category === 'interactive'
+            );
+            if (isInteractive && (isOwned || isAdmin)) {
+                btnEditTimeline.style.display = 'block';
+                btnEditTimeline.onclick = () => {
+                    this.closeEffectDetailModal();
+                    openTimelineEditor(effectId, effect.name);
+                };
+            } else {
+                btnEditTimeline.style.display = 'none';
+            }
         }
 
         document.getElementById('effect-detail-modal').classList.add('show');
@@ -4913,6 +5075,7 @@ class EffectStoreApp {
         try {
             const formatThumb = (url) => {
                 if (!url) return '';
+                if (url.startsWith('data:')) return url;
                 let clean = url.replace(/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?/i, '');
                 if (!/^https?:/i.test(clean) && !clean.startsWith('/')) {
                     clean = `/${clean}`;
@@ -4947,6 +5110,22 @@ class EffectStoreApp {
                     };
                 });
 
+            const isPro = window.VipManager ? window.VipManager.isProUser() : false;
+            const availableVips = (isPro && window.VipManager && Array.isArray(window.VipManager.mappings))
+                ? window.VipManager.mappings.map(vip => ({
+                    id: String(vip.id),
+                    vipId: String(vip.id),
+                    effectId: String(vip.effectId || ''),
+                    name: `👑 ${vip.displayName || vip.username || 'VIP'}`,
+                    username: vip.username || '',
+                    displayName: vip.displayName || vip.username || 'VIP',
+                    thumbUrl: formatThumb(vip.customAvatar || ''),
+                    customAvatar: formatThumb(vip.customAvatar || ''),
+                    isVip: true,
+                    type: 'vip_honor'
+                }))
+                : [];
+
             const availableSounds = (this.controlDeckSoundLibrary || []).map(sound => ({
                 id: String(sound.id),
                 name: sound.name || 'Sound',
@@ -4956,14 +5135,16 @@ class EffectStoreApp {
 
             const cleanSlots = (type) => (this.controlDeck[type]?.slots || []).map(slot => ({
                 ...slot,
-                thumbUrl: formatThumb(slot.thumbUrl)
+                thumbUrl: formatThumb(slot.thumbUrl || slot.customAvatar || '')
             }));
 
             const fullDeckState = {
                 effect: { ...this.controlDeck.effect, slots: cleanSlots('effect') },
                 sound: { ...this.controlDeck.sound, slots: cleanSlots('sound') },
                 availableEffects,
-                availableSounds
+                availableSounds,
+                availableVips,
+                isPro
             };
 
             const response = await fetch(`${this.API_URL}/api/remote/sync-deck`, {
@@ -4976,6 +5157,16 @@ class EffectStoreApp {
                 this.lastRemoteDeckRevision = Number(result.revision);
             }
         } catch (_e) { }
+    }
+
+    handleControlDeckRemoteTrigger(payload = {}) {
+        if (payload?.action === 'stop_all_sounds') {
+            this.stopControlDeckSounds();
+            return;
+        }
+        if (payload?.slotId) {
+            this.triggerControlDeckSlot(payload.slotId);
+        }
     }
 
     async showRemoteConnectModal() {
@@ -5095,6 +5286,7 @@ class EffectStoreApp {
 
     handleRemoteDeviceConnected(info = {}) {
         this.updateRemoteButtonState(true, info.count || 1);
+        this.syncControlDeckToRemote();
         if (this.remoteModalStatusTimer) {
             clearInterval(this.remoteModalStatusTimer);
             this.remoteModalStatusTimer = null;
@@ -5247,13 +5439,16 @@ class EffectStoreApp {
                     cards.push(`<div class="lcd-slot effect-3d-slot empty" onclick="app.addControlDeckSlot(${index},'effect')" title="Thêm hiệu ứng"><i class="fas fa-plus" style="font-size:18px;margin-bottom:4px;"></i><span style="font-size:11px;font-weight:700;">+ Thêm nút</span></div>`);
                     continue;
                 }
-                const thumbUrl = this.getControlDeckSlotThumbUrl(slot);
-                const image = thumbUrl
-                    ? `<img class="lcd-slot-icon" src="${escapeHtml(thumbUrl)}" alt="" onerror="this.style.display='none'">`
-                    : `<span class="lcd-slot-icon"><i class="fas fa-wand-magic-sparkles"></i></span>`;
-                cards.push(`<div class="lcd-slot effect-3d-slot" role="button" tabindex="0" id="lcd-slot-${escapeHtml(slot.id)}" onclick="app.triggerControlDeckSlot('${escapeHtml(slot.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.triggerControlDeckSlot('${escapeHtml(slot.id)}')}">
+                const isVip = slot.type === 'vip_honor';
+                const thumbUrl = isVip ? (slot.customAvatar || slot.thumbUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(slot.name || 'VIP')}&background=f59e0b&color=fff`) : this.getControlDeckSlotThumbUrl(slot);
+                const image = isVip
+                    ? `<div style="position:relative;width:68px;height:68px;margin:2px auto 6px auto;"><img class="lcd-slot-icon" src="${escapeHtml(thumbUrl)}" alt="" style="border:2px solid #fbbf24;box-shadow:0 0 12px rgba(251,191,36,0.5);margin:0;"><span style="position:absolute;top:-6px;right:-4px;font-size:14px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">👑</span></div>`
+                    : (thumbUrl
+                        ? `<img class="lcd-slot-icon" src="${escapeHtml(thumbUrl)}" alt="" onerror="this.style.display='none'">`
+                        : `<span class="lcd-slot-icon"><i class="fas fa-wand-magic-sparkles"></i></span>`);
+                cards.push(`<div class="lcd-slot effect-3d-slot ${isVip ? 'vip-deck-slot' : ''}" role="button" tabindex="0" id="lcd-slot-${escapeHtml(slot.id)}" onclick="app.triggerControlDeckSlot('${escapeHtml(slot.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.triggerControlDeckSlot('${escapeHtml(slot.id)}')}">
                     <button class="lcd-slot-remove" onclick="event.stopPropagation();app.removeControlDeckSlot('${escapeHtml(slot.id)}')" title="Xóa nút">×</button>
-                    ${image}<span class="lcd-slot-name">${escapeHtml(slot.name)}</span>
+                    ${image}<span class="lcd-slot-name" style="${isVip ? 'color:#fbbf24;font-weight:800;' : ''}">${escapeHtml(slot.name)}</span>
                     <span class="lcd-slot-key" onclick="event.stopPropagation();app.beginControlDeckHotkey('${escapeHtml(slot.id)}')">⌨ ${escapeHtml(slot.hotkey || 'Gán phím')}</span>
                     <span class="lcd-slot-status"></span>
                     <input class="lcd-slot-volume" aria-label="Âm lượng" type="range" min="0" max="100" value="${Math.round((Number.isFinite(Number(slot.volume)) ? Number(slot.volume) : 1) * 100)}" onclick="event.stopPropagation()" oninput="event.stopPropagation();app.updateControlDeckVolume('${escapeHtml(slot.id)}',this.value)">
@@ -5375,12 +5570,87 @@ class EffectStoreApp {
             .filter(isVideoEffect)
             .filter((effect, index, items) => items.findIndex((candidate) => String(candidate._id || candidate.id) === String(effect._id || effect.id)) === index);
         const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-        list.innerHTML = effects.length ? effects.map((effect) => {
+        
+        let vipSectionHtml = '';
+        const isPro = window.VipManager ? window.VipManager.isProUser() : false;
+        if (isPro && window.VipManager && Array.isArray(window.VipManager.mappings) && window.VipManager.mappings.length > 0) {
+            const vipItems = window.VipManager.mappings.map(vip => {
+                const avatar = vip.customAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(vip.username || 'VIP')}&background=f59e0b&color=fff`;
+                const displayName = escapeHtml(vip.displayName || vip.username || 'VIP');
+                return `
+                    <button class="lcd-effect-option lcd-vip-option" onclick="app.selectControlDeckVip('${escapeHtml(vip.id)}')" style="border: 1px solid rgba(251,191,36,0.4); background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(236,72,153,0.12)); position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; cursor: pointer; text-align: left;">
+                        <div style="position: relative; width: 42px; height: 42px; flex-shrink: 0;">
+                            <img src="${escapeHtml(avatar)}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #fbbf24; box-shadow: 0 0 10px rgba(251,191,36,0.4);" alt="">
+                            <span style="position: absolute; top: -5px; right: -4px; font-size: 13px;">👑</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                            <strong style="color: #fbbf24; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayName}</strong>
+                            <span style="font-size: 11px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(vip.username || '')}</span>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+
+            vipSectionHtml = `
+                <div style="grid-column: 1 / -1; margin-bottom: 6px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:12px; font-weight:800; color:#fbbf24; text-transform:uppercase; letter-spacing:0.5px;">
+                        <span>👑 User VIP Vinh Danh Đã Gán (Gói PRO)</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px;">
+                        ${vipItems}
+                    </div>
+                    <div style="border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 14px;"></div>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:12px; font-weight:800; color:#cbd5e1; text-transform:uppercase; letter-spacing:0.5px;">
+                        <span>🎬 Hiệu Ứng Quà Tặng & Video Khác</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        const effectItemsHtml = effects.length ? effects.map((effect) => {
             const id = effect._id || effect.id;
             const thumb = effect.thumbUrl ? (/^https?:/i.test(effect.thumbUrl) ? effect.thumbUrl : `${this.API_URL}${effect.thumbUrl}`) : '';
             return `<button class="lcd-effect-option" onclick="app.selectControlDeckEffect('${escapeHtml(id)}')">${thumb ? `<img src="${escapeHtml(thumb)}" alt="">` : '<div class="lcd-slot-icon"><i class="fas fa-wand-magic-sparkles"></i></div>'}<strong>${escapeHtml(effect.name || effect.effectName || 'Hiệu ứng')}</strong></button>`;
         }).join('') : '<div style="color:#94a3b8;padding:30px;text-align:center;grid-column:1/-1">Bạn chưa có hiệu ứng. Hãy thêm hoặc mua hiệu ứng trước.</div>';
+
+        list.innerHTML = `${vipSectionHtml}${effectItemsHtml}`;
         modal.classList.add('open');
+    }
+
+    selectControlDeckVip(vipOrId, targetIndex = this.pendingControlDeckIndex) {
+        if (!window.VipManager) return;
+        const isPro = window.VipManager.isProUser();
+        if (!isPro) {
+            this.closeControlDeckPicker();
+            window.VipManager.showProRequiredModal();
+            return;
+        }
+        let vip = typeof vipOrId === 'object' && vipOrId !== null ? vipOrId : null;
+        if (!vip) {
+            const vipId = String(vipOrId);
+            vip = (window.VipManager.mappings || []).find(m => String(m.id) === vipId || String(m.vipId) === vipId);
+        }
+        if (!vip) return;
+        const index = Number.isInteger(targetIndex) ? targetIndex : this.pendingControlDeckIndex;
+        if (!Number.isInteger(index)) return;
+
+        this.controlDeck.effect.slots = this.controlDeck.effect.slots.filter((slot) => Number(slot.index) !== index);
+        this.controlDeck.effect.slots.push({
+            id: `deck-vip-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            vipId: String(vip.id || vip.vipId || ''),
+            effectId: String(vip.effectId || ''),
+            index,
+            type: 'vip_honor',
+            name: vip.name && vip.name.startsWith('👑') ? vip.name : `👑 ${vip.displayName || vip.username || 'VIP'}`,
+            customAvatar: vip.customAvatar || vip.thumbUrl || '',
+            thumbUrl: vip.customAvatar || vip.thumbUrl || '',
+            hotkey: '',
+            volume: 1,
+            duration: 5
+        });
+        this.closeControlDeckPicker();
+        this.saveControlDeckState();
+        this.renderControlDeck();
     }
 
     uploadControlDeckEffect() {
@@ -5392,6 +5662,10 @@ class EffectStoreApp {
 
     addControlDeckEffectToSlot(effect, index = this.pendingControlDeckIndex) {
         if (!effect || !Number.isInteger(index)) return false;
+        if (effect.type === 'vip_honor' || effect.isVip || effect.vipId) {
+            this.selectControlDeckVip(effect, index);
+            return true;
+        }
         const effectId = effect._id || effect.id;
         if (!effectId) return false;
         const thumbUrl = effect.thumbUrl ? (/^https?:/i.test(effect.thumbUrl) ? effect.thumbUrl : `${this.API_URL}${effect.thumbUrl}`) : '';
@@ -5439,6 +5713,24 @@ class EffectStoreApp {
         if (!slot) return;
         const element = document.getElementById(`lcd-slot-${slot.id}`);
         element?.classList.add('running');
+        if (slot.type === 'vip_honor' || slot.vipId) {
+            if (window.VipManager) {
+                if (!window.VipManager.isProUser()) {
+                    window.VipManager.showProRequiredModal();
+                    element?.classList.remove('running');
+                    return;
+                }
+                const vip = (window.VipManager.mappings || []).find(m => String(m.id) === String(slot.vipId)) || {
+                    id: slot.vipId,
+                    effectId: slot.effectId,
+                    displayName: (slot.name || '').replace(/^👑\s*/, ''),
+                    customAvatar: slot.customAvatar || slot.thumbUrl
+                };
+                await window.VipManager.testPlayItem(vip);
+            }
+            setTimeout(() => element?.classList.remove('running'), 900);
+            return;
+        }
         if (slot.type === 'effect') {
             try {
                 const ok = await this.previewEffectOnOBS(slot.effectId, { audioEnabled: Number(slot.volume) > 0, audioVolume: Number(slot.volume) || 0 });
@@ -5610,6 +5902,7 @@ class EffectStoreApp {
             description: description || '',
             icon: icon || '🎬',
             isComposite,
+            isExclusive: document.getElementById('upload-is-exclusive')?.checked || false,
             isFlashSale,
             flashSalePrice: parseFloat(fsPrice) || 0,
             flashSaleEndsAt: fsEnds || '',
@@ -7339,40 +7632,142 @@ class EffectStoreApp {
         const rawSub = (u && (u.subscription || u.plan)) ? String(u.subscription || u.plan).toLowerCase() : 'free';
         const currentPlan = isAdmin ? 'admin' : (rawSub === 'basic' ? 'basic' : ((rawSub === 'pro' || rawSub === 'business') ? 'pro' : (rawSub === 'studio' ? 'studio' : 'free')));
 
-        // Reset buttons
+        // Card elements
+        const cardBasic = document.getElementById('plan-pro-card');
+        const cardPro = document.getElementById('plan-business-card');
+        const cardStudio = document.getElementById('plan-studio-card');
+
+        // Badge elements
+        const badgeBasic = cardBasic?.querySelector('.featured-badge');
+        const badgePro = cardPro?.querySelector('.featured-badge');
+
+        // Button elements
         const btnFree = document.getElementById('plan-btn-free');
-        const btnPro = document.getElementById('plan-btn-pro');
-        const btnBusiness = document.getElementById('plan-btn-business');
+        const btnBasic = document.getElementById('plan-btn-pro');
+        const btnPro = document.getElementById('plan-btn-business');
         const btnStudio = document.getElementById('plan-btn-studio');
-        const rank = { free: 0, basic: 1, pro: 2, studio: 3, admin: 4 };
-        const currentRank = isAdmin ? 4 : (rank[currentPlan] ?? 0);
 
         if (isAdmin) {
-            if (btnFree) { btnFree.innerText = 'Đã bao gồm'; btnFree.classList.add('disabled'); }
-            if (btnPro) { btnPro.innerText = 'Đã bao gồm'; btnPro.classList.add('disabled'); btnPro.onclick = null; }
-            if (btnBusiness) { btnBusiness.innerText = 'Đã bao gồm'; btnBusiness.classList.add('disabled'); btnBusiness.onclick = null; }
-            if (btnStudio) { btnStudio.innerText = 'Tài khoản quản trị'; btnStudio.classList.add('disabled'); btnStudio.onclick = null; }
-        } else {
+            if (btnFree) { btnFree.innerText = 'ĐÃ BAO GỒM'; btnFree.className = 'plan-btn disabled'; btnFree.onclick = null; btnFree.style.cssText = ''; }
+            if (btnBasic) { btnBasic.innerText = 'ĐÃ BAO GỒM'; btnBasic.className = 'plan-btn disabled'; btnBasic.onclick = null; btnBasic.style.cssText = ''; }
+            if (btnPro) { btnPro.innerText = 'ĐÃ BAO GỒM'; btnPro.className = 'plan-btn disabled'; btnPro.onclick = null; btnPro.style.cssText = ''; }
+            if (btnStudio) { btnStudio.innerText = 'TÀI KHOẢN QUẢN TRỊ'; btnStudio.className = 'plan-btn disabled'; btnStudio.onclick = null; btnStudio.style.cssText = ''; }
+            if (cardBasic) { cardBasic.className = 'pricing-card'; cardBasic.style.cssText = 'border-color:rgba(255,255,255,0.1);'; }
+            if (cardPro) { cardPro.className = 'pricing-card'; cardPro.style.cssText = 'border-color:rgba(255,255,255,0.1);'; }
+        } else if (currentPlan === 'basic') {
+            // User is on Basic: BASIC is GÓI HIỆN TẠI, PRO is the HIGHLIGHTED UPGRADE!
             if (btnFree) {
-                btnFree.innerText = currentPlan === 'free' ? 'TIẾP TỤC DÙNG MIỄN PHÍ' : 'ĐÃ BAO GỒM';
-                btnFree.className = 'plan-btn';
-                btnFree.onclick = currentPlan === 'free' ? () => this.closePricing() : null;
-                if (currentPlan !== 'free') btnFree.classList.add('disabled');
+                btnFree.innerText = 'ĐÃ BAO GỒM';
+                btnFree.className = 'plan-btn disabled';
+                btnFree.onclick = null;
+                btnFree.style.cssText = '';
+            }
+            if (btnBasic) {
+                btnBasic.innerText = '✓ GÓI HIỆN TẠI';
+                btnBasic.className = 'plan-btn';
+                btnBasic.onclick = null;
+                btnBasic.style.cssText = 'background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.45);color:#fbbf24;font-weight:800;box-shadow:none;cursor:default;';
+            }
+            if (cardBasic) {
+                cardBasic.className = 'pricing-card';
+                cardBasic.style.cssText = 'border:1px solid rgba(245,158,11,0.4);box-shadow:0 8px 24px rgba(0,0,0,0.4);background:linear-gradient(180deg,rgba(245,158,11,0.06),rgba(17,24,39,0.96));transform:none;';
+                if (badgeBasic) {
+                    badgeBasic.textContent = '✓ GÓI BẠN ĐANG DÙNG';
+                    badgeBasic.style.cssText = 'background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.4);';
+                }
+            }
+
+            // PRO CARD BECOMES THE MAIN HIGHLIGHTED / FEATURED CARD
+            if (cardPro) {
+                cardPro.className = 'pricing-card featured';
+                cardPro.style.cssText = 'border:2px solid #ec4899;box-shadow:0 18px 50px rgba(236,72,153,0.35), 0 0 25px rgba(168,85,247,0.3);background:linear-gradient(180deg,rgba(236,72,153,0.14),rgba(17,24,39,0.96));transform:scale(1.02);';
+                if (badgePro) {
+                    badgePro.textContent = '👑 NÂNG CẤP PRO • TOÀN BỘ ĐẶC QUYỀN';
+                    badgePro.style.cssText = 'background:linear-gradient(135deg,#ec4899,#8b5cf6);color:#fff;font-weight:900;border:none;box-shadow:0 4px 14px rgba(236,72,153,0.5);';
+                }
             }
             if (btnPro) {
-                btnPro.innerText = currentPlan === 'basic' ? 'GÓI HIỆN TẠI' : (currentRank > 1 ? 'ĐÃ BAO GỒM' : 'NÂNG CẤP BASIC');
-                btnPro.className = currentRank >= 1 ? 'plan-btn disabled' : 'plan-btn active';
-                btnPro.onclick = currentRank >= 1 ? null : () => this.buySubscription('basic');
+                btnPro.innerText = '🚀 NÂNG CẤP LÊN PRO NGAY';
+                btnPro.className = 'plan-btn active';
+                btnPro.style.cssText = 'background:linear-gradient(135deg,#ec4899 0%,#8b5cf6 100%);box-shadow:0 10px 30px rgba(236,72,153,0.55);color:#fff;font-weight:900;font-size:14px;border:none;cursor:pointer;animation:pulse 2s infinite;';
+                btnPro.onclick = () => this.buySubscription('pro');
             }
-            if (btnBusiness) {
-                btnBusiness.innerText = currentPlan === 'pro' ? 'GÓI HIỆN TẠI' : (currentRank > 2 ? 'ĐÃ BAO GỒM' : 'NÂNG CẤP PRO');
-                btnBusiness.className = currentRank >= 2 ? 'plan-btn disabled' : 'plan-btn';
-                btnBusiness.onclick = currentRank >= 2 ? null : () => this.buySubscription('pro');
+            if (btnStudio) {
+                btnStudio.innerText = 'NHẬN TƯ VẤN';
+                btnStudio.className = 'plan-btn';
+                btnStudio.style.cssText = 'background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.35);color:#60a5fa;font-weight:700;cursor:pointer;';
+                btnStudio.onclick = () => this.openStudioContact();
             }
-            if (btnStudio && currentPlan === 'studio') {
-                btnStudio.innerText = 'GÓI HIỆN TẠI';
-                btnStudio.classList.add('disabled');
-                btnStudio.onclick = null;
+        } else if (currentPlan === 'pro') {
+            // User is on Pro
+            if (btnFree) { btnFree.innerText = 'ĐÃ BAO GỒM'; btnFree.className = 'plan-btn disabled'; btnFree.onclick = null; btnFree.style.cssText = ''; }
+            if (btnBasic) { btnBasic.innerText = 'ĐÃ BAO GỒM'; btnBasic.className = 'plan-btn disabled'; btnBasic.onclick = null; btnBasic.style.cssText = ''; }
+            if (cardBasic) {
+                cardBasic.className = 'pricing-card';
+                cardBasic.style.cssText = 'border-color:rgba(255,255,255,0.1);opacity:0.6;transform:none;';
+                if (badgeBasic) badgeBasic.textContent = 'ĐÃ BAO GỒM';
+            }
+            if (cardPro) {
+                cardPro.className = 'pricing-card featured';
+                cardPro.style.cssText = 'border:2px solid #8b5cf6;box-shadow:0 12px 35px rgba(139,92,246,0.3);background:linear-gradient(180deg,rgba(139,92,246,0.12),rgba(17,24,39,0.96));';
+                if (badgePro) {
+                    badgePro.textContent = '👑 GÓI HIỆN TẠI CỦA BẠN';
+                    badgePro.style.cssText = 'background:rgba(139,92,246,0.25);color:#c4b5fd;border:1px solid rgba(139,92,246,0.5);';
+                }
+            }
+            if (btnPro) {
+                btnPro.innerText = '✓ GÓI HIỆN TẠI';
+                btnPro.className = 'plan-btn';
+                btnPro.style.cssText = 'background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.4);color:#c4b5fd;font-weight:800;cursor:default;';
+                btnPro.onclick = null;
+            }
+            if (btnStudio) {
+                btnStudio.innerText = 'NHẬN TƯ VẤN';
+                btnStudio.className = 'plan-btn';
+                btnStudio.style.cssText = 'background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;font-weight:800;cursor:pointer;';
+                btnStudio.onclick = () => this.openStudioContact();
+            }
+        } else {
+            // User is on Free: Default initial state (Basic is primary featured, Pro is appealing secondary)
+            if (btnFree) {
+                btnFree.innerText = 'TIẾP TỤC DÙNG MIỄN PHÍ';
+                btnFree.className = 'plan-btn';
+                btnFree.style.cssText = '';
+                btnFree.onclick = () => this.closePricing();
+            }
+            if (cardBasic) {
+                cardBasic.className = 'pricing-card featured';
+                cardBasic.style.cssText = 'border:2px solid #f59e0b;box-shadow:0 18px 50px rgba(245,158,11,.24),0 0 0 1px rgba(251,191,36,.2);background:linear-gradient(180deg,rgba(245,158,11,.10),rgba(17,24,39,.96));';
+                if (badgeBasic) {
+                    badgeBasic.textContent = '⭐ ĐƯỢC CHỌN NHIỀU NHẤT';
+                    badgeBasic.style.cssText = '';
+                }
+            }
+            if (btnBasic) {
+                btnBasic.innerText = 'NÂNG CẤP BASIC';
+                btnBasic.className = 'plan-btn active';
+                btnBasic.style.cssText = 'background:linear-gradient(135deg,#f59e0b,#f97316);box-shadow:0 10px 28px rgba(249,115,22,.3);color:#fff;font-weight:800;border:none;cursor:pointer;';
+                btnBasic.onclick = () => this.buySubscription('basic');
+            }
+            if (cardPro) {
+                cardPro.className = 'pricing-card';
+                cardPro.style.cssText = 'border:1px solid rgba(167,139,250,.35);box-shadow:0 10px 28px rgba(76,29,149,.15);background:rgba(17,24,39,0.9);transform:none;';
+                if (badgePro) {
+                    badgePro.textContent = '🔥 CHO STREAMER CHUYÊN NGHIỆP';
+                    badgePro.style.cssText = 'background:rgba(255,62,62,0.15);color:#ff3e3e;border:1px solid rgba(255,62,62,0.3);';
+                }
+            }
+            if (btnPro) {
+                btnPro.innerText = 'NÂNG CẤP PRO';
+                btnPro.className = 'plan-btn active';
+                btnPro.style.cssText = 'background:linear-gradient(135deg,#8b5cf6,#ec4899);box-shadow:0 8px 24px rgba(139,92,246,0.35);color:#fff;font-weight:800;border:none;cursor:pointer;';
+                btnPro.onclick = () => this.buySubscription('pro');
+            }
+            if (btnStudio) {
+                btnStudio.innerText = 'NHẬN TƯ VẤN';
+                btnStudio.className = 'plan-btn';
+                btnStudio.style.cssText = 'background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.35);color:#60a5fa;font-weight:700;cursor:pointer;';
+                btnStudio.onclick = () => this.openStudioContact();
             }
         }
 
@@ -7458,13 +7853,25 @@ class EffectStoreApp {
                                             </div>
                                             <div>
                                                 <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Số tiền thanh toán</div>
-                                                <div style="font-size: 22px; font-weight: 900; color: #fbbf24;">${formattedPrice}</div>
+                                                <div id="modal-order-price" style="font-size: 22px; font-weight: 900; color: #fbbf24;">${formattedPrice}</div>
+                                            </div>
+
+                                            <!-- Voucher Promo Code Box -->
+                                            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;margin-top:2px;">
+                                                <div style="font-size:11px;color:#cbd5e1;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                                                    <i class="fas fa-tags" style="color:#c084fc;"></i> Nhập mã ưu đãi / giới thiệu:
+                                                </div>
+                                                <div style="display:flex;gap:6px;">
+                                                    <input type="text" id="payment-voucher-code" placeholder="Mã giảm giá..." style="flex:1;padding:7px 10px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;font-size:12px;text-transform:uppercase;font-weight:700;">
+                                                    <button type="button" onclick="app.applyOrderVoucher('${orderId}', ['${subCode}'])" style="padding:7px 12px;background:linear-gradient(135deg,#a855f7,#6366f1);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:11px;cursor:pointer;">Áp dụng</button>
+                                                </div>
+                                                <div id="payment-voucher-result" style="margin-top:6px;font-size:11px;display:none;"></div>
                                             </div>
 
                                             <div>
                                                 <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Nội dung chuyển khoản</div>
                                                 <div style="display: flex; gap: 8px;">
-                                                    <div style="flex: 1; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); padding: 8px 12px; border-radius: 8px; color: #10b981; font-weight: 700; font-family: monospace; font-size: 13px; line-height:1.45;">${escapePaymentHtml(transferDescription)}</div>
+                                                    <div id="modal-order-desc" style="flex: 1; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); padding: 8px 12px; border-radius: 8px; color: #10b981; font-weight: 700; font-family: monospace; font-size: 13px; line-height:1.45;">${escapePaymentHtml(transferDescription)}</div>
                                                     <button onclick="navigator.clipboard.writeText(${transferDescriptionJson}); app.showNotification('info', '📋 Đã sao chép nội dung')" style="padding: 0 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; cursor: pointer;"><i class="fas fa-copy"></i></button>
                                                 </div>
                                             </div>
@@ -10333,6 +10740,358 @@ class EffectStoreApp {
         }, 1000);
     }
 
+    async toggleBasicSlot(effectId) {
+        try {
+            this.showNotification('info', 'Đang cập nhật danh sách 10 hiệu ứng hoạt động...');
+            const token = this.authToken || localStorage.getItem('token') || '';
+            const res = await fetch(`${this.API_URL}/api/effects/toggle-basic-slot`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ effectId })
+            });
+            let data = null;
+            try {
+                data = await res.json();
+            } catch (_jsonErr) {
+                // Not JSON (e.g. 404 / 500 HTML)
+            }
+            if (!data) {
+                throw new Error(`Máy chủ chưa nạp tính năng này (HTTP ${res.status}). Vui lòng khởi động lại app LiveFlow để nạp cập nhật mới nhất!`);
+            }
+            if (data.success) {
+                this.basicActiveEffectIds = Array.isArray(data.basicActiveEffectIds) ? data.basicActiveEffectIds : [];
+                this.showNotification('success', data.message || 'Cập nhật thành công!');
+                // Invalidate grid cache & reload effects
+                const grid = document.getElementById('store-grid');
+                if (grid) Object.keys(grid).forEach(k => { if (k.startsWith('_hasRendered_')) delete grid[k]; });
+                await this.loadEffects();
+                this.renderEffects();
+            } else {
+                if (data.isLockedWeekly) {
+                    this.showModal('Chu kỳ 1 tuần gói Basic', `
+                        <div style="text-align:center;padding:15px;color:#fff;">
+                            <div style="font-size:36px;margin-bottom:10px;">⏳</div>
+                            <div style="font-weight:700;font-size:16px;margin-bottom:8px;color:#fde047;">Chưa hết chu kỳ 1 tuần để đổi hiệu ứng</div>
+                            <p style="font-size:13px;color:#cbd5e1;line-height:1.5;margin-bottom:18px;">
+                                ${data.message}
+                            </p>
+                            <div style="display:flex;flex-direction:column;gap:10px;max-width:340px;margin:0 auto;">
+                                <button onclick="app.closeModal()" style="padding:10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;font-weight:600;cursor:pointer;">
+                                    Đã hiểu, tôi sẽ chờ đủ 1 tuần
+                                </button>
+                                <button onclick="app.closeModal();app.addToCart('${effectId}')" style="padding:10px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">
+                                    Mua đứt vĩnh viễn (Chỉ 20.000đ)
+                                </button>
+                                <button onclick="app.closeModal();app.openPricing()" style="padding:10px;background:linear-gradient(135deg,#a855f7,#6366f1);border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">
+                                    Lên gói Pro (Đổi và dùng 100% kho thả ga)
+                                </button>
+                            </div>
+                        </div>
+                    `);
+                } else if (data.slotLimitReached) {
+                    this.showModal('Đã đạt giới hạn 10 Slot', `
+                        <div style="text-align:center;padding:15px;color:#fff;">
+                            <div style="font-size:36px;margin-bottom:10px;">⚠️</div>
+                            <div style="font-weight:700;font-size:16px;margin-bottom:8px;">Bạn đã dùng hết 10/10 Slot hiệu ứng của gói Basic</div>
+                            <p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:20px;">
+                                Để sử dụng hiệu ứng này trên OBS, bạn có thể gỡ bớt 1 hiệu ứng cũ đã hết chu kỳ 7 ngày, mua đứt vĩnh viễn với giá ưu đãi 20.000đ, hoặc nâng cấp lên gói Pro để mở khóa toàn bộ kho hiệu ứng!
+                            </p>
+                            <div style="display:flex;flex-direction:column;gap:10px;max-width:340px;margin:0 auto;">
+                                <button onclick="app.closeModal()" style="padding:10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;font-weight:600;cursor:pointer;">
+                                    Đã hiểu, tôi sẽ gỡ bớt hiệu ứng khác
+                                </button>
+                                <button onclick="app.closeModal();app.addToCart('${effectId}')" style="padding:10px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">
+                                    Mua thêm vĩnh viễn (Chỉ 20.000đ)
+                                </button>
+                                <button onclick="app.closeModal();app.openPricing()" style="padding:10px;background:linear-gradient(135deg,#a855f7,#6366f1);border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">
+                                    Lên gói Pro (Mở khóa 100% kho thả ga)
+                                </button>
+                            </div>
+                        </div>
+                    `);
+                } else {
+                    this.showNotification('error', data.message || 'Không thể cập nhật slot.');
+                }
+            }
+        } catch (e) {
+            this.showNotification('error', e.message);
+        }
+    }
+
+    async applyOrderVoucher(oldOrderId, effectIds) {
+        const input = document.getElementById('payment-voucher-code');
+        const resEl = document.getElementById('payment-voucher-result');
+        const code = input ? input.value.trim().toUpperCase() : '';
+        if (!code) {
+            if (resEl) {
+                resEl.style.display = 'block';
+                resEl.style.color = '#ef4444';
+                resEl.innerHTML = '⚠️ Vui lòng nhập mã ưu đãi.';
+            }
+            return;
+        }
+
+        try {
+            if (resEl) {
+                resEl.style.display = 'block';
+                resEl.style.color = '#38bdf8';
+                resEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang kiểm tra mã ưu đãi...';
+            }
+
+            const response = await fetch(`${this.API_URL}/api/payment/create-qr`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`
+                },
+                body: JSON.stringify({
+                    effectIds,
+                    promoCode: code
+                })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                if (resEl) {
+                    resEl.style.display = 'block';
+                    resEl.style.color = '#ef4444';
+                    resEl.innerHTML = `❌ ${data.error || data.message || 'Mã không hợp lệ hoặc đã hết hạn.'}`;
+                }
+                return;
+            }
+
+            if (!data.promoCode || !data.discountAmount) {
+                if (resEl) {
+                    resEl.style.display = 'block';
+                    resEl.style.color = '#ef4444';
+                    resEl.innerHTML = '❌ Mã không áp dụng cho đơn hàng này.';
+                }
+                return;
+            }
+
+            // Update QR image in modal
+            const qrImg = document.querySelector('.modal-content img[alt="QR Code"]') || document.querySelector('.modal-content img[src*="vietqr"]');
+            if (qrImg && data.qrCode) qrImg.src = data.qrCode;
+
+            // Update Price & OrderId in DOM
+            const priceEl = document.getElementById('modal-order-price');
+            if (priceEl) {
+                priceEl.innerHTML = `
+                    <span style="text-decoration: line-through; color: #94a3b8; font-size: 13px; margin-right: 6px;">${this.formatPrice(data.originalAmount)}</span>
+                    <span style="color: #4ade80; font-weight: 800; font-size: 20px;">${this.formatPrice(data.amount)}</span>
+                `;
+            }
+
+            const descEl = document.getElementById('modal-order-desc');
+            if (descEl && data.bankInfo?.description) {
+                descEl.textContent = data.bankInfo.description;
+            }
+
+            // Update hidden orderId input
+            const orderInput = document.getElementById('confirm-order-id');
+            if (orderInput && data.orderId) orderInput.value = data.orderId;
+
+            if (resEl) {
+                resEl.style.display = 'block';
+                resEl.style.color = '#4ade80';
+                resEl.innerHTML = `🎉 Giảm ngay <strong>${this.formatPrice(data.discountAmount)}</strong> từ mã <strong>${data.promoCode}</strong>!`;
+            }
+
+            this.showNotification('success', `Đã áp dụng mã "${data.promoCode}" (-${this.formatPrice(data.discountAmount)})`);
+        } catch (err) {
+            if (resEl) {
+                resEl.style.display = 'block';
+                resEl.style.color = '#ef4444';
+                resEl.innerHTML = `❌ Lỗi: ${err.message}`;
+            }
+        }
+    }
+
+    async openPromoManager() {
+        this.showModal('Quản Lý Mã Khuyến Mãi / Truyền Thông', `
+            <div style="font-family: 'Inter', sans-serif; max-width: 760px; margin: 0 auto; color: #fff;">
+                <!-- Top: Create Promo Box -->
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #c084fc; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-plus-circle"></i> Tạo Mã Ưu Đãi Mới Cho KOC / Chiến Dịch
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 4px;">Mã Code (Tự đặt) *</label>
+                            <input type="text" id="new-promo-code" placeholder="VD: IDOL_LINH" style="width: 100%; box-sizing: border-box; padding: 8px 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-weight: 700; text-transform: uppercase;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 4px;">Loại giảm *</label>
+                            <select id="new-promo-type" style="width: 100%; box-sizing: border-box; padding: 8px 10px; background: #0f172a; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-weight: 600;">
+                                <option value="fixed">Trừ tiền trực tiếp (₫)</option>
+                                <option value="percent">Phần trăm (%)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 4px;">Giá trị giảm *</label>
+                            <input type="number" id="new-promo-val" placeholder="VD: 30000 hoặc 20" style="width: 100%; box-sizing: border-box; padding: 8px 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-weight: 700;">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end;">
+                        <div>
+                            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 4px;">Áp dụng cho</label>
+                            <select id="new-promo-applies" style="width: 100%; box-sizing: border-box; padding: 8px 10px; background: #0f172a; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff;">
+                                <option value="all">Tất cả (Gói & Hiệu ứng)</option>
+                                <option value="subscription">Chỉ Gói Cước (Basic/Pro)</option>
+                                <option value="effect">Chỉ Mua Hiệu Ứng Lẻ</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 4px;">Giới hạn lượt dùng</label>
+                            <input type="number" id="new-promo-max" placeholder="Để trống nếu vô hạn" style="width: 100%; box-sizing: border-box; padding: 8px 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 4px;">Hạn sử dụng</label>
+                            <input type="date" id="new-promo-exp" style="width: 100%; box-sizing: border-box; padding: 8px 10px; background: #0f172a; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff;">
+                        </div>
+                        <div>
+                            <button onclick="app.submitNewPromo()" style="padding: 9px 18px; background: linear-gradient(135deg, #a855f7, #6366f1); border: none; border-radius: 8px; color: #fff; font-weight: 700; cursor: pointer; white-space: nowrap;"><i class="fas fa-plus"></i> Tạo mã</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom: Table of Promos -->
+                <div style="font-size: 13px; font-weight: 700; margin-bottom: 10px; color: #e2e8f0;">Danh Sách Mã Đang Phát Hành</div>
+                <div id="admin-promos-container" style="max-height: 280px; overflow-y: auto; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 8px;">
+                    <div style="text-align: center; padding: 30px; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> Đang tải danh sách mã...</div>
+                </div>
+            </div>
+        `);
+        this.loadAdminPromos();
+    }
+
+    async loadAdminPromos() {
+        const container = document.getElementById('admin-promos-container');
+        if (!container) return;
+        try {
+            const token = this.authToken || localStorage.getItem('token') || '';
+            const res = await fetch(`${this.API_URL}/api/admin/promos`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (!data.success || !Array.isArray(data.promos) || data.promos.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 24px; color: #94a3b8;">Chưa có mã khuyến mãi nào. Hãy tạo mã đầu tiên ở khung trên!</div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: #94a3b8;">
+                            <th style="padding: 8px 10px;">Mã Code</th>
+                            <th style="padding: 8px 10px;">Ưu đãi</th>
+                            <th style="padding: 8px 10px;">Áp dụng</th>
+                            <th style="padding: 8px 10px;">Đã dùng</th>
+                            <th style="padding: 8px 10px;">Hạn dùng</th>
+                            <th style="padding: 8px 10px; text-align: right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.promos.map(p => {
+                            const discountStr = p.discountType === 'percent' ? `-${p.discountValue}%` : `-${this.formatPrice(p.discountValue)}`;
+                            const expStr = p.expiresAt ? new Date(p.expiresAt).toLocaleDateString('vi-VN') : 'Vĩnh viễn';
+                            const usesStr = p.maxUses ? `${p.usedCount || 0} / ${p.maxUses}` : `${p.usedCount || 0} (Vô hạn)`;
+                            const appliesStr = p.appliesTo === 'subscription' ? 'Gói Cước' : (p.appliesTo === 'effect' ? 'Hiệu Ứng' : 'Tất cả');
+                            return `
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.04); ${p.isActive ? '' : 'opacity: 0.5;'}">
+                                    <td style="padding: 10px;"><strong style="color: #67e8f9; letter-spacing: 0.5px;">${p.code}</strong></td>
+                                    <td style="padding: 10px;"><span style="color: #4ade80; font-weight: 700;">${discountStr}</span></td>
+                                    <td style="padding: 10px; color: #cbd5e1;">${appliesStr}</td>
+                                    <td style="padding: 10px; color: #cbd5e1;">${usesStr}</td>
+                                    <td style="padding: 10px; color: #94a3b8;">${expStr}</td>
+                                    <td style="padding: 10px; text-align: right;">
+                                        <button onclick="app.toggleAdminPromo('${p._id}')" style="background: ${p.isActive ? 'rgba(234,179,8,0.2)' : 'rgba(34,197,94,0.2)'}; border: 1px solid ${p.isActive ? '#eab308' : '#22c55e'}; color: ${p.isActive ? '#fde047' : '#86efac'}; padding: 3px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; margin-right: 6px;">
+                                            ${p.isActive ? 'Tắt' : 'Bật'}
+                                        </button>
+                                        <button onclick="app.deleteAdminPromo('${p._id}')" style="background: rgba(239,68,68,0.2); border: 1px solid #ef4444; color: #fca5a5; padding: 3px 8px; border-radius: 5px; font-size: 11px; cursor: pointer;">
+                                            Xóa
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        } catch (e) {
+            container.innerHTML = `<div style="color: #ef4444; padding: 15px; text-align: center;">Lỗi tải mã: ${e.message}</div>`;
+        }
+    }
+
+    async submitNewPromo() {
+        const code = document.getElementById('new-promo-code')?.value.trim();
+        const discountType = document.getElementById('new-promo-type')?.value;
+        const discountValue = document.getElementById('new-promo-val')?.value;
+        const appliesTo = document.getElementById('new-promo-applies')?.value;
+        const maxUses = document.getElementById('new-promo-max')?.value;
+        const expiresAt = document.getElementById('new-promo-exp')?.value;
+
+        if (!code || !discountValue) {
+            this.showNotification('warning', 'Vui lòng nhập mã code và giá trị giảm.');
+            return;
+        }
+
+        try {
+            const token = this.authToken || localStorage.getItem('token') || '';
+            const res = await fetch(`${this.API_URL}/api/admin/promos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ code, discountType, discountValue: Number(discountValue), appliesTo, maxUses: maxUses ? Number(maxUses) : null, expiresAt: expiresAt || null })
+            });
+            const data = await res.json();
+            if (data.success) {
+                this.showNotification('success', `Đã tạo mã "${code}" thành công!`);
+                this.loadAdminPromos();
+                document.getElementById('new-promo-code').value = '';
+                document.getElementById('new-promo-val').value = '';
+                if (document.getElementById('new-promo-max')) document.getElementById('new-promo-max').value = '';
+            } else {
+                this.showNotification('error', data.message || 'Không thể tạo mã.');
+            }
+        } catch (e) {
+            this.showNotification('error', e.message);
+        }
+    }
+
+    async toggleAdminPromo(id) {
+        try {
+            const token = this.authToken || localStorage.getItem('token') || '';
+            const res = await fetch(`${this.API_URL}/api/admin/promos/${id}/toggle`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                this.showNotification('success', 'Đã cập nhật trạng thái mã.');
+                this.loadAdminPromos();
+            }
+        } catch (e) {
+            this.showNotification('error', e.message);
+        }
+    }
+
+    async deleteAdminPromo(id) {
+        if (!confirm('Bạn có chắc chắn muốn xóa mã khuyến mãi này?')) return;
+        try {
+            const token = this.authToken || localStorage.getItem('token') || '';
+            const res = await fetch(`${this.API_URL}/api/admin/promos/${id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                this.showNotification('success', 'Đã xóa mã khuyến mãi.');
+                this.loadAdminPromos();
+            }
+        } catch (e) {
+            this.showNotification('error', e.message);
+        }
+    }
+
 }
 
 // ===== INITIALIZE APP =====
@@ -10484,7 +11243,20 @@ function openTimelineEditor(effectId, effectName) {
         loadOBSSources();
     }
 
-    // Tải timeline cũ từ server (nếu có)
+    // 1. Kiểm tra cấu hình timeline tùy chỉnh đã lưu riêng trên máy này trước
+    const localCustom = localStorage.getItem(`liveflow_custom_timeline_${effectId}`);
+    if (localCustom) {
+        try {
+            const parsed = JSON.parse(localCustom);
+            if (Array.isArray(parsed)) {
+                currentTimeline = parsed;
+                renderKeyframes();
+                return;
+            }
+        } catch (_e) {}
+    }
+
+    // 2. Tải timeline gốc từ server (nếu chưa có custom trên máy)
     fetch(`${app.API_URL}/api/effects/${effectId}/timeline`, {
         headers: { 'Authorization': `Bearer ${app.authToken}` }
     })
@@ -10531,6 +11303,58 @@ function onActionChange(action) {
     const rot = document.getElementById('kf-rotation');
     const dur = document.getElementById('kf-duration');
     const layer = document.getElementById('kf-layer');
+    const layerLabel = document.getElementById('kf-layer-label');
+
+    if (action === 'bg_removal' || action === 'blackout') {
+        if (layerLabel) layerLabel.textContent = '⚡ Trạng thái Filter';
+        if (layer) {
+            const currentVal = layer.value;
+            layer.innerHTML = `
+                <option value="above">🟢 BẬT (Kích hoạt)</option>
+                <option value="below">🔴 TẮT (Ngắt / Về gốc)</option>
+            `;
+            layer.value = (currentVal === 'below') ? 'below' : 'above';
+        }
+    } else if (action === 'layer') {
+        if (layerLabel) layerLabel.textContent = '🔲 Vị trí Lớp OBS';
+        if (layer) {
+            const currentVal = layer.value;
+            const obsSources = (window.cachedOBSSourcesList || []).filter(s => s.name);
+
+            let specificOptionsHtml = '';
+            if (obsSources.length > 0) {
+                specificOptionsHtml = `
+                    <optgroup label="🔼 Nằm TRÊN nguồn cụ thể:">
+                        ${obsSources.map(s => `<option value="above_source:${s.name}">⬆️ TRÊN: ${s.name}</option>`).join('')}
+                    </optgroup>
+                    <optgroup label="🔽 Nằm DƯỚI nguồn cụ thể:">
+                        ${obsSources.map(s => `<option value="below_source:${s.name}">⬇️ DƯỚI: ${s.name}</option>`).join('')}
+                    </optgroup>
+                `;
+            }
+
+            layer.innerHTML = `
+                <optgroup label="📍 Vị trí chuẩn">
+                    <option value="above">🔝 Nằm TRÊN Effect (Đè lên video)</option>
+                    <option value="below">🔽 Nằm DƯỚI Effect (Video đè lên cam)</option>
+                    <option value="top">👑 Lên TRÊN CÙNG Scene (Topmost)</option>
+                    <option value="bottom">⏬ Xuống DƯỚI CÙNG Scene (Bottommost)</option>
+                </optgroup>
+                ${specificOptionsHtml}
+            `;
+            if (currentVal) layer.value = currentVal;
+        }
+    } else {
+        if (layerLabel) layerLabel.textContent = '🔲 Lớp / Trạng thái';
+        if (layer) {
+            const currentVal = layer.value;
+            layer.innerHTML = `
+                <option value="above">🔝 Trên / 🟢 Bật</option>
+                <option value="below">🔽 Dưới / 🔴 Tắt</option>
+            `;
+            layer.value = currentVal || 'above';
+        }
+    }
 
     if (action === 'squash') {
         if (scaleX) scaleX.value = '135';
@@ -10545,8 +11369,6 @@ function onActionChange(action) {
         if (dur) dur.value = '0.4';
     } else if (action === 'shake') {
         if (dur) dur.value = '0.6';
-    } else if (action === 'bg_removal' || action === 'blackout') {
-        if (layer) layer.value = 'above';
     }
 }
 
@@ -10572,7 +11394,7 @@ function applyTimelinePreset() {
             { time: 1.2, action: 'squash', source: 'auto_webcam', duration: 0.15, transform: { x: 0, y: 150, scaleX: 135, scaleY: 8, rotation: 0 } },
             { time: 1.3, action: 'shake', source: 'auto_webcam', duration: 0.4, intensity: 30 },
             { time: 3.2, action: 'scale', source: 'auto_webcam', duration: 0.5, transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 0 } },
-            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'below' }
         ];
     } else if (preset === 'blackout') {
         // 💣 Kịch bản Bom Nổ Đen Mặt
@@ -10580,8 +11402,8 @@ function applyTimelinePreset() {
             { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true, layer: 'above' },
             { time: 1.0, action: 'blackout', source: 'auto_webcam', enabled: true, layer: 'above' },
             { time: 1.0, action: 'shake', source: 'auto_webcam', duration: 0.6, intensity: 35 },
-            { time: 3.5, action: 'blackout', source: 'auto_webcam', enabled: false, layer: 'above' },
-            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+            { time: 3.5, action: 'blackout', source: 'auto_webcam', enabled: false, layer: 'below' },
+            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'below' }
         ];
     } else if (preset === 'spring') {
         // 🚀 Kịch bản Lò Xo Bật Tung
@@ -10593,7 +11415,7 @@ function applyTimelinePreset() {
             { time: 2.6, action: 'show', source: 'auto_webcam' },
             { time: 2.7, action: 'move', source: 'auto_webcam', duration: 0.35, transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 0 } },
             { time: 3.0, action: 'shake', source: 'auto_webcam', duration: 0.4, intensity: 20 },
-            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'below' }
         ];
     } else if (preset === 'yeet') {
         // 👌 Kịch bản Búng Bay Mất Tích
@@ -10604,7 +11426,7 @@ function applyTimelinePreset() {
             { time: 1.1, action: 'hide', source: 'auto_webcam' },
             { time: 2.8, action: 'show', source: 'auto_webcam' },
             { time: 2.9, action: 'move', source: 'auto_webcam', duration: 0.6, transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 0 } },
-            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'below' }
         ];
     } else if (preset === 'tornado') {
         // 🌀 Kịch bản Lốc Xoáy Xoay Tròn
@@ -10616,13 +11438,13 @@ function applyTimelinePreset() {
             { time: 2.0, action: 'hide', source: 'auto_webcam' },
             { time: 3.2, action: 'show', source: 'auto_webcam' },
             { time: 3.3, action: 'move', source: 'auto_webcam', duration: 0.5, transform: { x: 0, y: 0, scaleX: 100, scaleY: 100, rotation: 0 } },
-            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+            { time: 4.5, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'below' }
         ];
     } else if (preset === 'bg_removal') {
         // ✂️ Tách nền đơn giản
         currentTimeline = [
             { time: 0.0, action: 'bg_removal', source: 'auto_webcam', enabled: true, layer: 'above' },
-            { time: 5.0, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'above' }
+            { time: 5.0, action: 'bg_removal', source: 'auto_webcam', enabled: false, layer: 'below' }
         ];
     } else if (preset === 'shake') {
         // ⚡ Rung lắc đơn giản
@@ -10653,7 +11475,7 @@ function addKeyframe() {
         return app.showNotification('warning', '⚠️ Vui lòng chọn Source!');
     }
 
-    const isEnabled = (layer === 'above');
+    const isEnabled = (layer === 'above' || layer === 'on');
 
     currentTimeline.push({
         time,
@@ -10661,7 +11483,7 @@ function addKeyframe() {
         source,
         duration,
         enabled: isEnabled,
-        layer,
+        layer: isEnabled ? 'above' : 'below',
         transform: { x, y, scaleX, scaleY, scale: scaleX, rotation }
     });
 
@@ -10688,8 +11510,10 @@ function editKeyframe(index) {
     const rotEl = document.getElementById('kf-rotation');
     const layerEl = document.getElementById('kf-layer');
 
-    if (timeEl) timeEl.value = kf.time ?? 0;
     if (actionEl) actionEl.value = kf.action || 'move';
+    onActionChange(kf.action || 'move');
+
+    if (timeEl) timeEl.value = kf.time ?? 0;
     if (sourceEl) sourceEl.value = kf.source || 'auto_webcam';
     if (durationEl) durationEl.value = kf.duration ?? 0.4;
     if (xEl) xEl.value = kf.transform?.x ?? 0;
@@ -10697,7 +11521,7 @@ function editKeyframe(index) {
     if (scaleXEl) scaleXEl.value = kf.transform?.scaleX ?? 100;
     if (scaleYEl) scaleYEl.value = kf.transform?.scaleY ?? 100;
     if (rotEl) rotEl.value = kf.transform?.rotation ?? 0;
-    if (layerEl) layerEl.value = kf.layer || (kf.enabled === false ? 'below' : 'above');
+    if (layerEl) layerEl.value = (kf.enabled === false || kf.layer === 'below') ? 'below' : 'above';
 
     const btnContainer = document.getElementById('modal-kf-btn-container');
     if (btnContainer) {
@@ -10728,14 +11552,15 @@ function saveKeyframeEdit() {
     const scaleY = parseFloat(document.getElementById('kf-scale-y').value) || 100;
     const rotation = parseFloat(document.getElementById('kf-rotation').value) || 0;
     const layer = document.getElementById('kf-layer').value;
+    const isEnabled = (layer === 'above' || layer === 'on');
 
     currentTimeline[editingModalKeyframeIndex] = {
         time,
         action,
         source,
         duration,
-        enabled: layer === 'above',
-        layer,
+        enabled: isEnabled,
+        layer: isEnabled ? 'above' : 'below',
         transform: { x, y, scaleX, scaleY, scale: scaleX, rotation }
     };
 
@@ -10796,7 +11621,7 @@ function renderKeyframes() {
 
         let detailText = '';
         if (kf.action === 'move') {
-            detailText = `X:${kf.transform?.x || 0} Y:${kf.transform?.y || 0}`;
+            detailText = `X:${kf.transform?.x || 0}px Y:${kf.transform?.y || 0}px`;
         } else if (kf.action === 'scale' || kf.action === 'squash') {
             detailText = `ScaleX:${kf.transform?.scaleX || 100}% ScaleY:${kf.transform?.scaleY || 100}%`;
         } else if (kf.action === 'rotate') {
@@ -10804,9 +11629,15 @@ function renderKeyframes() {
         } else if (kf.action === 'shake') {
             detailText = `Rung: ${kf.duration || 0.6}s`;
         } else if (kf.action === 'bg_removal' || kf.action === 'blackout') {
-            detailText = kf.enabled !== false ? '🟢 BẬT' : '🔴 TẮT';
+            detailText = (kf.enabled !== false && kf.layer !== 'below') ? '<span style="color:#10b981;font-weight:700;">🟢 BẬT</span>' : '<span style="color:#ef4444;font-weight:700;">🔴 TẮT</span>';
         } else if (kf.action === 'layer') {
-            detailText = kf.layer === 'above' ? 'Lớp: Trên' : 'Lớp: Dưới';
+            if (kf.layer === 'top' || kf.layer === 'topmost') detailText = '👑 Lớp: Trên cùng Scene';
+            else if (kf.layer === 'bottom' || kf.layer === 'bottommost') detailText = '⏬ Lớp: Dưới cùng Scene';
+            else if (kf.layer === 'above' || kf.layer === 'above_effect') detailText = '🔝 Lớp: Trên Effect';
+            else if (kf.layer === 'below' || kf.layer === 'below_effect') detailText = '🔽 Lớp: Dưới Effect';
+            else if (typeof kf.layer === 'string' && kf.layer.startsWith('above_source:')) detailText = `⬆️ Trên: ${kf.layer.replace('above_source:', '')}`;
+            else if (typeof kf.layer === 'string' && kf.layer.startsWith('below_source:')) detailText = `⬇️ Dưới: ${kf.layer.replace('below_source:', '')}`;
+            else detailText = (kf.layer === 'above' || kf.enabled !== false) ? '🔝 Lớp: Trên' : '🔽 Lớp: Dưới';
         } else if (kf.action === 'show' || kf.action === 'hide') {
             detailText = kf.action === 'show' ? 'Hiện nguồn' : 'Ẩn nguồn';
         }
@@ -10915,6 +11746,12 @@ function saveTimeline() {
 
     cleanTimeline.sort((a, b) => a.time - b.time);
 
+    // 1. Luôn lưu vào Local Storage trên máy này để máy khách chạy chuẩn xác kịch bản riêng
+    try {
+        localStorage.setItem(`liveflow_custom_timeline_${currentTimelineEffectId}`, JSON.stringify(cleanTimeline));
+    } catch (_e) {}
+
+    // 2. Nếu là Admin hoặc có kết nối API, gửi lên server để lưu
     fetch(`${app.API_URL}/api/effects/${currentTimelineEffectId}/timeline`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.authToken}` },
@@ -10923,18 +11760,61 @@ function saveTimeline() {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                app.showNotification('success', '💾 Đã lưu Timeline thành công!');
+                app.showNotification('success', '💾 Đã lưu cấu hình Timeline thành công cho hiệu ứng này!');
                 currentTimeline = cleanTimeline.filter(kf => !kf.isAutoReset);
                 renderKeyframes();
                 closeTimelineEditor();
                 if (app.loadAdminDashboard) app.loadAdminDashboard();
             } else {
-                app.showNotification('error', '❌ Lưu thất bại: ' + (data.error || data.message || 'Lỗi máy chủ'));
+                // Dù server báo gì thì cấu hình trên máy khách đã được lưu thành công
+                app.showNotification('success', '💾 Đã lưu cấu hình Timeline riêng cho máy này!');
+                currentTimeline = cleanTimeline.filter(kf => !kf.isAutoReset);
+                renderKeyframes();
+                closeTimelineEditor();
             }
         })
-        .catch(err => {
-            console.error('Save timeline error:', err);
-            app.showNotification('error', '❌ Lỗi kết nối API lưu timeline!');
+        .catch(_err => {
+            // Lưu offline cục bộ thành công
+            app.showNotification('success', '💾 Đã lưu cấu hình Timeline riêng cho máy này!');
+            currentTimeline = cleanTimeline.filter(kf => !kf.isAutoReset);
+            renderKeyframes();
+            closeTimelineEditor();
+        });
+}
+
+// 🔄 HÀM KHÔI PHỤC TIMELINE GỐC TỪ SERVER
+function resetTimelineToDefault() {
+    if (!currentTimelineEffectId) return;
+    if (!confirm('Bạn có chắc chắn muốn khôi phục về Timeline gốc của hiệu ứng này?')) return;
+    try {
+        localStorage.removeItem(`liveflow_custom_timeline_${currentTimelineEffectId}`);
+    } catch (_e) {}
+
+    fetch(`${app.API_URL}/api/effects/${currentTimelineEffectId}/timeline`, {
+        headers: { 'Authorization': `Bearer ${app.authToken}` }
+    })
+        .then(res => res.json())
+        .then(data => {
+            let tl = data.timeline;
+            if (typeof tl === 'string') {
+                try { tl = JSON.parse(tl); } catch (_e) {}
+            }
+            if (Array.isArray(tl)) {
+                currentTimeline = tl;
+            } else if (tl && Array.isArray(tl.config)) {
+                currentTimeline = tl.config;
+            } else if (tl && Array.isArray(tl.keyframes)) {
+                currentTimeline = tl.keyframes;
+            } else {
+                currentTimeline = [];
+            }
+            renderKeyframes();
+            app.showNotification('success', '🔄 Đã khôi phục về Timeline gốc!');
+        })
+        .catch(() => {
+            currentTimeline = [];
+            renderKeyframes();
+            app.showNotification('info', 'Đã đặt lại Timeline.');
         });
 }
 // ===== HÀM TẢI DANH SÁCH OBS SOURCES =====
@@ -10955,6 +11835,7 @@ async function loadOBSSources() {
         const data = await res.json();
 
         if (data.success && data.sources) {
+            window.cachedOBSSourcesList = data.sources;
             const webcams = data.sources.filter(s => s.isWebcam);
             const others = data.sources.filter(s => !s.isWebcam);
 
